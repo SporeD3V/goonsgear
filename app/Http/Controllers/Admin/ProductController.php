@@ -235,10 +235,17 @@ class ProductController extends Controller
         }
 
         $galleryFallbackPath = $mediaDirectory.'/'.$fallbackFilename;
-        Storage::disk('public')->copy($fallbackPath, $galleryFallbackPath);
+        $copiedToGallery = Storage::disk('public')->copy($fallbackPath, $galleryFallbackPath);
+
+        if (! $copiedToGallery) {
+            Log::warning('Fallback copy to gallery failed, using fallback path directly.', [
+                'fallback_path' => $fallbackPath,
+                'gallery_path' => $galleryFallbackPath,
+            ]);
+        }
 
         return [
-            'path' => $galleryFallbackPath,
+            'path' => $copiedToGallery ? $galleryFallbackPath : $fallbackPath,
             'mime_type' => self::IMAGE_MIME_BY_EXTENSION[$extension] ?? 'application/octet-stream',
             'is_converted' => false,
             'converted_to' => null,
