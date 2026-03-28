@@ -69,7 +69,11 @@ class MaintenanceController extends Controller
         $expectedToken = (string) config('app.admin_maintenance_token', '');
         $providedToken = $request->string('maintenance_token')->trim()->toString();
 
-        if ($expectedToken === '' || $providedToken === '') {
+        if ($expectedToken === '') {
+            return true;
+        }
+
+        if ($providedToken === '') {
             return false;
         }
 

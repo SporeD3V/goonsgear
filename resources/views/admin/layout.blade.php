@@ -24,9 +24,8 @@
                     <input
                         type="password"
                         name="maintenance_token"
-                        placeholder="Maintenance token"
+                        placeholder="Maintenance token (optional if not configured)"
                         class="rounded border border-slate-300 px-3 py-2"
-                        required
                     >
                     <button type="submit" class="rounded bg-slate-700 px-3 py-2 text-white hover:bg-slate-800">Clear Caches</button>
                     <button

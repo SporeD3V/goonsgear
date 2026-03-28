@@ -7,6 +7,30 @@ use Tests\TestCase;
 
 class MaintenanceControllerTest extends TestCase
 {
+    public function test_clear_caches_and_logs_work_without_token_when_not_configured(): void
+    {
+        config(['app.admin_maintenance_token' => null]);
+
+        $logDirectory = storage_path('logs');
+        File::ensureDirectoryExists($logDirectory);
+
+        $customLogPath = $logDirectory.DIRECTORY_SEPARATOR.'custom-no-token.log';
+        File::put($customLogPath, 'example-log-entry');
+
+        $clearCachesResponse = $this->from(route('admin.products.index'))
+            ->post(route('admin.maintenance.clear-caches'));
+
+        $clearCachesResponse->assertRedirect(route('admin.products.index'));
+        $clearCachesResponse->assertSessionHas('status');
+
+        $clearLogsResponse = $this->from(route('admin.products.index'))
+            ->post(route('admin.maintenance.clear-logs'));
+
+        $clearLogsResponse->assertRedirect(route('admin.products.index'));
+        $clearLogsResponse->assertSessionHas('status');
+        $this->assertSame('', File::get($customLogPath));
+    }
+
     public function test_clear_caches_requires_valid_token(): void
     {
         config(['app.admin_maintenance_token' => 'secret-token']);
