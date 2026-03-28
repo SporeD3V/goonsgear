@@ -33,6 +33,9 @@ jobs:
             --exclude="tests" \
             --exclude="deploy" \
             ./ ./deploy
+          # Remove vendor test files to reduce payload size
+          find deploy/vendor -type d \( -name "tests" -o -name "Tests" \) -exec rm -rf {} + 2>/dev/null || true
+          find deploy/vendor -type f \( -name "*.md" -o -name "*.txt" -o -name "LICENSE" -o -name "CHANGELOG*" \) -delete
 
       - name: Verify deploy payload
         run: |
