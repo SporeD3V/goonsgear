@@ -141,7 +141,7 @@
                         <div class="mb-3 overflow-hidden rounded border border-slate-200 bg-slate-50">
                             @if ($primaryMedia !== null)
                                 @php
-                                    $primaryMediaUrl = Storage::disk($primaryMedia->disk)->url($primaryMedia->path);
+                                    $primaryMediaUrl = route('media.show', ['path' => $primaryMedia->path]);
                                     $isPrimaryVideo = str_starts_with((string) $primaryMedia->mime_type, 'video/');
                                 @endphp
 
@@ -164,7 +164,7 @@
                         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-media-thumbnails>
                             @foreach ($product->media as $media)
                                 @php
-                                    $mediaUrl = Storage::disk($media->disk)->url($media->path);
+                                    $mediaUrl = route('media.show', ['path' => $media->path]);
                                     $isVideo = str_starts_with((string) $media->mime_type, 'video/');
                                 @endphp
 
