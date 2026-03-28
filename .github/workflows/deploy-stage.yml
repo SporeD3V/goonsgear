@@ -16,7 +16,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.3'
           extensions: mbstring, intl, pdo_mysql, curl, bcmath, gd
           coverage: none
 
@@ -31,6 +31,7 @@ jobs:
             --exclude=".github" \
             --exclude="node_modules" \
             --exclude="tests" \
+            --exclude="deploy" \
             ./ ./deploy
 
       - name: FTP Deploy to staging
@@ -41,6 +42,7 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftp
           local-dir: ./deploy/
-          server-dir: /
+          server-dir: /stage.macaw.ro/
+          dangerous-clean-slate: true
           log-level: verbose
           timeout: 120000
