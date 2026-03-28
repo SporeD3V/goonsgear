@@ -11,12 +11,17 @@ use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Throwable;
 
 class ProductController extends Controller
 {
+    private static ?bool $productMediaHasConversionColumns = null;
+
     /**
      * @var array<string, string>
      */
@@ -135,7 +140,7 @@ class ProductController extends Controller
                     $index
                 );
 
-                ProductMedia::query()->create([
+                $mediaPayload = [
                     'product_id' => $product->id,
                     'product_variant_id' => $mediaVariant?->id,
                     'disk' => 'public',
@@ -144,7 +149,14 @@ class ProductController extends Controller
                     'alt_text' => $mediaAltText !== '' ? $mediaAltText : null,
                     'is_primary' => ! $hasPrimaryMedia && $index === 0,
                     'position' => $nextPosition + $index,
-                ]);
+                ];
+
+                if ($this->productMediaSupportsConversionMetadata()) {
+                    $mediaPayload['is_converted'] = $storedMedia['is_converted'];
+                    $mediaPayload['converted_to'] = $storedMedia['converted_to'];
+                }
+
+                ProductMedia::query()->create($mediaPayload);
             }
         }
 
@@ -154,7 +166,7 @@ class ProductController extends Controller
     }
 
     /**
-     * @return array{path: string, mime_type: string}
+     * @return array{path: string, mime_type: string, is_converted: bool, converted_to: ?string}
      */
     private function storeMediaFile(Product $product, UploadedFile $uploadedMediaFile, ?ProductVariant $variant, int $index): array
     {
@@ -176,6 +188,8 @@ class ProductController extends Controller
             return [
                 'path' => $uploadedMediaFile->storeAs($mediaDirectory, $filename, 'public'),
                 'mime_type' => (string) ($uploadedMediaFile->getMimeType() ?: 'application/octet-stream'),
+                'is_converted' => false,
+                'converted_to' => null,
             ];
         }
 
@@ -191,6 +205,8 @@ class ProductController extends Controller
             return [
                 'path' => $uploadedMediaFile->storeAs($mediaDirectory, $filename, 'public'),
                 'mime_type' => (string) ($uploadedMediaFile->getMimeType() ?: 'application/octet-stream'),
+                'is_converted' => false,
+                'converted_to' => null,
             ];
         }
 
@@ -204,6 +220,8 @@ class ProductController extends Controller
             return [
                 'path' => $webpPath,
                 'mime_type' => 'image/webp',
+                'is_converted' => true,
+                'converted_to' => 'webp',
             ];
         }
 
@@ -211,6 +229,8 @@ class ProductController extends Controller
             return [
                 'path' => $avifPath,
                 'mime_type' => 'image/avif',
+                'is_converted' => true,
+                'converted_to' => 'avif',
             ];
         }
 
@@ -220,6 +240,8 @@ class ProductController extends Controller
         return [
             'path' => $galleryFallbackPath,
             'mime_type' => self::IMAGE_MIME_BY_EXTENSION[$extension] ?? 'application/octet-stream',
+            'is_converted' => false,
+            'converted_to' => null,
         ];
     }
 
@@ -230,59 +252,92 @@ class ProductController extends Controller
 
     private function convertImageToFormat(string $sourceAbsolutePath, string $targetRelativePath, string $targetFormat): bool
     {
-        if (! function_exists('imagecreatetruecolor') || ! function_exists('getimagesize')) {
+        try {
+            if (! function_exists('imagecreatetruecolor') || ! function_exists('getimagesize')) {
+                return false;
+            }
+
+            if (! in_array($targetFormat, ['webp', 'avif'], true)) {
+                return false;
+            }
+
+            if ($targetFormat === 'webp' && ! function_exists('imagewebp')) {
+                return false;
+            }
+
+            if ($targetFormat === 'avif' && ! function_exists('imageavif')) {
+                return false;
+            }
+
+            $imageInfo = @getimagesize($sourceAbsolutePath);
+
+            if ($imageInfo === false || ! isset($imageInfo['mime'])) {
+                return false;
+            }
+
+            $mimeType = strtolower((string) $imageInfo['mime']);
+            $imageResource = match ($mimeType) {
+                'image/jpeg' => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($sourceAbsolutePath) : false,
+                'image/png' => function_exists('imagecreatefrompng') ? @imagecreatefrompng($sourceAbsolutePath) : false,
+                'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($sourceAbsolutePath) : false,
+                'image/avif' => function_exists('imagecreatefromavif') ? @imagecreatefromavif($sourceAbsolutePath) : false,
+                default => false,
+            };
+
+            if ($imageResource === false) {
+                return false;
+            }
+
+            if (function_exists('imagepalettetotruecolor')) {
+                @imagepalettetotruecolor($imageResource);
+            }
+
+            if (function_exists('imagealphablending')) {
+                @imagealphablending($imageResource, true);
+            }
+
+            if (function_exists('imagesavealpha')) {
+                @imagesavealpha($imageResource, true);
+            }
+
+            $absoluteTargetPath = storage_path('app/public/'.$targetRelativePath);
+            $targetDirectory = dirname($absoluteTargetPath);
+
+            if (! is_dir($targetDirectory)) {
+                mkdir($targetDirectory, 0755, true);
+            }
+
+            $saved = match ($targetFormat) {
+                'webp' => @imagewebp($imageResource, $absoluteTargetPath, 82),
+                'avif' => @imageavif($imageResource, $absoluteTargetPath, 62),
+                default => false,
+            };
+
+            return $saved && is_file($absoluteTargetPath);
+        } catch (Throwable $exception) {
+            Log::warning('Media conversion failed, using fallback/original media.', [
+                'source' => $sourceAbsolutePath,
+                'target' => $targetRelativePath,
+                'format' => $targetFormat,
+                'message' => $exception->getMessage(),
+            ]);
+
             return false;
         }
+    }
 
-        if (! in_array($targetFormat, ['webp', 'avif'], true)) {
-            return false;
+    private function productMediaSupportsConversionMetadata(): bool
+    {
+        if (self::$productMediaHasConversionColumns !== null) {
+            return self::$productMediaHasConversionColumns;
         }
 
-        if ($targetFormat === 'webp' && ! function_exists('imagewebp')) {
-            return false;
-        }
+        self::$productMediaHasConversionColumns = Schema::hasColumns('product_media', [
+            'is_converted',
+            'converted_to',
+        ]);
 
-        if ($targetFormat === 'avif' && ! function_exists('imageavif')) {
-            return false;
-        }
-
-        $imageInfo = @getimagesize($sourceAbsolutePath);
-
-        if ($imageInfo === false || ! isset($imageInfo['mime'])) {
-            return false;
-        }
-
-        $mimeType = strtolower((string) $imageInfo['mime']);
-        $imageResource = match ($mimeType) {
-            'image/jpeg' => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($sourceAbsolutePath) : false,
-            'image/png' => function_exists('imagecreatefrompng') ? @imagecreatefrompng($sourceAbsolutePath) : false,
-            'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($sourceAbsolutePath) : false,
-            'image/avif' => function_exists('imagecreatefromavif') ? @imagecreatefromavif($sourceAbsolutePath) : false,
-            default => false,
-        };
-
-        if ($imageResource === false) {
-            return false;
-        }
-
-        imagepalettetotruecolor($imageResource);
-        imagealphablending($imageResource, true);
-        imagesavealpha($imageResource, true);
-
-        $absoluteTargetPath = storage_path('app/public/'.$targetRelativePath);
-        $targetDirectory = dirname($absoluteTargetPath);
-
-        if (! is_dir($targetDirectory)) {
-            mkdir($targetDirectory, 0755, true);
-        }
-
-        $saved = match ($targetFormat) {
-            'webp' => @imagewebp($imageResource, $absoluteTargetPath, 82),
-            'avif' => @imageavif($imageResource, $absoluteTargetPath, 62),
-            default => false,
-        };
-
-        return $saved && is_file($absoluteTargetPath);
+        return self::$productMediaHasConversionColumns;
     }
 
     /**

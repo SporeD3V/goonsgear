@@ -21,6 +21,8 @@ class ProductMedia extends Model
         'disk',
         'path',
         'mime_type',
+        'is_converted',
+        'converted_to',
         'width',
         'height',
         'alt_text',
@@ -35,6 +37,7 @@ class ProductMedia extends Model
     {
         return [
             'is_primary' => 'boolean',
+            'is_converted' => 'boolean',
         ];
     }
 

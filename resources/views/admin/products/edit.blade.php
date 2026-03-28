@@ -186,6 +186,9 @@
                                     <p class="mt-1 text-xs text-slate-500">
                                         {{ $media->variant?->name ?? 'All Variants' }} · {{ $media->is_primary ? 'Primary' : 'Gallery' }}
                                     </p>
+                                    <p class="mt-1 text-xs {{ $media->is_converted ? 'text-emerald-700' : 'text-amber-700' }}">
+                                        {{ $media->is_converted ? 'Converted: '.strtoupper((string) $media->converted_to) : 'Not converted (original/fallback)' }}
+                                    </p>
 
                                     <div class="mt-2 flex items-center gap-2">
                                         @if (! $media->is_primary)

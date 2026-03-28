@@ -136,6 +136,8 @@ class ProductCrudTest extends TestCase
             'product_id' => $product->id,
             'product_variant_id' => $variant->id,
             'mime_type' => 'video/mp4',
+            'is_converted' => false,
+            'converted_to' => null,
         ]);
 
         $storedPath = (string) $product->media()->value('path');
@@ -143,6 +145,15 @@ class ProductCrudTest extends TestCase
         $this->assertStringContainsString('products/upload-media-product/gallery/', $storedPath);
         $this->assertStringContainsString('shirt-front-main', $storedPath);
         $this->assertNotEmpty(Storage::disk('public')->files('products/upload-media-product/fallback'));
+
+        $imageMedia = $product->media()->where('mime_type', '!=', 'video/mp4')->first();
+        $this->assertNotNull($imageMedia);
+
+        if ($imageMedia->is_converted) {
+            $this->assertContains($imageMedia->converted_to, ['webp', 'avif']);
+        } else {
+            $this->assertNull($imageMedia->converted_to);
+        }
     }
 
     /**
