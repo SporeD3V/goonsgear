@@ -64,7 +64,7 @@ class FallbackMediaControllerTest extends TestCase
 
         $response->assertRedirect(route('admin.maintenance.fallback-media.index'));
         $response->assertSessionHas('status');
-        Storage::disk('public')->assertMissing($fallbackPath);
+        $this->assertFalse(Storage::disk('public')->exists($fallbackPath));
     }
 
     public function test_admin_can_reconvert_fallback_and_apply_to_media_row(): void
@@ -109,7 +109,7 @@ class FallbackMediaControllerTest extends TestCase
         $this->assertTrue($media->is_converted);
         $this->assertContains($media->converted_to, ['webp', 'avif']);
         $this->assertTrue(str_ends_with($media->path, '.'.$media->converted_to));
-        Storage::disk('public')->assertExists($media->path);
+        $this->assertTrue(Storage::disk('public')->exists($media->path));
     }
 
     public function test_fallback_media_filters_can_find_missing_optimized_files(): void
