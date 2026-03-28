@@ -14,6 +14,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Throwable;
@@ -131,32 +132,110 @@ class ProductController extends Controller
         if ($uploadedMediaFiles !== []) {
             $nextPosition = (int) ($product->media()->max('position') ?? -1) + 1;
             $hasPrimaryMedia = $product->media()->where('is_primary', true)->exists();
+            $uploadTraceId = Str::uuid()->toString();
 
-            foreach ($uploadedMediaFiles as $index => $uploadedMediaFile) {
-                $storedMedia = $this->storeMediaFile(
-                    $product,
-                    $uploadedMediaFile,
-                    $mediaVariant,
-                    $index
-                );
+            Log::info('Product media upload started.', [
+                'trace_id' => $uploadTraceId,
+                'product_id' => $product->id,
+                'product_slug' => $product->slug,
+                'media_count' => count($uploadedMediaFiles),
+                'media_variant_id' => $mediaVariant?->id,
+                'request_url' => URL::current(),
+                'php_upload_limits' => [
+                    'upload_max_filesize' => (string) ini_get('upload_max_filesize'),
+                    'post_max_size' => (string) ini_get('post_max_size'),
+                    'max_file_uploads' => (string) ini_get('max_file_uploads'),
+                    'memory_limit' => (string) ini_get('memory_limit'),
+                ],
+            ]);
 
-                $mediaPayload = [
-                    'product_id' => $product->id,
-                    'product_variant_id' => $mediaVariant?->id,
-                    'disk' => 'public',
-                    'path' => $storedMedia['path'],
-                    'mime_type' => $storedMedia['mime_type'],
-                    'alt_text' => $mediaAltText !== '' ? $mediaAltText : null,
-                    'is_primary' => ! $hasPrimaryMedia && $index === 0,
-                    'position' => $nextPosition + $index,
-                ];
+            try {
+                foreach ($uploadedMediaFiles as $index => $uploadedMediaFile) {
+                    Log::info('Product media upload file received.', [
+                        'trace_id' => $uploadTraceId,
+                        'product_id' => $product->id,
+                        'index' => $index,
+                        'original_name' => $uploadedMediaFile->getClientOriginalName(),
+                        'client_extension' => $uploadedMediaFile->getClientOriginalExtension(),
+                        'client_mime' => $uploadedMediaFile->getClientMimeType(),
+                        'detected_mime' => $uploadedMediaFile->getMimeType(),
+                        'size_bytes' => $uploadedMediaFile->getSize(),
+                        'tmp_path' => $uploadedMediaFile->getPathname(),
+                        'is_valid' => $uploadedMediaFile->isValid(),
+                        'upload_error_code' => $uploadedMediaFile->getError(),
+                        'upload_error_label' => $this->uploadErrorCodeLabel($uploadedMediaFile->getError()),
+                    ]);
 
-                if ($this->productMediaSupportsConversionMetadata()) {
-                    $mediaPayload['is_converted'] = $storedMedia['is_converted'];
-                    $mediaPayload['converted_to'] = $storedMedia['converted_to'];
+                    if (! $uploadedMediaFile->isValid()) {
+                        Log::warning('Product media upload file invalid.', [
+                            'trace_id' => $uploadTraceId,
+                            'product_id' => $product->id,
+                            'index' => $index,
+                            'upload_error_code' => $uploadedMediaFile->getError(),
+                            'upload_error_label' => $this->uploadErrorCodeLabel($uploadedMediaFile->getError()),
+                            'upload_error_message' => $uploadedMediaFile->getErrorMessage(),
+                        ]);
+
+                        continue;
+                    }
+
+                    $storedMedia = $this->storeMediaFile(
+                        $product,
+                        $uploadedMediaFile,
+                        $mediaVariant,
+                        $index,
+                        $uploadTraceId
+                    );
+
+                    $mediaPayload = [
+                        'product_id' => $product->id,
+                        'product_variant_id' => $mediaVariant?->id,
+                        'disk' => 'public',
+                        'path' => $storedMedia['path'],
+                        'mime_type' => $storedMedia['mime_type'],
+                        'alt_text' => $mediaAltText !== '' ? $mediaAltText : null,
+                        'is_primary' => ! $hasPrimaryMedia && $index === 0,
+                        'position' => $nextPosition + $index,
+                    ];
+
+                    if ($this->productMediaSupportsConversionMetadata()) {
+                        $mediaPayload['is_converted'] = $storedMedia['is_converted'];
+                        $mediaPayload['converted_to'] = $storedMedia['converted_to'];
+                    }
+
+                    ProductMedia::query()->create($mediaPayload);
+
+                    Log::info('Product media upload file stored.', [
+                        'trace_id' => $uploadTraceId,
+                        'product_id' => $product->id,
+                        'index' => $index,
+                        'path' => $storedMedia['path'],
+                        'mime_type' => $storedMedia['mime_type'],
+                        'is_converted' => $storedMedia['is_converted'],
+                        'converted_to' => $storedMedia['converted_to'],
+                    ]);
                 }
 
-                ProductMedia::query()->create($mediaPayload);
+                Log::info('Product media upload completed.', [
+                    'trace_id' => $uploadTraceId,
+                    'product_id' => $product->id,
+                ]);
+            } catch (Throwable $exception) {
+                Log::error('Product media upload failed.', [
+                    'trace_id' => $uploadTraceId,
+                    'product_id' => $product->id,
+                    'message' => $exception->getMessage(),
+                    'exception' => $exception::class,
+                    'file' => $exception->getFile(),
+                    'line' => $exception->getLine(),
+                ]);
+
+                return redirect()
+                    ->back()
+                    ->withInput()
+                    ->withErrors([
+                        'media_files' => 'Media upload failed. Please contact support with trace ID: '.$uploadTraceId,
+                    ]);
             }
         }
 
@@ -168,7 +247,7 @@ class ProductController extends Controller
     /**
      * @return array{path: string, mime_type: string, is_converted: bool, converted_to: ?string}
      */
-    private function storeMediaFile(Product $product, UploadedFile $uploadedMediaFile, ?ProductVariant $variant, int $index): array
+    private function storeMediaFile(Product $product, UploadedFile $uploadedMediaFile, ?ProductVariant $variant, int $index, string $uploadTraceId): array
     {
         $productDirectory = 'products/'.Str::slug($product->slug);
         $mediaDirectory = $productDirectory.'/gallery';
@@ -184,9 +263,17 @@ class ProductController extends Controller
 
         if (! $this->isImageMimeType((string) $uploadedMediaFile->getMimeType())) {
             $filename = $baseFilename.'.'.$extension;
+            $path = $uploadedMediaFile->storeAs($mediaDirectory, $filename, 'public');
+
+            Log::info('Stored non-image product media file.', [
+                'trace_id' => $uploadTraceId,
+                'product_id' => $product->id,
+                'index' => $index,
+                'path' => $path,
+            ]);
 
             return [
-                'path' => $uploadedMediaFile->storeAs($mediaDirectory, $filename, 'public'),
+                'path' => $path,
                 'mime_type' => (string) ($uploadedMediaFile->getMimeType() ?: 'application/octet-stream'),
                 'is_converted' => false,
                 'converted_to' => null,
@@ -201,9 +288,18 @@ class ProductController extends Controller
 
         if (! is_file($absoluteFallbackPath)) {
             $filename = $baseFilename.'.'.$extension;
+            $path = $uploadedMediaFile->storeAs($mediaDirectory, $filename, 'public');
+
+            Log::warning('Fallback media file missing after initial store; stored original in gallery.', [
+                'trace_id' => $uploadTraceId,
+                'product_id' => $product->id,
+                'index' => $index,
+                'fallback_path' => $fallbackPath,
+                'gallery_path' => $path,
+            ]);
 
             return [
-                'path' => $uploadedMediaFile->storeAs($mediaDirectory, $filename, 'public'),
+                'path' => $path,
                 'mime_type' => (string) ($uploadedMediaFile->getMimeType() ?: 'application/octet-stream'),
                 'is_converted' => false,
                 'converted_to' => null,
@@ -239,6 +335,9 @@ class ProductController extends Controller
 
         if (! $copiedToGallery) {
             Log::warning('Fallback copy to gallery failed, using fallback path directly.', [
+                'trace_id' => $uploadTraceId,
+                'product_id' => $product->id,
+                'index' => $index,
                 'fallback_path' => $fallbackPath,
                 'gallery_path' => $galleryFallbackPath,
             ]);
@@ -255,6 +354,21 @@ class ProductController extends Controller
     private function isImageMimeType(string $mimeType): bool
     {
         return str_starts_with($mimeType, 'image/');
+    }
+
+    private function uploadErrorCodeLabel(int $uploadErrorCode): string
+    {
+        return match ($uploadErrorCode) {
+            UPLOAD_ERR_OK => 'UPLOAD_ERR_OK',
+            UPLOAD_ERR_INI_SIZE => 'UPLOAD_ERR_INI_SIZE',
+            UPLOAD_ERR_FORM_SIZE => 'UPLOAD_ERR_FORM_SIZE',
+            UPLOAD_ERR_PARTIAL => 'UPLOAD_ERR_PARTIAL',
+            UPLOAD_ERR_NO_FILE => 'UPLOAD_ERR_NO_FILE',
+            UPLOAD_ERR_NO_TMP_DIR => 'UPLOAD_ERR_NO_TMP_DIR',
+            UPLOAD_ERR_CANT_WRITE => 'UPLOAD_ERR_CANT_WRITE',
+            UPLOAD_ERR_EXTENSION => 'UPLOAD_ERR_EXTENSION',
+            default => 'UPLOAD_ERR_UNKNOWN',
+        };
     }
 
     private function convertImageToFormat(string $sourceAbsolutePath, string $targetRelativePath, string $targetFormat): bool
