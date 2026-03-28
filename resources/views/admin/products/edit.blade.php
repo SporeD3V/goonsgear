@@ -168,9 +168,9 @@
                                     $isVideo = str_starts_with((string) $media->mime_type, 'video/');
                                 @endphp
 
-                                <button
-                                    type="button"
+                                <div
                                     class="rounded border border-slate-200 p-2 text-left"
+                                    tabindex="0"
                                     data-media-thumb
                                     data-media-url="{{ $mediaUrl }}"
                                     data-media-type="{{ $isVideo ? 'video' : 'image' }}"
@@ -186,7 +186,23 @@
                                     <p class="mt-1 text-xs text-slate-500">
                                         {{ $media->variant?->name ?? 'All Variants' }} · {{ $media->is_primary ? 'Primary' : 'Gallery' }}
                                     </p>
-                                </button>
+
+                                    <div class="mt-2 flex items-center gap-2">
+                                        @if (! $media->is_primary)
+                                            <form method="POST" action="{{ route('admin.products.media.primary', [$product, $media]) }}">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" class="text-xs text-blue-700 hover:underline">Set Primary</button>
+                                            </form>
+                                        @endif
+
+                                        <form method="POST" action="{{ route('admin.products.media.destroy', [$product, $media]) }}">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-xs text-red-700 hover:underline" onclick="return confirm('Delete this media item?')">Delete</button>
+                                        </form>
+                                    </div>
+                                </div>
                             @endforeach
                         </div>
                     </div>

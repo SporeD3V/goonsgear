@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductMedia;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -141,5 +142,84 @@ class ProductCrudTest extends TestCase
         $this->assertTrue(Storage::disk('public')->exists($storedPath));
         $this->assertStringContainsString('products/upload-media-product/gallery/', $storedPath);
         $this->assertStringContainsString('shirt-front-main', $storedPath);
+        $this->assertNotEmpty(Storage::disk('public')->files('products/upload-media-product/fallback'));
+    }
+
+    /**
+     * Admin can mark a media item as primary for a product.
+     */
+    public function test_admin_can_set_primary_media_for_product(): void
+    {
+        $product = Product::factory()->create();
+
+        $firstMedia = ProductMedia::factory()->create([
+            'product_id' => $product->id,
+            'is_primary' => true,
+            'position' => 0,
+        ]);
+
+        $secondMedia = ProductMedia::factory()->create([
+            'product_id' => $product->id,
+            'is_primary' => false,
+            'position' => 1,
+        ]);
+
+        $response = $this->patch(route('admin.products.media.primary', [$product, $secondMedia]));
+
+        $response->assertRedirect(route('admin.products.edit', $product));
+
+        $this->assertDatabaseHas('product_media', [
+            'id' => $firstMedia->id,
+            'is_primary' => false,
+        ]);
+
+        $this->assertDatabaseHas('product_media', [
+            'id' => $secondMedia->id,
+            'is_primary' => true,
+        ]);
+    }
+
+    /**
+     * Deleting primary media promotes the next media item.
+     */
+    public function test_deleting_primary_media_promotes_next_media(): void
+    {
+        Storage::fake('public');
+
+        $product = Product::factory()->create();
+
+        $firstMedia = ProductMedia::factory()->create([
+            'product_id' => $product->id,
+            'disk' => 'public',
+            'path' => 'products/sample/gallery/first.jpg',
+            'is_primary' => true,
+            'position' => 0,
+        ]);
+
+        $secondMedia = ProductMedia::factory()->create([
+            'product_id' => $product->id,
+            'disk' => 'public',
+            'path' => 'products/sample/gallery/second.jpg',
+            'is_primary' => false,
+            'position' => 1,
+        ]);
+
+        Storage::disk('public')->put($firstMedia->path, 'first-content');
+        Storage::disk('public')->put($secondMedia->path, 'second-content');
+
+        $response = $this->delete(route('admin.products.media.destroy', [$product, $firstMedia]));
+
+        $response->assertRedirect(route('admin.products.edit', $product));
+
+        $this->assertDatabaseMissing('product_media', [
+            'id' => $firstMedia->id,
+        ]);
+
+        $this->assertDatabaseHas('product_media', [
+            'id' => $secondMedia->id,
+            'is_primary' => true,
+        ]);
+
+        $this->assertFalse(Storage::disk('public')->exists($firstMedia->path));
     }
 }

@@ -11,11 +11,23 @@ use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class ProductController extends Controller
 {
+    /**
+     * @var array<string, string>
+     */
+    private const IMAGE_MIME_BY_EXTENSION = [
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'avif' => 'image/avif',
+    ];
+
     /**
      * Display a listing of the resource.
      */
@@ -116,7 +128,7 @@ class ProductController extends Controller
             $hasPrimaryMedia = $product->media()->where('is_primary', true)->exists();
 
             foreach ($uploadedMediaFiles as $index => $uploadedMediaFile) {
-                $storedPath = $this->storeMediaFile(
+                $storedMedia = $this->storeMediaFile(
                     $product,
                     $uploadedMediaFile,
                     $mediaVariant,
@@ -127,8 +139,8 @@ class ProductController extends Controller
                     'product_id' => $product->id,
                     'product_variant_id' => $mediaVariant?->id,
                     'disk' => 'public',
-                    'path' => $storedPath,
-                    'mime_type' => $uploadedMediaFile->getMimeType(),
+                    'path' => $storedMedia['path'],
+                    'mime_type' => $storedMedia['mime_type'],
                     'alt_text' => $mediaAltText !== '' ? $mediaAltText : null,
                     'is_primary' => ! $hasPrimaryMedia && $index === 0,
                     'position' => $nextPosition + $index,
@@ -141,19 +153,136 @@ class ProductController extends Controller
             ->with('status', 'Product updated successfully.');
     }
 
-    private function storeMediaFile(Product $product, UploadedFile $uploadedMediaFile, ?ProductVariant $variant, int $index): string
+    /**
+     * @return array{path: string, mime_type: string}
+     */
+    private function storeMediaFile(Product $product, UploadedFile $uploadedMediaFile, ?ProductVariant $variant, int $index): array
     {
-        $mediaDirectory = 'products/'.Str::slug($product->slug).'/gallery';
+        $productDirectory = 'products/'.Str::slug($product->slug);
+        $mediaDirectory = $productDirectory.'/gallery';
+        $fallbackDirectory = $productDirectory.'/fallback';
         $originalName = pathinfo($uploadedMediaFile->getClientOriginalName(), PATHINFO_FILENAME);
         $seoBaseName = Str::slug((string) $originalName);
         $seoBaseName = $seoBaseName !== '' ? $seoBaseName : 'media';
         $variantPrefix = $variant instanceof ProductVariant
             ? 'variant-'.Str::slug($variant->name).'-'
             : 'product-';
+        $baseFilename = $variantPrefix.now()->format('YmdHis').'-'.$index.'-'.$seoBaseName;
         $extension = strtolower((string) ($uploadedMediaFile->getClientOriginalExtension() ?: $uploadedMediaFile->extension() ?: 'bin'));
-        $filename = $variantPrefix.now()->format('YmdHis').'-'.$index.'-'.$seoBaseName.'.'.$extension;
 
-        return $uploadedMediaFile->storeAs($mediaDirectory, $filename, 'public');
+        if (! $this->isImageMimeType((string) $uploadedMediaFile->getMimeType())) {
+            $filename = $baseFilename.'.'.$extension;
+
+            return [
+                'path' => $uploadedMediaFile->storeAs($mediaDirectory, $filename, 'public'),
+                'mime_type' => (string) ($uploadedMediaFile->getMimeType() ?: 'application/octet-stream'),
+            ];
+        }
+
+        // Keep the original upload as a fallback copy so we can remove it later after verification.
+        $fallbackFilename = $baseFilename.'.'.$extension;
+        $fallbackPath = $uploadedMediaFile->storeAs($fallbackDirectory, $fallbackFilename, 'public');
+
+        $absoluteFallbackPath = storage_path('app/public/'.$fallbackPath);
+
+        if (! is_file($absoluteFallbackPath)) {
+            $filename = $baseFilename.'.'.$extension;
+
+            return [
+                'path' => $uploadedMediaFile->storeAs($mediaDirectory, $filename, 'public'),
+                'mime_type' => (string) ($uploadedMediaFile->getMimeType() ?: 'application/octet-stream'),
+            ];
+        }
+
+        $webpPath = $mediaDirectory.'/'.$baseFilename.'.webp';
+        $avifPath = $mediaDirectory.'/'.$baseFilename.'.avif';
+
+        $webpCreated = $this->convertImageToFormat($absoluteFallbackPath, $webpPath, 'webp');
+        $avifCreated = $this->convertImageToFormat($absoluteFallbackPath, $avifPath, 'avif');
+
+        if ($webpCreated) {
+            return [
+                'path' => $webpPath,
+                'mime_type' => 'image/webp',
+            ];
+        }
+
+        if ($avifCreated) {
+            return [
+                'path' => $avifPath,
+                'mime_type' => 'image/avif',
+            ];
+        }
+
+        $galleryFallbackPath = $mediaDirectory.'/'.$fallbackFilename;
+        Storage::disk('public')->copy($fallbackPath, $galleryFallbackPath);
+
+        return [
+            'path' => $galleryFallbackPath,
+            'mime_type' => self::IMAGE_MIME_BY_EXTENSION[$extension] ?? 'application/octet-stream',
+        ];
+    }
+
+    private function isImageMimeType(string $mimeType): bool
+    {
+        return str_starts_with($mimeType, 'image/');
+    }
+
+    private function convertImageToFormat(string $sourceAbsolutePath, string $targetRelativePath, string $targetFormat): bool
+    {
+        if (! function_exists('imagecreatetruecolor') || ! function_exists('getimagesize')) {
+            return false;
+        }
+
+        if (! in_array($targetFormat, ['webp', 'avif'], true)) {
+            return false;
+        }
+
+        if ($targetFormat === 'webp' && ! function_exists('imagewebp')) {
+            return false;
+        }
+
+        if ($targetFormat === 'avif' && ! function_exists('imageavif')) {
+            return false;
+        }
+
+        $imageInfo = @getimagesize($sourceAbsolutePath);
+
+        if ($imageInfo === false || ! isset($imageInfo['mime'])) {
+            return false;
+        }
+
+        $mimeType = strtolower((string) $imageInfo['mime']);
+        $imageResource = match ($mimeType) {
+            'image/jpeg' => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($sourceAbsolutePath) : false,
+            'image/png' => function_exists('imagecreatefrompng') ? @imagecreatefrompng($sourceAbsolutePath) : false,
+            'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($sourceAbsolutePath) : false,
+            'image/avif' => function_exists('imagecreatefromavif') ? @imagecreatefromavif($sourceAbsolutePath) : false,
+            default => false,
+        };
+
+        if ($imageResource === false) {
+            return false;
+        }
+
+        imagepalettetotruecolor($imageResource);
+        imagealphablending($imageResource, true);
+        imagesavealpha($imageResource, true);
+
+        $absoluteTargetPath = storage_path('app/public/'.$targetRelativePath);
+        $targetDirectory = dirname($absoluteTargetPath);
+
+        if (! is_dir($targetDirectory)) {
+            mkdir($targetDirectory, 0755, true);
+        }
+
+        $saved = match ($targetFormat) {
+            'webp' => @imagewebp($imageResource, $absoluteTargetPath, 82),
+            'avif' => @imageavif($imageResource, $absoluteTargetPath, 62),
+            default => false,
+        };
+
+        return $saved && is_file($absoluteTargetPath);
     }
 
     /**
