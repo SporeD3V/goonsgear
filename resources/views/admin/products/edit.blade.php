@@ -119,100 +119,7 @@
                 <label class="mb-1 block text-sm font-medium">Alt Text (optional)</label>
                 <input type="text" name="media_alt_text" value="" class="w-full rounded border border-slate-300 px-3 py-2" placeholder="e.g. Black tee front view">
             </div>
-            @if ($product->media->isNotEmpty())
-                @php
-                    $primaryMedia = $product->media->first();
-                @endphp
-
-                <div data-media-gallery class="space-y-4">
-                    <div class="grid gap-3 md:grid-cols-2">
-                        <div>
-                            <label class="mb-1 block text-sm font-medium">Preview Variant</label>
-                            <select data-media-variant-filter class="w-full rounded border border-slate-300 px-3 py-2">
-                                <option value="all">All Variants</option>
-                                @foreach ($product->variants as $variant)
-                                    <option value="{{ $variant->id }}">{{ $variant->name }} ({{ $variant->sku }})</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="rounded border border-slate-200 p-3">
-                        <div class="mb-3 overflow-hidden rounded border border-slate-200 bg-slate-50">
-                            @if ($primaryMedia !== null)
-                                @php
-                                    $primaryMediaUrl = route('media.show', ['path' => $primaryMedia->path]);
-                                    $isPrimaryVideo = str_starts_with((string) $primaryMedia->mime_type, 'video/');
-                                @endphp
-
-                                <img
-                                    data-media-main-image
-                                    src="{{ $isPrimaryVideo ? '' : $primaryMediaUrl }}"
-                                    alt="{{ $primaryMedia->alt_text ?: $product->name }}"
-                                    class="{{ $isPrimaryVideo ? 'hidden' : '' }} h-72 w-full object-contain"
-                                >
-
-                                <video
-                                    data-media-main-video
-                                    controls
-                                    class="{{ $isPrimaryVideo ? '' : 'hidden' }} h-72 w-full bg-black object-contain"
-                                    src="{{ $isPrimaryVideo ? $primaryMediaUrl : '' }}"
-                                ></video>
-                            @endif
-                        </div>
-
-                        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-media-thumbnails>
-                            @foreach ($product->media as $media)
-                                @php
-                                    $mediaUrl = route('media.show', ['path' => $media->path]);
-                                    $isVideo = str_starts_with((string) $media->mime_type, 'video/');
-                                @endphp
-
-                                <div
-                                    class="rounded border border-slate-200 p-2 text-left"
-                                    tabindex="0"
-                                    data-media-thumb
-                                    data-media-url="{{ $mediaUrl }}"
-                                    data-media-type="{{ $isVideo ? 'video' : 'image' }}"
-                                    data-media-variant-id="{{ $media->product_variant_id ?? '' }}"
-                                    data-media-alt="{{ $media->alt_text ?: $product->name }}"
-                                >
-                                    @if ($isVideo)
-                                        <div class="mb-2 flex h-20 items-center justify-center rounded bg-slate-900 text-xs font-medium text-white">VIDEO</div>
-                                    @else
-                                        <img src="{{ $mediaUrl }}" alt="{{ $media->alt_text ?: $product->name }}" class="mb-2 h-20 w-full rounded object-cover">
-                                    @endif
-                                    <p class="text-xs text-slate-600">{{ $media->alt_text ?: 'No alt text' }}</p>
-                                    <p class="mt-1 text-xs text-slate-500">
-                                        {{ $media->variant?->name ?? 'All Variants' }} · {{ $media->is_primary ? 'Primary' : 'Gallery' }}
-                                    </p>
-                                    <p class="mt-1 text-xs {{ $media->is_converted ? 'text-emerald-700' : 'text-amber-700' }}">
-                                        {{ $media->is_converted ? 'Converted: '.strtoupper((string) $media->converted_to) : 'Not converted (original/fallback)' }}
-                                    </p>
-
-                                    <div class="mt-2 flex items-center gap-2">
-                                        @if (! $media->is_primary)
-                                            <form method="POST" action="{{ route('admin.products.media.primary', [$product, $media]) }}">
-                                                @csrf
-                                                @method('PATCH')
-                                                <button type="submit" class="text-xs text-blue-700 hover:underline">Set Primary</button>
-                                            </form>
-                                        @endif
-
-                                        <form method="POST" action="{{ route('admin.products.media.destroy', [$product, $media]) }}">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="text-xs text-red-700 hover:underline" onclick="return confirm('Delete this media item?')">Delete</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
-            @else
-                <p class="text-xs text-slate-500">No media uploaded yet.</p>
-            @endif
+            <p class="text-xs text-slate-500">Media management (preview, set primary, delete) is available below after saving.</p>
         </div>
 
         <div class="flex items-center gap-3">
@@ -220,6 +127,103 @@
             <a href="{{ route('admin.products.index') }}" class="text-sm text-slate-600 hover:underline">Cancel</a>
         </div>
     </form>
+
+    @if ($product->media->isNotEmpty())
+        @php
+            $primaryMedia = $product->media->first();
+        @endphp
+
+        <div class="mt-8 space-y-4 rounded border border-slate-200 p-4" data-media-gallery>
+            <h3 class="text-sm font-semibold">Current Media</h3>
+
+            <div class="grid gap-3 md:grid-cols-2">
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Preview Variant</label>
+                    <select data-media-variant-filter class="w-full rounded border border-slate-300 px-3 py-2">
+                        <option value="all">All Variants</option>
+                        @foreach ($product->variants as $variant)
+                            <option value="{{ $variant->id }}">{{ $variant->name }} ({{ $variant->sku }})</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div class="rounded border border-slate-200 p-3">
+                <div class="mb-3 overflow-hidden rounded border border-slate-200 bg-slate-50">
+                    @if ($primaryMedia !== null)
+                        @php
+                            $primaryMediaUrl = route('media.show', ['path' => $primaryMedia->path]);
+                            $isPrimaryVideo = str_starts_with((string) $primaryMedia->mime_type, 'video/');
+                        @endphp
+
+                        <img
+                            data-media-main-image
+                            src="{{ $isPrimaryVideo ? '' : $primaryMediaUrl }}"
+                            alt="{{ $primaryMedia->alt_text ?: $product->name }}"
+                            class="{{ $isPrimaryVideo ? 'hidden' : '' }} h-72 w-full object-contain"
+                        >
+
+                        <video
+                            data-media-main-video
+                            controls
+                            class="{{ $isPrimaryVideo ? '' : 'hidden' }} h-72 w-full bg-black object-contain"
+                            src="{{ $isPrimaryVideo ? $primaryMediaUrl : '' }}"
+                        ></video>
+                    @endif
+                </div>
+
+                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-media-thumbnails>
+                    @foreach ($product->media as $media)
+                        @php
+                            $mediaUrl = route('media.show', ['path' => $media->path]);
+                            $isVideo = str_starts_with((string) $media->mime_type, 'video/');
+                        @endphp
+
+                        <div
+                            class="rounded border border-slate-200 p-2 text-left"
+                            tabindex="0"
+                            data-media-thumb
+                            data-media-url="{{ $mediaUrl }}"
+                            data-media-type="{{ $isVideo ? 'video' : 'image' }}"
+                            data-media-variant-id="{{ $media->product_variant_id ?? '' }}"
+                            data-media-alt="{{ $media->alt_text ?: $product->name }}"
+                        >
+                            @if ($isVideo)
+                                <div class="mb-2 flex h-20 items-center justify-center rounded bg-slate-900 text-xs font-medium text-white">VIDEO</div>
+                            @else
+                                <img src="{{ $mediaUrl }}" alt="{{ $media->alt_text ?: $product->name }}" class="mb-2 h-20 w-full rounded object-cover">
+                            @endif
+                            <p class="text-xs text-slate-600">{{ $media->alt_text ?: 'No alt text' }}</p>
+                            <p class="mt-1 text-xs text-slate-500">
+                                {{ $media->variant?->name ?? 'All Variants' }} · {{ $media->is_primary ? 'Primary' : 'Gallery' }}
+                            </p>
+                            <p class="mt-1 text-xs {{ $media->is_converted ? 'text-emerald-700' : 'text-amber-700' }}">
+                                {{ $media->is_converted ? 'Converted: '.strtoupper((string) $media->converted_to) : 'Not converted (original/fallback)' }}
+                            </p>
+
+                            <div class="mt-2 flex items-center gap-2">
+                                @if (! $media->is_primary)
+                                    <form method="POST" action="{{ route('admin.products.media.primary', [$product, $media]) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="text-xs text-blue-700 hover:underline">Set Primary</button>
+                                    </form>
+                                @endif
+
+                                <form method="POST" action="{{ route('admin.products.media.destroy', [$product, $media]) }}">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-xs text-red-700 hover:underline" onclick="return confirm('Delete this media item?')">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    @else
+        <p class="mt-6 text-xs text-slate-500">No media uploaded yet.</p>
+    @endif
 
     <hr class="my-8 border-slate-200">
 
