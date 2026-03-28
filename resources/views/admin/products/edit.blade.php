@@ -205,14 +205,12 @@
                                 @if (! $media->is_primary)
                                     <form method="POST" action="{{ route('admin.products.media.primary', [$product, $media]) }}">
                                         @csrf
-                                        @method('PATCH')
                                         <button type="submit" class="text-xs text-blue-700 hover:underline">Set Primary</button>
                                     </form>
                                 @endif
 
                                 <form method="POST" action="{{ route('admin.products.media.destroy', [$product, $media]) }}">
                                     @csrf
-                                    @method('DELETE')
                                     <button type="submit" class="text-xs text-red-700 hover:underline" onclick="return confirm('Delete this media item?')">Delete</button>
                                 </form>
                             </div>
