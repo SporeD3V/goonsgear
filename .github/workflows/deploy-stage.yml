@@ -34,6 +34,16 @@ jobs:
             --exclude="deploy" \
             ./ ./deploy
 
+      - name: Verify deploy payload
+        run: |
+          FILE_COUNT=$(find deploy -type f | wc -l)
+          DIR_COUNT=$(find deploy -type d | wc -l)
+          echo "Deploy payload has ${FILE_COUNT} files and ${DIR_COUNT} folders"
+          if [ "$FILE_COUNT" -eq 0 ]; then
+            echo "No files found in deploy payload. Aborting."
+            exit 1
+          fi
+
       - name: FTP Deploy to staging
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
@@ -45,5 +55,5 @@ jobs:
           local-dir: ./deploy/
           server-dir: /
           dangerous-clean-slate: true
-          log-level: verbose
-          timeout: 120000
+          log-level: standard
+          timeout: 600000
