@@ -18,6 +18,26 @@
                         <a class="text-blue-700 hover:underline" href="{{ route('admin.products.index') }}">Products</a>
                     </nav>
                 </div>
+
+                <form method="POST" action="{{ route('admin.maintenance.clear-caches') }}" class="mt-4 flex flex-wrap items-center gap-2 text-sm">
+                    @csrf
+                    <input
+                        type="password"
+                        name="maintenance_token"
+                        placeholder="Maintenance token"
+                        class="rounded border border-slate-300 px-3 py-2"
+                        required
+                    >
+                    <button type="submit" class="rounded bg-slate-700 px-3 py-2 text-white hover:bg-slate-800">Clear Caches</button>
+                    <button
+                        type="submit"
+                        formaction="{{ route('admin.maintenance.clear-logs') }}"
+                        class="rounded bg-amber-600 px-3 py-2 text-white hover:bg-amber-700"
+                        onclick="return confirm('Clear all application log files?')"
+                    >
+                        Clear Logs
+                    </button>
+                </form>
             </header>
 
             @if (session('status'))
