@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\FallbackMediaController;
 use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductMediaController;
@@ -24,6 +25,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         ->name('maintenance.clear-caches');
     Route::post('maintenance/clear-logs', [MaintenanceController::class, 'clearLogs'])
         ->name('maintenance.clear-logs');
+    Route::get('maintenance/fallback-media', [FallbackMediaController::class, 'index'])
+        ->name('maintenance.fallback-media.index');
+    Route::post('maintenance/fallback-media/reconvert', [FallbackMediaController::class, 'reconvertAndUse'])
+        ->name('maintenance.fallback-media.reconvert');
+    Route::post('maintenance/fallback-media/delete', [FallbackMediaController::class, 'destroy'])
+        ->name('maintenance.fallback-media.destroy');
     Route::match(['post', 'patch'], 'products/{product}/media/{media}/primary', [ProductMediaController::class, 'makePrimary'])
         ->name('products.media.primary');
     Route::match(['post', 'delete'], 'products/{product}/media/{media}', [ProductMediaController::class, 'destroy'])
