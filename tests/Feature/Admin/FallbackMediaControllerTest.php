@@ -111,4 +111,54 @@ class FallbackMediaControllerTest extends TestCase
         $this->assertTrue(str_ends_with($media->path, '.'.$media->converted_to));
         Storage::disk('public')->assertExists($media->path);
     }
+
+    public function test_fallback_media_filters_can_find_missing_optimized_files(): void
+    {
+        Storage::fake('public');
+
+        Product::factory()->create([
+            'name' => 'Black Hoodie',
+            'slug' => 'black-hoodie',
+        ]);
+
+        $missingOptimizedFallback = 'products/black-hoodie/fallback/product-20260329-0-black-hoodie.png';
+        $hasOptimizedFallback = 'products/black-hoodie/fallback/product-20260329-1-black-hoodie.png';
+        $hasOptimizedWebp = 'products/black-hoodie/gallery/product-20260329-1-black-hoodie.webp';
+
+        Storage::disk('public')->put($missingOptimizedFallback, 'fallback-content-1');
+        Storage::disk('public')->put($hasOptimizedFallback, 'fallback-content-2');
+        Storage::disk('public')->put($hasOptimizedWebp, 'webp-content');
+
+        $response = $this->get(route('admin.maintenance.fallback-media.index', [
+            'optimization' => 'missing',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee($missingOptimizedFallback);
+        $response->assertDontSee($hasOptimizedFallback);
+    }
+
+    public function test_fallback_media_filters_can_find_unknown_product_paths(): void
+    {
+        Storage::fake('public');
+
+        Product::factory()->create([
+            'name' => 'Black Hoodie',
+            'slug' => 'black-hoodie',
+        ]);
+
+        $knownFallback = 'products/black-hoodie/fallback/product-20260329-0-black-hoodie.png';
+        $unknownFallback = 'products/missing-product/fallback/product-20260329-0-missing-product.png';
+
+        Storage::disk('public')->put($knownFallback, 'known-fallback');
+        Storage::disk('public')->put($unknownFallback, 'unknown-fallback');
+
+        $response = $this->get(route('admin.maintenance.fallback-media.index', [
+            'product_state' => 'unknown',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee($unknownFallback);
+        $response->assertDontSee($knownFallback);
+    }
 }

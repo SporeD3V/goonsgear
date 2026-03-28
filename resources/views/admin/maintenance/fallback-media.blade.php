@@ -6,6 +6,54 @@
         <a href="{{ route('admin.products.index') }}" class="text-sm text-blue-700 hover:underline">Back to Products</a>
     </div>
 
+    <form method="GET" action="{{ route('admin.maintenance.fallback-media.index') }}" class="mb-4 grid gap-3 rounded border border-slate-200 bg-slate-50 p-3 md:grid-cols-5">
+        <div class="md:col-span-2">
+            <label class="mb-1 block text-xs font-medium text-slate-700">Search</label>
+            <input
+                type="text"
+                name="search"
+                value="{{ $filters['search'] }}"
+                placeholder="Product, slug, filename, or path"
+                class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+            >
+        </div>
+
+        <div>
+            <label class="mb-1 block text-xs font-medium text-slate-700">Optimization</label>
+            <select name="optimization" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                <option value="all" @selected($filters['optimization'] === 'all')>All</option>
+                <option value="missing" @selected($filters['optimization'] === 'missing')>Missing optimized</option>
+                <option value="present" @selected($filters['optimization'] === 'present')>Has optimized</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="mb-1 block text-xs font-medium text-slate-700">Current Usage</label>
+            <select name="usage" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                <option value="all" @selected($filters['usage'] === 'all')>All</option>
+                <option value="fallback" @selected($filters['usage'] === 'fallback')>Uses fallback</option>
+                <option value="webp" @selected($filters['usage'] === 'webp')>Uses WEBP</option>
+                <option value="avif" @selected($filters['usage'] === 'avif')>Uses AVIF</option>
+                <option value="none" @selected($filters['usage'] === 'none')>Not linked in DB</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="mb-1 block text-xs font-medium text-slate-700">Product Mapping</label>
+            <select name="product_state" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                <option value="all" @selected($filters['product_state'] === 'all')>All</option>
+                <option value="known" @selected($filters['product_state'] === 'known')>Known product</option>
+                <option value="unknown" @selected($filters['product_state'] === 'unknown')>Unknown product</option>
+            </select>
+        </div>
+
+        <div class="md:col-span-5 flex items-center gap-2">
+            <button type="submit" class="rounded bg-slate-700 px-3 py-2 text-xs text-white hover:bg-slate-800">Apply Filters</button>
+            <a href="{{ route('admin.maintenance.fallback-media.index') }}" class="rounded border border-slate-300 px-3 py-2 text-xs text-slate-700 hover:bg-white">Reset</a>
+            <span class="text-xs text-slate-500">Showing {{ $entries->count() }} result(s)</span>
+        </div>
+    </form>
+
     @if ($entries->isEmpty())
         <p class="rounded border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">No fallback images were found.</p>
     @else

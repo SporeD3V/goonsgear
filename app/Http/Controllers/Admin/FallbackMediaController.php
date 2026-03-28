@@ -29,8 +29,13 @@ class FallbackMediaController extends Controller
         'avif' => 'image/avif',
     ];
 
-    public function index(): View
+    public function index(Request $request): View
     {
+        $search = $request->string('search')->trim()->toString();
+        $optimization = $request->string('optimization')->trim()->toString();
+        $usage = $request->string('usage')->trim()->toString();
+        $productState = $request->string('product_state')->trim()->toString();
+
         $fallbackFiles = $this->collectFallbackFiles();
         $productSlugs = $fallbackFiles->pluck('product_slug')->filter()->unique()->values();
 
@@ -80,6 +85,54 @@ class FallbackMediaController extends Controller
                 'matching_media_count' => $matchingMedia->count(),
                 'base_gallery_path' => $baseGalleryPath,
             ];
+        })->filter(function (array $entry) use ($search, $optimization, $usage, $productState): bool {
+            if ($search !== '') {
+                $productName = $entry['product'] instanceof Product ? $entry['product']->name : '';
+                $searchHaystack = strtolower(implode(' ', [
+                    $entry['filename'],
+                    $entry['fallback_path'],
+                    $entry['product_slug'],
+                    $productName,
+                ]));
+
+                if (! str_contains($searchHaystack, strtolower($search))) {
+                    return false;
+                }
+            }
+
+            if ($optimization === 'missing' && $entry['has_optimized']) {
+                return false;
+            }
+
+            if ($optimization === 'present' && ! $entry['has_optimized']) {
+                return false;
+            }
+
+            if ($usage === 'fallback' && ! $entry['uses_fallback']) {
+                return false;
+            }
+
+            if ($usage === 'webp' && ! $entry['uses_webp']) {
+                return false;
+            }
+
+            if ($usage === 'avif' && ! $entry['uses_avif']) {
+                return false;
+            }
+
+            if ($usage === 'none' && $entry['matching_media_count'] > 0) {
+                return false;
+            }
+
+            if ($productState === 'unknown' && $entry['product'] instanceof Product) {
+                return false;
+            }
+
+            if ($productState === 'known' && ! ($entry['product'] instanceof Product)) {
+                return false;
+            }
+
+            return true;
         })->sortBy([
             fn (array $entry): int => $entry['product'] instanceof Product ? 0 : 1,
             fn (array $entry): string => $entry['product_slug'],
@@ -88,6 +141,12 @@ class FallbackMediaController extends Controller
 
         return view('admin.maintenance.fallback-media', [
             'entries' => $entries,
+            'filters' => [
+                'search' => $search,
+                'optimization' => in_array($optimization, ['all', 'missing', 'present'], true) ? $optimization : 'all',
+                'usage' => in_array($usage, ['all', 'fallback', 'webp', 'avif', 'none'], true) ? $usage : 'all',
+                'product_state' => in_array($productState, ['all', 'known', 'unknown'], true) ? $productState : 'all',
+            ],
         ]);
     }
 
