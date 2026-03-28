@@ -54,6 +54,5 @@ jobs:
           port: 21
           local-dir: ./deploy/
           server-dir: /
-          dangerous-clean-slate: true
           log-level: standard
           timeout: 600000
