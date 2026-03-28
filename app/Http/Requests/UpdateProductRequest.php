@@ -29,7 +29,7 @@ class UpdateProductRequest extends FormRequest
             'primary_category_id' => ['nullable', 'exists:categories,id'],
             'category_ids' => ['nullable', 'array'],
             'category_ids.*' => ['integer', 'exists:categories,id'],
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', Rule::unique('products', 'name')->ignore($productId)],
             'slug' => ['required', 'string', 'max:255', Rule::unique('products', 'slug')->ignore($productId)],
             'status' => ['required', 'string', Rule::in(['draft', 'active', 'archived'])],
             'excerpt' => ['nullable', 'string'],
@@ -41,6 +41,10 @@ class UpdateProductRequest extends FormRequest
             'published_at' => ['nullable', 'date'],
             'preorder_available_from' => ['nullable', 'date'],
             'expected_ship_at' => ['nullable', 'date'],
+            'media_files' => ['nullable', 'array'],
+            'media_files.*' => ['file', 'mimes:jpg,jpeg,png,webp,avif,mp4,webm,mov', 'max:51200'],
+            'media_alt_text' => ['nullable', 'string', 'max:255'],
+            'media_variant_id' => ['nullable', 'integer', 'exists:product_variants,id'],
         ];
     }
 }

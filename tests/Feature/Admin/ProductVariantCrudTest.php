@@ -62,4 +62,34 @@ class ProductVariantCrudTest extends TestCase
 
         $this->assertDatabaseCount('product_variants', 0);
     }
+
+    /**
+     * Variant names must be unique within the same product.
+     */
+    public function test_variant_creation_rejects_duplicate_name_for_same_product(): void
+    {
+        $product = Product::factory()->create();
+
+        $product->variants()->create([
+            'name' => 'XL / Black',
+            'sku' => 'GG-TEE-XL-BLK',
+            'price' => '39.90',
+            'track_inventory' => true,
+            'stock_quantity' => 5,
+            'allow_backorder' => false,
+            'is_active' => true,
+            'is_preorder' => false,
+            'position' => 0,
+        ]);
+
+        $response = $this->from(route('admin.products.variants.create', $product))
+            ->post(route('admin.products.variants.store', $product), [
+                'name' => 'XL / Black',
+                'sku' => 'GG-TEE-XL-BLK-2',
+                'price' => '42.90',
+            ]);
+
+        $response->assertRedirect(route('admin.products.variants.create', $product));
+        $response->assertSessionHasErrors(['name']);
+    }
 }

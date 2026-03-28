@@ -3,7 +3,7 @@
 @section('content')
     <h2 class="mb-4 text-lg font-semibold">Edit Product: {{ $product->name }}</h2>
 
-    <form method="POST" action="{{ route('admin.products.update', $product) }}" class="space-y-4" novalidate>
+    <form method="POST" action="{{ route('admin.products.update', $product) }}" class="space-y-4" enctype="multipart/form-data" novalidate>
         @csrf
         @method('PUT')
 
@@ -95,6 +95,105 @@
                 <label class="mb-1 block text-sm font-medium">Expected Ship At</label>
                 <input type="datetime-local" name="expected_ship_at" value="{{ old('expected_ship_at', optional($product->expected_ship_at)->format('Y-m-d\TH:i')) }}" class="w-full rounded border border-slate-300 px-3 py-2">
             </div>
+        </div>
+
+        <div class="space-y-3 rounded border border-slate-200 p-4">
+            <h3 class="text-sm font-semibold">Product Media</h3>
+            <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Upload Images / Videos</label>
+                    <input type="file" name="media_files[]" accept="image/*,video/*" multiple class="w-full rounded border border-slate-300 px-3 py-2">
+                    <p class="mt-1 text-xs text-slate-500">Allowed: JPG, JPEG, PNG, WEBP, AVIF, MP4, WEBM, MOV. Max 50MB per file.</p>
+                </div>
+                <div>
+                    <label class="mb-1 block text-sm font-medium">Assign Uploaded Media To Variant</label>
+                    <select name="media_variant_id" class="w-full rounded border border-slate-300 px-3 py-2">
+                        <option value="">All Variants (Product Gallery)</option>
+                        @foreach ($product->variants as $variant)
+                            <option value="{{ $variant->id }}">{{ $variant->name }} ({{ $variant->sku }})</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium">Alt Text (optional)</label>
+                <input type="text" name="media_alt_text" value="" class="w-full rounded border border-slate-300 px-3 py-2" placeholder="e.g. Black tee front view">
+            </div>
+            @if ($product->media->isNotEmpty())
+                @php
+                    $primaryMedia = $product->media->first();
+                @endphp
+
+                <div data-media-gallery class="space-y-4">
+                    <div class="grid gap-3 md:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-sm font-medium">Preview Variant</label>
+                            <select data-media-variant-filter class="w-full rounded border border-slate-300 px-3 py-2">
+                                <option value="all">All Variants</option>
+                                @foreach ($product->variants as $variant)
+                                    <option value="{{ $variant->id }}">{{ $variant->name }} ({{ $variant->sku }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="rounded border border-slate-200 p-3">
+                        <div class="mb-3 overflow-hidden rounded border border-slate-200 bg-slate-50">
+                            @if ($primaryMedia !== null)
+                                @php
+                                    $primaryMediaUrl = Storage::disk($primaryMedia->disk)->url($primaryMedia->path);
+                                    $isPrimaryVideo = str_starts_with((string) $primaryMedia->mime_type, 'video/');
+                                @endphp
+
+                                <img
+                                    data-media-main-image
+                                    src="{{ $isPrimaryVideo ? '' : $primaryMediaUrl }}"
+                                    alt="{{ $primaryMedia->alt_text ?: $product->name }}"
+                                    class="{{ $isPrimaryVideo ? 'hidden' : '' }} h-72 w-full object-contain"
+                                >
+
+                                <video
+                                    data-media-main-video
+                                    controls
+                                    class="{{ $isPrimaryVideo ? '' : 'hidden' }} h-72 w-full bg-black object-contain"
+                                    src="{{ $isPrimaryVideo ? $primaryMediaUrl : '' }}"
+                                ></video>
+                            @endif
+                        </div>
+
+                        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-media-thumbnails>
+                            @foreach ($product->media as $media)
+                                @php
+                                    $mediaUrl = Storage::disk($media->disk)->url($media->path);
+                                    $isVideo = str_starts_with((string) $media->mime_type, 'video/');
+                                @endphp
+
+                                <button
+                                    type="button"
+                                    class="rounded border border-slate-200 p-2 text-left"
+                                    data-media-thumb
+                                    data-media-url="{{ $mediaUrl }}"
+                                    data-media-type="{{ $isVideo ? 'video' : 'image' }}"
+                                    data-media-variant-id="{{ $media->product_variant_id ?? '' }}"
+                                    data-media-alt="{{ $media->alt_text ?: $product->name }}"
+                                >
+                                    @if ($isVideo)
+                                        <div class="mb-2 flex h-20 items-center justify-center rounded bg-slate-900 text-xs font-medium text-white">VIDEO</div>
+                                    @else
+                                        <img src="{{ $mediaUrl }}" alt="{{ $media->alt_text ?: $product->name }}" class="mb-2 h-20 w-full rounded object-cover">
+                                    @endif
+                                    <p class="text-xs text-slate-600">{{ $media->alt_text ?: 'No alt text' }}</p>
+                                    <p class="mt-1 text-xs text-slate-500">
+                                        {{ $media->variant?->name ?? 'All Variants' }} · {{ $media->is_primary ? 'Primary' : 'Gallery' }}
+                                    </p>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            @else
+                <p class="text-xs text-slate-500">No media uploaded yet.</p>
+            @endif
         </div>
 
         <div class="flex items-center gap-3">

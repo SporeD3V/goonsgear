@@ -49,4 +49,24 @@ class CategoryCrudTest extends TestCase
 
         $this->assertDatabaseCount('categories', 0);
     }
+
+    /**
+     * Duplicate category names and slugs are rejected.
+     */
+    public function test_category_creation_rejects_duplicate_name_and_slug(): void
+    {
+        Category::factory()->create([
+            'name' => 'Headwear',
+            'slug' => 'headwear',
+        ]);
+
+        $response = $this->from(route('admin.categories.create'))
+            ->post(route('admin.categories.store'), [
+                'name' => 'Headwear',
+                'slug' => 'headwear',
+            ]);
+
+        $response->assertRedirect(route('admin.categories.create'));
+        $response->assertSessionHasErrors(['name', 'slug']);
+    }
 }

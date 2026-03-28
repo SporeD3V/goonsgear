@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -22,8 +23,17 @@ class StoreProductVariantRequest extends FormRequest
      */
     public function rules(): array
     {
+        $productId = $this->route('product')?->id;
+
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('product_variants', 'name')->where(
+                    fn (Builder $query) => $query->where('product_id', $productId)
+                ),
+            ],
             'sku' => ['required', 'string', 'max:255', 'unique:product_variants,sku'],
             'option_values_json' => ['nullable', 'string', 'json'],
             'price' => ['required', 'numeric', 'min:0'],

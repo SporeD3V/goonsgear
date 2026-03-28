@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\RequiredIf;
@@ -25,9 +26,17 @@ class UpdateProductVariantRequest extends FormRequest
     public function rules(): array
     {
         $variantId = $this->route('variant')?->id;
+        $productId = $this->route('product')?->id;
 
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('product_variants', 'name')
+                    ->where(fn (Builder $query) => $query->where('product_id', $productId))
+                    ->ignore($variantId),
+            ],
             'sku' => ['required', 'string', 'max:255', Rule::unique('product_variants', 'sku')->ignore($variantId)],
             'option_values_json' => ['nullable', 'string', 'json'],
             'price' => ['required', 'numeric', 'min:0'],

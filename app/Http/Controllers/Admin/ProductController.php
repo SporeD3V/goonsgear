@@ -7,7 +7,11 @@ use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductMedia;
+use App\Models\ProductVariant;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class ProductController extends Controller
@@ -66,6 +70,11 @@ class ProductController extends Controller
         $product->load([
             'categories:id',
             'variants' => fn ($query) => $query->orderBy('position')->orderBy('id'),
+            'media' => fn ($query) => $query
+                ->with('variant:id,name')
+                ->orderByDesc('is_primary')
+                ->orderBy('position')
+                ->orderBy('id'),
         ]);
 
         return view('admin.products.edit', [
@@ -85,13 +94,66 @@ class ProductController extends Controller
 
         $categoryIds = $validated['category_ids'] ?? [];
         unset($validated['category_ids']);
+        unset($validated['media_files']);
+        unset($validated['media_alt_text']);
 
         $product->update($validated);
         $product->categories()->sync($categoryIds);
 
+        $uploadedMediaFiles = $request->file('media_files', []);
+        $mediaAltText = $request->string('media_alt_text')->trim()->toString();
+        $mediaVariantId = $request->integer('media_variant_id');
+        $mediaVariant = null;
+
+        if ($mediaVariantId > 0) {
+            $mediaVariant = ProductVariant::query()
+                ->where('product_id', $product->id)
+                ->find($mediaVariantId);
+        }
+
+        if ($uploadedMediaFiles !== []) {
+            $nextPosition = (int) ($product->media()->max('position') ?? -1) + 1;
+            $hasPrimaryMedia = $product->media()->where('is_primary', true)->exists();
+
+            foreach ($uploadedMediaFiles as $index => $uploadedMediaFile) {
+                $storedPath = $this->storeMediaFile(
+                    $product,
+                    $uploadedMediaFile,
+                    $mediaVariant,
+                    $index
+                );
+
+                ProductMedia::query()->create([
+                    'product_id' => $product->id,
+                    'product_variant_id' => $mediaVariant?->id,
+                    'disk' => 'public',
+                    'path' => $storedPath,
+                    'mime_type' => $uploadedMediaFile->getMimeType(),
+                    'alt_text' => $mediaAltText !== '' ? $mediaAltText : null,
+                    'is_primary' => ! $hasPrimaryMedia && $index === 0,
+                    'position' => $nextPosition + $index,
+                ]);
+            }
+        }
+
         return redirect()
             ->route('admin.products.index')
             ->with('status', 'Product updated successfully.');
+    }
+
+    private function storeMediaFile(Product $product, UploadedFile $uploadedMediaFile, ?ProductVariant $variant, int $index): string
+    {
+        $mediaDirectory = 'products/'.Str::slug($product->slug).'/gallery';
+        $originalName = pathinfo($uploadedMediaFile->getClientOriginalName(), PATHINFO_FILENAME);
+        $seoBaseName = Str::slug((string) $originalName);
+        $seoBaseName = $seoBaseName !== '' ? $seoBaseName : 'media';
+        $variantPrefix = $variant instanceof ProductVariant
+            ? 'variant-'.Str::slug($variant->name).'-'
+            : 'product-';
+        $extension = strtolower((string) ($uploadedMediaFile->getClientOriginalExtension() ?: $uploadedMediaFile->extension() ?: 'bin'));
+        $filename = $variantPrefix.now()->format('YmdHis').'-'.$index.'-'.$seoBaseName.'.'.$extension;
+
+        return $uploadedMediaFile->storeAs($mediaDirectory, $filename, 'public');
     }
 
     /**
