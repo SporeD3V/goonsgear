@@ -40,9 +40,10 @@ jobs:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
+          protocol: ftps
+          port: 21
           local-dir: ./deploy/
-          server-dir: /stage.macaw.ro/
+          server-dir: /
           dangerous-clean-slate: true
           log-level: verbose
           timeout: 120000
