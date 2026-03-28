@@ -63,7 +63,10 @@ class ProductController extends Controller
      */
     public function edit(Product $product): View
     {
-        $product->load(['categories:id']);
+        $product->load([
+            'categories:id',
+            'variants' => fn ($query) => $query->orderBy('position')->orderBy('id'),
+        ]);
 
         return view('admin.products.edit', [
             'product' => $product,

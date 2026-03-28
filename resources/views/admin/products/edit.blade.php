@@ -102,4 +102,49 @@
             <a href="{{ route('admin.products.index') }}" class="text-sm text-slate-600 hover:underline">Cancel</a>
         </div>
     </form>
+
+    <hr class="my-8 border-slate-200">
+
+    <div class="mb-4 flex items-center justify-between">
+        <h3 class="text-base font-semibold">Variants</h3>
+        <a href="{{ route('admin.products.variants.create', $product) }}" class="rounded bg-emerald-600 px-3 py-2 text-sm text-white hover:bg-emerald-700">Add Variant</a>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full border border-slate-200 text-sm">
+            <thead class="bg-slate-50">
+                <tr>
+                    <th class="border border-slate-200 px-3 py-2 text-left">Name</th>
+                    <th class="border border-slate-200 px-3 py-2 text-left">SKU</th>
+                    <th class="border border-slate-200 px-3 py-2 text-left">Price</th>
+                    <th class="border border-slate-200 px-3 py-2 text-left">Stock</th>
+                    <th class="border border-slate-200 px-3 py-2 text-left">Preorder</th>
+                    <th class="border border-slate-200 px-3 py-2 text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($product->variants as $variant)
+                    <tr>
+                        <td class="border border-slate-200 px-3 py-2">{{ $variant->name }}</td>
+                        <td class="border border-slate-200 px-3 py-2">{{ $variant->sku }}</td>
+                        <td class="border border-slate-200 px-3 py-2">{{ number_format((float) $variant->price, 2) }}</td>
+                        <td class="border border-slate-200 px-3 py-2">{{ $variant->stock_quantity }}</td>
+                        <td class="border border-slate-200 px-3 py-2">{{ $variant->is_preorder ? 'Yes' : 'No' }}</td>
+                        <td class="border border-slate-200 px-3 py-2 text-right">
+                            <a href="{{ route('admin.products.variants.edit', [$product, $variant]) }}" class="text-blue-700 hover:underline">Edit</a>
+                            <form method="POST" action="{{ route('admin.products.variants.destroy', [$product, $variant]) }}" class="ml-2 inline">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="text-red-700 hover:underline" onclick="return confirm('Delete this variant?')">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="6" class="border border-slate-200 px-3 py-6 text-center text-slate-500">No variants yet.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
 @endsection

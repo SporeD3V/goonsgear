@@ -29,6 +29,8 @@
                         <td class="border border-slate-200 px-3 py-2">{{ $product->variants_count }}</td>
                         <td class="border border-slate-200 px-3 py-2">{{ $product->media_count }}</td>
                         <td class="border border-slate-200 px-3 py-2 text-right">
+                            <a href="{{ route('admin.products.variants.create', $product) }}" class="text-emerald-700 hover:underline">Add Variant</a>
+                            <span class="mx-1 text-slate-300">|</span>
                             <a href="{{ route('admin.products.edit', $product) }}" class="text-blue-700 hover:underline">Edit</a>
                             <form method="POST" action="{{ route('admin.products.destroy', $product) }}" class="ml-2 inline">
                                 @csrf
