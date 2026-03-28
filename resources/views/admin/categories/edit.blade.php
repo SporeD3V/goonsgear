@@ -3,7 +3,7 @@
 @section('content')
     <h2 class="mb-4 text-lg font-semibold">Edit Category: {{ $category->name }}</h2>
 
-    <form method="POST" action="{{ route('admin.categories.update', $category) }}" class="space-y-4">
+    <form method="POST" action="{{ route('admin.categories.update', $category) }}" class="space-y-4" novalidate>
         @csrf
         @method('PUT')
 

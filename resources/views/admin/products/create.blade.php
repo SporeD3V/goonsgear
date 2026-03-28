@@ -3,7 +3,7 @@
 @section('content')
     <h2 class="mb-4 text-lg font-semibold">New Product</h2>
 
-    <form method="POST" action="{{ route('admin.products.store') }}" class="space-y-4">
+    <form method="POST" action="{{ route('admin.products.store') }}" class="space-y-4" novalidate>
         @csrf
 
         <div>

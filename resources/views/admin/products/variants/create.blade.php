@@ -4,7 +4,7 @@
     <h2 class="mb-2 text-lg font-semibold">New Variant for {{ $product->name }}</h2>
     <p class="mb-4 text-sm text-slate-600">Use variants for size, color, edition, or other purchasable options.</p>
 
-    <form method="POST" action="{{ route('admin.products.variants.store', $product) }}" class="space-y-4">
+    <form method="POST" action="{{ route('admin.products.variants.store', $product) }}" class="space-y-4" novalidate>
         @csrf
 
         @include('admin.products.variants.form-fields', ['variant' => null])
