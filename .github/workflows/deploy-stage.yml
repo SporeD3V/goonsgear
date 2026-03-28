@@ -1,4 +1,4 @@
-name: Deploy to stage.macaw.ro
+name: Deploy to staging
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up PHP
@@ -20,13 +20,10 @@ jobs:
           extensions: mbstring, intl, pdo_mysql, curl, bcmath, gd
           coverage: none
 
-      - name: Validate composer.json and composer.lock
-        run: composer validate --no-check-publish
-
       - name: Install Composer dependencies (no dev)
         run: composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
 
-      - name: Prepare deployment package
+      - name: Build deploy folder
         run: |
           mkdir deploy
           rsync -avr \
@@ -34,21 +31,16 @@ jobs:
             --exclude=".github" \
             --exclude="node_modules" \
             --exclude="tests" \
-            --exclude="storage/logs" \
-            --exclude="storage/framework/cache" \
             ./ ./deploy
 
-      - name: Upload files via FTP using curl
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y lftp
-
-          lftp -u "${FTP_USERNAME},${FTP_PASSWORD}" "${FTP_HOST}" <<EOF
-          set ssl:verify-certificate no
-          mirror -R -e ./deploy /stage.macaw.ro
-          bye
-          EOF
-        env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+      - name: FTP Deploy to staging
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          local-dir: ./deploy
+          server-dir: /
+          log-level: verbose
+          timeout: 120000
