@@ -38,12 +38,17 @@ jobs:
             --exclude="storage/framework/cache" \
             ./ ./deploy
 
-      - name: Deploy via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
-          local-dir: ./deploy/
-          server-dir: /stage.macaw.ro/
+      - name: Upload files via FTP using curl
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lftp
+
+          lftp -u "${FTP_USERNAME},${FTP_PASSWORD}" "${FTP_HOST}" <<EOF
+          set ssl:verify-certificate no
+          mirror -R -e ./deploy /stage.macaw.ro
+          bye
+          EOF
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
