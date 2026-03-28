@@ -41,11 +41,10 @@ jobs:
       - name: Deploy via SFTP
         uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
-          server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
+          server: ${{ secrets.FTP_HOST }}
           port: 22
+          password: ${{ secrets.FTP_PASSWORD }}
           local_path: ./deploy/
           remote_path: /home/macawro/stage.macaw.ro/
           sftp_only: true
-          delete: false
