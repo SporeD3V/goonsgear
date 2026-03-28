@@ -19,8 +19,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::resource('categories', CategoryController::class)->except('show');
     Route::resource('products', ProductController::class)->except('show');
     Route::resource('products.variants', ProductVariantController::class)->except(['index', 'show']);
-    Route::patch('products/{product}/media/{media}/primary', [ProductMediaController::class, 'makePrimary'])
+    Route::match(['post', 'patch'], 'products/{product}/media/{media}/primary', [ProductMediaController::class, 'makePrimary'])
         ->name('products.media.primary');
-    Route::delete('products/{product}/media/{media}', [ProductMediaController::class, 'destroy'])
+    Route::match(['post', 'delete'], 'products/{product}/media/{media}', [ProductMediaController::class, 'destroy'])
         ->name('products.media.destroy');
 });
