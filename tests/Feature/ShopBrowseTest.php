@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
@@ -92,5 +93,65 @@ class ShopBrowseTest extends TestCase
         $response = $this->get(route('shop.show', $draftProduct));
 
         $response->assertNotFound();
+    }
+
+    public function test_shop_index_filters_by_primary_category_slug(): void
+    {
+        $featuredCategory = Category::factory()->create([
+            'name' => 'Featured',
+            'slug' => 'featured',
+            'is_active' => true,
+        ]);
+
+        $otherCategory = Category::factory()->create([
+            'name' => 'Other',
+            'slug' => 'other',
+            'is_active' => true,
+        ]);
+
+        Product::factory()->create([
+            'name' => 'Featured Hoodie',
+            'slug' => 'featured-hoodie',
+            'status' => 'active',
+            'primary_category_id' => $featuredCategory->id,
+        ]);
+
+        Product::factory()->create([
+            'name' => 'Other Hoodie',
+            'slug' => 'other-hoodie',
+            'status' => 'active',
+            'primary_category_id' => $otherCategory->id,
+        ]);
+
+        $response = $this->get(route('shop.index', [
+            'category' => 'featured',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Featured Hoodie');
+        $response->assertDontSee('Other Hoodie');
+    }
+
+    public function test_shop_index_filters_by_keyword_search(): void
+    {
+        Product::factory()->create([
+            'name' => 'Lightning Jacket',
+            'slug' => 'lightning-jacket',
+            'status' => 'active',
+        ]);
+
+        Product::factory()->create([
+            'name' => 'Shadow Pants',
+            'slug' => 'shadow-pants',
+            'status' => 'active',
+        ]);
+
+        $response = $this->get(route('shop.index', [
+            'q' => 'lightning',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Lightning Jacket');
+        $response->assertDontSee('Shadow Pants');
     }
 }

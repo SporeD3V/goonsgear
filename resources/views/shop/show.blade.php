@@ -69,11 +69,21 @@
                                     </thead>
                                     <tbody>
                                         @foreach ($product->variants as $variant)
+                                            @php
+                                                $stockStatus = $variant->stock_quantity > 0
+                                                    ? 'In stock'
+                                                    : ($variant->allow_backorder || $variant->is_preorder ? 'Preorder' : 'Out of stock');
+                                            @endphp
                                             <tr>
                                                 <td class="border border-slate-200 px-3 py-2">{{ $variant->name }}</td>
                                                 <td class="border border-slate-200 px-3 py-2">{{ $variant->sku }}</td>
                                                 <td class="border border-slate-200 px-3 py-2">${{ number_format((float) $variant->price, 2) }}</td>
-                                                <td class="border border-slate-200 px-3 py-2">{{ $variant->stock_quantity }}</td>
+                                                <td class="border border-slate-200 px-3 py-2">
+                                                    <span class="inline-flex rounded px-2 py-0.5 text-xs {{ $stockStatus === 'In stock' ? 'bg-emerald-100 text-emerald-700' : ($stockStatus === 'Preorder' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700') }}">
+                                                        {{ $stockStatus }}
+                                                    </span>
+                                                    <div class="mt-1 text-xs text-slate-500">Qty: {{ $variant->stock_quantity }}</div>
+                                                </td>
                                             </tr>
                                         @endforeach
                                     </tbody>

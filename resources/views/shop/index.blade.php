@@ -15,6 +15,36 @@
                 <a href="{{ url('/') }}" class="text-sm text-blue-700 hover:underline">Home</a>
             </header>
 
+            <form method="GET" action="{{ route('shop.index') }}" class="mb-5 grid gap-3 rounded border border-slate-200 bg-white p-3 md:grid-cols-4">
+                <div class="md:col-span-2">
+                    <label class="mb-1 block text-xs font-medium text-slate-700">Search</label>
+                    <input
+                        type="text"
+                        name="q"
+                        value="{{ $filters['q'] }}"
+                        placeholder="Search name, excerpt, or description"
+                        class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                    >
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-slate-700">Category</label>
+                    <select name="category" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                        <option value="">All categories</option>
+                        @foreach ($shopCategories as $shopCategory)
+                            <option value="{{ $shopCategory->slug }}" @selected($filters['category'] === $shopCategory->slug)>{{ $shopCategory->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="flex items-end gap-2">
+                    <button type="submit" class="rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-800">Filter</button>
+                    <a href="{{ route('shop.index') }}" class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Reset</a>
+                </div>
+            </form>
+
+            <p class="mb-4 text-sm text-slate-600">Showing {{ $products->total() }} product(s).</p>
+
             @if ($products->isEmpty())
                 <p class="rounded border border-slate-200 bg-white p-4 text-sm text-slate-600">No active products found.</p>
             @else

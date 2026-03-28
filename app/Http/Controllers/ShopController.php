@@ -2,19 +2,41 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class ShopController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $search = $request->string('q')->trim()->toString();
+        $categorySlug = $request->string('category')->trim()->toString();
+
+        $shopCategories = Category::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug']);
+
         /** @var LengthAwarePaginator<int, Product> $products */
         $products = Product::query()
             ->where('status', 'active')
+            ->when(
+                $search !== '',
+                fn ($query) => $query->where(function ($innerQuery) use ($search): void {
+                    $innerQuery->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('excerpt', 'like', '%'.$search.'%')
+                        ->orWhere('description', 'like', '%'.$search.'%');
+                })
+            )
+            ->when(
+                $categorySlug !== '',
+                fn ($query) => $query->whereHas('primaryCategory', fn ($categoryQuery) => $categoryQuery->where('slug', $categorySlug))
+            )
             ->with([
-                'primaryCategory:id,name',
+                'primaryCategory:id,name,slug',
                 'media' => fn ($query) => $query
                     ->orderByDesc('is_primary')
                     ->orderBy('position')
@@ -26,6 +48,11 @@ class ShopController extends Controller
 
         return view('shop.index', [
             'products' => $products,
+            'shopCategories' => $shopCategories,
+            'filters' => [
+                'q' => $search,
+                'category' => $categorySlug,
+            ],
         ]);
     }
 
