@@ -32,7 +32,7 @@ class OrderController extends Controller
                 });
             })
             ->latest('id')
-            ->paginate(20)
+            ->paginate((int) config('pagination.admin_per_page', 20))
             ->withQueryString();
 
         return view('admin.orders.index', [

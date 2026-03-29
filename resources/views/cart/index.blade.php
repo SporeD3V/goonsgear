@@ -39,20 +39,84 @@
                                 <input id="coupon_code" name="coupon_code" type="text" value="{{ old('coupon_code', $couponCode) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm uppercase" placeholder="SAVE10">
                                 @error('coupon_code')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
-                            <button type="submit" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Apply coupon</button>
+                            <button type="submit" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Add code</button>
                         </form>
 
-                        @if ($appliedCoupon)
+                        @if (!empty($selectedCouponCodes))
                             <form method="POST" action="{{ route('cart.coupon.remove') }}">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Remove {{ $appliedCoupon->code }}</button>
+                                <button type="submit" class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Clear selected coupons</button>
                             </form>
                         @endif
                     </div>
 
-                    @if ($appliedCoupon)
-                        <p class="mt-3 text-sm text-emerald-700">Coupon {{ $appliedCoupon->code }} applied.</p>
+                    @if ($recommendationMessage)
+                        <p class="mt-3 text-sm text-emerald-700">{{ $recommendationMessage }}</p>
+                    @endif
+
+                    @if (!empty($invalidCouponMessages))
+                        <div class="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                            @foreach ($invalidCouponMessages as $invalidCode => $invalidMessage)
+                                <p><span class="font-semibold">{{ $invalidCode }}:</span> {{ $invalidMessage }}</p>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    @if ($appliedCoupons->isNotEmpty())
+                        <div class="mt-3 space-y-2">
+                            @foreach ($appliedCoupons as $coupon)
+                                <div class="flex flex-wrap items-center gap-2 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                                    <span class="font-semibold">{{ $coupon->code }}</span>
+                                    <span class="text-xs">{{ $coupon->is_stackable ? 'Can combine' : 'Exclusive coupon' }}</span>
+                                    @if ($coupon->stack_group)
+                                        <span class="text-xs">Group: {{ $coupon->stack_group }}</span>
+                                    @endif
+
+                                    <form method="POST" action="{{ route('cart.coupon.remove') }}" class="ml-auto">
+                                        @csrf
+                                        @method('DELETE')
+                                        <input type="hidden" name="coupon_code" value="{{ $coupon->code }}">
+                                        <button type="submit" class="text-xs text-emerald-900 hover:underline">Remove</button>
+                                    </form>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    @auth
+                        @if ($availableCoupons->isNotEmpty())
+                            <form method="POST" action="{{ route('cart.coupon.select') }}" class="mt-4 rounded border border-slate-200 bg-slate-50 p-3">
+                                @csrf
+                                <p class="text-sm font-medium text-slate-800">Choose from your account coupons</p>
+                                <p class="text-xs text-slate-500">Select one or more. We will automatically apply the best valid combination.</p>
+
+                                <div class="mt-3 space-y-2">
+                                    @foreach ($availableCoupons as $coupon)
+                                        <label class="flex cursor-pointer items-start gap-2 rounded border border-slate-200 bg-white px-3 py-2 text-sm">
+                                            <input
+                                                type="checkbox"
+                                                name="coupon_codes[]"
+                                                value="{{ $coupon->code }}"
+                                                class="mt-0.5 rounded border-slate-300"
+                                                @checked(in_array($coupon->code, $selectedCouponCodes, true))
+                                            >
+                                            <span>
+                                                <span class="font-medium text-slate-800">{{ $coupon->code }}</span>
+                                                <span class="text-xs text-slate-600">{{ $coupon->is_stackable ? 'Can combine' : 'Exclusive' }}</span>
+                                                @if ($coupon->stack_group)
+                                                    <span class="text-xs text-slate-500">(Group {{ $coupon->stack_group }})</span>
+                                                @endif
+                                            </span>
+                                        </label>
+                                    @endforeach
+                                </div>
+
+                                <div class="mt-3">
+                                    <button type="submit" class="rounded bg-slate-800 px-3 py-2 text-xs font-medium text-white hover:bg-slate-900">Update selected coupons</button>
+                                </div>
+                            </form>
+                        @endif
                     @endif
                 </div>
 
@@ -129,7 +193,7 @@
 
                     @if ($discountTotal > 0)
                         <div class="mt-2 flex items-center justify-between text-sm text-emerald-700">
-                            <p>Discount @if ($appliedCoupon)( {{ $appliedCoupon->code }} )@endif</p>
+                            <p>Coupon Discount @if ($appliedCoupons->isNotEmpty()) ( {{ $appliedCoupons->pluck('code')->implode(', ') }} ) @endif</p>
                             <p>- ${{ number_format((float) $discountTotal, 2) }}</p>
                         </div>
                     @endif

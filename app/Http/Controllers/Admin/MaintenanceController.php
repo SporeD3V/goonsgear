@@ -57,7 +57,7 @@ class MaintenanceController extends Controller
 
         Artisan::call('optimize:clear');
 
-        Log::warning('Admin maintenance cleared caches.', [
+        Log::info('Admin maintenance cleared caches.', [
             'ip' => $request->ip(),
         ]);
 
@@ -90,7 +90,7 @@ class MaintenanceController extends Controller
             File::put($logDirectory.DIRECTORY_SEPARATOR.'laravel.log', '');
         }
 
-        Log::warning('Admin maintenance cleared logs.', [
+        Log::info('Admin maintenance cleared logs.', [
             'ip' => $request->ip(),
             'cleared_files' => count($logFiles),
         ]);

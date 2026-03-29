@@ -13,6 +13,7 @@
                     <th class="border border-slate-200 px-3 py-2 text-left">Code</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Type</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Value</th>
+                    <th class="border border-slate-200 px-3 py-2 text-left">Rules</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Usage</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Status</th>
                     <th class="border border-slate-200 px-3 py-2 text-right">Actions</th>
@@ -33,6 +34,12 @@
                                 ${{ number_format((float) $coupon->value, 2) }}
                             @endif
                         </td>
+                        <td class="border border-slate-200 px-3 py-2 text-xs text-slate-700">
+                            <p>Stackable: {{ $coupon->is_stackable ? 'Yes' : 'No' }}</p>
+                            <p>Group: {{ $coupon->stack_group ?: '-' }}</p>
+                            <p>Scope: {{ ucfirst($coupon->scope_type ?: \App\Models\Coupon::SCOPE_ALL) }}@if ($coupon->scope_id) #{{ $coupon->scope_id }} @endif</p>
+                            <p>Personal: {{ $coupon->is_personal ? 'Yes' : 'No' }}</p>
+                        </td>
                         <td class="border border-slate-200 px-3 py-2">{{ $coupon->used_count }}@if ($coupon->usage_limit !== null) / {{ $coupon->usage_limit }} @endif</td>
                         <td class="border border-slate-200 px-3 py-2">{{ $coupon->is_active ? 'Active' : 'Inactive' }}</td>
                         <td class="border border-slate-200 px-3 py-2 text-right">
@@ -46,7 +53,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="border border-slate-200 px-3 py-6 text-center text-slate-500">No coupons yet.</td>
+                        <td colspan="7" class="border border-slate-200 px-3 py-6 text-center text-slate-500">No coupons yet.</td>
                     </tr>
                 @endforelse
             </tbody>

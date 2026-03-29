@@ -11,6 +11,8 @@ class StockAlertSubscriptionController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
+        $this->authorize('create', StockAlertSubscription::class);
+
         $payload = $request->validate([
             'variant_id' => ['required', 'integer', 'exists:product_variants,id'],
             'subscribe_stock_alert' => ['accepted'],

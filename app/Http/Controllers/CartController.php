@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreCartItemRequest;
+use App\Http\Requests\UpdateCartItemRequest;
 use App\Models\CartAbandonment;
 use App\Models\Coupon;
 use App\Models\ProductVariant;
@@ -17,18 +19,23 @@ class CartController extends Controller
 {
     private const CART_SESSION_KEY = 'cart.items';
 
-    private const COUPON_SESSION_KEY = 'cart.coupon_code';
+    private const COUPON_SESSION_KEY = 'cart.coupon_codes';
+
+    private const LEGACY_COUPON_SESSION_KEY = 'cart.coupon_code';
 
     public function index(Request $request, CartPricing $cartPricing): View
     {
         $this->restoreCartFromDb($request);
 
         $cartItems = $this->getCartItems($request);
-        $pricing = $cartPricing->summarize($cartItems, $request->session()->get(self::COUPON_SESSION_KEY));
+        $selectedCouponCodes = $this->getSelectedCouponCodes($request);
+        $pricing = $cartPricing->summarize($cartItems, $selectedCouponCodes, null, $request->user());
 
         if ($pricing['error'] !== null) {
-            $request->session()->forget(self::COUPON_SESSION_KEY);
+            $this->forgetCouponSession($request);
         }
+
+        $availableCoupons = $this->availableCouponsForUser($request);
 
         return view('cart.index', [
             'items' => $cartItems,
@@ -37,8 +44,13 @@ class CartController extends Controller
             'bundleDiscountTotal' => $pricing['bundle_discount_total'],
             'total' => $pricing['total'],
             'appliedCoupon' => $pricing['coupon'],
+            'appliedCoupons' => $pricing['coupons'],
             'appliedBundle' => $pricing['bundle_discount'],
             'couponCode' => $pricing['requested_coupon_code'],
+            'selectedCouponCodes' => $selectedCouponCodes,
+            'availableCoupons' => $availableCoupons,
+            'invalidCouponMessages' => $pricing['invalid_coupon_messages'],
+            'recommendationMessage' => $pricing['recommendation_message'],
             'couponError' => $pricing['error'],
         ]);
     }
@@ -55,33 +67,84 @@ class CartController extends Controller
             return redirect()->route('cart.index')->withErrors(['cart' => 'Your cart is empty.']);
         }
 
-        $pricing = $cartPricing->summarize($cartItems, $payload['coupon_code']);
+        $selectedCouponCodes = $this->getSelectedCouponCodes($request);
+        $selectedCouponCodes[] = strtoupper(trim($payload['coupon_code']));
+        $selectedCouponCodes = array_values(array_unique(array_filter($selectedCouponCodes)));
 
-        if ($pricing['error'] !== null || $pricing['coupon_code'] === null) {
+        $pricing = $cartPricing->summarize($cartItems, $selectedCouponCodes, null, $request->user());
+
+        if ($pricing['error'] !== null || $pricing['coupon_codes'] === []) {
             return redirect()
                 ->route('cart.index')
                 ->withErrors(['coupon_code' => $pricing['error'] ?? 'Unable to apply coupon.'])
                 ->withInput();
         }
 
-        $request->session()->put(self::COUPON_SESSION_KEY, $pricing['coupon_code']);
+        $this->storeSelectedCouponCodes($request, $selectedCouponCodes);
 
-        return redirect()->route('cart.index')->with('status', 'Coupon applied successfully.');
+        return redirect()->route('cart.index')->with('status', 'Coupon selection updated.');
     }
 
     public function removeCoupon(Request $request): RedirectResponse
     {
-        $request->session()->forget(self::COUPON_SESSION_KEY);
+        $codeToRemove = strtoupper(trim((string) $request->input('coupon_code', '')));
+
+        if ($codeToRemove === '') {
+            $this->forgetCouponSession($request);
+
+            return redirect()->route('cart.index')->with('status', 'All coupons removed.');
+        }
+
+        $remainingCodes = collect($this->getSelectedCouponCodes($request))
+            ->reject(fn (string $code): bool => $code === $codeToRemove)
+            ->values()
+            ->all();
+
+        $this->storeSelectedCouponCodes($request, $remainingCodes);
 
         return redirect()->route('cart.index')->with('status', 'Coupon removed.');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function selectCoupons(Request $request, CartPricing $cartPricing): RedirectResponse
     {
         $payload = $request->validate([
-            'variant_id' => ['required', 'integer', 'exists:product_variants,id'],
-            'quantity' => ['required', 'integer', 'min:1', 'max:99'],
+            'coupon_codes' => ['nullable', 'array'],
+            'coupon_codes.*' => ['string', 'max:50'],
         ]);
+
+        $cartItems = $this->getCartItems($request);
+
+        if ($cartItems === []) {
+            return redirect()->route('cart.index')->withErrors(['cart' => 'Your cart is empty.']);
+        }
+
+        $selectedCouponCodes = collect($payload['coupon_codes'] ?? [])
+            ->map(fn (string $code): string => strtoupper(trim($code)))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($selectedCouponCodes === []) {
+            $this->forgetCouponSession($request);
+
+            return redirect()->route('cart.index')->with('status', 'Coupon selection cleared.');
+        }
+
+        $pricing = $cartPricing->summarize($cartItems, $selectedCouponCodes, null, $request->user());
+
+        if ($pricing['error'] !== null) {
+            return redirect()->route('cart.index')->withErrors(['coupon_code' => $pricing['error']]);
+        }
+
+        $this->storeSelectedCouponCodes($request, $selectedCouponCodes);
+
+        return redirect()->route('cart.index')->with('status', 'Coupon selection updated.');
+    }
+
+    public function store(StoreCartItemRequest $request): RedirectResponse
+    {
+        $payload = $request->validated();
 
         $variant = ProductVariant::query()
             ->with([
@@ -123,11 +186,9 @@ class CartController extends Controller
         return back()->with('status', 'Added item to cart.');
     }
 
-    public function update(Request $request, ProductVariant $variant): RedirectResponse
+    public function update(UpdateCartItemRequest $request, ProductVariant $variant): RedirectResponse
     {
-        $payload = $request->validate([
-            'quantity' => ['required', 'integer', 'min:1', 'max:99'],
-        ]);
+        $payload = $request->validated();
 
         $cartItems = $this->getCartItems($request);
 
@@ -275,6 +336,78 @@ class CartController extends Controller
         }
     }
 
+    /**
+     * @return array<int, string>
+     */
+    private function getSelectedCouponCodes(Request $request): array
+    {
+        $hasNewKey = $request->session()->has(self::COUPON_SESSION_KEY);
+        $codes = $request->session()->get(self::COUPON_SESSION_KEY, []);
+
+        if (is_string($codes)) {
+            $codes = [$codes];
+        }
+
+        if (! is_array($codes) || (! $hasNewKey && $codes === [])) {
+            $legacyCode = $request->session()->get(self::LEGACY_COUPON_SESSION_KEY);
+
+            if (is_string($legacyCode) && trim($legacyCode) !== '') {
+                return [strtoupper(trim($legacyCode))];
+            }
+
+            return [];
+        }
+
+        return collect($codes)
+            ->map(fn ($code): string => strtoupper(trim((string) $code)))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, string>  $couponCodes
+     */
+    private function storeSelectedCouponCodes(Request $request, array $couponCodes): void
+    {
+        if ($couponCodes === []) {
+            $this->forgetCouponSession($request);
+
+            return;
+        }
+
+        $request->session()->put(self::COUPON_SESSION_KEY, $couponCodes);
+        $request->session()->forget(self::LEGACY_COUPON_SESSION_KEY);
+    }
+
+    private function forgetCouponSession(Request $request): void
+    {
+        $request->session()->forget(self::COUPON_SESSION_KEY);
+        $request->session()->forget(self::LEGACY_COUPON_SESSION_KEY);
+    }
+
+    private function availableCouponsForUser(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user === null) {
+            return collect();
+        }
+
+        return $user->coupons()
+            ->where('coupon_user.is_active', true)
+            ->where('coupons.is_active', true)
+            ->where(function ($query): void {
+                $query->whereNull('coupons.starts_at')->orWhere('coupons.starts_at', '<=', now());
+            })
+            ->where(function ($query): void {
+                $query->whereNull('coupons.ends_at')->orWhere('coupons.ends_at', '>=', now());
+            })
+            ->orderBy('coupons.code')
+            ->get();
+    }
+
     public function trackEmail(Request $request): JsonResponse
     {
         $data = $request->validate(['email' => ['required', 'email', 'max:255']]);
@@ -325,7 +458,8 @@ class CartController extends Controller
         $couponCode = strtoupper($request->string('coupon')->trim()->toString());
 
         if ($couponCode !== '' && Coupon::query()->where('code', $couponCode)->exists()) {
-            $request->session()->put(self::COUPON_SESSION_KEY, $couponCode);
+            $this->storeSelectedCouponCodes($request, [$couponCode]);
+            $request->session()->put(self::LEGACY_COUPON_SESSION_KEY, $couponCode);
         }
 
         $abandonment->update(['recovered_at' => now()]);

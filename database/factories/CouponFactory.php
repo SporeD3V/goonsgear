@@ -26,6 +26,11 @@ class CouponFactory extends Factory
             'usage_limit' => fake()->optional()->numberBetween(5, 100),
             'used_count' => 0,
             'is_active' => true,
+            'is_stackable' => fake()->boolean(35),
+            'stack_group' => null,
+            'scope_type' => Coupon::SCOPE_ALL,
+            'scope_id' => null,
+            'is_personal' => false,
             'starts_at' => now()->subDay(),
             'ends_at' => now()->addMonth(),
         ];

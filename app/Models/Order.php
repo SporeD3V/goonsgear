@@ -69,4 +69,9 @@ class Order extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
+
+    public function couponUsages(): HasMany
+    {
+        return $this->hasMany(OrderCouponUsage::class);
+    }
 }

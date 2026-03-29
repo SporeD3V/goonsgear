@@ -13,7 +13,9 @@ class UrlRedirectController extends Controller
 {
     public function index(): View
     {
-        $redirects = UrlRedirect::query()->latest('id')->paginate(30);
+        $redirects = UrlRedirect::query()
+            ->latest('id')
+            ->paginate((int) config('pagination.admin_redirect_per_page', 30));
 
         return view('admin.url-redirects.index', [
             'redirects' => $redirects,

@@ -20,7 +20,7 @@ class TagController extends Controller
             ])
             ->orderBy('type')
             ->orderBy('name')
-            ->paginate(30);
+            ->paginate((int) config('pagination.admin_tag_per_page', 30));
 
         return view('admin.tags.index', [
             'tags' => $tags,

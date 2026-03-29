@@ -3,6 +3,8 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Coupon;
+use App\Models\Product;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -77,5 +79,38 @@ class CouponManagementTest extends TestCase
             'value' => 15,
             'used_count' => 3,
         ]);
+    }
+
+    public function test_personal_coupon_requires_assigned_users(): void
+    {
+        $response = $this->from(route('admin.coupons.create'))->post(route('admin.coupons.store'), [
+            'code' => 'PERSONAL10',
+            'description' => 'Personal campaign',
+            'type' => Coupon::TYPE_FIXED,
+            'value' => 10,
+            'is_active' => '1',
+            'is_personal' => '1',
+        ]);
+
+        $response->assertRedirect(route('admin.coupons.create'));
+        $response->assertSessionHasErrors('assigned_user_ids');
+    }
+
+    public function test_product_scope_requires_product_target(): void
+    {
+        User::factory()->create();
+        Product::factory()->create(['status' => 'active']);
+
+        $response = $this->from(route('admin.coupons.create'))->post(route('admin.coupons.store'), [
+            'code' => 'SCOPE10',
+            'description' => 'Scoped campaign',
+            'type' => Coupon::TYPE_FIXED,
+            'value' => 10,
+            'is_active' => '1',
+            'scope_type' => Coupon::SCOPE_PRODUCT,
+        ]);
+
+        $response->assertRedirect(route('admin.coupons.create'));
+        $response->assertSessionHasErrors('scope_product_id');
     }
 }

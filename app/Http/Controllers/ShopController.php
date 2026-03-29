@@ -225,7 +225,7 @@ class ShopController extends Controller
             ->when($sort === 'name_desc', fn ($query) => $query->orderByDesc('name'))
             ->when($sort === 'price_asc', fn ($query) => $query->orderByRaw('min_active_variant_price IS NULL')->orderBy('min_active_variant_price'))
             ->when($sort === 'price_desc', fn ($query) => $query->orderByDesc('min_active_variant_price')->orderByRaw('min_active_variant_price IS NULL'))
-            ->paginate(12)
+            ->paginate((int) config('pagination.shop_products_per_page', 12))
             ->withQueryString();
 
         $pageTitle = $activeCategory?->meta_title ?: ($activeCategory ? $activeCategory->name.' | Shop | GoonsGear' : 'Shop | GoonsGear');

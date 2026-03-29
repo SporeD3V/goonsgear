@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\TagFollow;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateTagFollowPreferencesRequest extends FormRequest
@@ -11,7 +12,16 @@ class UpdateTagFollowPreferencesRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+
+        if ($user === null) {
+            return false;
+        }
+
+        /** @var TagFollow|null $tagFollow */
+        $tagFollow = $this->route('tagFollow');
+
+        return $tagFollow !== null && (int) $tagFollow->user_id === (int) $user->id;
     }
 
     /**

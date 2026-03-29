@@ -20,7 +20,7 @@ class CategoryController extends Controller
             ->with('parent:id,name')
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->paginate(20);
+            ->paginate((int) config('pagination.admin_per_page', 20));
 
         return view('admin.categories.index', [
             'categories' => $categories,

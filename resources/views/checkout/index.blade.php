@@ -20,6 +20,10 @@
                 <div class="mb-4 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ $errors->first('cart') }}</div>
             @endif
 
+            @if ($recommendationMessage)
+                <div class="mb-4 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{{ $recommendationMessage }}</div>
+            @endif
+
             <div class="grid gap-6 lg:grid-cols-2">
                 <section class="rounded border border-slate-200 bg-white p-5">
                     <h2 class="text-base font-semibold">Shipping details</h2>
@@ -184,7 +188,7 @@
 
                     @if ($discountTotal > 0)
                         <div class="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
-                            <p class="text-sm text-emerald-700">Discount @if ($appliedCoupon)( {{ $appliedCoupon->code }} )@endif</p>
+                            <p class="text-sm text-emerald-700">Discount @if ($appliedCoupons->isNotEmpty())( {{ $appliedCoupons->pluck('code')->implode(', ') }} )@endif</p>
                             <p class="text-lg font-semibold text-emerald-700">- ${{ number_format((float) $discountTotal, 2) }}</p>
                         </div>
                     @endif

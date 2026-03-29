@@ -10,7 +10,7 @@ class StoreCouponRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return (bool) $this->user()?->is_admin;
     }
 
     /**
@@ -29,6 +29,39 @@ class StoreCouponRequest extends FormRequest
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
             'is_active' => ['sometimes', 'boolean'],
+            'is_stackable' => ['sometimes', 'boolean'],
+            'stack_group' => ['nullable', 'string', 'max:50'],
+            'scope_type' => ['nullable', 'string', Rule::in(Coupon::supportedScopes())],
+            'scope_product_id' => [
+                'nullable',
+                'integer',
+                'exists:products,id',
+                Rule::requiredIf(fn (): bool => $this->input('scope_type') === Coupon::SCOPE_PRODUCT),
+                Rule::prohibitedIf(fn (): bool => in_array($this->input('scope_type'), [Coupon::SCOPE_CATEGORY, Coupon::SCOPE_TAG], true)),
+            ],
+            'scope_category_id' => [
+                'nullable',
+                'integer',
+                'exists:categories,id',
+                Rule::requiredIf(fn (): bool => $this->input('scope_type') === Coupon::SCOPE_CATEGORY),
+                Rule::prohibitedIf(fn (): bool => in_array($this->input('scope_type'), [Coupon::SCOPE_PRODUCT, Coupon::SCOPE_TAG], true)),
+            ],
+            'scope_tag_id' => [
+                'nullable',
+                'integer',
+                'exists:tags,id',
+                Rule::requiredIf(fn (): bool => $this->input('scope_type') === Coupon::SCOPE_TAG),
+                Rule::prohibitedIf(fn (): bool => in_array($this->input('scope_type'), [Coupon::SCOPE_PRODUCT, Coupon::SCOPE_CATEGORY], true)),
+            ],
+            'is_personal' => ['sometimes', 'boolean'],
+            'assigned_user_ids' => [
+                'nullable',
+                'array',
+                'min:1',
+                Rule::requiredIf(fn (): bool => $this->boolean('is_personal')),
+            ],
+            'assigned_user_ids.*' => ['integer', 'exists:users,id'],
+            'user_usage_limit' => ['nullable', 'integer', 'min:1'],
         ];
     }
 }

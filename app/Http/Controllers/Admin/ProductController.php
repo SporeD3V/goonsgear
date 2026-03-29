@@ -50,7 +50,7 @@ class ProductController extends Controller
                 },
             ])
             ->latest('id')
-            ->paginate(20);
+            ->paginate((int) config('pagination.admin_per_page', 20));
 
         return view('admin.products.index', [
             'products' => $products,
@@ -337,41 +337,41 @@ class ProductController extends Controller
         $avifCreated = $this->convertImageToFormat($absoluteFallbackPath, $avifPath, 'avif');
 
         if ($webpCreated) {
+            $storedPath = $webpPath;
+            $convertedTo = 'webp';
+        } elseif ($avifCreated) {
+            $storedPath = $avifPath;
+            $convertedTo = 'avif';
+        } else {
+            $galleryFallbackPath = $mediaDirectory.'/'.$fallbackFilename;
+            $copiedToGallery = Storage::disk('public')->copy($fallbackPath, $galleryFallbackPath);
+
+            if (! $copiedToGallery) {
+                Log::warning('Fallback copy to gallery failed, using fallback path directly.', [
+                    'trace_id' => $uploadTraceId,
+                    'product_id' => $product->id,
+                    'index' => $index,
+                    'fallback_path' => $fallbackPath,
+                    'gallery_path' => $galleryFallbackPath,
+                ]);
+            }
+
             return [
-                'path' => $webpPath,
-                'mime_type' => 'image/webp',
-                'is_converted' => true,
-                'converted_to' => 'webp',
+                'path' => $copiedToGallery ? $galleryFallbackPath : $fallbackPath,
+                'mime_type' => self::IMAGE_MIME_BY_EXTENSION[$extension] ?? 'application/octet-stream',
+                'is_converted' => false,
+                'converted_to' => null,
             ];
         }
 
-        if ($avifCreated) {
-            return [
-                'path' => $avifPath,
-                'mime_type' => 'image/avif',
-                'is_converted' => true,
-                'converted_to' => 'avif',
-            ];
-        }
-
-        $galleryFallbackPath = $mediaDirectory.'/'.$fallbackFilename;
-        $copiedToGallery = Storage::disk('public')->copy($fallbackPath, $galleryFallbackPath);
-
-        if (! $copiedToGallery) {
-            Log::warning('Fallback copy to gallery failed, using fallback path directly.', [
-                'trace_id' => $uploadTraceId,
-                'product_id' => $product->id,
-                'index' => $index,
-                'fallback_path' => $fallbackPath,
-                'gallery_path' => $galleryFallbackPath,
-            ]);
-        }
+        // Create responsive size variants from the best converted image
+        $this->createImageVariants($absoluteFallbackPath, $mediaDirectory, $baseFilename);
 
         return [
-            'path' => $copiedToGallery ? $galleryFallbackPath : $fallbackPath,
-            'mime_type' => self::IMAGE_MIME_BY_EXTENSION[$extension] ?? 'application/octet-stream',
-            'is_converted' => false,
-            'converted_to' => null,
+            'path' => $storedPath,
+            'mime_type' => $convertedTo === 'webp' ? 'image/webp' : 'image/avif',
+            'is_converted' => true,
+            'converted_to' => $convertedTo,
         ];
     }
 
@@ -393,6 +393,20 @@ class ProductController extends Controller
             UPLOAD_ERR_EXTENSION => 'UPLOAD_ERR_EXTENSION',
             default => 'UPLOAD_ERR_UNKNOWN',
         };
+    }
+
+    private function productMediaSupportsConversionMetadata(): bool
+    {
+        if (self::$productMediaHasConversionColumns !== null) {
+            return self::$productMediaHasConversionColumns;
+        }
+
+        self::$productMediaHasConversionColumns = Schema::hasColumns('product_media', [
+            'is_converted',
+            'converted_to',
+        ]);
+
+        return self::$productMediaHasConversionColumns;
     }
 
     private function convertImageToFormat(string $sourceAbsolutePath, string $targetRelativePath, string $targetFormat): bool
@@ -458,6 +472,8 @@ class ProductController extends Controller
                 default => false,
             };
 
+            @imagedestroy($imageResource);
+
             return $saved && is_file($absoluteTargetPath);
         } catch (Throwable $exception) {
             Log::warning('Media conversion failed, using fallback/original media.', [
@@ -471,18 +487,91 @@ class ProductController extends Controller
         }
     }
 
-    private function productMediaSupportsConversionMetadata(): bool
+    /**
+     * Create responsive size variants of an image for different breakpoints.
+     * Variants are stored as: {base}-{variant-name}-{width}x{height}.webp
+     *
+     * @param  string  $sourceAbsolutePath  Path to original uploaded image
+     * @param  string  $mediaDirectory  Relative directory where variants are stored
+     * @param  string  $baseFilename  Base filename without extension
+     */
+    private function createImageVariants(string $sourceAbsolutePath, string $mediaDirectory, string $baseFilename): void
     {
-        if (self::$productMediaHasConversionColumns !== null) {
-            return self::$productMediaHasConversionColumns;
+        try {
+            if (! function_exists('imagecreatetruecolor') || ! function_exists('imagewebp')) {
+                return; // GD not available, skip variants
+            }
+
+            $imageInfo = @getimagesize($sourceAbsolutePath);
+            if ($imageInfo === false) {
+                return;
+            }
+
+            $srcWidth = $imageInfo[0];
+            $srcHeight = $imageInfo[1];
+            $mimeType = strtolower((string) $imageInfo['mime']);
+
+            $sourceImage = match ($mimeType) {
+                'image/jpeg' => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($sourceAbsolutePath) : false,
+                'image/png' => function_exists('imagecreatefrompng') ? @imagecreatefrompng($sourceAbsolutePath) : false,
+                'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($sourceAbsolutePath) : false,
+                'image/avif' => function_exists('imagecreatefromavif') ? @imagecreatefromavif($sourceAbsolutePath) : false,
+                default => false,
+            };
+
+            if ($sourceImage === false) {
+                return;
+            }
+
+            $variants = config('images.sizes', []);
+
+            foreach ($variants as $variantName => $variant) {
+                $variantWidth = $variant['width'] ?? 0;
+                $variantHeight = $variant['height'] ?? 0;
+
+                if ($variantWidth <= 0 || $variantHeight <= 0) {
+                    continue;
+                }
+
+                // Create resized variant
+                $destImage = @imagecreatetruecolor($variantWidth, $variantHeight);
+                if ($destImage === false) {
+                    continue;
+                }
+
+                // Preserve transparency
+                @imagecolortransparent($destImage, @imagecolorallocatealpha($destImage, 0, 0, 0, 127));
+                @imagealphablending($destImage, false);
+                @imagesavealpha($destImage, true);
+
+                // Center crop to match aspect ratio
+                $ratio = max($variantWidth / $srcWidth, $variantHeight / $srcHeight);
+                $newWidth = (int) ($srcWidth * $ratio);
+                $newHeight = (int) ($srcHeight * $ratio);
+                $cropX = (int) (($newWidth - $variantWidth) / 2);
+                $cropY = (int) (($newHeight - $variantHeight) / 2);
+
+                $tempImage = @imagecreatetruecolor($newWidth, $newHeight);
+                if ($tempImage !== false) {
+                    @imagecopyresampled($tempImage, $sourceImage, 0, 0, 0, 0, $newWidth, $newHeight, $srcWidth, $srcHeight);
+                    @imagecopy($destImage, $tempImage, 0, 0, $cropX, $cropY, $variantWidth, $variantHeight);
+                    @imagedestroy($tempImage);
+                }
+
+                // Save as WebP variant
+                $variantFilename = $baseFilename.'-'.$variantName.'-'.$variantWidth.'x'.$variantHeight.'.webp';
+                $variantPath = $mediaDirectory.'/'.$variantFilename;
+                $absoluteVariantPath = storage_path('app/public/'.$variantPath);
+
+                @imagewebp($destImage, $absoluteVariantPath, 82);
+                @imagedestroy($destImage);
+            }
+        } catch (Throwable $exception) {
+            Log::debug('Image variant creation failed.', [
+                'source' => $sourceAbsolutePath,
+                'message' => $exception->getMessage(),
+            ]);
         }
-
-        self::$productMediaHasConversionColumns = Schema::hasColumns('product_media', [
-            'is_converted',
-            'converted_to',
-        ]);
-
-        return self::$productMediaHasConversionColumns;
     }
 
     /**
@@ -506,7 +595,7 @@ class ProductController extends Controller
             ->where('stock_alert_subscriptions.is_active', true)
             ->with(['user:id,name,email', 'variant:id,name,sku'])
             ->latest('created_at')
-            ->paginate(20);
+            ->paginate((int) config('pagination.admin_per_page', 20));
 
         return view('admin.products.stock-alerts', [
             'product' => $product,

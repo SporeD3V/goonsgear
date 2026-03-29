@@ -87,4 +87,11 @@ class User extends Authenticatable
             ->withPivot(['notify_new_drops', 'notify_discounts'])
             ->withTimestamps();
     }
+
+    public function coupons(): BelongsToMany
+    {
+        return $this->belongsToMany(Coupon::class)
+            ->withPivot(['usage_limit', 'used_count', 'is_active'])
+            ->withTimestamps();
+    }
 }

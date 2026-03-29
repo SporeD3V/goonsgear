@@ -40,9 +40,13 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
 
     Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
-    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])->name('password.email');
+    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('password.email');
     Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
-    Route::post('/reset-password', [NewPasswordController::class, 'store'])->name('password.store');
+    Route::post('/reset-password', [NewPasswordController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('password.store');
 });
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
@@ -79,6 +83,7 @@ Route::post('/stock-alert-subscriptions', [StockAlertSubscriptionController::cla
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::post('/cart/coupon', [CartController::class, 'applyCoupon'])->name('cart.coupon.apply');
+Route::post('/cart/coupons/select', [CartController::class, 'selectCoupons'])->name('cart.coupon.select');
 Route::delete('/cart/coupon', [CartController::class, 'removeCoupon'])->name('cart.coupon.remove');
 Route::post('/cart/track-email', [CartController::class, 'trackEmail'])->name('cart.track-email');
 Route::get('/cart/recover/{abandonment}', [CartController::class, 'recoverCart'])->name('cart.recover');
@@ -112,10 +117,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin', 'admin.noin
         ->name('products.stock-alerts');
     Route::resource('regional-discounts', RegionalDiscountController::class)->except('show');
     Route::resource('url-redirects', UrlRedirectController::class)->except('show');
-    Route::resource('products.variants', ProductVariantController::class)->except(['index', 'show']);
+    Route::resource('products.variants', ProductVariantController::class)
+        ->except(['index', 'show'])
+        ->scoped();
     Route::post('maintenance/clear-caches', [MaintenanceController::class, 'clearCaches'])
+        ->middleware('throttle:5,1')
         ->name('maintenance.clear-caches');
     Route::post('maintenance/clear-logs', [MaintenanceController::class, 'clearLogs'])
+        ->middleware('throttle:5,1')
         ->name('maintenance.clear-logs');
     Route::get('maintenance/abandoned-cart', [MaintenanceController::class, 'editAbandonedCartSettings'])
         ->name('maintenance.abandoned-cart.edit');

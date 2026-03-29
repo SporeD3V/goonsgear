@@ -38,6 +38,7 @@
             <div>
                 <label for="recaptcha_secret_key" class="mb-1 block text-sm font-medium text-slate-700">Secret key</label>
                 <input id="recaptcha_secret_key" name="recaptcha_secret_key" type="password" value="{{ old('recaptcha_secret_key', $values['recaptcha_secret_key']) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                <p class="mt-1 text-xs text-slate-500">Leave blank to keep the currently stored secret.</p>
                 @error('recaptcha_secret_key')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
             </div>
 
@@ -67,6 +68,7 @@
             <div>
                 <label for="paypal_client_secret" class="mb-1 block text-sm font-medium text-slate-700">Client secret</label>
                 <input id="paypal_client_secret" name="paypal_client_secret" type="password" value="{{ old('paypal_client_secret', $values['paypal_client_secret']) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                <p class="mt-1 text-xs text-slate-500">Leave blank to keep the currently stored secret.</p>
                 @error('paypal_client_secret')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
             </div>
 
@@ -83,6 +85,7 @@
             <div>
                 <label for="brevo_api_key" class="mb-1 block text-sm font-medium text-slate-700">API key</label>
                 <input id="brevo_api_key" name="brevo_api_key" type="password" value="{{ old('brevo_api_key', $values['brevo_api_key']) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                <p class="mt-1 text-xs text-slate-500">Leave blank to keep the currently stored secret.</p>
                 @error('brevo_api_key')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
             </div>
         </section>

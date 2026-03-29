@@ -19,13 +19,15 @@ class AccountController extends Controller
             ->where('user_id', $user->id)
             ->with('tag:id,name,slug,type,is_active')
             ->orderByDesc('id')
-            ->get();
+            ->paginate((int) config('pagination.account_tag_follows_per_page', 25))
+            ->withQueryString();
 
         $availableTags = Tag::query()
             ->where('is_active', true)
-            ->whereNotIn('id', $tagFollows->pluck('tag_id'))
+            ->whereNotIn('id', TagFollow::query()->where('user_id', $user->id)->select('tag_id'))
             ->orderBy('type')
             ->orderBy('name')
+            ->limit((int) config('pagination.account_available_tags_limit', 500))
             ->get(['id', 'name', 'type']);
 
         $recentOrders = Order::query()
@@ -44,10 +46,23 @@ class AccountController extends Controller
                 'placed_at',
             ]);
 
+        $availableCoupons = $user->coupons()
+            ->where('coupon_user.is_active', true)
+            ->where('coupons.is_active', true)
+            ->where(function ($query): void {
+                $query->whereNull('coupons.starts_at')->orWhere('coupons.starts_at', '<=', now());
+            })
+            ->where(function ($query): void {
+                $query->whereNull('coupons.ends_at')->orWhere('coupons.ends_at', '>=', now());
+            })
+            ->orderBy('coupons.code')
+            ->get();
+
         return view('account.index', [
             'tagFollows' => $tagFollows,
             'availableTags' => $availableTags,
             'recentOrders' => $recentOrders,
+            'availableCoupons' => $availableCoupons,
         ]);
     }
 

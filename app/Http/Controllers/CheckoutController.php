@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Checkout\CreateOrderAction;
+use App\Http\Requests\StoreCheckoutRequest;
 use App\Mail\OrderConfirmation;
-use App\Models\CartAbandonment;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\ProductVariant;
@@ -16,35 +17,26 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use JsonException;
 use RuntimeException;
 
 class CheckoutController extends Controller
 {
     private const CART_SESSION_KEY = 'cart.items';
 
-    private const COUPON_SESSION_KEY = 'cart.coupon_code';
+    private const COUPON_SESSION_KEY = 'cart.coupon_codes';
+
+    private const LEGACY_COUPON_SESSION_KEY = 'cart.coupon_code';
 
     private const PAYPAL_PENDING_ORDER_SESSION_KEY = 'checkout.paypal.pending_orders';
 
-    private static ?bool $orderPaymentColumnsAvailable = null;
-
-    /**
-     * @var array<string, bool>
-     */
-    private static array $orderColumnAvailability = [];
-
     public function index(Request $request, PayPalClient $paypalClient, CartPricing $cartPricing, RecaptchaVerifier $recaptchaVerifier): View|RedirectResponse
     {
-        // The transaction above deliberately returns inside the closure.
-        // Mark any matching abandonment as recovered outside the transaction.
-        // (This line is unreachable — see the real mark-recovered call below.)
-        // phpcs:ignore
         $items = $this->getCartItems($request);
         $authenticatedUser = $request->user();
 
@@ -60,10 +52,10 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->withErrors(['cart' => 'Your cart is empty.']);
         }
 
-        $pricing = $cartPricing->summarize($items, $request->session()->get(self::COUPON_SESSION_KEY));
+        $pricing = $cartPricing->summarize($items, $this->getSelectedCouponCodes($request), null, $request->user());
 
         if ($pricing['error'] !== null) {
-            $request->session()->forget(self::COUPON_SESSION_KEY);
+            $this->forgetCouponSession($request);
 
             return redirect()->route('cart.index')->withErrors(['coupon_code' => $pricing['error']]);
         }
@@ -75,7 +67,9 @@ class CheckoutController extends Controller
             'bundleDiscountTotal' => $pricing['bundle_discount_total'],
             'total' => $pricing['total'],
             'appliedCoupon' => $pricing['coupon'],
+            'appliedCoupons' => $pricing['coupons'],
             'appliedBundle' => $pricing['bundle_discount'],
+            'recommendationMessage' => $pricing['recommendation_message'],
             'countries' => Countries::all(),
             'paypalEnabled' => $paypalClient->isEnabled(),
             'paypalClientId' => $paypalClient->clientId(),
@@ -100,7 +94,7 @@ class CheckoutController extends Controller
         ]);
     }
 
-    public function store(Request $request, CartPricing $cartPricing, RecaptchaVerifier $recaptchaVerifier): RedirectResponse
+    public function store(StoreCheckoutRequest $request, CartPricing $cartPricing, RecaptchaVerifier $recaptchaVerifier): RedirectResponse
     {
         $items = $this->getCartItems($request);
 
@@ -136,7 +130,8 @@ class CheckoutController extends Controller
             subtotal: $checkoutContext['subtotal'],
             discountTotal: $pricing['discount_total'],
             total: $pricing['total'],
-            couponCode: $pricing['coupon_code'],
+            couponCodes: $pricing['coupon_codes'],
+            couponBreakdown: $pricing['coupon_breakdown'],
             paymentMethod: 'manual',
             paymentStatus: 'pending',
             regionalDiscountTotal: $pricing['regional_discount_total'],
@@ -145,7 +140,7 @@ class CheckoutController extends Controller
         );
 
         $request->session()->forget(self::CART_SESSION_KEY);
-        $request->session()->forget(self::COUPON_SESSION_KEY);
+        $this->forgetCouponSession($request);
         $recaptchaVerifier->clearSignals('checkout', $request, $email);
 
         Mail::to($order->email)->send(new OrderConfirmation($order->load('items')));
@@ -153,7 +148,7 @@ class CheckoutController extends Controller
         return redirect()->route('checkout.success', $order)->with('status', 'Order placed successfully.');
     }
 
-    public function createPayPalOrder(Request $request, PayPalClient $paypalClient, CartPricing $cartPricing, RecaptchaVerifier $recaptchaVerifier): JsonResponse
+    public function createPayPalOrder(StoreCheckoutRequest $request, PayPalClient $paypalClient, CartPricing $cartPricing, RecaptchaVerifier $recaptchaVerifier): JsonResponse
     {
         if (! $paypalClient->isEnabled()) {
             return response()->json([
@@ -198,16 +193,21 @@ class CheckoutController extends Controller
             ]);
         }
 
-        $request->session()->put(self::PAYPAL_PENDING_ORDER_SESSION_KEY.'.'.$paypalOrderId, [
+        $pendingOrderData = [
             'payload' => $payload,
             'normalized_items' => $checkoutContext['normalized_items'],
             'subtotal' => $checkoutContext['subtotal'],
             'discount_total' => $pricing['discount_total'],
             'total' => $pricing['total'],
-            'coupon_code' => $pricing['coupon_code'],
+            'coupon_codes' => $pricing['coupon_codes'],
+            'coupon_breakdown' => $pricing['coupon_breakdown'],
             'regional_discount_total' => $pricing['regional_discount_total'],
             'bundle_discount_total' => $pricing['bundle_discount_total'],
-        ]);
+        ];
+
+        $pendingOrderData['integrity_hash'] = $this->signPendingOrderData($pendingOrderData);
+
+        $request->session()->put(self::PAYPAL_PENDING_ORDER_SESSION_KEY.'.'.$paypalOrderId, $pendingOrderData);
 
         return response()->json([
             'id' => $paypalOrderId,
@@ -235,6 +235,14 @@ class CheckoutController extends Controller
             ], 422);
         }
 
+        if (! $this->hasValidPendingOrderSignature($pendingOrder)) {
+            $request->session()->forget(self::PAYPAL_PENDING_ORDER_SESSION_KEY.'.'.$paypalOrderId);
+
+            return response()->json([
+                'message' => 'Checkout session integrity check failed. Please try again.',
+            ], 422);
+        }
+
         try {
             $captureResponse = $paypalClient->captureOrder($paypalOrderId);
         } catch (RuntimeException $exception) {
@@ -258,7 +266,8 @@ class CheckoutController extends Controller
             subtotal: (float) ($pendingOrder['subtotal'] ?? 0),
             discountTotal: (float) ($pendingOrder['discount_total'] ?? 0),
             total: (float) ($pendingOrder['total'] ?? 0),
-            couponCode: ($pendingOrder['coupon_code'] ?? null) !== null ? (string) $pendingOrder['coupon_code'] : null,
+            couponCodes: is_array($pendingOrder['coupon_codes'] ?? null) ? $pendingOrder['coupon_codes'] : [],
+            couponBreakdown: is_array($pendingOrder['coupon_breakdown'] ?? null) ? $pendingOrder['coupon_breakdown'] : [],
             paymentMethod: 'paypal',
             paymentStatus: 'paid',
             paypalOrderId: $paypalOrderId,
@@ -271,7 +280,7 @@ class CheckoutController extends Controller
 
         $request->session()->forget(self::PAYPAL_PENDING_ORDER_SESSION_KEY.'.'.$paypalOrderId);
         $request->session()->forget(self::CART_SESSION_KEY);
-        $request->session()->forget(self::COUPON_SESSION_KEY);
+        $this->forgetCouponSession($request);
 
         $email = strtolower((string) data_get($pendingOrder, 'payload.email', ''));
         $recaptchaVerifier->clearSignals('checkout', $request, $email);
@@ -301,37 +310,23 @@ class CheckoutController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function validateCheckoutPayload(Request $request, RecaptchaVerifier $recaptchaVerifier): array
+    private function validateCheckoutPayload(StoreCheckoutRequest $request, RecaptchaVerifier $recaptchaVerifier): array
     {
         $email = strtolower($request->string('email')->trim()->toString());
         $requiresChallenge = $recaptchaVerifier->shouldChallenge('checkout', $request, $email);
 
-        $rules = [
-            'email' => ['required', 'email'],
-            'first_name' => ['required', 'string', 'max:100'],
-            'last_name' => ['required', 'string', 'max:100'],
-            'phone' => ['nullable', 'string', 'max:40'],
-            'country' => ['required', 'string', 'size:2'],
-            'state' => ['nullable', 'string', 'max:120'],
-            'city' => ['required', 'string', 'max:120'],
-            'postal_code' => ['required', 'string', 'max:20'],
-            'street_name' => ['required', 'string', 'max:200'],
-            'street_number' => ['required', 'string', 'max:20'],
-            'apartment_block' => ['nullable', 'string', 'max:50'],
-            'entrance' => ['nullable', 'string', 'max:50'],
-            'floor' => ['nullable', 'string', 'max:20'],
-            'apartment_number' => ['nullable', 'string', 'max:20'],
-            'recaptcha_token' => ['nullable', 'string', 'max:4096'],
-        ];
-
-        if ($requiresChallenge) {
-            $rules['recaptcha_token'][0] = 'required';
-        }
-
-        $payload = $request->validate($rules);
+        $payload = $request->validated();
 
         if ($requiresChallenge) {
             $recaptchaToken = (string) ($payload['recaptcha_token'] ?? '');
+
+            if ($recaptchaToken === '') {
+                $recaptchaVerifier->registerSignal('checkout', $request, $email);
+
+                throw ValidationException::withMessages([
+                    'recaptcha_token' => 'Security verification is required. Please try again.',
+                ]);
+            }
 
             if (! $recaptchaVerifier->verifyCheckoutToken($recaptchaToken, $request->ip())) {
                 $recaptchaVerifier->registerSignal('checkout', $request, $email);
@@ -345,6 +340,56 @@ class CheckoutController extends Controller
         unset($payload['recaptcha_token']);
 
         return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $pendingOrderData
+     */
+    private function signPendingOrderData(array $pendingOrderData): string
+    {
+        $payload = [
+            'payload' => $pendingOrderData['payload'] ?? [],
+            'normalized_items' => $pendingOrderData['normalized_items'] ?? [],
+            'subtotal' => $pendingOrderData['subtotal'] ?? 0,
+            'discount_total' => $pendingOrderData['discount_total'] ?? 0,
+            'total' => $pendingOrderData['total'] ?? 0,
+            'coupon_codes' => $pendingOrderData['coupon_codes'] ?? [],
+            'coupon_breakdown' => $pendingOrderData['coupon_breakdown'] ?? [],
+            'regional_discount_total' => $pendingOrderData['regional_discount_total'] ?? 0,
+            'bundle_discount_total' => $pendingOrderData['bundle_discount_total'] ?? 0,
+        ];
+
+        try {
+            $encodedPayload = json_encode($payload, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            $encodedPayload = '{}';
+        }
+
+        return hash_hmac('sha256', $encodedPayload, (string) config('app.key'));
+    }
+
+    /**
+     * @param  array<string, mixed>  $pendingOrderData
+     */
+    private function hasValidPendingOrderSignature(array $pendingOrderData): bool
+    {
+        $providedHash = (string) ($pendingOrderData['integrity_hash'] ?? '');
+
+        if ($providedHash === '') {
+            return $this->isLegacyPendingOrderData($pendingOrderData);
+        }
+
+        return hash_equals($this->signPendingOrderData($pendingOrderData), $providedHash);
+    }
+
+    /**
+     * @param  array<string, mixed>  $pendingOrderData
+     */
+    private function isLegacyPendingOrderData(array $pendingOrderData): bool
+    {
+        return is_array($pendingOrderData['payload'] ?? null)
+            && is_array($pendingOrderData['normalized_items'] ?? null)
+            && is_numeric($pendingOrderData['subtotal'] ?? null);
     }
 
     /**
@@ -416,7 +461,8 @@ class CheckoutController extends Controller
         float $subtotal,
         float $discountTotal,
         float $total,
-        ?string $couponCode,
+        array $couponCodes,
+        array $couponBreakdown,
         string $paymentMethod,
         string $paymentStatus,
         ?string $paypalOrderId = null,
@@ -426,129 +472,35 @@ class CheckoutController extends Controller
         float $bundleDiscountTotal = 0.0,
         ?User $customer = null,
     ): Order {
-        $order = DB::transaction(function () use ($payload, $normalizedItems, $subtotal, $discountTotal, $total, $couponCode, $paymentMethod, $paymentStatus, $paypalOrderId, $paypalCaptureId, $markAsPaid, $regionalDiscountTotal, $bundleDiscountTotal): Order {
-            $variantIds = collect($normalizedItems)->pluck('product_variant_id')->map(fn ($id): int => (int) $id)->values();
-            $variants = ProductVariant::query()->whereIn('id', $variantIds)->get()->keyBy('id');
-
-            foreach ($normalizedItems as $item) {
-                $variant = $variants->get((int) $item['product_variant_id']);
-                $quantity = (int) $item['quantity'];
-
-                if ($variant === null || ! $variant->is_active) {
-                    throw ValidationException::withMessages([
-                        'cart' => 'One or more cart items are no longer available.',
-                    ]);
-                }
-
-                if ($variant->track_inventory && ! $variant->allow_backorder && ! $variant->is_preorder && $quantity > $variant->stock_quantity) {
-                    throw ValidationException::withMessages([
-                        'cart' => "Insufficient stock for {$variant->name}. Please update your cart quantity.",
-                    ]);
-                }
-            }
-
-            $orderPayload = [
-                'order_number' => $this->generateOrderNumber(),
-                'status' => $markAsPaid ? 'paid' : 'pending',
-                'email' => (string) $payload['email'],
-                'first_name' => (string) $payload['first_name'],
-                'last_name' => (string) $payload['last_name'],
-                'phone' => isset($payload['phone']) ? (string) $payload['phone'] : null,
-                'country' => strtoupper((string) $payload['country']),
-                'city' => (string) $payload['city'],
-                'postal_code' => (string) $payload['postal_code'],
-                'street_name' => (string) $payload['street_name'],
-                'street_number' => (string) $payload['street_number'],
-                'apartment_block' => isset($payload['apartment_block']) ? (string) $payload['apartment_block'] : null,
-                'entrance' => isset($payload['entrance']) ? (string) $payload['entrance'] : null,
-                'floor' => isset($payload['floor']) ? (string) $payload['floor'] : null,
-                'apartment_number' => isset($payload['apartment_number']) ? (string) $payload['apartment_number'] : null,
-                'currency' => 'EUR',
-                'subtotal' => $subtotal,
-                'total' => $total,
-                'placed_at' => now(),
-            ];
-
-            if ($this->orderColumnAvailable('coupon_code')) {
-                $orderPayload['coupon_code'] = $couponCode;
-            }
-
-            if ($this->orderColumnAvailable('discount_total')) {
-                $orderPayload['discount_total'] = $discountTotal;
-            }
-
-            if ($this->orderColumnAvailable('state')) {
-                $orderPayload['state'] = isset($payload['state']) ? (string) $payload['state'] : null;
-            }
-
-            if ($this->orderColumnAvailable('regional_discount_total')) {
-                $orderPayload['regional_discount_total'] = $regionalDiscountTotal;
-            }
-
-            if ($this->orderColumnAvailable('bundle_discount_total')) {
-                $orderPayload['bundle_discount_total'] = $bundleDiscountTotal;
-            }
-
-            if ($this->orderPaymentColumnsAvailable()) {
-                $orderPayload['payment_method'] = $paymentMethod;
-                $orderPayload['payment_status'] = $paymentStatus;
-                $orderPayload['paypal_order_id'] = $paypalOrderId;
-                $orderPayload['paypal_capture_id'] = $paypalCaptureId;
-            }
-
-            $order = Order::query()->create($orderPayload);
-
-            $order->items()->createMany($normalizedItems);
-
-            foreach ($normalizedItems as $item) {
-                $variant = $variants->get((int) $item['product_variant_id']);
-
-                if ($variant !== null && $variant->track_inventory && ! $variant->allow_backorder && ! $variant->is_preorder) {
-                    $variant->decrement('stock_quantity', (int) $item['quantity']);
-                }
-            }
-
-            if ($couponCode !== null) {
-                Coupon::query()->where('code', $couponCode)->increment('used_count');
-            }
-
-            return $order;
-        });
-
-        CartAbandonment::query()
-            ->where('email', $order->email)
-            ->whereNull('recovered_at')
-            ->update(['recovered_at' => now()]);
-
-        if ($customer !== null) {
-            $customer->update([
-                'delivery_phone' => isset($payload['phone']) ? (string) $payload['phone'] : null,
-                'delivery_country' => strtoupper((string) $payload['country']),
-                'delivery_state' => isset($payload['state']) ? (string) $payload['state'] : null,
-                'delivery_city' => (string) $payload['city'],
-                'delivery_postal_code' => (string) $payload['postal_code'],
-                'delivery_street_name' => (string) $payload['street_name'],
-                'delivery_street_number' => (string) $payload['street_number'],
-                'delivery_apartment_block' => isset($payload['apartment_block']) ? (string) $payload['apartment_block'] : null,
-                'delivery_entrance' => isset($payload['entrance']) ? (string) $payload['entrance'] : null,
-                'delivery_floor' => isset($payload['floor']) ? (string) $payload['floor'] : null,
-                'delivery_apartment_number' => isset($payload['apartment_number']) ? (string) $payload['apartment_number'] : null,
-            ]);
-        }
-
-        return $order;
+        return app(CreateOrderAction::class)->execute(
+            payload: $payload,
+            normalizedItems: $normalizedItems,
+            subtotal: $subtotal,
+            discountTotal: $discountTotal,
+            total: $total,
+            couponCodes: $couponCodes,
+            couponBreakdown: $couponBreakdown,
+            paymentMethod: $paymentMethod,
+            paymentStatus: $paymentStatus,
+            paypalOrderId: $paypalOrderId,
+            paypalCaptureId: $paypalCaptureId,
+            markAsPaid: $markAsPaid,
+            regionalDiscountTotal: $regionalDiscountTotal,
+            bundleDiscountTotal: $bundleDiscountTotal,
+            customer: $customer,
+        );
     }
 
     /**
      * @param  array<int|string, array<string, mixed>>  $items
-     * @return array{subtotal: float, discount_total: float, regional_discount_total: float, bundle_discount_total: float, total: float, coupon: ?App\Models\Coupon, coupon_code: ?string, requested_coupon_code: ?string, error: ?string, regional_discount: ?App\Models\RegionalDiscount, bundle_discount: ?App\Models\BundleDiscount}
+     * @return array{subtotal: float, discount_total: float, regional_discount_total: float, bundle_discount_total: float, total: float, coupon: ?App\Models\Coupon, coupons: Collection<int, App\Models\Coupon>, coupon_code: ?string, coupon_codes: array<int, string>, coupon_breakdown: array<string, float>, requested_coupon_code: ?string, requested_coupon_codes: array<int, string>, invalid_coupon_messages: array<string, string>, recommendation_message: ?string, error: ?string, regional_discount: ?App\Models\RegionalDiscount, bundle_discount: ?App\Models\BundleDiscount}
      */
     private function resolvePricing(Request $request, array $items, CartPricing $cartPricing, string $countryCode = ''): array
     {
-        $pricing = $cartPricing->summarize($items, $request->session()->get(self::COUPON_SESSION_KEY), $countryCode !== '' ? $countryCode : null);
+        $pricing = $cartPricing->summarize($items, $this->getSelectedCouponCodes($request), $countryCode !== '' ? $countryCode : null, $request->user());
 
         if ($pricing['error'] !== null) {
-            $request->session()->forget(self::COUPON_SESSION_KEY);
+            $this->forgetCouponSession($request);
 
             throw ValidationException::withMessages([
                 'coupon_code' => $pricing['error'],
@@ -558,31 +510,40 @@ class CheckoutController extends Controller
         return $pricing;
     }
 
-    private function orderPaymentColumnsAvailable(): bool
+    /**
+     * @return array<int, string>
+     */
+    private function getSelectedCouponCodes(Request $request): array
     {
-        if (self::$orderPaymentColumnsAvailable !== null) {
-            return self::$orderPaymentColumnsAvailable;
+        $hasNewKey = $request->session()->has(self::COUPON_SESSION_KEY);
+        $codes = $request->session()->get(self::COUPON_SESSION_KEY, []);
+
+        if (is_string($codes)) {
+            $codes = [$codes];
         }
 
-        self::$orderPaymentColumnsAvailable = Schema::hasColumns('orders', [
-            'payment_method',
-            'payment_status',
-            'paypal_order_id',
-            'paypal_capture_id',
-        ]);
+        if (! is_array($codes) || (! $hasNewKey && $codes === [])) {
+            $legacyCode = $request->session()->get(self::LEGACY_COUPON_SESSION_KEY);
 
-        return self::$orderPaymentColumnsAvailable;
+            if (is_string($legacyCode) && trim($legacyCode) !== '') {
+                return [strtoupper(trim($legacyCode))];
+            }
+
+            return [];
+        }
+
+        return collect($codes)
+            ->map(fn ($code): string => strtoupper(trim((string) $code)))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
-    private function orderColumnAvailable(string $column): bool
+    private function forgetCouponSession(Request $request): void
     {
-        if (array_key_exists($column, self::$orderColumnAvailability)) {
-            return self::$orderColumnAvailability[$column];
-        }
-
-        self::$orderColumnAvailability[$column] = Schema::hasColumn('orders', $column);
-
-        return self::$orderColumnAvailability[$column];
+        $request->session()->forget(self::COUPON_SESSION_KEY);
+        $request->session()->forget(self::LEGACY_COUPON_SESSION_KEY);
     }
 
     /**
@@ -593,15 +554,6 @@ class CheckoutController extends Controller
         $items = $request->session()->get(self::CART_SESSION_KEY, []);
 
         return is_array($items) ? $items : [];
-    }
-
-    private function generateOrderNumber(): string
-    {
-        do {
-            $orderNumber = 'GG-'.strtoupper(Str::random(10));
-        } while (Order::query()->where('order_number', $orderNumber)->exists());
-
-        return $orderNumber;
     }
 
     /**

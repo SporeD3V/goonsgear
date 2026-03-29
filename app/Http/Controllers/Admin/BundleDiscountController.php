@@ -18,7 +18,10 @@ class BundleDiscountController extends Controller
      */
     public function index(): View
     {
-        $bundleDiscounts = BundleDiscount::query()->withCount('items')->latest('id')->paginate(20);
+        $bundleDiscounts = BundleDiscount::query()
+            ->withCount('items')
+            ->latest('id')
+            ->paginate((int) config('pagination.admin_per_page', 20));
 
         return view('admin.bundle-discounts.index', [
             'bundleDiscounts' => $bundleDiscounts,

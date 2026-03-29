@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -61,5 +62,30 @@ class AccountProfileTest extends TestCase
         $response->assertSee('My Orders');
 
         $this->assertNotNull($visibleOrder);
+    }
+
+    public function test_account_page_shows_active_assigned_discount_codes(): void
+    {
+        $user = User::factory()->create();
+
+        $coupon = Coupon::factory()->create([
+            'code' => 'MEMBER15',
+            'is_active' => true,
+            'is_personal' => true,
+            'is_stackable' => true,
+        ]);
+
+        $user->coupons()->attach($coupon->id, [
+            'usage_limit' => 3,
+            'used_count' => 1,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('account.index'));
+
+        $response->assertOk();
+        $response->assertSee('My Discount Codes');
+        $response->assertSee('MEMBER15');
+        $response->assertSee('2');
     }
 }

@@ -50,8 +50,6 @@ class ProductVariantController extends Controller
      */
     public function edit(Product $product, ProductVariant $variant): View
     {
-        abort_unless($variant->product_id === $product->id, 404);
-
         return view('admin.products.variants.edit', [
             'product' => $product,
             'variant' => $variant,
@@ -63,8 +61,6 @@ class ProductVariantController extends Controller
      */
     public function update(UpdateProductVariantRequest $request, Product $product, ProductVariant $variant): RedirectResponse
     {
-        abort_unless($variant->product_id === $product->id, 404);
-
         $validated = $request->validated();
 
         $validated['track_inventory'] = $request->boolean('track_inventory');
@@ -88,8 +84,6 @@ class ProductVariantController extends Controller
      */
     public function destroy(Product $product, ProductVariant $variant): RedirectResponse
     {
-        abort_unless($variant->product_id === $product->id, 404);
-
         $variant->delete();
 
         return redirect()

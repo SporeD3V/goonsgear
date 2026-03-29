@@ -14,7 +14,9 @@ class RegionalDiscountController extends Controller
 {
     public function index(): View
     {
-        $discounts = RegionalDiscount::query()->orderBy('country_code')->paginate(50);
+        $discounts = RegionalDiscount::query()
+            ->orderBy('country_code')
+            ->paginate((int) config('pagination.admin_regional_discount_per_page', 50));
         $countries = Countries::all();
 
         return view('admin.regional-discounts.index', [

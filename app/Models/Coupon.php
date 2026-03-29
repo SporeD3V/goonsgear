@@ -5,12 +5,22 @@ namespace App\Models;
 use Database\Factories\CouponFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Coupon extends Model
 {
     public const TYPE_FIXED = 'fixed';
 
     public const TYPE_PERCENT = 'percent';
+
+    public const SCOPE_ALL = 'all';
+
+    public const SCOPE_PRODUCT = 'product';
+
+    public const SCOPE_CATEGORY = 'category';
+
+    public const SCOPE_TAG = 'tag';
 
     /** @use HasFactory<CouponFactory> */
     use HasFactory;
@@ -27,6 +37,11 @@ class Coupon extends Model
         'usage_limit',
         'used_count',
         'is_active',
+        'is_stackable',
+        'stack_group',
+        'scope_type',
+        'scope_id',
+        'is_personal',
         'starts_at',
         'ends_at',
     ];
@@ -42,6 +57,9 @@ class Coupon extends Model
             'usage_limit' => 'integer',
             'used_count' => 'integer',
             'is_active' => 'boolean',
+            'is_stackable' => 'boolean',
+            'scope_id' => 'integer',
+            'is_personal' => 'boolean',
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
         ];
@@ -53,6 +71,14 @@ class Coupon extends Model
     public static function supportedTypes(): array
     {
         return [self::TYPE_FIXED, self::TYPE_PERCENT];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function supportedScopes(): array
+    {
+        return [self::SCOPE_ALL, self::SCOPE_PRODUCT, self::SCOPE_CATEGORY, self::SCOPE_TAG];
     }
 
     public function validationError(float $subtotal): ?string
@@ -78,6 +104,18 @@ class Coupon extends Model
         }
 
         return null;
+    }
+
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class)
+            ->withPivot(['usage_limit', 'used_count', 'is_active'])
+            ->withTimestamps();
+    }
+
+    public function orderUsages(): HasMany
+    {
+        return $this->hasMany(OrderCouponUsage::class);
     }
 
     public function discountFor(float $subtotal): float

@@ -11,6 +11,8 @@ class AccountTagFollowController extends Controller
 {
     public function store(UpsertTagFollowRequest $request): RedirectResponse
     {
+        $this->authorize('create', TagFollow::class);
+
         $validated = $request->validated();
 
         TagFollow::query()->updateOrCreate(
@@ -31,7 +33,7 @@ class AccountTagFollowController extends Controller
 
     public function update(UpdateTagFollowPreferencesRequest $request, TagFollow $tagFollow): RedirectResponse
     {
-        abort_unless($tagFollow->user_id === $request->user()->id, 403);
+        $this->authorize('update', $tagFollow);
 
         $tagFollow->update([
             'notify_new_drops' => $request->boolean('notify_new_drops'),
@@ -45,7 +47,7 @@ class AccountTagFollowController extends Controller
 
     public function destroy(TagFollow $tagFollow): RedirectResponse
     {
-        abort_unless($tagFollow->user_id === request()->user()->id, 403);
+        $this->authorize('delete', $tagFollow);
 
         $tagFollow->delete();
 

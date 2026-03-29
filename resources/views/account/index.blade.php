@@ -200,6 +200,54 @@
             </section>
 
             <section class="mt-6 rounded border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 class="text-base font-semibold">My Discount Codes</h2>
+                <p class="mt-1 text-sm text-slate-500">These are the active coupons currently assigned to your account.</p>
+
+                <div class="mt-4 overflow-x-auto">
+                    <table class="min-w-full border border-slate-200 text-sm">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="border border-slate-200 px-3 py-2 text-left">Code</th>
+                                <th class="border border-slate-200 px-3 py-2 text-left">Value</th>
+                                <th class="border border-slate-200 px-3 py-2 text-left">Rules</th>
+                                <th class="border border-slate-200 px-3 py-2 text-left">Usage Left</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($availableCoupons as $coupon)
+                                <tr>
+                                    <td class="border border-slate-200 px-3 py-2 font-medium">{{ $coupon->code }}</td>
+                                    <td class="border border-slate-200 px-3 py-2">
+                                        @if ($coupon->type === \App\Models\Coupon::TYPE_PERCENT)
+                                            {{ rtrim(rtrim(number_format((float) $coupon->value, 2), '0'), '.') }}%
+                                        @else
+                                            €{{ number_format((float) $coupon->value, 2) }}
+                                        @endif
+                                    </td>
+                                    <td class="border border-slate-200 px-3 py-2 text-xs text-slate-700">
+                                        <p>{{ $coupon->is_stackable ? 'Can be combined' : 'Cannot be combined' }}</p>
+                                        <p>Group: {{ $coupon->stack_group ?: '-' }}</p>
+                                        <p>Scope: {{ ucfirst($coupon->scope_type ?: \App\Models\Coupon::SCOPE_ALL) }}</p>
+                                    </td>
+                                    <td class="border border-slate-200 px-3 py-2">
+                                        @if ($coupon->pivot->usage_limit !== null)
+                                            {{ max(0, (int) $coupon->pivot->usage_limit - (int) $coupon->pivot->used_count) }}
+                                        @else
+                                            Unlimited
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="border border-slate-200 px-3 py-5 text-center text-slate-500">No active discount codes are assigned to your account.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="mt-6 rounded border border-slate-200 bg-white p-6 shadow-sm">
                 <h2 class="text-base font-semibold">Favorite Artists & Brands</h2>
                 <p class="mt-1 text-sm text-slate-500">Follow artists and brands you care about and control drop or discount emails per favorite.</p>
 
@@ -279,6 +327,12 @@
                         <p class="rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">You are not following any artists or brands yet.</p>
                     @endforelse
                 </div>
+
+                @if ($tagFollows->hasPages())
+                    <div class="mt-4">
+                        {{ $tagFollows->links() }}
+                    </div>
+                @endif
             </section>
         </main>
     </body>
