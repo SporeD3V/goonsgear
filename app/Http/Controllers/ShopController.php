@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -52,6 +53,52 @@ class ShopController extends Controller
             'product' => $product,
             'seo' => $seo,
         ]);
+    }
+
+    public function search(Request $request): JsonResponse
+    {
+        $search = $request->string('q')->trim()->toString();
+
+        if (strlen($search) < 2) {
+            return response()->json(['results' => []]);
+        }
+
+        $results = Product::query()
+            ->where('status', 'active')
+            ->where(function ($query) use ($search): void {
+                $query->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('excerpt', 'like', '%'.$search.'%');
+            })
+            ->with([
+                'primaryCategory:id,name',
+                'media' => fn ($query) => $query
+                    ->where('is_primary', true)
+                    ->select(['id', 'product_id', 'path', 'alt_text']),
+                'variants' => fn ($query) => $query
+                    ->where('is_active', true)
+                    ->select(['id', 'product_id', 'price'])
+                    ->orderBy('price'),
+            ])
+            ->select(['id', 'primary_category_id', 'name', 'slug', 'excerpt'])
+            ->limit(8)
+            ->get()
+            ->map(function ($product) {
+                $media = $product->media->first();
+                $minPrice = $product->variants->min('price');
+
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'slug' => $product->slug,
+                    'excerpt' => $product->excerpt,
+                    'category' => $product->primaryCategory?->name,
+                    'price' => $minPrice ?? null,
+                    'image' => $media ? route('media.show', ['path' => $media->path]) : null,
+                    'url' => route('shop.show', $product),
+                ];
+            });
+
+        return response()->json(['results' => $results]);
     }
 
     private function renderIndex(Request $request, ?Category $forcedCategory = null): View

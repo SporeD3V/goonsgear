@@ -158,4 +158,83 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		applyVariantFilter();
 	});
+
+	// Live search functionality
+	const searchInput = document.getElementById('search-input');
+	const searchResults = document.getElementById('search-results');
+
+	if (searchInput && searchResults) {
+		const searchEndpoint = searchInput.dataset.searchEndpoint;
+		let searchTimeout;
+
+		const escapeHtml = (text) => {
+			const map = {
+				'&': '&amp;',
+				'<': '&lt;',
+				'>': '&gt;',
+				'"': '&quot;',
+				"'": '&#039;',
+			};
+			return text.replace(/[&<>"']/g, (m) => map[m]);
+		};
+
+		const performSearch = async (query) => {
+			if (query.length < 2) {
+				searchResults.classList.add('hidden');
+				return;
+			}
+
+			try {
+				const response = await fetch(`${searchEndpoint}?q=${encodeURIComponent(query)}`);
+				const data = await response.json();
+
+				if (data.results && data.results.length > 0) {
+					searchResults.innerHTML = data.results
+						.map(
+							(result) => `
+						<a href="${result.url}" class="flex gap-3 border-b border-slate-100 p-2 text-sm hover:bg-slate-50">
+							${result.image ? `<img src="${result.image}" alt="${result.name}" class="h-10 w-10 rounded object-cover">` : '<div class="h-10 w-10 rounded bg-slate-100"></div>'}
+							<div class="flex-1">
+								<div class="font-medium text-slate-900">${escapeHtml(result.name)}</div>
+								<div class="text-xs text-slate-600">${result.category ? escapeHtml(result.category) : 'Uncategorized'}</div>
+								${result.price ? `<div class="text-xs font-medium text-slate-800">$${(result.price).toFixed(2)}</div>` : ''}
+							</div>
+						</a>
+					`
+						)
+						.join('');
+					searchResults.classList.remove('hidden');
+				} else {
+					searchResults.innerHTML = '<div class="p-3 text-center text-xs text-slate-600">No products found</div>';
+					searchResults.classList.remove('hidden');
+				}
+			} catch (error) {
+				console.error('Search error:', error);
+				searchResults.classList.add('hidden');
+			}
+		};
+
+		searchInput.addEventListener('input', (e) => {
+			clearTimeout(searchTimeout);
+			const query = e.target.value.trim();
+
+			searchTimeout = setTimeout(() => {
+				performSearch(query);
+			}, 300);
+		});
+
+		// Hide search results when clicking outside
+		document.addEventListener('click', (e) => {
+			if (!e.target.closest('#search-input') && !e.target.closest('#search-results')) {
+				searchResults.classList.add('hidden');
+			}
+		});
+
+		// Show results when focusing search input if there's a value
+		searchInput.addEventListener('focus', () => {
+			if (searchInput.value.trim().length >= 2 && !searchResults.classList.contains('hidden')) {
+				searchResults.classList.remove('hidden');
+			}
+		});
+	}
 });

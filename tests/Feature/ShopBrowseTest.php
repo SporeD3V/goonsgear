@@ -289,4 +289,153 @@ class ShopBrowseTest extends TestCase
         $descendingResponse->assertOk();
         $descendingResponse->assertSeeInOrder(['Expensive Hoodie', 'Budget Hoodie']);
     }
+
+    public function test_api_shop_search_returns_matching_products(): void
+    {
+        $category = Category::factory()->create(['name' => 'Jackets', 'slug' => 'jackets']);
+
+        $matchingProduct = Product::factory()->create([
+            'primary_category_id' => $category->id,
+            'name' => 'Premium Jacket',
+            'slug' => 'premium-jacket',
+            'status' => 'active',
+            'excerpt' => 'A high-quality jacket.',
+        ]);
+
+        $nonMatchingProduct = Product::factory()->create([
+            'name' => 'Shadow Pants',
+            'slug' => 'shadow-pants',
+            'status' => 'active',
+            'excerpt' => 'Dark pants for style.',
+        ]);
+
+        $draftProduct = Product::factory()->create([
+            'name' => 'Premium Hoodie',
+            'slug' => 'premium-hoodie',
+            'status' => 'draft',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $matchingProduct->id,
+            'is_active' => true,
+            'price' => 79.99,
+        ]);
+
+        ProductMedia::factory()->create([
+            'product_id' => $matchingProduct->id,
+            'is_primary' => true,
+            'path' => 'products/premium-jacket/main.webp',
+        ]);
+
+        $response = $this->getJson(route('api.shop.search', [
+            'q' => 'premium',
+        ]));
+
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'results' => [
+                '*' => ['id', 'name', 'slug', 'excerpt', 'category', 'price', 'image', 'url'],
+            ],
+        ]);
+
+        $results = $response->json('results');
+        $this->assertCount(1, $results);
+        $this->assertEquals('Premium Jacket', $results[0]['name']);
+        $this->assertEquals('Jackets', $results[0]['category']);
+        $this->assertEquals(79.99, $results[0]['price']);
+    }
+
+    public function test_api_shop_search_returns_empty_when_query_too_short(): void
+    {
+        Product::factory()->create([
+            'name' => 'Test Product',
+            'slug' => 'test-product',
+            'status' => 'active',
+        ]);
+
+        $response = $this->getJson(route('api.shop.search', [
+            'q' => 'a',
+        ]));
+
+        $response->assertOk();
+        $response->assertJson(['results' => []]);
+    }
+
+    public function test_api_shop_search_limits_results_to_eight(): void
+    {
+        for ($i = 1; $i <= 10; $i++) {
+            Product::factory()->create([
+                'name' => "Premium Product {$i}",
+                'slug' => "premium-product-{$i}",
+                'status' => 'active',
+            ]);
+        }
+
+        $response = $this->getJson(route('api.shop.search', [
+            'q' => 'premium',
+        ]));
+
+        $response->assertOk();
+        $results = $response->json('results');
+        $this->assertCount(8, $results);
+    }
+
+    public function test_api_shop_search_searches_by_name_and_excerpt(): void
+    {
+        $productByName = Product::factory()->create([
+            'name' => 'Vintage Jacket',
+            'slug' => 'vintage-jacket',
+            'status' => 'active',
+            'excerpt' => 'Regular excerpt.',
+        ]);
+
+        $productByExcerpt = Product::factory()->create([
+            'name' => 'Cool Hoodie',
+            'slug' => 'cool-hoodie',
+            'status' => 'active',
+            'excerpt' => 'Vintage-inspired design.',
+        ]);
+
+        $responseByVintage = $this->getJson(route('api.shop.search', [
+            'q' => 'vintage',
+        ]));
+
+        $responseByVintage->assertOk();
+        $results = $responseByVintage->json('results');
+        $this->assertCount(2, $results);
+
+        $names = array_map(fn ($r) => $r['name'], $results);
+        $this->assertContains('Vintage Jacket', $names);
+        $this->assertContains('Cool Hoodie', $names);
+    }
+
+    public function test_api_shop_search_does_not_return_inactive_products(): void
+    {
+        Product::factory()->create([
+            'name' => 'Premium Active',
+            'slug' => 'premium-active',
+            'status' => 'active',
+        ]);
+
+        Product::factory()->create([
+            'name' => 'Premium Draft',
+            'slug' => 'premium-draft',
+            'status' => 'draft',
+        ]);
+
+        Product::factory()->create([
+            'name' => 'Premium Archived',
+            'slug' => 'premium-archived',
+            'status' => 'archived',
+        ]);
+
+        $response = $this->getJson(route('api.shop.search', [
+            'q' => 'premium',
+        ]));
+
+        $response->assertOk();
+        $results = $response->json('results');
+        $this->assertCount(1, $results);
+        $this->assertEquals('Premium Active', $results[0]['name']);
+    }
 }

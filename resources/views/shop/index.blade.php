@@ -17,15 +17,19 @@
             </header>
 
             <form method="GET" action="{{ route('shop.index') }}" class="mb-5 grid gap-3 rounded border border-slate-200 bg-white p-3 md:grid-cols-5">
-                <div class="md:col-span-2">
+                <div class="relative md:col-span-2">
                     <label class="mb-1 block text-xs font-medium text-slate-700">Search</label>
                     <input
                         type="text"
                         name="q"
+                        id="search-input"
                         value="{{ $filters['q'] }}"
-                        placeholder="Search name, excerpt, or description"
+                        placeholder="Search name or excerpt"
                         class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                        autocomplete="off"
+                        data-search-endpoint="{{ route('api.shop.search') }}"
                     >
+                    <div id="search-results" class="absolute left-0 right-0 top-full z-10 mt-1 hidden max-h-64 overflow-y-auto rounded border border-slate-300 bg-white shadow-lg"></div>
                 </div>
 
                 <div>

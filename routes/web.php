@@ -18,6 +18,8 @@ Route::get('/shop', [ShopController::class, 'index'])->name('shop.index');
 Route::get('/shop/category/{category:slug}', [ShopController::class, 'category'])->name('shop.category');
 Route::get('/shop/{product:slug}', [ShopController::class, 'show'])->name('shop.show');
 
+Route::get('/api/shop/search', [ShopController::class, 'search'])->name('api.shop.search');
+
 Route::get('/media/{path}', [MediaController::class, 'show'])
     ->where('path', '.*')
     ->name('media.show');
