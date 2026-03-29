@@ -15,6 +15,16 @@
                 <h1 class="text-2xl font-semibold">{{ $activeCategory?->name ? $activeCategory->name.' | GoonsGear Shop' : 'GoonsGear Shop' }}</h1>
                 <div class="flex items-center gap-4">
                     <a href="{{ route('cart.index') }}" class="text-sm text-blue-700 hover:underline">Cart</a>
+                    @auth
+                        <a href="{{ route('account.index') }}" class="text-sm text-blue-700 hover:underline">Account</a>
+                        <form method="POST" action="{{ route('logout') }}" class="inline">
+                            @csrf
+                            <button type="submit" class="text-sm text-blue-700 hover:underline">Logout</button>
+                        </form>
+                    @else
+                        <a href="{{ route('login') }}" class="text-sm text-blue-700 hover:underline">Login</a>
+                        <a href="{{ route('register') }}" class="text-sm text-blue-700 hover:underline">Register</a>
+                    @endauth
                     <a href="{{ url('/') }}" class="text-sm text-blue-700 hover:underline">Home</a>
                 </div>
             </header>

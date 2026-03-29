@@ -32,6 +32,15 @@ class CheckoutController extends Controller
     public function index(Request $request, PayPalClient $paypalClient): View|RedirectResponse
     {
         $items = $this->getCartItems($request);
+        $authenticatedUser = $request->user();
+
+        $defaultName = trim((string) ($authenticatedUser?->name ?? ''));
+        $defaultFirstName = $defaultName !== '' ? Str::of($defaultName)->before(' ')->toString() : '';
+        $defaultLastName = $defaultName !== '' ? Str::of($defaultName)->after(' ')->toString() : '';
+
+        if ($defaultLastName === $defaultName) {
+            $defaultLastName = '';
+        }
 
         if ($items === []) {
             return redirect()->route('cart.index')->withErrors(['cart' => 'Your cart is empty.']);
@@ -46,9 +55,9 @@ class CheckoutController extends Controller
             'paypalEnabled' => $paypalClient->isEnabled(),
             'paypalClientId' => $paypalClient->clientId(),
             'formDefaults' => [
-                'email' => (string) old('email', ''),
-                'first_name' => (string) old('first_name', ''),
-                'last_name' => (string) old('last_name', ''),
+                'email' => (string) old('email', (string) ($authenticatedUser?->email ?? '')),
+                'first_name' => (string) old('first_name', $defaultFirstName),
+                'last_name' => (string) old('last_name', $defaultLastName),
                 'phone' => (string) old('phone', ''),
                 'country' => (string) old('country', 'DE'),
                 'state' => (string) old('state', ''),
