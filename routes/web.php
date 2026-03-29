@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductMediaController;
 use App\Http\Controllers\Admin\ProductVariantController;
 use App\Http\Controllers\Admin\RegionalDiscountController;
+use App\Http\Controllers\Admin\UrlRedirectController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\RegionalDiscountController as ApiRegionalDiscountController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -79,6 +80,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::resource('orders', OrderController::class)->only(['index', 'show', 'update']);
     Route::resource('products', ProductController::class)->except('show');
     Route::resource('regional-discounts', RegionalDiscountController::class)->except('show');
+    Route::resource('url-redirects', UrlRedirectController::class)->except('show');
     Route::resource('products.variants', ProductVariantController::class)->except(['index', 'show']);
     Route::post('maintenance/clear-caches', [MaintenanceController::class, 'clearCaches'])
         ->name('maintenance.clear-caches');
