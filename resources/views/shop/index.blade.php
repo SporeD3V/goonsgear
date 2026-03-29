@@ -13,7 +13,10 @@
         <div class="mx-auto max-w-6xl p-6">
             <header class="mb-6 flex items-center justify-between gap-3">
                 <h1 class="text-2xl font-semibold">{{ $activeCategory?->name ? $activeCategory->name.' | GoonsGear Shop' : 'GoonsGear Shop' }}</h1>
-                <a href="{{ url('/') }}" class="text-sm text-blue-700 hover:underline">Home</a>
+                <div class="flex items-center gap-4">
+                    <a href="{{ route('cart.index') }}" class="text-sm text-blue-700 hover:underline">Cart</a>
+                    <a href="{{ url('/') }}" class="text-sm text-blue-700 hover:underline">Home</a>
+                </div>
             </header>
 
             <form method="GET" action="{{ route('shop.index') }}" class="mb-5 grid gap-3 rounded border border-slate-200 bg-white p-3 md:grid-cols-7">

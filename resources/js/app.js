@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const skuElement = picker.querySelector('[data-variant-sku]');
 		const statusElement = picker.querySelector('[data-variant-status]');
 		const qtyElement = picker.querySelector('[data-variant-qty]');
+		const cartVariantInput = picker.querySelector('[data-cart-variant-input]');
 		const galleryFilterId = picker.dataset.galleryFilterId || '';
 
 		if (!variantSelect || !priceElement || !skuElement || !statusElement || !qtyElement) {
@@ -26,6 +27,10 @@ document.addEventListener('DOMContentLoaded', () => {
 			skuElement.textContent = selectedOption.dataset.variantSku || '';
 			statusElement.textContent = selectedOption.dataset.variantStatus || '';
 			qtyElement.textContent = selectedOption.dataset.variantQty || '';
+
+			if (cartVariantInput) {
+				cartVariantInput.value = selectedOption.value;
+			}
 
 			if (galleryFilterId) {
 				const galleryFilter = document.getElementById(galleryFilterId);

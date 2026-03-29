@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductMediaController;
 use App\Http\Controllers\Admin\ProductVariantController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\ShopController;
 use Illuminate\Support\Facades\Route;
@@ -17,6 +18,11 @@ Route::get('/', function () {
 Route::get('/shop', [ShopController::class, 'index'])->name('shop.index');
 Route::get('/shop/category/{category:slug}', [ShopController::class, 'category'])->name('shop.category');
 Route::get('/shop/{product:slug}', [ShopController::class, 'show'])->name('shop.show');
+
+Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
+Route::post('/cart/items', [CartController::class, 'store'])->name('cart.items.store');
+Route::patch('/cart/items/{variant}', [CartController::class, 'update'])->name('cart.items.update');
+Route::delete('/cart/items/{variant}', [CartController::class, 'destroy'])->name('cart.items.destroy');
 
 Route::get('/api/shop/search', [ShopController::class, 'search'])->name('api.shop.search');
 

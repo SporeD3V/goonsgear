@@ -101,6 +101,7 @@ class ShopBrowseTest extends TestCase
         $response->assertSee('property="og:type" content="product"', false);
         $response->assertSee('property="og:title" content="Black Hoodie Product Page"', false);
         $response->assertSee('rel="canonical" href="'.route('shop.show', $product).'"', false);
+        $response->assertSee('action="'.route('cart.items.store').'"', false);
     }
 
     public function test_shop_show_returns_not_found_for_non_active_product(): void

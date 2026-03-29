@@ -47,8 +47,19 @@
         <div class="mx-auto max-w-6xl p-6">
             <header class="mb-6 flex items-center justify-between gap-3">
                 <h1 class="text-2xl font-semibold">{{ $product->name }}</h1>
-                <a href="{{ route('shop.index') }}" class="text-sm text-blue-700 hover:underline">Back to shop</a>
+                <div class="flex items-center gap-4">
+                    <a href="{{ route('cart.index') }}" class="text-sm text-blue-700 hover:underline">Cart</a>
+                    <a href="{{ route('shop.index') }}" class="text-sm text-blue-700 hover:underline">Back to shop</a>
+                </div>
             </header>
+
+            @if (session('status'))
+                <div class="mb-4 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{{ session('status') }}</div>
+            @endif
+
+            @if ($errors->has('cart'))
+                <div class="mb-4 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ $errors->first('cart') }}</div>
+            @endif
 
             <div class="grid gap-6 lg:grid-cols-2">
                 <section data-media-gallery>
@@ -168,6 +179,25 @@
                                     <p><span class="font-medium text-slate-700">Status:</span> <span data-variant-status>{{ $defaultStockStatus }}</span></p>
                                     <p><span class="font-medium text-slate-700">Qty:</span> <span data-variant-qty>{{ $defaultVariant->stock_quantity }}</span></p>
                                 </div>
+
+                                <form method="POST" action="{{ route('cart.items.store') }}" class="mt-4 flex flex-wrap items-end gap-3">
+                                    @csrf
+                                    <input type="hidden" name="variant_id" value="{{ $defaultVariant->id }}" data-cart-variant-input>
+
+                                    <div>
+                                        <label for="cart-quantity" class="mb-1 block text-sm font-medium text-slate-700">Quantity</label>
+                                        <input
+                                            id="cart-quantity"
+                                            type="number"
+                                            name="quantity"
+                                            min="1"
+                                            value="1"
+                                            class="w-24 rounded border border-slate-300 bg-white px-3 py-2 text-sm"
+                                        >
+                                    </div>
+
+                                    <button type="submit" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Add to cart</button>
+                                </form>
                             </div>
 
                             <div class="mt-3 overflow-x-auto">
