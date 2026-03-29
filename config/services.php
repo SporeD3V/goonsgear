@@ -49,4 +49,12 @@ return [
         'tracking_url' => env('DHL_TRACKING_URL', 'https://www.dhl.com/global-en/home/tracking.html?tracking-id=%s&submit=1'),
     ],
 
+    'recaptcha' => [
+        'enabled' => (bool) env('RECAPTCHA_ENABLED', false),
+        'site_key' => env('RECAPTCHA_SITE_KEY'),
+        'secret_key' => env('RECAPTCHA_SECRET_KEY'),
+        'min_score' => (float) env('RECAPTCHA_MIN_SCORE', 0.5),
+        'trigger_after_attempts' => (int) env('RECAPTCHA_TRIGGER_AFTER_ATTEMPTS', 3),
+    ],
+
 ];

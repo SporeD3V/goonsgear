@@ -256,6 +256,72 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 
+	const recaptchaProtectedForms = document.querySelectorAll('form[data-recaptcha-protected="1"]');
+
+	recaptchaProtectedForms.forEach((form) => {
+		if (!form || form.action.endsWith('/checkout')) {
+			return;
+		}
+
+		const siteKey = form.dataset.recaptchaSiteKey || '';
+		const action = form.dataset.recaptchaAction || 'form_submit';
+		const errorId = form.dataset.recaptchaErrorId || '';
+		const tokenInput = form.querySelector('input[name="recaptcha_token"]');
+		const errorContainer = errorId ? document.getElementById(errorId) : null;
+		let submitTokenPending = false;
+
+		const setError = (message) => {
+			if (!errorContainer) {
+				return;
+			}
+
+			errorContainer.textContent = message;
+			errorContainer.classList.remove('hidden');
+		};
+
+		const clearError = () => {
+			if (!errorContainer) {
+				return;
+			}
+
+			errorContainer.textContent = '';
+			errorContainer.classList.add('hidden');
+		};
+
+		form.addEventListener('submit', async (event) => {
+			if (submitTokenPending) {
+				submitTokenPending = false;
+				return;
+			}
+
+			event.preventDefault();
+			clearError();
+
+			if (!window.grecaptcha || !siteKey) {
+				setError('Security verification is currently unavailable. Please try again.');
+				return;
+			}
+
+			try {
+				const token = await window.grecaptcha.execute(siteKey, { action });
+
+				if (!token) {
+					setError('Security verification failed. Please try again.');
+					return;
+				}
+
+				if (tokenInput) {
+					tokenInput.value = token;
+				}
+
+				submitTokenPending = true;
+				form.requestSubmit();
+			} catch {
+				setError('Security verification failed. Please try again.');
+			}
+		});
+	});
+
 	// Checkout country/state/city selectors
 	const countrySelect = document.getElementById('country');
 	const stateWrapper = document.getElementById('state-wrapper');
@@ -500,90 +566,181 @@ document.addEventListener('DOMContentLoaded', () => {
 	const paypalContainer = document.getElementById('paypal-checkout');
 	const checkoutForm = document.querySelector('form[action$="/checkout"]');
 	const paypalErrors = document.getElementById('paypal-errors');
+	const recaptchaErrors = document.getElementById('recaptcha-errors');
 
-	if (paypalContainer && checkoutForm && window.paypal) {
-		const createOrderUrl = paypalContainer.dataset.createOrderUrl;
-		const captureOrderUrl = paypalContainer.dataset.captureOrderUrl;
-		const csrfToken = paypalContainer.dataset.csrfToken;
+	if (checkoutForm) {
+		const recaptchaEnabled = checkoutForm.dataset.recaptchaEnabled === '1';
+		const recaptchaSiteKey = checkoutForm.dataset.recaptchaSiteKey || '';
+		const recaptchaTokenInput = checkoutForm.querySelector('input[name="recaptcha_token"]');
+		let submitTokenPending = false;
 
-		const showPayPalError = (message) => {
-			if (!paypalErrors) {
+		const setRecaptchaError = (message) => {
+			if (!recaptchaErrors) {
 				return;
 			}
 
-			paypalErrors.textContent = message;
-			paypalErrors.classList.remove('hidden');
+			recaptchaErrors.textContent = message;
+			recaptchaErrors.classList.remove('hidden');
 		};
 
-		const clearPayPalError = () => {
-			if (!paypalErrors) {
+		const clearRecaptchaError = () => {
+			if (!recaptchaErrors) {
 				return;
 			}
 
-			paypalErrors.classList.add('hidden');
-			paypalErrors.textContent = '';
+			recaptchaErrors.classList.add('hidden');
+			recaptchaErrors.textContent = '';
 		};
 
-		const collectCheckoutPayload = () => {
-			const formData = new FormData(checkoutForm);
-			const payload = {};
+		const resolveRecaptchaToken = async () => {
+			if (!recaptchaEnabled) {
+				return '';
+			}
 
-			formData.forEach((value, key) => {
-				payload[key] = value;
-			});
+			if (!window.grecaptcha || !recaptchaSiteKey) {
+				throw new Error('Security verification is currently unavailable.');
+			}
 
-			return payload;
+			const token = await window.grecaptcha.execute(recaptchaSiteKey, { action: 'checkout' });
+
+			if (!token) {
+				throw new Error('Security verification failed. Please try again.');
+			}
+
+			if (recaptchaTokenInput) {
+				recaptchaTokenInput.value = token;
+			}
+
+			return token;
 		};
 
-		window.paypal.Buttons({
-			createOrder: async () => {
-				clearPayPalError();
-				const response = await fetch(createOrderUrl, {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						'Accept': 'application/json',
-						'X-CSRF-TOKEN': csrfToken,
-					},
-					body: JSON.stringify(collectCheckoutPayload()),
-				});
+		checkoutForm.addEventListener('submit', async (event) => {
+			if (!recaptchaEnabled) {
+				return;
+			}
 
-				const payload = await response.json();
+			if (submitTokenPending) {
+				submitTokenPending = false;
+				return;
+			}
 
-				if (!response.ok || !payload.id) {
-					const message = payload.message || 'Unable to initialize PayPal checkout.';
-					showPayPalError(message);
-					throw new Error(message);
-				}
+			event.preventDefault();
+			clearRecaptchaError();
 
-				return payload.id;
-			},
-			onApprove: async (data) => {
-				clearPayPalError();
-				const response = await fetch(captureOrderUrl, {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						'Accept': 'application/json',
-						'X-CSRF-TOKEN': csrfToken,
-					},
-					body: JSON.stringify({ paypal_order_id: data.orderID }),
-				});
+			try {
+				await resolveRecaptchaToken();
+				submitTokenPending = true;
+				checkoutForm.requestSubmit();
+			} catch (error) {
+				setRecaptchaError(error.message || 'Security verification failed. Please try again.');
+			}
+		});
 
-				const payload = await response.json();
+		if (paypalContainer && window.paypal) {
+			const createOrderUrl = paypalContainer.dataset.createOrderUrl;
+			const captureOrderUrl = paypalContainer.dataset.captureOrderUrl;
+			const csrfToken = paypalContainer.dataset.csrfToken;
 
-				if (!response.ok || !payload.redirect_url) {
-					const message = payload.message || 'Unable to capture PayPal payment.';
-					showPayPalError(message);
+			const showPayPalError = (message) => {
+				if (!paypalErrors) {
 					return;
 				}
 
-				window.location.href = payload.redirect_url;
-			},
-			onError: () => {
-				showPayPalError('A PayPal error occurred. Please try again.');
-			},
-		}).render('#paypal-checkout');
+				paypalErrors.textContent = message;
+				paypalErrors.classList.remove('hidden');
+			};
+
+			const clearPayPalError = () => {
+				if (!paypalErrors) {
+					return;
+				}
+
+				paypalErrors.classList.add('hidden');
+				paypalErrors.textContent = '';
+			};
+
+			const collectCheckoutPayload = () => {
+				const formData = new FormData(checkoutForm);
+				const payload = {};
+
+				formData.forEach((value, key) => {
+					payload[key] = value;
+				});
+
+				return payload;
+			};
+
+			window.paypal.Buttons({
+				createOrder: async () => {
+					clearPayPalError();
+					clearRecaptchaError();
+
+					let recaptchaToken = '';
+
+					if (recaptchaEnabled) {
+						try {
+							recaptchaToken = await resolveRecaptchaToken();
+						} catch (error) {
+							const message = error.message || 'Security verification failed. Please try again.';
+							showPayPalError(message);
+							setRecaptchaError(message);
+							throw new Error(message);
+						}
+					}
+
+					const checkoutPayload = collectCheckoutPayload();
+
+					if (recaptchaEnabled) {
+						checkoutPayload.recaptcha_token = recaptchaToken;
+					}
+
+					const response = await fetch(createOrderUrl, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							'Accept': 'application/json',
+							'X-CSRF-TOKEN': csrfToken,
+						},
+						body: JSON.stringify(checkoutPayload),
+					});
+
+					const payload = await response.json();
+
+					if (!response.ok || !payload.id) {
+						const message = payload.message || 'Unable to initialize PayPal checkout.';
+						showPayPalError(message);
+						throw new Error(message);
+					}
+
+					return payload.id;
+				},
+				onApprove: async (data) => {
+					clearPayPalError();
+					const response = await fetch(captureOrderUrl, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							'Accept': 'application/json',
+							'X-CSRF-TOKEN': csrfToken,
+						},
+						body: JSON.stringify({ paypal_order_id: data.orderID }),
+					});
+
+					const payload = await response.json();
+
+					if (!response.ok || !payload.redirect_url) {
+						const message = payload.message || 'Unable to capture PayPal payment.';
+						showPayPalError(message);
+						return;
+					}
+
+					window.location.href = payload.redirect_url;
+				},
+				onError: () => {
+					showPayPalError('A PayPal error occurred. Please try again.');
+				},
+			}).render('#paypal-checkout');
+		}
 	}
 });
 

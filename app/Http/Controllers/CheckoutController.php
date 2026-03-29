@@ -10,6 +10,7 @@ use App\Models\ProductVariant;
 use App\Support\CartPricing;
 use App\Support\Countries;
 use App\Support\PayPalClient;
+use App\Support\RecaptchaVerifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -37,7 +38,7 @@ class CheckoutController extends Controller
      */
     private static array $orderColumnAvailability = [];
 
-    public function index(Request $request, PayPalClient $paypalClient, CartPricing $cartPricing): View|RedirectResponse
+    public function index(Request $request, PayPalClient $paypalClient, CartPricing $cartPricing, RecaptchaVerifier $recaptchaVerifier): View|RedirectResponse
     {
         // The transaction above deliberately returns inside the closure.
         // Mark any matching abandonment as recovered outside the transaction.
@@ -77,6 +78,8 @@ class CheckoutController extends Controller
             'countries' => Countries::all(),
             'paypalEnabled' => $paypalClient->isEnabled(),
             'paypalClientId' => $paypalClient->clientId(),
+            'recaptchaEnabled' => $recaptchaVerifier->shouldChallenge('checkout', $request),
+            'recaptchaSiteKey' => $recaptchaVerifier->siteKey(),
             'formDefaults' => [
                 'email' => (string) old('email', (string) ($authenticatedUser?->email ?? '')),
                 'first_name' => (string) old('first_name', $defaultFirstName),
@@ -96,7 +99,7 @@ class CheckoutController extends Controller
         ]);
     }
 
-    public function store(Request $request, CartPricing $cartPricing): RedirectResponse
+    public function store(Request $request, CartPricing $cartPricing, RecaptchaVerifier $recaptchaVerifier): RedirectResponse
     {
         $items = $this->getCartItems($request);
 
@@ -104,7 +107,15 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->withErrors(['cart' => 'Your cart is empty.']);
         }
 
-        $payload = $this->validateCheckoutPayload($request);
+        $email = strtolower($request->string('email')->trim()->toString());
+
+        try {
+            $payload = $this->validateCheckoutPayload($request, $recaptchaVerifier);
+        } catch (ValidationException $exception) {
+            $recaptchaVerifier->registerSignal('checkout', $request, $email);
+
+            throw $exception;
+        }
 
         try {
             $checkoutContext = $this->buildCheckoutContext($items);
@@ -133,13 +144,14 @@ class CheckoutController extends Controller
 
         $request->session()->forget(self::CART_SESSION_KEY);
         $request->session()->forget(self::COUPON_SESSION_KEY);
+        $recaptchaVerifier->clearSignals('checkout', $request, $email);
 
         Mail::to($order->email)->send(new OrderConfirmation($order->load('items')));
 
         return redirect()->route('checkout.success', $order)->with('status', 'Order placed successfully.');
     }
 
-    public function createPayPalOrder(Request $request, PayPalClient $paypalClient, CartPricing $cartPricing): JsonResponse
+    public function createPayPalOrder(Request $request, PayPalClient $paypalClient, CartPricing $cartPricing, RecaptchaVerifier $recaptchaVerifier): JsonResponse
     {
         if (! $paypalClient->isEnabled()) {
             return response()->json([
@@ -155,7 +167,15 @@ class CheckoutController extends Controller
             ], 422);
         }
 
-        $payload = $this->validateCheckoutPayload($request);
+        $email = strtolower($request->string('email')->trim()->toString());
+
+        try {
+            $payload = $this->validateCheckoutPayload($request, $recaptchaVerifier);
+        } catch (ValidationException $exception) {
+            $recaptchaVerifier->registerSignal('checkout', $request, $email);
+
+            throw $exception;
+        }
         $checkoutContext = $this->buildCheckoutContext($items);
         $pricing = $this->resolvePricing($request, $items, $cartPricing, (string) $payload['country']);
         $amount = number_format((float) $pricing['total'], 2, '.', '');
@@ -192,7 +212,7 @@ class CheckoutController extends Controller
         ]);
     }
 
-    public function capturePayPalOrder(Request $request, PayPalClient $paypalClient): JsonResponse
+    public function capturePayPalOrder(Request $request, PayPalClient $paypalClient, RecaptchaVerifier $recaptchaVerifier): JsonResponse
     {
         if (! $paypalClient->isEnabled()) {
             return response()->json([
@@ -250,6 +270,9 @@ class CheckoutController extends Controller
         $request->session()->forget(self::CART_SESSION_KEY);
         $request->session()->forget(self::COUPON_SESSION_KEY);
 
+        $email = strtolower((string) data_get($pendingOrder, 'payload.email', ''));
+        $recaptchaVerifier->clearSignals('checkout', $request, $email);
+
         Mail::to($order->email)->send(new OrderConfirmation($order->load('items')));
 
         return response()->json([
@@ -275,9 +298,12 @@ class CheckoutController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function validateCheckoutPayload(Request $request): array
+    private function validateCheckoutPayload(Request $request, RecaptchaVerifier $recaptchaVerifier): array
     {
-        return $request->validate([
+        $email = strtolower($request->string('email')->trim()->toString());
+        $requiresChallenge = $recaptchaVerifier->shouldChallenge('checkout', $request, $email);
+
+        $rules = [
             'email' => ['required', 'email'],
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
@@ -292,7 +318,30 @@ class CheckoutController extends Controller
             'entrance' => ['nullable', 'string', 'max:50'],
             'floor' => ['nullable', 'string', 'max:20'],
             'apartment_number' => ['nullable', 'string', 'max:20'],
-        ]);
+            'recaptcha_token' => ['nullable', 'string', 'max:4096'],
+        ];
+
+        if ($requiresChallenge) {
+            $rules['recaptcha_token'][0] = 'required';
+        }
+
+        $payload = $request->validate($rules);
+
+        if ($requiresChallenge) {
+            $recaptchaToken = (string) ($payload['recaptcha_token'] ?? '');
+
+            if (! $recaptchaVerifier->verifyCheckoutToken($recaptchaToken, $request->ip())) {
+                $recaptchaVerifier->registerSignal('checkout', $request, $email);
+
+                throw ValidationException::withMessages([
+                    'recaptcha_token' => 'Security verification failed. Please try again.',
+                ]);
+            }
+        }
+
+        unset($payload['recaptcha_token']);
+
+        return $payload;
     }
 
     /**

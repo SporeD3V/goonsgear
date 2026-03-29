@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\IntegrationSetting;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -15,7 +16,7 @@ class PayPalClient
 
     public function clientId(): ?string
     {
-        $clientId = trim((string) config('services.paypal.client_id'));
+        $clientId = trim((string) IntegrationSetting::value('paypal_client_id', (string) config('services.paypal.client_id')));
 
         return $clientId !== '' ? $clientId : null;
     }
@@ -52,14 +53,14 @@ class PayPalClient
 
     private function clientSecret(): ?string
     {
-        $clientSecret = trim((string) config('services.paypal.client_secret'));
+        $clientSecret = trim((string) IntegrationSetting::value('paypal_client_secret', (string) config('services.paypal.client_secret')));
 
         return $clientSecret !== '' ? $clientSecret : null;
     }
 
     private function baseUrl(): string
     {
-        return rtrim((string) config('services.paypal.base_url'), '/');
+        return rtrim((string) IntegrationSetting::value('paypal_base_url', (string) config('services.paypal.base_url')), '/');
     }
 
     private function accessToken(): string

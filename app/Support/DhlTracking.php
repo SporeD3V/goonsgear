@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Models\IntegrationSetting;
+
 class DhlTracking
 {
     public function trackingUrl(?string $trackingNumber): ?string
@@ -15,7 +17,7 @@ class DhlTracking
         return str_replace(
             '%s',
             rawurlencode($normalizedTrackingNumber),
-            (string) config('services.dhl.tracking_url', 'https://www.dhl.com/global-en/home/tracking.html?tracking-id=%s&submit=1'),
+            (string) IntegrationSetting::value('dhl_tracking_url', (string) config('services.dhl.tracking_url', 'https://www.dhl.com/global-en/home/tracking.html?tracking-id=%s&submit=1')),
         );
     }
 }

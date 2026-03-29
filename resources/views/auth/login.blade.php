@@ -18,8 +18,15 @@
                     <div class="mt-4 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{{ session('status') }}</div>
                 @endif
 
-                <form method="POST" action="{{ route('login.store') }}" class="mt-5 grid gap-4">
+                                <form method="POST"
+                                        action="{{ route('login.store') }}"
+                                        class="mt-5 grid gap-4"
+                                        data-recaptcha-protected="{{ $recaptchaChallenge && $recaptchaSiteKey ? '1' : '0' }}"
+                                        data-recaptcha-site-key="{{ $recaptchaSiteKey ?? '' }}"
+                                        data-recaptcha-action="login"
+                                        data-recaptcha-error-id="login-recaptcha-errors">
                     @csrf
+                                        <input id="recaptcha_token" name="recaptcha_token" type="hidden" value="{{ old('recaptcha_token') }}">
 
                     <div>
                         <label for="email" class="mb-1 block text-sm font-medium text-slate-700">Email</label>
@@ -39,6 +46,8 @@
                     </label>
 
                     <button type="submit" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Log in</button>
+                    @error('recaptcha_token')<p class="text-xs text-rose-600">{{ $message }}</p>@enderror
+                    <div id="login-recaptcha-errors" class="hidden rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700"></div>
                 </form>
 
                 <p class="mt-3 text-sm text-slate-600">
@@ -55,5 +64,9 @@
                 </p>
             </div>
         </main>
+
+        @if ($recaptchaChallenge && $recaptchaSiteKey)
+            <script src="https://www.google.com/recaptcha/api.js?render={{ $recaptchaSiteKey }}"></script>
+        @endif
     </body>
 </html>

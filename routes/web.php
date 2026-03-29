@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\BundleDiscountController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\FallbackMediaController;
+use App\Http\Controllers\Admin\IntegrationSettingsController;
 use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
@@ -99,6 +100,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin', 'admin.noin
         ->name('maintenance.abandoned-cart.update');
     Route::get('maintenance/fallback-media', [FallbackMediaController::class, 'index'])
         ->name('maintenance.fallback-media.index');
+    Route::get('maintenance/integrations', [IntegrationSettingsController::class, 'edit'])
+        ->name('maintenance.integrations.edit');
+    Route::post('maintenance/integrations', [IntegrationSettingsController::class, 'update'])
+        ->name('maintenance.integrations.update');
     Route::post('maintenance/fallback-media/reconvert', [FallbackMediaController::class, 'reconvertAndUse'])
         ->name('maintenance.fallback-media.reconvert');
     Route::post('maintenance/fallback-media/delete', [FallbackMediaController::class, 'destroy'])

@@ -24,8 +24,13 @@
                 <section class="rounded border border-slate-200 bg-white p-5">
                     <h2 class="text-base font-semibold">Shipping details</h2>
 
-                    <form method="POST" action="{{ route('checkout.store') }}" class="mt-4 grid gap-3">
+                                        <form method="POST"
+                                                action="{{ route('checkout.store') }}"
+                                                class="mt-4 grid gap-3"
+                                                data-recaptcha-enabled="{{ $recaptchaEnabled && $recaptchaSiteKey ? '1' : '0' }}"
+                                                data-recaptcha-site-key="{{ $recaptchaSiteKey ?? '' }}">
                         @csrf
+                                                <input id="recaptcha_token" name="recaptcha_token" type="hidden" value="{{ old('recaptcha_token') }}">
 
                         <div>
                             <label for="email" class="mb-1 block text-sm font-medium text-slate-700">Email</label>
@@ -131,6 +136,8 @@
                         </div>
 
                         <button type="submit" class="mt-2 rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Place order</button>
+                        @error('recaptcha_token')<p class="text-xs text-rose-600">{{ $message }}</p>@enderror
+                        <div id="recaptcha-errors" class="hidden rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700"></div>
 
                         @if ($paypalEnabled && $paypalClientId)
                             <div id="paypal-checkout"
@@ -204,6 +211,10 @@
 
         @if ($paypalEnabled && $paypalClientId)
             <script src="https://www.paypal.com/sdk/js?client-id={{ $paypalClientId }}&currency=EUR&intent=capture"></script>
+        @endif
+
+        @if ($recaptchaEnabled && $recaptchaSiteKey)
+            <script src="https://www.google.com/recaptcha/api.js?render={{ $recaptchaSiteKey }}"></script>
         @endif
 
         <script>
