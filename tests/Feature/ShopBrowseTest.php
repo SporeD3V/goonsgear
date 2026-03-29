@@ -386,6 +386,14 @@ class ShopBrowseTest extends TestCase
             'product_id' => $matchingProduct->id,
             'is_primary' => true,
             'path' => 'products/premium-jacket/main.webp',
+            'position' => 0,
+        ]);
+
+        ProductMedia::factory()->create([
+            'product_id' => $matchingProduct->id,
+            'is_primary' => false,
+            'path' => 'products/premium-jacket/second.webp',
+            'position' => 1,
         ]);
 
         $response = $this->getJson(route('api.shop.search', [
@@ -395,7 +403,7 @@ class ShopBrowseTest extends TestCase
         $response->assertOk();
         $response->assertJsonStructure([
             'results' => [
-                '*' => ['id', 'name', 'slug', 'excerpt', 'category', 'price', 'image', 'url'],
+                '*' => ['id', 'name', 'slug', 'excerpt', 'category', 'price', 'image', 'secondary_image', 'url'],
             ],
         ]);
 
@@ -404,6 +412,7 @@ class ShopBrowseTest extends TestCase
         $this->assertEquals('Premium Jacket', $results[0]['name']);
         $this->assertEquals('Jackets', $results[0]['category']);
         $this->assertEquals(79.99, $results[0]['price']);
+        $this->assertNotNull($results[0]['secondary_image']);
     }
 
     public function test_api_shop_search_returns_empty_when_query_too_short(): void

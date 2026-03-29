@@ -72,8 +72,10 @@ class ShopController extends Controller
             ->with([
                 'primaryCategory:id,name',
                 'media' => fn ($query) => $query
-                    ->where('is_primary', true)
-                    ->select(['id', 'product_id', 'path', 'alt_text']),
+                    ->select(['id', 'product_id', 'path', 'alt_text', 'is_primary', 'position'])
+                    ->orderByDesc('is_primary')
+                    ->orderBy('position')
+                    ->orderBy('id'),
                 'variants' => fn ($query) => $query
                     ->where('is_active', true)
                     ->select(['id', 'product_id', 'price'])
@@ -83,7 +85,8 @@ class ShopController extends Controller
             ->limit(8)
             ->get()
             ->map(function ($product) {
-                $media = $product->media->first();
+                $primaryMedia = $product->media->first();
+                $secondaryMedia = $product->media->skip(1)->first();
                 $minPrice = $product->variants->min('price');
 
                 return [
@@ -93,7 +96,8 @@ class ShopController extends Controller
                     'excerpt' => $product->excerpt,
                     'category' => $product->primaryCategory?->name,
                     'price' => $minPrice !== null ? (float) $minPrice : null,
-                    'image' => $media ? route('media.show', ['path' => $media->path]) : null,
+                    'image' => $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null,
+                    'secondary_image' => $secondaryMedia ? route('media.show', ['path' => $secondaryMedia->path]) : null,
                     'url' => route('shop.show', $product),
                 ];
             });

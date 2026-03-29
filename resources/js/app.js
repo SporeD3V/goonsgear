@@ -204,8 +204,13 @@ document.addEventListener('DOMContentLoaded', () => {
 									: '';
 
 								return `
-						<a href="${result.url}" class="flex gap-3 border-b border-slate-100 p-2 text-sm hover:bg-slate-50">
-							${result.image ? `<img src="${result.image}" alt="${result.name}" class="h-10 w-10 rounded object-cover">` : '<div class="h-10 w-10 rounded bg-slate-100"></div>'}
+							<a href="${result.url}" class="group flex gap-3 border-b border-slate-100 p-2 text-sm hover:bg-slate-50">
+								${result.image ? `
+									<div class="relative h-10 w-10 overflow-hidden rounded">
+										<img src="${result.image}" alt="${escapeHtml(result.name)}" class="h-10 w-10 object-cover transition-opacity duration-200 ${result.secondary_image ? 'group-hover:opacity-0' : ''}">
+										${result.secondary_image ? `<img src="${result.secondary_image}" alt="${escapeHtml(result.name)}" class="pointer-events-none absolute inset-0 h-10 w-10 object-cover opacity-0 transition-opacity duration-200 group-hover:opacity-100">` : ''}
+									</div>
+								` : '<div class="h-10 w-10 rounded bg-slate-100"></div>'}
 							<div class="flex-1">
 								<div class="font-medium text-slate-900">${escapeHtml(result.name)}</div>
 								<div class="text-xs text-slate-600">${result.category ? escapeHtml(result.category) : 'Uncategorized'}</div>

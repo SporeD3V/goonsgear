@@ -116,14 +116,21 @@
                     @foreach ($products as $product)
                         @php
                             $primaryMedia = $product->media->first();
+                            $secondaryMedia = $product->media->skip(1)->first();
                             $mediaUrl = $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null;
+                            $secondaryMediaUrl = $secondaryMedia ? route('media.show', ['path' => $secondaryMedia->path]) : null;
                             $startingPrice = $product->min_active_variant_price;
                         @endphp
 
                         <article class="rounded border border-slate-200 bg-white p-4 shadow-sm">
-                            <a href="{{ route('shop.show', $product) }}" class="block">
+                            <a href="{{ route('shop.show', $product) }}" class="group block">
                                 @if ($mediaUrl)
-                                    <img src="{{ $mediaUrl }}" alt="{{ $primaryMedia?->alt_text ?: $product->name }}" class="mb-3 h-52 w-full rounded object-cover">
+                                    <div class="relative mb-3 h-52 w-full overflow-hidden rounded">
+                                        <img src="{{ $mediaUrl }}" alt="{{ $primaryMedia?->alt_text ?: $product->name }}" class="h-52 w-full object-cover transition-opacity duration-200 {{ $secondaryMediaUrl ? 'group-hover:opacity-0' : '' }}">
+                                        @if ($secondaryMediaUrl)
+                                            <img src="{{ $secondaryMediaUrl }}" alt="{{ $secondaryMedia?->alt_text ?: $product->name }}" class="pointer-events-none absolute inset-0 h-52 w-full object-cover opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                                        @endif
+                                    </div>
                                 @else
                                     <div class="mb-3 flex h-52 items-center justify-center rounded bg-slate-100 text-sm text-slate-500">No image</div>
                                 @endif
