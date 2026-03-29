@@ -195,6 +195,84 @@ class ShopBrowseTest extends TestCase
         $response->assertSee('Shop featured drops from GoonsGear.', false);
     }
 
+    public function test_category_page_hides_out_of_stock_products_by_default(): void
+    {
+        $category = Category::factory()->create([
+            'name' => 'Hoodies',
+            'slug' => 'hoodies',
+            'is_active' => true,
+        ]);
+
+        $inStockProduct = Product::factory()->create([
+            'name' => 'In Stock Hoodie',
+            'slug' => 'in-stock-hoodie',
+            'status' => 'active',
+            'primary_category_id' => $category->id,
+        ]);
+
+        $outOfStockProduct = Product::factory()->create([
+            'name' => 'Out Of Stock Hoodie',
+            'slug' => 'out-of-stock-hoodie',
+            'status' => 'active',
+            'primary_category_id' => $category->id,
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $inStockProduct->id,
+            'is_active' => true,
+            'track_inventory' => true,
+            'allow_backorder' => false,
+            'is_preorder' => false,
+            'stock_quantity' => 8,
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $outOfStockProduct->id,
+            'is_active' => true,
+            'track_inventory' => true,
+            'allow_backorder' => false,
+            'is_preorder' => false,
+            'stock_quantity' => 0,
+        ]);
+
+        $response = $this->get(route('shop.category', $category));
+
+        $response->assertOk();
+        $response->assertSee('In Stock Hoodie');
+        $response->assertDontSee('Out Of Stock Hoodie');
+        $response->assertSee('Show out-of-stock items in this category');
+    }
+
+    public function test_category_page_can_show_out_of_stock_products_when_toggled(): void
+    {
+        $category = Category::factory()->create([
+            'name' => 'Tees',
+            'slug' => 'tees',
+            'is_active' => true,
+        ]);
+
+        $outOfStockProduct = Product::factory()->create([
+            'name' => 'Out Of Stock Tee',
+            'slug' => 'out-of-stock-tee',
+            'status' => 'active',
+            'primary_category_id' => $category->id,
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $outOfStockProduct->id,
+            'is_active' => true,
+            'track_inventory' => true,
+            'allow_backorder' => false,
+            'is_preorder' => false,
+            'stock_quantity' => 0,
+        ]);
+
+        $response = $this->get(route('shop.category', $category).'?include_out_of_stock=1');
+
+        $response->assertOk();
+        $response->assertSee('Out Of Stock Tee');
+    }
+
     public function test_shop_category_route_returns_not_found_for_inactive_category(): void
     {
         $inactiveCategory = Category::factory()->create([

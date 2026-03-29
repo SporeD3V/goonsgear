@@ -73,4 +73,14 @@ class Product extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
+
+    public function stockAlertSubscriptions()
+    {
+        return $this->hasManyThrough(
+            StockAlertSubscription::class,
+            ProductVariant::class,
+            'product_id',
+            'product_variant_id'
+        );
+    }
 }

@@ -58,4 +58,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(UserCartItem::class);
     }
+
+    public function stockAlertSubscriptions(): HasMany
+    {
+        return $this->hasMany(StockAlertSubscription::class);
+    }
 }

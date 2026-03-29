@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Mail\BackInStockAlert;
 use App\Mail\CartItemDiscounted;
 use App\Mail\CartItemLowStock;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\StockAlertSubscription;
 use App\Models\User;
 use App\Models\UserCartItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -189,5 +191,49 @@ class CartNotificationTest extends TestCase
         Mail::assertQueued(CartItemDiscounted::class, function (CartItemDiscounted $mail) use ($userWithItem) {
             return $mail->user->id === $userWithItem->id;
         });
+    }
+
+    public function test_back_in_stock_email_sent_when_stock_returns(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create();
+        $variant = $this->variantWithStock(0);
+
+        $subscription = StockAlertSubscription::factory()->create([
+            'user_id' => $user->id,
+            'product_variant_id' => $variant->id,
+            'is_active' => true,
+            'notified_at' => null,
+        ]);
+
+        $variant->update(['stock_quantity' => 12]);
+
+        Mail::assertQueued(BackInStockAlert::class, function (BackInStockAlert $mail) use ($user, $variant) {
+            return $mail->user->id === $user->id && $mail->variant->id === $variant->id;
+        });
+
+        $subscription->refresh();
+        $this->assertFalse($subscription->is_active);
+        $this->assertNotNull($subscription->notified_at);
+    }
+
+    public function test_back_in_stock_email_not_sent_when_stock_does_not_return(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create();
+        $variant = $this->variantWithStock(0);
+
+        StockAlertSubscription::factory()->create([
+            'user_id' => $user->id,
+            'product_variant_id' => $variant->id,
+            'is_active' => true,
+            'notified_at' => null,
+        ]);
+
+        $variant->update(['stock_quantity' => 0]);
+
+        Mail::assertNotQueued(BackInStockAlert::class);
     }
 }

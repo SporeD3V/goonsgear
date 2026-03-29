@@ -2,9 +2,11 @@
 
 namespace App\Observers;
 
+use App\Mail\BackInStockAlert;
 use App\Mail\CartItemDiscounted;
 use App\Mail\CartItemLowStock;
 use App\Models\ProductVariant;
+use App\Models\StockAlertSubscription;
 use App\Models\UserCartItem;
 use Illuminate\Support\Facades\Mail;
 
@@ -16,6 +18,7 @@ class ProductVariantObserver
     {
         $this->checkPriceDiscount($variant);
         $this->checkLowStock($variant);
+        $this->checkBackInStock($variant);
     }
 
     private function checkPriceDiscount(ProductVariant $variant): void
@@ -68,5 +71,38 @@ class ProductVariantObserver
                     Mail::to($user)->queue(new CartItemLowStock($user, $variant));
                 }
             });
+    }
+
+    private function checkBackInStock(ProductVariant $variant): void
+    {
+        if (! $variant->wasChanged('stock_quantity') || ! $variant->track_inventory) {
+            return;
+        }
+
+        $oldStock = (int) $variant->getOriginal('stock_quantity');
+        $newStock = (int) $variant->stock_quantity;
+
+        if ($oldStock > 0 || $newStock <= 0) {
+            return;
+        }
+
+        $subscriptions = StockAlertSubscription::query()
+            ->where('product_variant_id', $variant->id)
+            ->where('is_active', true)
+            ->with('user')
+            ->get();
+
+        $subscriptions->each(function (StockAlertSubscription $subscription) use ($variant): void {
+            if ($subscription->user !== null) {
+                Mail::to($subscription->user)->queue(new BackInStockAlert($subscription->user, $variant));
+            }
+        });
+
+        StockAlertSubscription::query()
+            ->whereIn('id', $subscriptions->pluck('id'))
+            ->update([
+                'is_active' => false,
+                'notified_at' => now(),
+            ]);
     }
 }

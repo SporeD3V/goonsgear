@@ -42,6 +42,11 @@ class ProductController extends Controller
         $products = Product::query()
             ->with(['primaryCategory:id,name'])
             ->withCount(['variants', 'media'])
+            ->withCount([
+                'stockAlertSubscriptions as active_stock_alert_subscriptions_count' => function ($query) {
+                    $query->where('is_active', true);
+                },
+            ])
             ->latest('id')
             ->paginate(20);
 
@@ -471,5 +476,22 @@ class ProductController extends Controller
         return redirect()
             ->route('admin.products.index')
             ->with('status', 'Product deleted successfully.');
+    }
+
+    /**
+     * Show customers with active stock alerts for the product.
+     */
+    public function stockAlerts(Product $product): View
+    {
+        $subscriptions = $product->stockAlertSubscriptions()
+            ->where('is_active', true)
+            ->with(['user:id,name,email', 'variant:id,name,sku'])
+            ->latest('created_at')
+            ->paginate(20);
+
+        return view('admin.products.stock-alerts', [
+            'product' => $product,
+            'subscriptions' => $subscriptions,
+        ]);
     }
 }

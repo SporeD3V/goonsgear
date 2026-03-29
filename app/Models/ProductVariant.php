@@ -70,4 +70,9 @@ class ProductVariant extends Model
     {
         return $this->hasMany(BundleDiscountItem::class, 'product_variant_id');
     }
+
+    public function stockAlertSubscriptions(): HasMany
+    {
+        return $this->hasMany(StockAlertSubscription::class, 'product_variant_id');
+    }
 }

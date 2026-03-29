@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\StockAlertSubscription;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,6 +42,29 @@ class ShopController extends Controller
         ]);
 
         $primaryMedia = $product->media->first();
+        $currentUser = request()->user();
+
+        $variantsWithStockState = $product->variants->map(function ($variant) {
+            $isOutOfStock = $variant->track_inventory
+                && (int) $variant->stock_quantity <= 0
+                && ! $variant->allow_backorder
+                && ! $variant->is_preorder;
+
+            $variant->setAttribute('is_out_of_stock', $isOutOfStock);
+
+            return $variant;
+        });
+
+        $activeStockAlertVariantIds = [];
+
+        if ($currentUser !== null && $variantsWithStockState->isNotEmpty()) {
+            $activeStockAlertVariantIds = StockAlertSubscription::query()
+                ->where('user_id', $currentUser->id)
+                ->where('is_active', true)
+                ->whereIn('product_variant_id', $variantsWithStockState->pluck('id'))
+                ->pluck('product_variant_id')
+                ->all();
+        }
 
         $seo = [
             'title' => $product->meta_title ?: $product->name.' | GoonsGear',
@@ -51,6 +75,8 @@ class ShopController extends Controller
 
         return view('shop.show', [
             'product' => $product,
+            'variantsWithStockState' => $variantsWithStockState,
+            'activeStockAlertVariantIds' => $activeStockAlertVariantIds,
             'seo' => $seo,
         ]);
     }
@@ -112,6 +138,7 @@ class ShopController extends Controller
         $categorySlug = $forcedCategory?->slug ?? $requestedCategorySlug;
         $minPrice = is_numeric($request->input('min_price')) ? max(0, (float) $request->input('min_price')) : null;
         $maxPrice = is_numeric($request->input('max_price')) ? max(0, (float) $request->input('max_price')) : null;
+        $showOutOfStock = $request->boolean('include_out_of_stock');
         $sort = $request->string('sort')->trim()->toString();
         $sort = in_array($sort, ['newest', 'name_asc', 'name_desc', 'price_asc', 'price_desc'], true) ? $sort : 'newest';
 
@@ -125,6 +152,8 @@ class ShopController extends Controller
         if ($activeCategory === null && $categorySlug !== '') {
             $activeCategory = $shopCategories->firstWhere('slug', $categorySlug);
         }
+
+        $shouldFilterOutOfStock = $activeCategory !== null && ! $showOutOfStock;
 
         /** @var LengthAwarePaginator<int, Product> $products */
         $products = Product::query()
@@ -143,6 +172,22 @@ class ShopController extends Controller
             ->when(
                 $categorySlug !== '',
                 fn ($query) => $query->whereHas('primaryCategory', fn ($categoryQuery) => $categoryQuery->where('slug', $categorySlug))
+            )
+            ->when(
+                $shouldFilterOutOfStock,
+                fn ($query) => $query->where(function ($availabilityQuery): void {
+                    $availabilityQuery
+                        ->whereDoesntHave('variants', fn ($variantQuery) => $variantQuery->where('is_active', true))
+                        ->orWhereHas('variants', function ($variantQuery): void {
+                            $variantQuery->where('is_active', true)
+                                ->where(function ($stockQuery): void {
+                                    $stockQuery->where('track_inventory', false)
+                                        ->orWhere('allow_backorder', true)
+                                        ->orWhere('is_preorder', true)
+                                        ->orWhere('stock_quantity', '>', 0);
+                                });
+                        });
+                })
             )
             ->when(
                 $minPrice !== null || $maxPrice !== null,
@@ -182,6 +227,7 @@ class ShopController extends Controller
                 'category' => $categorySlug,
                 'min_price' => $minPrice,
                 'max_price' => $maxPrice,
+                'include_out_of_stock' => $showOutOfStock,
                 'sort' => $sort,
             ],
             'seo' => [

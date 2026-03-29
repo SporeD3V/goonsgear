@@ -23,6 +23,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\ShopController;
+use App\Http\Controllers\StockAlertSubscriptionController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [ShopController::class, 'index'])->name('shop.index');
@@ -54,6 +55,10 @@ Route::patch('/account/email-preferences', [AccountController::class, 'updateEma
     ->middleware('auth')
     ->name('account.email-preferences.update');
 
+Route::post('/stock-alert-subscriptions', [StockAlertSubscriptionController::class, 'store'])
+    ->middleware('auth')
+    ->name('stock-alert-subscriptions.store');
+
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::post('/cart/coupon', [CartController::class, 'applyCoupon'])->name('cart.coupon.apply');
 Route::delete('/cart/coupon', [CartController::class, 'removeCoupon'])->name('cart.coupon.remove');
@@ -84,6 +89,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin', 'admin.noin
     Route::resource('bundle-discounts', BundleDiscountController::class)->except('show');
     Route::resource('orders', OrderController::class)->only(['index', 'show', 'update']);
     Route::resource('products', ProductController::class)->except('show');
+    Route::get('products/{product}/stock-alerts', [ProductController::class, 'stockAlerts'])
+        ->name('products.stock-alerts');
     Route::resource('regional-discounts', RegionalDiscountController::class)->except('show');
     Route::resource('url-redirects', UrlRedirectController::class)->except('show');
     Route::resource('products.variants', ProductVariantController::class)->except(['index', 'show']);

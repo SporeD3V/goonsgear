@@ -96,6 +96,21 @@
                     <button type="submit" class="rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-800">Filter</button>
                     <a href="{{ route('shop.index') }}" class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Reset</a>
                 </div>
+
+                @if ($activeCategory)
+                    <div class="md:col-span-7">
+                        <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+                            <input
+                                type="checkbox"
+                                name="include_out_of_stock"
+                                value="1"
+                                @checked($filters['include_out_of_stock'])
+                                class="rounded border-slate-300"
+                            >
+                            Show out-of-stock items in this category
+                        </label>
+                    </div>
+                @endif
             </form>
 
             @if ($shopCategories->isNotEmpty())

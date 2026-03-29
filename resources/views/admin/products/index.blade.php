@@ -16,6 +16,7 @@
                     <th class="border border-slate-200 px-3 py-2 text-left">Primary Category</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Variants</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Media</th>
+                    <th class="border border-slate-200 px-3 py-2 text-center">Waiting</th>
                     <th class="border border-slate-200 px-3 py-2 text-right">Actions</th>
                 </tr>
             </thead>
@@ -28,6 +29,15 @@
                         <td class="border border-slate-200 px-3 py-2">{{ $product->primaryCategory?->name ?? '-' }}</td>
                         <td class="border border-slate-200 px-3 py-2">{{ $product->variants_count }}</td>
                         <td class="border border-slate-200 px-3 py-2">{{ $product->media_count }}</td>
+                        <td class="border border-slate-200 px-3 py-2 text-center">
+                            @if ($product->active_stock_alert_subscriptions_count > 0)
+                                <a href="{{ route('admin.products.stock-alerts', $product) }}" class="inline-block rounded bg-amber-100 px-2 py-1 text-amber-700 hover:bg-amber-200">
+                                    {{ $product->active_stock_alert_subscriptions_count }}
+                                </a>
+                            @else
+                                <span class="text-slate-400">-</span>
+                            @endif
+                        </td>
                         <td class="border border-slate-200 px-3 py-2 text-right">
                             <a href="{{ route('admin.products.variants.create', $product) }}" class="text-emerald-700 hover:underline">Add Variant</a>
                             <span class="mx-1 text-slate-300">|</span>
@@ -41,7 +51,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="border border-slate-200 px-3 py-6 text-center text-slate-500">No products yet.</td>
+                        <td colspan="8" class="border border-slate-200 px-3 py-6 text-center text-slate-500">No products yet.</td>
                     </tr>
                 @endforelse
             </tbody>

@@ -10,6 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		const statusElement = picker.querySelector('[data-variant-status]');
 		const qtyElement = picker.querySelector('[data-variant-qty]');
 		const cartVariantInput = picker.querySelector('[data-cart-variant-input]');
+		const stockAlertForm = picker.querySelector('[data-stock-alert-form]');
+		const stockAlertVariantInput = picker.querySelector('[data-stock-alert-variant-input]');
+		const stockAlertSubscribedLabel = picker.querySelector('[data-stock-alert-subscribed-label]');
+		const stockAlertLoginNote = picker.querySelector('[data-stock-alert-login-note]');
 		const galleryFilterId = picker.dataset.galleryFilterId || '';
 
 		if (!variantSelect || !priceElement || !skuElement || !statusElement || !qtyElement) {
@@ -30,6 +34,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			if (cartVariantInput) {
 				cartVariantInput.value = selectedOption.value;
+			}
+
+			const isOutOfStock = selectedOption.dataset.variantOutOfStock === '1';
+			const isSubscribed = selectedOption.dataset.variantStockAlertSubscribed === '1';
+
+			if (stockAlertForm) {
+				stockAlertForm.classList.toggle('hidden', !isOutOfStock);
+
+				if (stockAlertVariantInput) {
+					stockAlertVariantInput.value = selectedOption.value;
+				}
+
+				if (stockAlertSubscribedLabel) {
+					stockAlertSubscribedLabel.classList.toggle('hidden', !isSubscribed);
+				}
+			}
+
+			if (stockAlertLoginNote) {
+				stockAlertLoginNote.classList.toggle('hidden', !isOutOfStock);
 			}
 
 			if (galleryFilterId) {

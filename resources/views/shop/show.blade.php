@@ -61,6 +61,10 @@
                 <div class="mb-4 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ $errors->first('cart') }}</div>
             @endif
 
+            @if ($errors->has('stock_alert'))
+                <div class="mb-4 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ $errors->first('stock_alert') }}</div>
+            @endif
+
             <div class="grid gap-6 lg:grid-cols-2">
                 <section data-media-gallery>
                     @php
@@ -138,11 +142,11 @@
 
                     <div class="mt-6">
                         <h2 class="text-base font-semibold">Available Variants</h2>
-                        @if ($product->variants->isEmpty())
+                        @if ($variantsWithStockState->isEmpty())
                             <p class="mt-2 text-sm text-slate-600">No active variants available.</p>
                         @else
                             @php
-                                $defaultVariant = $product->variants->first();
+                                $defaultVariant = $variantsWithStockState->first();
                                 $defaultStockStatus = $defaultVariant->stock_quantity > 0
                                     ? 'In stock'
                                     : (($defaultVariant->allow_backorder || $defaultVariant->is_preorder) ? 'Preorder' : 'Out of stock');
@@ -155,7 +159,7 @@
                             >
                                 <label for="shop-variant-select" class="mb-1 block text-sm font-medium text-slate-700">Choose variant</label>
                                 <select id="shop-variant-select" data-variant-select class="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm">
-                                    @foreach ($product->variants as $variant)
+                                    @foreach ($variantsWithStockState as $variant)
                                         @php
                                             $stockStatus = $variant->stock_quantity > 0
                                                 ? 'In stock'
@@ -167,6 +171,8 @@
                                             data-variant-sku="{{ $variant->sku }}"
                                             data-variant-status="{{ $stockStatus }}"
                                             data-variant-qty="{{ $variant->stock_quantity }}"
+                                            data-variant-out-of-stock="{{ $variant->is_out_of_stock ? '1' : '0' }}"
+                                            data-variant-stock-alert-subscribed="{{ in_array($variant->id, $activeStockAlertVariantIds, true) ? '1' : '0' }}"
                                         >
                                             {{ $variant->name }} ({{ $variant->sku }})
                                         </option>
@@ -198,6 +204,39 @@
 
                                     <button type="submit" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Add to cart</button>
                                 </form>
+
+                                @auth
+                                    <form
+                                        method="POST"
+                                        action="{{ route('stock-alert-subscriptions.store') }}"
+                                        class="{{ $defaultVariant->is_out_of_stock ? 'mt-4' : 'mt-4 hidden' }} rounded border border-slate-200 bg-white p-3"
+                                        data-stock-alert-form
+                                    >
+                                        @csrf
+                                        <input type="hidden" name="variant_id" value="{{ $defaultVariant->id }}" data-stock-alert-variant-input>
+
+                                        <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+                                            <input
+                                                type="checkbox"
+                                                name="subscribe_stock_alert"
+                                                value="1"
+                                                class="rounded border-slate-300"
+                                                checked
+                                                data-stock-alert-checkbox
+                                            >
+                                            Notify me when this variant is back in stock
+                                        </label>
+
+                                        <div class="mt-3 flex items-center gap-3">
+                                            <button type="submit" class="rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-800">Save alert</button>
+                                            <span class="text-xs text-slate-500 hidden" data-stock-alert-subscribed-label>Alert is active for this variant.</span>
+                                        </div>
+                                    </form>
+                                @else
+                                    <p class="{{ $defaultVariant->is_out_of_stock ? 'mt-4 text-sm text-slate-600' : 'mt-4 hidden text-sm text-slate-600' }}" data-stock-alert-login-note>
+                                        <a href="{{ route('login') }}" class="text-blue-700 hover:underline">Login</a> to enable back-in-stock alerts.
+                                    </p>
+                                @endauth
                             </div>
 
                             <div class="mt-3 overflow-x-auto">
@@ -211,7 +250,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach ($product->variants as $variant)
+                                        @foreach ($variantsWithStockState as $variant)
                                             @php
                                                 $stockStatus = $variant->stock_quantity > 0
                                                     ? 'In stock'
