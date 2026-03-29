@@ -57,6 +57,10 @@ Route::patch('/account/email-preferences', [AccountController::class, 'updateEma
     ->middleware('auth')
     ->name('account.email-preferences.update');
 
+Route::patch('/account/delivery-address', [AccountController::class, 'updateDeliveryAddress'])
+    ->middleware('auth')
+    ->name('account.delivery-address.update');
+
 Route::post('/account/tag-follows', [AccountTagFollowController::class, 'store'])
     ->middleware('auth')
     ->name('account.tag-follows.store');

@@ -27,6 +27,17 @@ class User extends Authenticatable
         'is_admin',
         'notify_cart_discounts',
         'notify_cart_low_stock',
+        'delivery_phone',
+        'delivery_country',
+        'delivery_state',
+        'delivery_city',
+        'delivery_postal_code',
+        'delivery_street_name',
+        'delivery_street_number',
+        'delivery_apartment_block',
+        'delivery_entrance',
+        'delivery_floor',
+        'delivery_apartment_number',
     ];
 
     /**

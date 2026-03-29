@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -97,6 +98,48 @@ class CheckoutFlowTest extends TestCase
         $response->assertSee('$240.00');
     }
 
+    public function test_checkout_prefills_saved_delivery_address_for_authenticated_user(): void
+    {
+        $fixture = $this->createCheckoutFixture();
+        $variant = $fixture['variant'];
+
+        $user = User::factory()->create([
+            'name' => 'Jane Shopper',
+            'email' => 'jane@example.com',
+            'delivery_phone' => '+49111111111',
+            'delivery_country' => 'DE',
+            'delivery_state' => 'BE',
+            'delivery_city' => 'Berlin',
+            'delivery_postal_code' => '10115',
+            'delivery_street_name' => 'Saved Street',
+            'delivery_street_number' => '22',
+        ]);
+
+        $response = $this->actingAs($user)->withSession([
+            'cart.items' => [
+                $variant->id => [
+                    'variant_id' => $variant->id,
+                    'product_id' => $variant->product_id,
+                    'product_name' => 'Checkout Hoodie',
+                    'product_slug' => 'checkout-hoodie',
+                    'variant_name' => 'Large',
+                    'sku' => 'CO-HOODIE-L',
+                    'price' => 120.00,
+                    'quantity' => 1,
+                    'max_quantity' => 5,
+                    'image' => null,
+                    'url' => route('shop.show', $fixture['product']),
+                ],
+            ],
+        ])->get(route('checkout.index'));
+
+        $response->assertOk();
+        $response->assertSee('value="jane@example.com"', false);
+        $response->assertSee('value="+49111111111"', false);
+        $response->assertSee('value="Saved Street"', false);
+        $response->assertSee('value="22"', false);
+    }
+
     public function test_checkout_creates_order_and_clears_cart(): void
     {
         $fixture = $this->createCheckoutFixture();
@@ -137,6 +180,45 @@ class CheckoutFlowTest extends TestCase
 
         $variant->refresh();
         $this->assertSame(3, $variant->stock_quantity);
+    }
+
+    public function test_checkout_persists_delivery_address_to_authenticated_user_profile(): void
+    {
+        $fixture = $this->createCheckoutFixture();
+        $variant = $fixture['variant'];
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->withSession([
+            'cart.items' => [
+                $variant->id => [
+                    'variant_id' => $variant->id,
+                    'product_id' => $variant->product_id,
+                    'product_name' => 'Checkout Hoodie',
+                    'product_slug' => 'checkout-hoodie',
+                    'variant_name' => 'Large',
+                    'sku' => 'CO-HOODIE-L',
+                    'price' => 120.00,
+                    'quantity' => 1,
+                    'max_quantity' => 5,
+                    'image' => null,
+                    'url' => route('shop.show', $fixture['product']),
+                ],
+            ],
+        ])->post(route('checkout.store'), [
+            ...$this->validCheckoutPayload(),
+            'phone' => '+49222222222',
+            'city' => 'Hamburg',
+            'street_name' => 'Checkout Street',
+            'street_number' => '77',
+        ]);
+
+        $user->refresh();
+
+        $this->assertSame('+49222222222', $user->delivery_phone);
+        $this->assertSame('DE', $user->delivery_country);
+        $this->assertSame('Hamburg', $user->delivery_city);
+        $this->assertSame('Checkout Street', $user->delivery_street_name);
+        $this->assertSame('77', $user->delivery_street_number);
     }
 
     public function test_checkout_rejects_when_cart_quantity_exceeds_current_stock(): void

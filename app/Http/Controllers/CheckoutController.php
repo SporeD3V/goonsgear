@@ -7,6 +7,7 @@ use App\Models\CartAbandonment;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\ProductVariant;
+use App\Models\User;
 use App\Support\CartPricing;
 use App\Support\Countries;
 use App\Support\PayPalClient;
@@ -84,17 +85,17 @@ class CheckoutController extends Controller
                 'email' => (string) old('email', (string) ($authenticatedUser?->email ?? '')),
                 'first_name' => (string) old('first_name', $defaultFirstName),
                 'last_name' => (string) old('last_name', $defaultLastName),
-                'phone' => (string) old('phone', ''),
-                'country' => (string) old('country', 'DE'),
-                'state' => (string) old('state', ''),
-                'city' => (string) old('city', ''),
-                'postal_code' => (string) old('postal_code', ''),
-                'street_name' => (string) old('street_name', ''),
-                'street_number' => (string) old('street_number', ''),
-                'apartment_block' => (string) old('apartment_block', ''),
-                'entrance' => (string) old('entrance', ''),
-                'floor' => (string) old('floor', ''),
-                'apartment_number' => (string) old('apartment_number', ''),
+                'phone' => (string) old('phone', (string) ($authenticatedUser?->delivery_phone ?? '')),
+                'country' => (string) old('country', (string) ($authenticatedUser?->delivery_country ?? 'DE')),
+                'state' => (string) old('state', (string) ($authenticatedUser?->delivery_state ?? '')),
+                'city' => (string) old('city', (string) ($authenticatedUser?->delivery_city ?? '')),
+                'postal_code' => (string) old('postal_code', (string) ($authenticatedUser?->delivery_postal_code ?? '')),
+                'street_name' => (string) old('street_name', (string) ($authenticatedUser?->delivery_street_name ?? '')),
+                'street_number' => (string) old('street_number', (string) ($authenticatedUser?->delivery_street_number ?? '')),
+                'apartment_block' => (string) old('apartment_block', (string) ($authenticatedUser?->delivery_apartment_block ?? '')),
+                'entrance' => (string) old('entrance', (string) ($authenticatedUser?->delivery_entrance ?? '')),
+                'floor' => (string) old('floor', (string) ($authenticatedUser?->delivery_floor ?? '')),
+                'apartment_number' => (string) old('apartment_number', (string) ($authenticatedUser?->delivery_apartment_number ?? '')),
             ],
         ]);
     }
@@ -140,6 +141,7 @@ class CheckoutController extends Controller
             paymentStatus: 'pending',
             regionalDiscountTotal: $pricing['regional_discount_total'],
             bundleDiscountTotal: $pricing['bundle_discount_total'],
+            customer: $request->user(),
         );
 
         $request->session()->forget(self::CART_SESSION_KEY);
@@ -264,6 +266,7 @@ class CheckoutController extends Controller
             markAsPaid: true,
             regionalDiscountTotal: (float) ($pendingOrder['regional_discount_total'] ?? 0),
             bundleDiscountTotal: (float) ($pendingOrder['bundle_discount_total'] ?? 0),
+            customer: $request->user(),
         );
 
         $request->session()->forget(self::PAYPAL_PENDING_ORDER_SESSION_KEY.'.'.$paypalOrderId);
@@ -421,6 +424,7 @@ class CheckoutController extends Controller
         bool $markAsPaid = false,
         float $regionalDiscountTotal = 0.0,
         float $bundleDiscountTotal = 0.0,
+        ?User $customer = null,
     ): Order {
         $order = DB::transaction(function () use ($payload, $normalizedItems, $subtotal, $discountTotal, $total, $couponCode, $paymentMethod, $paymentStatus, $paypalOrderId, $paypalCaptureId, $markAsPaid, $regionalDiscountTotal, $bundleDiscountTotal): Order {
             $variantIds = collect($normalizedItems)->pluck('product_variant_id')->map(fn ($id): int => (int) $id)->values();
@@ -515,6 +519,22 @@ class CheckoutController extends Controller
             ->where('email', $order->email)
             ->whereNull('recovered_at')
             ->update(['recovered_at' => now()]);
+
+        if ($customer !== null) {
+            $customer->update([
+                'delivery_phone' => isset($payload['phone']) ? (string) $payload['phone'] : null,
+                'delivery_country' => strtoupper((string) $payload['country']),
+                'delivery_state' => isset($payload['state']) ? (string) $payload['state'] : null,
+                'delivery_city' => (string) $payload['city'],
+                'delivery_postal_code' => (string) $payload['postal_code'],
+                'delivery_street_name' => (string) $payload['street_name'],
+                'delivery_street_number' => (string) $payload['street_number'],
+                'delivery_apartment_block' => isset($payload['apartment_block']) ? (string) $payload['apartment_block'] : null,
+                'delivery_entrance' => isset($payload['entrance']) ? (string) $payload['entrance'] : null,
+                'delivery_floor' => isset($payload['floor']) ? (string) $payload['floor'] : null,
+                'delivery_apartment_number' => isset($payload['apartment_number']) ? (string) $payload['apartment_number'] : null,
+            ]);
+        }
 
         return $order;
     }

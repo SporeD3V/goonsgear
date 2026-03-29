@@ -92,6 +92,114 @@
             </section>
 
             <section class="mt-6 rounded border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 class="text-base font-semibold">Saved Delivery Address</h2>
+                <p class="mt-1 text-sm text-slate-500">This address is pre-filled during checkout when you are logged in.</p>
+
+                <form method="POST" action="{{ route('account.delivery-address.update') }}" class="mt-5 space-y-4">
+                    @csrf
+                    @method('PATCH')
+
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">Phone</label>
+                        <input type="text" name="delivery_phone" value="{{ old('delivery_phone', auth()->user()?->delivery_phone) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-sm font-medium">Country code</label>
+                            <input type="text" name="delivery_country" maxlength="2" value="{{ old('delivery_country', auth()->user()?->delivery_country) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" placeholder="DE">
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium">State / Region</label>
+                            <input type="text" name="delivery_state" value="{{ old('delivery_state', auth()->user()?->delivery_state) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-sm font-medium">City</label>
+                            <input type="text" name="delivery_city" value="{{ old('delivery_city', auth()->user()?->delivery_city) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium">Postal code</label>
+                            <input type="text" name="delivery_postal_code" value="{{ old('delivery_postal_code', auth()->user()?->delivery_postal_code) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-sm font-medium">Street name</label>
+                            <input type="text" name="delivery_street_name" value="{{ old('delivery_street_name', auth()->user()?->delivery_street_name) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium">Street number</label>
+                            <input type="text" name="delivery_street_number" value="{{ old('delivery_street_number', auth()->user()?->delivery_street_number) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-sm font-medium">Apartment block</label>
+                            <input type="text" name="delivery_apartment_block" value="{{ old('delivery_apartment_block', auth()->user()?->delivery_apartment_block) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium">Entrance</label>
+                            <input type="text" name="delivery_entrance" value="{{ old('delivery_entrance', auth()->user()?->delivery_entrance) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                        </div>
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-sm font-medium">Floor</label>
+                            <input type="text" name="delivery_floor" value="{{ old('delivery_floor', auth()->user()?->delivery_floor) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-sm font-medium">Apartment number</label>
+                            <input type="text" name="delivery_apartment_number" value="{{ old('delivery_apartment_number', auth()->user()?->delivery_apartment_number) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                        </div>
+                    </div>
+
+                    <div>
+                        <button type="submit" class="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Save address</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="mt-6 rounded border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 class="text-base font-semibold">My Orders</h2>
+                <p class="mt-1 text-sm text-slate-500">Recent orders placed with your account email.</p>
+
+                <div class="mt-4 overflow-x-auto">
+                    <table class="min-w-full border border-slate-200 text-sm">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="border border-slate-200 px-3 py-2 text-left">Order</th>
+                                <th class="border border-slate-200 px-3 py-2 text-left">Date</th>
+                                <th class="border border-slate-200 px-3 py-2 text-left">Status</th>
+                                <th class="border border-slate-200 px-3 py-2 text-left">Items</th>
+                                <th class="border border-slate-200 px-3 py-2 text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($recentOrders as $order)
+                                <tr>
+                                    <td class="border border-slate-200 px-3 py-2 font-medium">{{ $order->order_number }}</td>
+                                    <td class="border border-slate-200 px-3 py-2">{{ optional($order->placed_at)->format('M d, Y H:i') ?? '-' }}</td>
+                                    <td class="border border-slate-200 px-3 py-2">{{ ucfirst($order->status) }} / {{ ucfirst($order->payment_status) }}</td>
+                                    <td class="border border-slate-200 px-3 py-2">{{ $order->items_count }}</td>
+                                    <td class="border border-slate-200 px-3 py-2 text-right">{{ $order->currency }} {{ number_format((float) $order->total, 2) }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="border border-slate-200 px-3 py-5 text-center text-slate-500">No orders yet.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="mt-6 rounded border border-slate-200 bg-white p-6 shadow-sm">
                 <h2 class="text-base font-semibold">Favorite Artists & Brands</h2>
                 <p class="mt-1 text-sm text-slate-500">Follow artists and brands you care about and control drop or discount emails per favorite.</p>
 
