@@ -92,6 +92,8 @@ class ShopBrowseTest extends TestCase
         $response->assertDontSee('GG-HIDDEN');
         $response->assertSee('data-media-variant-filter', false);
         $response->assertSee('data-media-variant-id="'.$activeVariant->id.'"', false);
+        $response->assertSee('data-product-variant-picker', false);
+        $response->assertSee('application/ld+json', false);
     }
 
     public function test_shop_show_returns_not_found_for_non_active_product(): void
@@ -186,5 +188,46 @@ class ShopBrowseTest extends TestCase
 
         $response->assertOk();
         $response->assertSeeInOrder(['Alpha Hoodie', 'Zulu Hoodie']);
+    }
+
+    public function test_shop_index_sorts_by_variant_price_when_requested(): void
+    {
+        $higherPriceProduct = Product::factory()->create([
+            'name' => 'Expensive Hoodie',
+            'slug' => 'expensive-hoodie',
+            'status' => 'active',
+        ]);
+
+        $lowerPriceProduct = Product::factory()->create([
+            'name' => 'Budget Hoodie',
+            'slug' => 'budget-hoodie',
+            'status' => 'active',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $higherPriceProduct->id,
+            'is_active' => true,
+            'price' => 99.99,
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $lowerPriceProduct->id,
+            'is_active' => true,
+            'price' => 49.99,
+        ]);
+
+        $ascendingResponse = $this->get(route('shop.index', [
+            'sort' => 'price_asc',
+        ]));
+
+        $ascendingResponse->assertOk();
+        $ascendingResponse->assertSeeInOrder(['Budget Hoodie', 'Expensive Hoodie']);
+
+        $descendingResponse = $this->get(route('shop.index', [
+            'sort' => 'price_desc',
+        ]));
+
+        $descendingResponse->assertOk();
+        $descendingResponse->assertSeeInOrder(['Expensive Hoodie', 'Budget Hoodie']);
     }
 }

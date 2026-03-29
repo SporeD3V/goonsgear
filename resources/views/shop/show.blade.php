@@ -4,6 +4,32 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ $product->name }} | GoonsGear</title>
+        @php
+            $jsonLdImage = $product->media->first() ? route('media.show', ['path' => $product->media->first()->path]) : null;
+            $jsonLdOffers = $product->variants
+                ->where('is_active', true)
+                ->map(fn ($variant) => [
+                    '@type' => 'Offer',
+                    'priceCurrency' => 'EUR',
+                    'price' => number_format((float) $variant->price, 2, '.', ''),
+                    'sku' => $variant->sku,
+                    'availability' => $variant->stock_quantity > 0
+                        ? 'https://schema.org/InStock'
+                        : (($variant->allow_backorder || $variant->is_preorder) ? 'https://schema.org/PreOrder' : 'https://schema.org/OutOfStock'),
+                    'url' => route('shop.show', $product),
+                ])
+                ->values();
+            $jsonLdProduct = [
+                '@context' => 'https://schema.org',
+                '@type' => 'Product',
+                'name' => $product->name,
+                'description' => $product->meta_description ?: $product->excerpt,
+                'category' => $product->primaryCategory?->name,
+                'image' => $jsonLdImage,
+                'offers' => $jsonLdOffers,
+            ];
+        @endphp
+        <script type="application/ld+json">{!! Js::from($jsonLdProduct) !!}</script>
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif
@@ -95,6 +121,46 @@
                         @if ($product->variants->isEmpty())
                             <p class="mt-2 text-sm text-slate-600">No active variants available.</p>
                         @else
+                            @php
+                                $defaultVariant = $product->variants->first();
+                                $defaultStockStatus = $defaultVariant->stock_quantity > 0
+                                    ? 'In stock'
+                                    : (($defaultVariant->allow_backorder || $defaultVariant->is_preorder) ? 'Preorder' : 'Out of stock');
+                            @endphp
+
+                            <div
+                                class="mt-3 rounded border border-slate-200 bg-slate-50 p-3"
+                                data-product-variant-picker
+                                data-gallery-filter-id="media-variant-filter"
+                            >
+                                <label for="shop-variant-select" class="mb-1 block text-sm font-medium text-slate-700">Choose variant</label>
+                                <select id="shop-variant-select" data-variant-select class="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm">
+                                    @foreach ($product->variants as $variant)
+                                        @php
+                                            $stockStatus = $variant->stock_quantity > 0
+                                                ? 'In stock'
+                                                : (($variant->allow_backorder || $variant->is_preorder) ? 'Preorder' : 'Out of stock');
+                                        @endphp
+                                        <option
+                                            value="{{ $variant->id }}"
+                                            data-variant-price="{{ number_format((float) $variant->price, 2) }}"
+                                            data-variant-sku="{{ $variant->sku }}"
+                                            data-variant-status="{{ $stockStatus }}"
+                                            data-variant-qty="{{ $variant->stock_quantity }}"
+                                        >
+                                            {{ $variant->name }} ({{ $variant->sku }})
+                                        </option>
+                                    @endforeach
+                                </select>
+
+                                <div class="mt-3 grid gap-2 text-sm sm:grid-cols-2" data-variant-panel>
+                                    <p><span class="font-medium text-slate-700">Price:</span> $<span data-variant-price>{{ number_format((float) $defaultVariant->price, 2) }}</span></p>
+                                    <p><span class="font-medium text-slate-700">SKU:</span> <span data-variant-sku>{{ $defaultVariant->sku }}</span></p>
+                                    <p><span class="font-medium text-slate-700">Status:</span> <span data-variant-status>{{ $defaultStockStatus }}</span></p>
+                                    <p><span class="font-medium text-slate-700">Qty:</span> <span data-variant-qty>{{ $defaultVariant->stock_quantity }}</span></p>
+                                </div>
+                            </div>
+
                             <div class="mt-3 overflow-x-auto">
                                 <table class="min-w-full border border-slate-200 text-sm">
                                     <thead class="bg-slate-50">

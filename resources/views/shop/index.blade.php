@@ -43,6 +43,8 @@
                         <option value="newest" @selected($filters['sort'] === 'newest')>Newest</option>
                         <option value="name_asc" @selected($filters['sort'] === 'name_asc')>Name A-Z</option>
                         <option value="name_desc" @selected($filters['sort'] === 'name_desc')>Name Z-A</option>
+                        <option value="price_asc" @selected($filters['sort'] === 'price_asc')>Price low-high</option>
+                        <option value="price_desc" @selected($filters['sort'] === 'price_desc')>Price high-low</option>
                     </select>
                 </div>
 
@@ -62,6 +64,7 @@
                         @php
                             $primaryMedia = $product->media->first();
                             $mediaUrl = $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null;
+                            $startingPrice = $product->min_active_variant_price;
                         @endphp
 
                         <article class="rounded border border-slate-200 bg-white p-4 shadow-sm">
@@ -73,6 +76,9 @@
                                 @endif
                                 <h2 class="text-lg font-semibold">{{ $product->name }}</h2>
                                 <p class="mt-1 text-sm text-slate-600">{{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>
+                                @if ($startingPrice !== null)
+                                    <p class="mt-1 text-sm font-medium text-slate-800">From ${{ number_format((float) $startingPrice, 2) }}</p>
+                                @endif
                                 @if ($product->excerpt)
                                     <p class="mt-2 text-sm text-slate-700">{{ $product->excerpt }}</p>
                                 @endif
