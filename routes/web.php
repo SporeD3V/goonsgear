@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductMediaController;
 use App\Http\Controllers\Admin\ProductVariantController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\ShopController;
 use Illuminate\Support\Facades\Route;
@@ -23,6 +24,10 @@ Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::post('/cart/items', [CartController::class, 'store'])->name('cart.items.store');
 Route::patch('/cart/items/{variant}', [CartController::class, 'update'])->name('cart.items.update');
 Route::delete('/cart/items/{variant}', [CartController::class, 'destroy'])->name('cart.items.destroy');
+
+Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
+Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
 
 Route::get('/api/shop/search', [ShopController::class, 'search'])->name('api.shop.search');
 

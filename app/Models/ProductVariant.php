@@ -60,4 +60,9 @@ class ProductVariant extends Model
     {
         return $this->hasMany(ProductMedia::class);
     }
+
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class, 'product_variant_id');
+    }
 }

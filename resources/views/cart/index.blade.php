@@ -91,7 +91,10 @@
 
                 <div class="mt-4 flex items-center justify-between rounded border border-slate-200 bg-white p-4">
                     <p class="text-sm text-slate-600">Subtotal</p>
-                    <p class="text-lg font-semibold">${{ number_format((float) $subtotal, 2) }}</p>
+                    <div class="flex items-center gap-4">
+                        <p class="text-lg font-semibold">${{ number_format((float) $subtotal, 2) }}</p>
+                        <a href="{{ route('checkout.index') }}" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Proceed to checkout</a>
+                    </div>
                 </div>
             @endif
         </div>

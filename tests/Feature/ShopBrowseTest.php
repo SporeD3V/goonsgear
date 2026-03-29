@@ -40,6 +40,7 @@ class ShopBrowseTest extends TestCase
         $response->assertSee('Active Hoodie');
         $response->assertDontSee('Draft Hoodie');
         $response->assertSee(route('shop.show', $activeProduct));
+        $response->assertSee(route('cart.index'));
     }
 
     public function test_shop_show_displays_active_product_by_slug(): void
@@ -102,6 +103,7 @@ class ShopBrowseTest extends TestCase
         $response->assertSee('property="og:title" content="Black Hoodie Product Page"', false);
         $response->assertSee('rel="canonical" href="'.route('shop.show', $product).'"', false);
         $response->assertSee('action="'.route('cart.items.store').'"', false);
+        $response->assertSee(route('cart.index'));
     }
 
     public function test_shop_show_returns_not_found_for_non_active_product(): void
