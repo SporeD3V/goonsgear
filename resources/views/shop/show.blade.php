@@ -39,20 +39,39 @@
                     @endif
 
                     @if ($product->media->count() > 1)
+                        @if ($product->variants->isNotEmpty())
+                            <div class="mt-3">
+                                <label for="media-variant-filter" class="mb-1 block text-sm font-medium text-slate-700">Filter gallery by variant</label>
+                                <select id="media-variant-filter" data-media-variant-filter class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                    <option value="all">All variants</option>
+                                    @foreach ($product->variants as $variant)
+                                        <option value="{{ $variant->id }}">{{ $variant->name }} ({{ $variant->sku }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endif
+
                         <div class="mt-3 grid grid-cols-4 gap-2">
                             @foreach ($product->media as $media)
                                 @php
                                     $thumbnailUrl = route('media.show', ['path' => $media->path]);
+                                    $isVideo = str_starts_with((string) $media->mime_type, 'video/');
                                 @endphp
                                 <button
                                     type="button"
                                     class="h-20 w-full cursor-pointer rounded border border-slate-200 bg-white p-0 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                     data-media-thumb
-                                    data-media-type="{{ str_starts_with((string) $media->mime_type, 'video/') ? 'video' : 'image' }}"
+                                    data-media-type="{{ $isVideo ? 'video' : 'image' }}"
                                     data-media-url="{{ $thumbnailUrl }}"
                                     data-media-alt="{{ $media->alt_text ?: $product->name }}"
+                                    data-media-variant-id="{{ $media->product_variant_id ?? '' }}"
+                                    aria-pressed="false"
                                 >
-                                    <img src="{{ $thumbnailUrl }}" alt="{{ $media->alt_text ?: $product->name }}" class="h-20 w-full rounded bg-white object-cover">
+                                    @if ($isVideo)
+                                        <span class="flex h-20 w-full items-center justify-center rounded bg-slate-900 text-xs font-medium text-white">VIDEO</span>
+                                    @else
+                                        <img src="{{ $thumbnailUrl }}" alt="{{ $media->alt_text ?: $product->name }}" class="h-20 w-full rounded bg-white object-cover">
+                                    @endif
                                 </button>
                             @endforeach
                         </div>

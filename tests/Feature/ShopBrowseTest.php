@@ -57,13 +57,22 @@ class ShopBrowseTest extends TestCase
             'is_primary' => true,
         ]);
 
-        ProductVariant::factory()->create([
+        $activeVariant = ProductVariant::factory()->create([
             'product_id' => $product->id,
             'name' => 'Medium',
             'sku' => 'GG-HOODIE-M',
             'is_active' => true,
             'price' => 59.99,
             'stock_quantity' => 12,
+        ]);
+
+        ProductMedia::factory()->create([
+            'product_id' => $product->id,
+            'product_variant_id' => $activeVariant->id,
+            'path' => 'products/black-hoodie/gallery/medium.webp',
+            'mime_type' => 'image/webp',
+            'is_primary' => false,
+            'position' => 1,
         ]);
 
         ProductVariant::factory()->create([
@@ -81,6 +90,8 @@ class ShopBrowseTest extends TestCase
         $response->assertSee('Black Hoodie');
         $response->assertSee('GG-HOODIE-M');
         $response->assertDontSee('GG-HIDDEN');
+        $response->assertSee('data-media-variant-filter', false);
+        $response->assertSee('data-media-variant-id="'.$activeVariant->id.'"', false);
     }
 
     public function test_shop_show_returns_not_found_for_non_active_product(): void
