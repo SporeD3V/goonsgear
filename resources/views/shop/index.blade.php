@@ -3,7 +3,8 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Shop | GoonsGear</title>
+        <title>{{ $seo['title'] }}</title>
+        <meta name="description" content="{{ $seo['description'] }}">
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
             @vite(['resources/css/app.css'])
         @endif
@@ -11,7 +12,7 @@
     <body class="bg-slate-100 text-slate-900">
         <div class="mx-auto max-w-6xl p-6">
             <header class="mb-6 flex items-center justify-between gap-3">
-                <h1 class="text-2xl font-semibold">GoonsGear Shop</h1>
+                <h1 class="text-2xl font-semibold">{{ $activeCategory?->name ? $activeCategory->name.' | GoonsGear Shop' : 'GoonsGear Shop' }}</h1>
                 <a href="{{ url('/') }}" class="text-sm text-blue-700 hover:underline">Home</a>
             </header>
 
@@ -53,6 +54,15 @@
                     <a href="{{ route('shop.index') }}" class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Reset</a>
                 </div>
             </form>
+
+            @if ($shopCategories->isNotEmpty())
+                <div class="mb-5 flex flex-wrap items-center gap-2 text-xs">
+                    <span class="text-slate-500">Category pages:</span>
+                    @foreach ($shopCategories as $shopCategory)
+                        <a href="{{ route('shop.category', $shopCategory) }}" class="rounded border border-slate-300 bg-white px-2 py-1 text-slate-700 hover:bg-slate-50">{{ $shopCategory->name }}</a>
+                    @endforeach
+                </div>
+            @endif
 
             <p class="mb-4 text-sm text-slate-600">Showing {{ $products->total() }} product(s).</p>
 

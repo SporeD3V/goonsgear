@@ -15,6 +15,7 @@ Route::get('/', function () {
 });
 
 Route::get('/shop', [ShopController::class, 'index'])->name('shop.index');
+Route::get('/shop/category/{category:slug}', [ShopController::class, 'category'])->name('shop.category');
 Route::get('/shop/{product:slug}', [ShopController::class, 'show'])->name('shop.show');
 
 Route::get('/media/{path}', [MediaController::class, 'show'])

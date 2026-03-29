@@ -12,15 +12,56 @@ class ShopController extends Controller
 {
     public function index(Request $request): View
     {
+        return $this->renderIndex($request);
+    }
+
+    public function category(Request $request, Category $category): View
+    {
+        abort_unless($category->is_active, 404);
+
+        return $this->renderIndex($request, $category);
+    }
+
+    public function show(Product $product): View
+    {
+        abort_unless($product->status === 'active', 404);
+
+        $product->load([
+            'primaryCategory:id,name',
+            'variants' => fn ($query) => $query
+                ->where('is_active', true)
+                ->orderBy('position')
+                ->orderBy('id'),
+            'media' => fn ($query) => $query
+                ->with('variant:id,name')
+                ->orderByDesc('is_primary')
+                ->orderBy('position')
+                ->orderBy('id'),
+        ]);
+
+        return view('shop.show', [
+            'product' => $product,
+        ]);
+    }
+
+    private function renderIndex(Request $request, ?Category $forcedCategory = null): View
+    {
         $search = $request->string('q')->trim()->toString();
-        $categorySlug = $request->string('category')->trim()->toString();
+        $requestedCategorySlug = $request->string('category')->trim()->toString();
+        $categorySlug = $forcedCategory?->slug ?? $requestedCategorySlug;
         $sort = $request->string('sort')->trim()->toString();
         $sort = in_array($sort, ['newest', 'name_asc', 'name_desc', 'price_asc', 'price_desc'], true) ? $sort : 'newest';
 
         $shopCategories = Category::query()
             ->where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name', 'slug']);
+            ->get(['id', 'name', 'slug', 'meta_title', 'meta_description']);
+
+        $activeCategory = $forcedCategory;
+
+        if ($activeCategory === null && $categorySlug !== '') {
+            $activeCategory = $shopCategories->firstWhere('slug', $categorySlug);
+        }
 
         /** @var LengthAwarePaginator<int, Product> $products */
         $products = Product::query()
@@ -46,6 +87,9 @@ class ShopController extends Controller
                     ->orderByDesc('is_primary')
                     ->orderBy('position')
                     ->orderBy('id'),
+                'variants' => fn ($query) => $query
+                    ->where('is_active', true)
+                    ->select(['id', 'product_id', 'price']),
             ])
             ->when($sort === 'newest', fn ($query) => $query->latest('id'))
             ->when($sort === 'name_asc', fn ($query) => $query->orderBy('name'))
@@ -55,36 +99,22 @@ class ShopController extends Controller
             ->paginate(12)
             ->withQueryString();
 
+        $pageTitle = $activeCategory?->meta_title ?: ($activeCategory ? $activeCategory->name.' | Shop | GoonsGear' : 'Shop | GoonsGear');
+        $pageDescription = $activeCategory?->meta_description ?: ($activeCategory?->description ?: 'Browse active GoonsGear products by category, newest arrivals, and price.');
+
         return view('shop.index', [
             'products' => $products,
             'shopCategories' => $shopCategories,
+            'activeCategory' => $activeCategory,
             'filters' => [
                 'q' => $search,
                 'category' => $categorySlug,
                 'sort' => $sort,
             ],
-        ]);
-    }
-
-    public function show(Product $product): View
-    {
-        abort_unless($product->status === 'active', 404);
-
-        $product->load([
-            'primaryCategory:id,name',
-            'variants' => fn ($query) => $query
-                ->where('is_active', true)
-                ->orderBy('position')
-                ->orderBy('id'),
-            'media' => fn ($query) => $query
-                ->with('variant:id,name')
-                ->orderByDesc('is_primary')
-                ->orderBy('position')
-                ->orderBy('id'),
-        ]);
-
-        return view('shop.show', [
-            'product' => $product,
+            'seo' => [
+                'title' => $pageTitle,
+                'description' => $pageDescription,
+            ],
         ]);
     }
 }

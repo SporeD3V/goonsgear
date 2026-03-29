@@ -145,6 +145,58 @@ class ShopBrowseTest extends TestCase
         $response->assertDontSee('Other Hoodie');
     }
 
+    public function test_shop_category_route_filters_products_and_uses_category_metadata(): void
+    {
+        $featuredCategory = Category::factory()->create([
+            'name' => 'Featured',
+            'slug' => 'featured',
+            'description' => 'Featured drops and limited runs.',
+            'meta_title' => 'Featured Collection | GoonsGear',
+            'meta_description' => 'Shop featured drops from GoonsGear.',
+            'is_active' => true,
+        ]);
+
+        $otherCategory = Category::factory()->create([
+            'name' => 'Other',
+            'slug' => 'other',
+            'is_active' => true,
+        ]);
+
+        Product::factory()->create([
+            'name' => 'Featured Hoodie',
+            'slug' => 'featured-hoodie',
+            'status' => 'active',
+            'primary_category_id' => $featuredCategory->id,
+        ]);
+
+        Product::factory()->create([
+            'name' => 'Other Hoodie',
+            'slug' => 'other-hoodie',
+            'status' => 'active',
+            'primary_category_id' => $otherCategory->id,
+        ]);
+
+        $response = $this->get(route('shop.category', $featuredCategory));
+
+        $response->assertOk();
+        $response->assertSee('Featured Hoodie');
+        $response->assertDontSee('Other Hoodie');
+        $response->assertSee('<title>Featured Collection | GoonsGear</title>', false);
+        $response->assertSee('Shop featured drops from GoonsGear.', false);
+    }
+
+    public function test_shop_category_route_returns_not_found_for_inactive_category(): void
+    {
+        $inactiveCategory = Category::factory()->create([
+            'slug' => 'inactive-category',
+            'is_active' => false,
+        ]);
+
+        $response = $this->get(route('shop.category', $inactiveCategory));
+
+        $response->assertNotFound();
+    }
+
     public function test_shop_index_filters_by_keyword_search(): void
     {
         Product::factory()->create([
