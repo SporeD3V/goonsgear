@@ -24,6 +24,11 @@ class CheckoutController extends Controller
 
     private static ?bool $orderPaymentColumnsAvailable = null;
 
+    /**
+     * @var array<string, bool>
+     */
+    private static array $orderColumnAvailability = [];
+
     public function index(Request $request, PayPalClient $paypalClient): View|RedirectResponse
     {
         $items = $this->getCartItems($request);
@@ -326,7 +331,6 @@ class CheckoutController extends Controller
                 'last_name' => (string) $payload['last_name'],
                 'phone' => isset($payload['phone']) ? (string) $payload['phone'] : null,
                 'country' => strtoupper((string) $payload['country']),
-                'state' => isset($payload['state']) ? (string) $payload['state'] : null,
                 'city' => (string) $payload['city'],
                 'postal_code' => (string) $payload['postal_code'],
                 'street_name' => (string) $payload['street_name'],
@@ -340,6 +344,10 @@ class CheckoutController extends Controller
                 'total' => $subtotal,
                 'placed_at' => now(),
             ];
+
+            if ($this->orderColumnAvailable('state')) {
+                $orderPayload['state'] = isset($payload['state']) ? (string) $payload['state'] : null;
+            }
 
             if ($this->orderPaymentColumnsAvailable()) {
                 $orderPayload['payment_method'] = $paymentMethod;
@@ -378,6 +386,17 @@ class CheckoutController extends Controller
         ]);
 
         return self::$orderPaymentColumnsAvailable;
+    }
+
+    private function orderColumnAvailable(string $column): bool
+    {
+        if (array_key_exists($column, self::$orderColumnAvailability)) {
+            return self::$orderColumnAvailability[$column];
+        }
+
+        self::$orderColumnAvailability[$column] = Schema::hasColumn('orders', $column);
+
+        return self::$orderColumnAvailability[$column];
     }
 
     /**

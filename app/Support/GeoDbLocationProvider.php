@@ -132,8 +132,14 @@ class GeoDbLocationProvider
                 ->get($path, array_merge($query, [
                     'offset' => $offset,
                     'limit' => self::PAGE_LIMIT,
-                ]))
-                ->throw();
+                ]));
+
+            // Some country/state combinations can become invalid between selections.
+            if ($response->status() === 404) {
+                return [];
+            }
+
+            $response->throw();
 
             $payload = $response->json();
             $batch = is_array($payload['data'] ?? null) ? $payload['data'] : [];
