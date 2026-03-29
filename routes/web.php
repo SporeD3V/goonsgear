@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\Admin\BundleDiscountController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\FallbackMediaController;
@@ -74,6 +75,7 @@ Route::get('/media/{path}', [MediaController::class, 'show'])
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::resource('categories', CategoryController::class)->except('show');
     Route::resource('coupons', CouponController::class)->except('show');
+    Route::resource('bundle-discounts', BundleDiscountController::class)->except('show');
     Route::resource('orders', OrderController::class)->only(['index', 'show', 'update']);
     Route::resource('products', ProductController::class)->except('show');
     Route::resource('regional-discounts', RegionalDiscountController::class)->except('show');

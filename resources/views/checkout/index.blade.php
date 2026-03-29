@@ -148,6 +148,7 @@
                        id="order-summary"
                        data-subtotal="{{ number_format((float) $subtotal, 2, '.', '') }}"
                        data-coupon-discount="{{ number_format((float) $discountTotal, 2, '.', '') }}"
+                      data-bundle-discount="{{ number_format((float) $bundleDiscountTotal, 2, '.', '') }}"
                        data-regional-discount-url="{{ route('api.regional-discount') }}">
                     <h2 class="text-base font-semibold">Order summary</h2>
                     <div class="mt-4 space-y-3">
@@ -181,6 +182,13 @@
                         </div>
                     @endif
 
+                    @if ($bundleDiscountTotal > 0)
+                        <div class="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
+                            <p class="text-sm text-emerald-700">Bundle discount @if ($appliedBundle)( {{ $appliedBundle->name }} )@endif</p>
+                            <p class="text-lg font-semibold text-emerald-700">- ${{ number_format((float) $bundleDiscountTotal, 2) }}</p>
+                        </div>
+                    @endif
+
                     <div id="regional-discount-line" class="mt-3 hidden items-center justify-between border-t border-slate-200 pt-3">
                         <p class="text-sm text-emerald-700">Regional discount<br><span id="regional-discount-reason" class="text-xs font-normal"></span></p>
                         <p id="regional-discount-amount" class="text-lg font-semibold text-emerald-700"></p>
@@ -211,6 +219,7 @@
 
                 const subtotal = parseFloat(summary.dataset.subtotal) || 0;
                 const couponDiscount = parseFloat(summary.dataset.couponDiscount) || 0;
+                const bundleDiscount = parseFloat(summary.dataset.bundleDiscount) || 0;
                 const apiUrl = summary.dataset.regionalDiscountUrl;
 
                 function fmt(n) {
@@ -221,7 +230,7 @@
                     if (!countryCode) {
                         regionalLine.classList.add('hidden');
                         regionalLine.classList.remove('flex');
-                        grandTotal.textContent = fmt(Math.max(0, subtotal - couponDiscount));
+                        grandTotal.textContent = fmt(Math.max(0, subtotal - couponDiscount - bundleDiscount));
                         return;
                     }
 
@@ -233,11 +242,11 @@
                                 regionalReason.textContent = data.reason;
                                 regionalLine.classList.remove('hidden');
                                 regionalLine.classList.add('flex');
-                                grandTotal.textContent = fmt(Math.max(0, subtotal - couponDiscount - data.discount_total));
+                                grandTotal.textContent = fmt(Math.max(0, subtotal - couponDiscount - bundleDiscount - data.discount_total));
                             } else {
                                 regionalLine.classList.add('hidden');
                                 regionalLine.classList.remove('flex');
-                                grandTotal.textContent = fmt(Math.max(0, subtotal - couponDiscount));
+                                grandTotal.textContent = fmt(Math.max(0, subtotal - couponDiscount - bundleDiscount));
                             }
                         })
                         .catch(function () {

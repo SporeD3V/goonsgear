@@ -65,4 +65,9 @@ class ProductVariant extends Model
     {
         return $this->hasMany(OrderItem::class, 'product_variant_id');
     }
+
+    public function bundleDiscountItems(): HasMany
+    {
+        return $this->hasMany(BundleDiscountItem::class, 'product_variant_id');
+    }
 }

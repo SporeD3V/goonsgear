@@ -16,6 +16,7 @@
                     <nav class="flex items-center gap-3 text-sm">
                         <a class="text-blue-700 hover:underline" href="{{ route('admin.categories.index') }}">Categories</a>
                         <a class="text-blue-700 hover:underline" href="{{ route('admin.coupons.index') }}">Coupons</a>
+                        <a class="text-blue-700 hover:underline" href="{{ route('admin.bundle-discounts.index') }}">Bundle Discounts</a>
                         <a class="text-blue-700 hover:underline" href="{{ route('admin.orders.index') }}">Orders</a>
                         <a class="text-blue-700 hover:underline" href="{{ route('admin.products.index') }}">Products</a>
                         <a class="text-blue-700 hover:underline" href="{{ route('admin.regional-discounts.index') }}">Regional Discounts</a>

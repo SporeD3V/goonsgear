@@ -134,6 +134,13 @@
                         </div>
                     @endif
 
+                    @if ($bundleDiscountTotal > 0)
+                        <div class="mt-2 flex items-center justify-between text-sm text-emerald-700">
+                            <p>Bundle discount @if ($appliedBundle)( {{ $appliedBundle->name }} )@endif</p>
+                            <p>- ${{ number_format((float) $bundleDiscountTotal, 2) }}</p>
+                        </div>
+                    @endif
+
                     <div class="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
                         <p class="text-sm text-slate-600">Total</p>
                         <div class="flex items-center gap-4">

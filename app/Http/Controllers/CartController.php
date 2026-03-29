@@ -34,8 +34,10 @@ class CartController extends Controller
             'items' => $cartItems,
             'subtotal' => $pricing['subtotal'],
             'discountTotal' => $pricing['discount_total'],
+            'bundleDiscountTotal' => $pricing['bundle_discount_total'],
             'total' => $pricing['total'],
             'appliedCoupon' => $pricing['coupon'],
+            'appliedBundle' => $pricing['bundle_discount'],
             'couponCode' => $pricing['requested_coupon_code'],
             'couponError' => $pricing['error'],
         ]);
