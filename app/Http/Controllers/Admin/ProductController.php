@@ -46,7 +46,7 @@ class ProductController extends Controller
             ->withCount(['variants', 'media'])
             ->withCount([
                 'stockAlertSubscriptions as active_stock_alert_subscriptions_count' => function ($query) {
-                    $query->where('is_active', true);
+                    $query->where('stock_alert_subscriptions.is_active', true);
                 },
             ])
             ->latest('id')
@@ -503,7 +503,7 @@ class ProductController extends Controller
     public function stockAlerts(Product $product): View
     {
         $subscriptions = $product->stockAlertSubscriptions()
-            ->where('is_active', true)
+            ->where('stock_alert_subscriptions.is_active', true)
             ->with(['user:id,name,email', 'variant:id,name,sku'])
             ->latest('created_at')
             ->paginate(20);
