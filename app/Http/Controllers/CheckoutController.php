@@ -4,18 +4,24 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\ProductVariant;
+use App\Support\PayPalClient;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use RuntimeException;
 
 class CheckoutController extends Controller
 {
     private const CART_SESSION_KEY = 'cart.items';
 
-    public function index(Request $request): View|RedirectResponse
+    private const PAYPAL_PENDING_ORDER_SESSION_KEY = 'checkout.paypal.pending_orders';
+
+    public function index(Request $request, PayPalClient $paypalClient): View|RedirectResponse
     {
         $items = $this->getCartItems($request);
 
@@ -29,6 +35,8 @@ class CheckoutController extends Controller
             'items' => $items,
             'subtotal' => $subtotal,
             'countries' => $this->getCountries(),
+            'paypalEnabled' => $paypalClient->isEnabled(),
+            'paypalClientId' => $paypalClient->clientId(),
             'formDefaults' => [
                 'email' => (string) old('email', ''),
                 'first_name' => (string) old('first_name', ''),
@@ -56,7 +64,146 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->withErrors(['cart' => 'Your cart is empty.']);
         }
 
+        $payload = $this->validateCheckoutPayload($request);
+
+        try {
+            $checkoutContext = $this->buildCheckoutContext($items);
+        } catch (ValidationException $exception) {
+            return redirect()->route('cart.index')->withErrors($exception->errors());
+        }
+
+        $order = $this->createOrder(
+            payload: $payload,
+            normalizedItems: $checkoutContext['normalized_items'],
+            subtotal: $checkoutContext['subtotal'],
+            paymentMethod: 'manual',
+            paymentStatus: 'pending',
+        );
+
+        $request->session()->forget(self::CART_SESSION_KEY);
+
+        return redirect()->route('checkout.success', $order)->with('status', 'Order placed successfully.');
+    }
+
+    public function createPayPalOrder(Request $request, PayPalClient $paypalClient): JsonResponse
+    {
+        if (! $paypalClient->isEnabled()) {
+            return response()->json([
+                'message' => 'PayPal payments are not available right now.',
+            ], 503);
+        }
+
+        $items = $this->getCartItems($request);
+
+        if ($items === []) {
+            return response()->json([
+                'message' => 'Your cart is empty.',
+            ], 422);
+        }
+
+        $payload = $this->validateCheckoutPayload($request);
+        $checkoutContext = $this->buildCheckoutContext($items);
+        $amount = number_format((float) $checkoutContext['subtotal'], 2, '.', '');
+
+        try {
+            $paypalOrder = $paypalClient->createOrder($amount, 'EUR');
+        } catch (RuntimeException $exception) {
+            return response()->json([
+                'message' => 'Unable to initialize PayPal checkout right now.',
+            ], 502);
+        }
+
+        $paypalOrderId = (string) ($paypalOrder['id'] ?? '');
+
+        if ($paypalOrderId === '') {
+            throw ValidationException::withMessages([
+                'payment' => 'Unable to initialize PayPal order.',
+            ]);
+        }
+
+        $request->session()->put(self::PAYPAL_PENDING_ORDER_SESSION_KEY.'.'.$paypalOrderId, [
+            'payload' => $payload,
+            'normalized_items' => $checkoutContext['normalized_items'],
+            'subtotal' => $checkoutContext['subtotal'],
+        ]);
+
+        return response()->json([
+            'id' => $paypalOrderId,
+        ]);
+    }
+
+    public function capturePayPalOrder(Request $request, PayPalClient $paypalClient): JsonResponse
+    {
+        if (! $paypalClient->isEnabled()) {
+            return response()->json([
+                'message' => 'PayPal payments are not available right now.',
+            ], 503);
+        }
+
         $payload = $request->validate([
+            'paypal_order_id' => ['required', 'string', 'max:100'],
+        ]);
+
+        $paypalOrderId = $payload['paypal_order_id'];
+        $pendingOrder = $request->session()->get(self::PAYPAL_PENDING_ORDER_SESSION_KEY.'.'.$paypalOrderId);
+
+        if (! is_array($pendingOrder)) {
+            return response()->json([
+                'message' => 'PayPal order session expired. Please try again.',
+            ], 422);
+        }
+
+        try {
+            $captureResponse = $paypalClient->captureOrder($paypalOrderId);
+        } catch (RuntimeException $exception) {
+            return response()->json([
+                'message' => 'Unable to capture PayPal payment right now.',
+            ], 502);
+        }
+        $captureStatus = strtoupper((string) ($captureResponse['status'] ?? ''));
+
+        if ($captureStatus !== 'COMPLETED') {
+            return response()->json([
+                'message' => 'PayPal payment was not completed.',
+            ], 422);
+        }
+
+        $captureId = (string) Arr::get($captureResponse, 'purchase_units.0.payments.captures.0.id', '');
+
+        $order = $this->createOrder(
+            payload: (array) ($pendingOrder['payload'] ?? []),
+            normalizedItems: (array) ($pendingOrder['normalized_items'] ?? []),
+            subtotal: (float) ($pendingOrder['subtotal'] ?? 0),
+            paymentMethod: 'paypal',
+            paymentStatus: 'paid',
+            paypalOrderId: $paypalOrderId,
+            paypalCaptureId: $captureId !== '' ? $captureId : null,
+            markAsPaid: true,
+        );
+
+        $request->session()->forget(self::PAYPAL_PENDING_ORDER_SESSION_KEY.'.'.$paypalOrderId);
+        $request->session()->forget(self::CART_SESSION_KEY);
+
+        return response()->json([
+            'redirect_url' => route('checkout.success', $order),
+        ]);
+    }
+
+    public function success(Order $order): View
+    {
+        $order->load('items');
+
+        return view('checkout.success', [
+            'order' => $order,
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validateCheckoutPayload(Request $request): array
+    {
+        return $request->validate([
             'email' => ['required', 'email'],
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
@@ -72,7 +219,14 @@ class CheckoutController extends Controller
             'floor' => ['nullable', 'string', 'max:20'],
             'apartment_number' => ['nullable', 'string', 'max:20'],
         ]);
+    }
 
+    /**
+     * @param  array<int|string, array<string, mixed>>  $items
+     * @return array{normalized_items: array<int, array<string, mixed>>, subtotal: float}
+     */
+    private function buildCheckoutContext(array $items): array
+    {
         $variantIds = collect($items)->pluck('variant_id')->filter()->map(fn ($id): int => (int) $id)->values();
 
         $variants = ProductVariant::query()
@@ -89,15 +243,19 @@ class CheckoutController extends Controller
             $variant = $variants->get($variantId);
 
             if ($variant === null || ! $variant->is_active || $variant->product?->status !== 'active') {
-                return redirect()->route('cart.index')->withErrors(['cart' => 'One or more cart items are no longer available.']);
+                throw ValidationException::withMessages([
+                    'cart' => 'One or more cart items are no longer available.',
+                ]);
             }
 
             if ($quantity < 1) {
-                return redirect()->route('cart.index')->withErrors(['cart' => 'Cart contains an invalid quantity.']);
+                throw ValidationException::withMessages([
+                    'cart' => 'Cart contains an invalid quantity.',
+                ]);
             }
 
             if ($variant->track_inventory && ! $variant->allow_backorder && ! $variant->is_preorder && $quantity > $variant->stock_quantity) {
-                return redirect()->route('cart.index')->withErrors([
+                throw ValidationException::withMessages([
                     'cart' => "Insufficient stock for {$variant->name}. Please update your cart quantity.",
                 ]);
             }
@@ -116,26 +274,68 @@ class CheckoutController extends Controller
             ];
         }
 
-        $subtotal = collect($normalizedItems)->sum('line_total');
+        return [
+            'normalized_items' => $normalizedItems,
+            'subtotal' => (float) collect($normalizedItems)->sum('line_total'),
+        ];
+    }
 
-        $order = DB::transaction(function () use ($payload, $normalizedItems, $variants, $subtotal) {
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<int, array<string, mixed>>  $normalizedItems
+     */
+    private function createOrder(
+        array $payload,
+        array $normalizedItems,
+        float $subtotal,
+        string $paymentMethod,
+        string $paymentStatus,
+        ?string $paypalOrderId = null,
+        ?string $paypalCaptureId = null,
+        bool $markAsPaid = false,
+    ): Order {
+        return DB::transaction(function () use ($payload, $normalizedItems, $subtotal, $paymentMethod, $paymentStatus, $paypalOrderId, $paypalCaptureId, $markAsPaid): Order {
+            $variantIds = collect($normalizedItems)->pluck('product_variant_id')->map(fn ($id): int => (int) $id)->values();
+            $variants = ProductVariant::query()->whereIn('id', $variantIds)->get()->keyBy('id');
+
+            foreach ($normalizedItems as $item) {
+                $variant = $variants->get((int) $item['product_variant_id']);
+                $quantity = (int) $item['quantity'];
+
+                if ($variant === null || ! $variant->is_active) {
+                    throw ValidationException::withMessages([
+                        'cart' => 'One or more cart items are no longer available.',
+                    ]);
+                }
+
+                if ($variant->track_inventory && ! $variant->allow_backorder && ! $variant->is_preorder && $quantity > $variant->stock_quantity) {
+                    throw ValidationException::withMessages([
+                        'cart' => "Insufficient stock for {$variant->name}. Please update your cart quantity.",
+                    ]);
+                }
+            }
+
             $order = Order::query()->create([
                 'order_number' => $this->generateOrderNumber(),
-                'status' => 'pending',
-                'email' => $payload['email'],
-                'first_name' => $payload['first_name'],
-                'last_name' => $payload['last_name'],
-                'phone' => $payload['phone'] ?? null,
-                'country' => strtoupper($payload['country']),
-                'state' => $payload['state'] ?? null,
-                'city' => $payload['city'],
-                'postal_code' => $payload['postal_code'],
-                'street_name' => $payload['street_name'],
-                'street_number' => $payload['street_number'],
-                'apartment_block' => $payload['apartment_block'] ?? null,
-                'entrance' => $payload['entrance'] ?? null,
-                'floor' => $payload['floor'] ?? null,
-                'apartment_number' => $payload['apartment_number'] ?? null,
+                'status' => $markAsPaid ? 'paid' : 'pending',
+                'payment_method' => $paymentMethod,
+                'payment_status' => $paymentStatus,
+                'paypal_order_id' => $paypalOrderId,
+                'paypal_capture_id' => $paypalCaptureId,
+                'email' => (string) $payload['email'],
+                'first_name' => (string) $payload['first_name'],
+                'last_name' => (string) $payload['last_name'],
+                'phone' => isset($payload['phone']) ? (string) $payload['phone'] : null,
+                'country' => strtoupper((string) $payload['country']),
+                'state' => isset($payload['state']) ? (string) $payload['state'] : null,
+                'city' => (string) $payload['city'],
+                'postal_code' => (string) $payload['postal_code'],
+                'street_name' => (string) $payload['street_name'],
+                'street_number' => (string) $payload['street_number'],
+                'apartment_block' => isset($payload['apartment_block']) ? (string) $payload['apartment_block'] : null,
+                'entrance' => isset($payload['entrance']) ? (string) $payload['entrance'] : null,
+                'floor' => isset($payload['floor']) ? (string) $payload['floor'] : null,
+                'apartment_number' => isset($payload['apartment_number']) ? (string) $payload['apartment_number'] : null,
                 'currency' => 'EUR',
                 'subtotal' => $subtotal,
                 'total' => $subtotal,
@@ -154,19 +354,6 @@ class CheckoutController extends Controller
 
             return $order;
         });
-
-        $request->session()->forget(self::CART_SESSION_KEY);
-
-        return redirect()->route('checkout.success', $order)->with('status', 'Order placed successfully.');
-    }
-
-    public function success(Order $order): View
-    {
-        $order->load('items');
-
-        return view('checkout.success', [
-            'order' => $order,
-        ]);
     }
 
     /**

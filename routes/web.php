@@ -28,6 +28,8 @@ Route::delete('/cart/items/{variant}', [CartController::class, 'destroy'])->name
 
 Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
 Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+Route::post('/checkout/paypal/create-order', [CheckoutController::class, 'createPayPalOrder'])->name('checkout.paypal.create-order');
+Route::post('/checkout/paypal/capture-order', [CheckoutController::class, 'capturePayPalOrder'])->name('checkout.paypal.capture-order');
 Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
 
 Route::get('/api/shop/search', [ShopController::class, 'search'])->name('api.shop.search');

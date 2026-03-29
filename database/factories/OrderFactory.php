@@ -20,6 +20,10 @@ class OrderFactory extends Factory
         return [
             'order_number' => 'GG-'.strtoupper(fake()->bothify('????##??')),
             'status' => 'pending',
+            'payment_method' => 'manual',
+            'payment_status' => 'pending',
+            'paypal_order_id' => null,
+            'paypal_capture_id' => null,
             'email' => fake()->safeEmail(),
             'first_name' => fake()->firstName(),
             'last_name' => fake()->lastName(),

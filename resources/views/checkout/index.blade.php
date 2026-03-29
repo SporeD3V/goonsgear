@@ -130,6 +130,16 @@
                         </div>
 
                         <button type="submit" class="mt-2 rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Place order</button>
+
+                        @if ($paypalEnabled && $paypalClientId)
+                            <div id="paypal-checkout"
+                                 class="mt-2"
+                                 data-create-order-url="{{ route('checkout.paypal.create-order') }}"
+                                 data-capture-order-url="{{ route('checkout.paypal.capture-order') }}"
+                                 data-csrf-token="{{ csrf_token() }}"></div>
+                            <p class="text-xs text-slate-500">Or pay securely with PayPal.</p>
+                            <div id="paypal-errors" class="hidden rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700"></div>
+                        @endif
                     </form>
                 </section>
 
@@ -161,5 +171,9 @@
                 </aside>
             </div>
         </div>
+
+        @if ($paypalEnabled && $paypalClientId)
+            <script src="https://www.paypal.com/sdk/js?client-id={{ $paypalClientId }}&currency=EUR&intent=capture"></script>
+        @endif
     </body>
 </html>

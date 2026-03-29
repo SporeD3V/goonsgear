@@ -18,6 +18,10 @@ class Order extends Model
     protected $fillable = [
         'order_number',
         'status',
+        'payment_method',
+        'payment_status',
+        'paypal_order_id',
+        'paypal_capture_id',
         'email',
         'first_name',
         'last_name',

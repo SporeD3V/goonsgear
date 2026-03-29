@@ -39,4 +39,10 @@ return [
         'base_url' => env('GEODB_BASE_URL', 'http://geodb-free-service.wirefreethought.com/v1/geo'),
     ],
 
+    'paypal' => [
+        'client_id' => env('PAYPAL_CLIENT_ID'),
+        'client_secret' => env('PAYPAL_CLIENT_SECRET'),
+        'base_url' => env('PAYPAL_BASE_URL', 'https://api-m.sandbox.paypal.com'),
+    ],
+
 ];

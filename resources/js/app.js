@@ -491,4 +491,93 @@ document.addEventListener('DOMContentLoaded', () => {
 			renderCityInput(initialCity);
 		}
 	}
+
+	const paypalContainer = document.getElementById('paypal-checkout');
+	const checkoutForm = document.querySelector('form[action$="/checkout"]');
+	const paypalErrors = document.getElementById('paypal-errors');
+
+	if (paypalContainer && checkoutForm && window.paypal) {
+		const createOrderUrl = paypalContainer.dataset.createOrderUrl;
+		const captureOrderUrl = paypalContainer.dataset.captureOrderUrl;
+		const csrfToken = paypalContainer.dataset.csrfToken;
+
+		const showPayPalError = (message) => {
+			if (!paypalErrors) {
+				return;
+			}
+
+			paypalErrors.textContent = message;
+			paypalErrors.classList.remove('hidden');
+		};
+
+		const clearPayPalError = () => {
+			if (!paypalErrors) {
+				return;
+			}
+
+			paypalErrors.classList.add('hidden');
+			paypalErrors.textContent = '';
+		};
+
+		const collectCheckoutPayload = () => {
+			const formData = new FormData(checkoutForm);
+			const payload = {};
+
+			formData.forEach((value, key) => {
+				payload[key] = value;
+			});
+
+			return payload;
+		};
+
+		window.paypal.Buttons({
+			createOrder: async () => {
+				clearPayPalError();
+				const response = await fetch(createOrderUrl, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'Accept': 'application/json',
+						'X-CSRF-TOKEN': csrfToken,
+					},
+					body: JSON.stringify(collectCheckoutPayload()),
+				});
+
+				const payload = await response.json();
+
+				if (!response.ok || !payload.id) {
+					const message = payload.message || 'Unable to initialize PayPal checkout.';
+					showPayPalError(message);
+					throw new Error(message);
+				}
+
+				return payload.id;
+			},
+			onApprove: async (data) => {
+				clearPayPalError();
+				const response = await fetch(captureOrderUrl, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'Accept': 'application/json',
+						'X-CSRF-TOKEN': csrfToken,
+					},
+					body: JSON.stringify({ paypal_order_id: data.orderID }),
+				});
+
+				const payload = await response.json();
+
+				if (!response.ok || !payload.redirect_url) {
+					const message = payload.message || 'Unable to capture PayPal payment.';
+					showPayPalError(message);
+					return;
+				}
+
+				window.location.href = payload.redirect_url;
+			},
+			onError: () => {
+				showPayPalError('A PayPal error occurred. Please try again.');
+			},
+		}).render('#paypal-checkout');
+	}
 });
