@@ -9,6 +9,8 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
+use App\Models\Tag;
+use App\Observers\ProductObserver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -62,6 +64,7 @@ class ProductController extends Controller
     {
         return view('admin.products.create', [
             'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
+            'tags' => Tag::query()->where('is_active', true)->orderBy('type')->orderBy('name')->get(['id', 'name', 'type']),
         ]);
     }
 
@@ -75,10 +78,17 @@ class ProductController extends Controller
         $validated['is_preorder'] = $request->boolean('is_preorder');
 
         $categoryIds = $validated['category_ids'] ?? [];
+        $tagIds = $validated['tag_ids'] ?? [];
         unset($validated['category_ids']);
+        unset($validated['tag_ids']);
 
         $product = Product::query()->create($validated);
         $product->categories()->sync($categoryIds);
+        $product->tags()->sync($tagIds);
+
+        if ($product->status === 'active') {
+            app(ProductObserver::class)->notifyFollowersForDrop($product->fresh(['tags']));
+        }
 
         return redirect()
             ->route('admin.products.index')
@@ -92,6 +102,7 @@ class ProductController extends Controller
     {
         $product->load([
             'categories:id',
+            'tags:id,type',
             'variants' => fn ($query) => $query->orderBy('position')->orderBy('id'),
             'media' => fn ($query) => $query
                 ->with('variant:id,name')
@@ -103,6 +114,7 @@ class ProductController extends Controller
         return view('admin.products.edit', [
             'product' => $product,
             'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
+            'tags' => Tag::query()->where('is_active', true)->orderBy('type')->orderBy('name')->get(['id', 'name', 'type']),
         ]);
     }
 
@@ -116,12 +128,19 @@ class ProductController extends Controller
         $validated['is_preorder'] = $request->boolean('is_preorder');
 
         $categoryIds = $validated['category_ids'] ?? [];
+        $tagIds = $validated['tag_ids'] ?? [];
         unset($validated['category_ids']);
+        unset($validated['tag_ids']);
         unset($validated['media_files']);
         unset($validated['media_alt_text']);
 
         $product->update($validated);
         $product->categories()->sync($categoryIds);
+        $product->tags()->sync($tagIds);
+
+        if ($product->status === 'active') {
+            app(ProductObserver::class)->notifyFollowersForDrop($product->fresh(['tags']));
+        }
 
         $uploadedMediaFiles = $request->file('media_files', []);
         $mediaAltText = $request->string('media_alt_text')->trim()->toString();

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\StockAlertSubscription;
+use App\Models\Tag;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -136,6 +137,7 @@ class ShopController extends Controller
         $search = $request->string('q')->trim()->toString();
         $requestedCategorySlug = $request->string('category')->trim()->toString();
         $categorySlug = $forcedCategory?->slug ?? $requestedCategorySlug;
+        $tagSlug = $request->string('tag')->trim()->toString();
         $minPrice = is_numeric($request->input('min_price')) ? max(0, (float) $request->input('min_price')) : null;
         $maxPrice = is_numeric($request->input('max_price')) ? max(0, (float) $request->input('max_price')) : null;
         $showOutOfStock = $request->boolean('include_out_of_stock');
@@ -146,6 +148,12 @@ class ShopController extends Controller
             ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'slug', 'meta_title', 'meta_description']);
+
+        $shopTags = Tag::query()
+            ->where('is_active', true)
+            ->orderBy('type')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug', 'type']);
 
         $activeCategory = $forcedCategory;
 
@@ -174,6 +182,10 @@ class ShopController extends Controller
                 fn ($query) => $query->whereHas('primaryCategory', fn ($categoryQuery) => $categoryQuery->where('slug', $categorySlug))
             )
             ->when(
+                $tagSlug !== '',
+                fn ($query) => $query->whereHas('tags', fn ($tagQuery) => $tagQuery->where('slug', $tagSlug)->where('is_active', true))
+            )
+            ->when(
                 $shouldFilterOutOfStock,
                 fn ($query) => $query->where(function ($availabilityQuery): void {
                     $availabilityQuery
@@ -199,6 +211,7 @@ class ShopController extends Controller
             )
             ->with([
                 'primaryCategory:id,name,slug',
+                'tags:id,name,slug,type',
                 'media' => fn ($query) => $query
                     ->orderByDesc('is_primary')
                     ->orderBy('position')
@@ -225,11 +238,13 @@ class ShopController extends Controller
             'filters' => [
                 'q' => $search,
                 'category' => $categorySlug,
+                'tag' => $tagSlug,
                 'min_price' => $minPrice,
                 'max_price' => $maxPrice,
                 'include_out_of_stock' => $showOutOfStock,
                 'sort' => $sort,
             ],
+            'shopTags' => $shopTags,
             'seo' => [
                 'title' => $pageTitle,
                 'description' => $pageDescription,

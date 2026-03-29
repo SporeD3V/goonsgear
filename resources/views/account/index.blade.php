@@ -90,6 +90,88 @@
                     </div>
                 </form>
             </section>
+
+            <section class="mt-6 rounded border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 class="text-base font-semibold">Favorite Artists & Brands</h2>
+                <p class="mt-1 text-sm text-slate-500">Follow artists and brands you care about and control drop or discount emails per favorite.</p>
+
+                @if ($availableTags->isNotEmpty())
+                    <form method="POST" action="{{ route('account.tag-follows.store') }}" class="mt-5 rounded border border-slate-200 p-4">
+                        @csrf
+
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <div>
+                                <label class="mb-1 block text-sm font-medium">Add artist/brand</label>
+                                <select name="tag_id" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" required>
+                                    <option value="">Select one...</option>
+                                    @foreach ($availableTags as $tag)
+                                        <option value="{{ $tag->id }}">{{ ucfirst($tag->type) }}: {{ $tag->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="space-y-2">
+                                <label class="flex cursor-pointer items-center gap-2 text-sm">
+                                    <input type="checkbox" name="notify_new_drops" value="1" checked class="rounded border-slate-300 text-blue-600">
+                                    <span>Notify me when a new product drops</span>
+                                </label>
+                                <label class="flex cursor-pointer items-center gap-2 text-sm">
+                                    <input type="checkbox" name="notify_discounts" value="1" checked class="rounded border-slate-300 text-blue-600">
+                                    <span>Notify me when products get discounted</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="mt-4 rounded bg-slate-700 px-4 py-2 text-sm text-white hover:bg-slate-800">Follow</button>
+                    </form>
+                @else
+                    <p class="mt-5 rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">No more active artists/brands are available to follow right now.</p>
+                @endif
+
+                <div class="mt-4 space-y-3">
+                    @forelse ($tagFollows as $tagFollow)
+                        <article class="rounded border border-slate-200 p-4">
+                            <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                <h3 class="text-sm font-semibold text-slate-800">
+                                    {{ ucfirst($tagFollow->tag->type) }}: {{ $tagFollow->tag->name }}
+                                </h3>
+                                @if (! $tagFollow->tag->is_active)
+                                    <span class="rounded bg-amber-100 px-2 py-1 text-xs text-amber-700">Inactive</span>
+                                @endif
+                            </div>
+
+                            <form method="POST" action="{{ route('account.tag-follows.update', $tagFollow) }}" class="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+                                @csrf
+                                @method('PATCH')
+
+                                <div class="space-y-2">
+                                    <label class="flex cursor-pointer items-center gap-2 text-sm">
+                                        <input type="checkbox" name="notify_new_drops" value="1" @checked($tagFollow->notify_new_drops) class="rounded border-slate-300 text-blue-600">
+                                        <span>Email me for new drops</span>
+                                    </label>
+
+                                    <label class="flex cursor-pointer items-center gap-2 text-sm">
+                                        <input type="checkbox" name="notify_discounts" value="1" @checked($tagFollow->notify_discounts) class="rounded border-slate-300 text-blue-600">
+                                        <span>Email me for discounts</span>
+                                    </label>
+                                </div>
+
+                                <div class="flex items-center gap-3">
+                                    <button type="submit" class="rounded bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700">Save</button>
+                                </div>
+                            </form>
+
+                            <form method="POST" action="{{ route('account.tag-follows.destroy', $tagFollow) }}" class="mt-3">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="text-xs text-red-700 hover:underline" onclick="return confirm('Remove this favorite?')">Unfollow</button>
+                            </form>
+                        </article>
+                    @empty
+                        <p class="rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">You are not following any artists or brands yet.</p>
+                    @endforelse
+                </div>
+            </section>
         </main>
     </body>
 </html>

@@ -29,7 +29,7 @@
                 </div>
             </header>
 
-            <form method="GET" action="{{ route('shop.index') }}" class="mb-5 grid gap-3 rounded border border-slate-200 bg-white p-3 md:grid-cols-7">
+            <form method="GET" action="{{ route('shop.index') }}" class="mb-5 grid gap-3 rounded border border-slate-200 bg-white p-3 md:grid-cols-8">
                 <div class="relative md:col-span-2">
                     <label class="mb-1 block text-xs font-medium text-slate-700">Search</label>
                     <input
@@ -51,6 +51,18 @@
                         <option value="">All categories</option>
                         @foreach ($shopCategories as $shopCategory)
                             <option value="{{ $shopCategory->slug }}" @selected($filters['category'] === $shopCategory->slug)>{{ $shopCategory->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-slate-700">Artist / Brand</label>
+                    <select name="tag" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                        <option value="">All artists & brands</option>
+                        @foreach ($shopTags as $shopTag)
+                            <option value="{{ $shopTag->slug }}" @selected($filters['tag'] === $shopTag->slug)>
+                                {{ ucfirst($shopTag->type) }}: {{ $shopTag->name }}
+                            </option>
                         @endforeach
                     </select>
                 </div>
@@ -151,6 +163,13 @@
                                 @endif
                                 <h2 class="text-lg font-semibold">{{ $product->name }}</h2>
                                 <p class="mt-1 text-sm text-slate-600">{{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>
+                                @if ($product->tags->isNotEmpty())
+                                    <div class="mt-2 flex flex-wrap gap-1">
+                                        @foreach ($product->tags as $tag)
+                                            <span class="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700">{{ ucfirst($tag->type) }}: {{ $tag->name }}</span>
+                                        @endforeach
+                                    </div>
+                                @endif
                                 @if ($startingPrice !== null)
                                     <p class="mt-1 text-sm font-medium text-slate-800">From ${{ number_format((float) $startingPrice, 2) }}</p>
                                 @endif

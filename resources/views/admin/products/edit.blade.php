@@ -50,6 +50,21 @@
         </div>
 
         <div>
+            <label class="mb-1 block text-sm font-medium">Artists / Brands</label>
+            <select name="tag_ids[]" multiple class="w-full rounded border border-slate-300 px-3 py-2">
+                @php
+                    $selectedTags = array_map('strval', old('tag_ids', $product->tags->pluck('id')->all()));
+                @endphp
+                @foreach ($tags as $tag)
+                    <option value="{{ $tag->id }}" @selected(in_array((string) $tag->id, $selectedTags, true))>
+                        {{ ucfirst($tag->type) }}: {{ $tag->name }}
+                    </option>
+                @endforeach
+            </select>
+            <p class="mt-1 text-xs text-slate-500">Followers of these artists/brands can receive drop and discount notifications.</p>
+        </div>
+
+        <div>
             <label class="mb-1 block text-sm font-medium">Excerpt</label>
             <textarea name="excerpt" rows="2" class="w-full rounded border border-slate-300 px-3 py-2">{{ old('excerpt', $product->excerpt) }}</textarea>
         </div>

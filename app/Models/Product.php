@@ -59,6 +59,12 @@ class Product extends Model
             ->withTimestamps();
     }
 
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class)
+            ->withTimestamps();
+    }
+
     public function variants(): HasMany
     {
         return $this->hasMany(ProductVariant::class);

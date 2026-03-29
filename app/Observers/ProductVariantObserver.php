@@ -5,8 +5,11 @@ namespace App\Observers;
 use App\Mail\BackInStockAlert;
 use App\Mail\CartItemDiscounted;
 use App\Mail\CartItemLowStock;
+use App\Mail\TagDiscountNotification;
 use App\Models\ProductVariant;
 use App\Models\StockAlertSubscription;
+use App\Models\TagFollow;
+use App\Models\TagNotificationDispatch;
 use App\Models\UserCartItem;
 use Illuminate\Support\Facades\Mail;
 
@@ -43,6 +46,64 @@ class ProductVariantObserver
 
                 if ($user !== null && $user->notify_cart_discounts) {
                     Mail::to($user)->queue(new CartItemDiscounted($user, $variant, $oldPrice));
+                }
+            });
+
+        $this->notifyTagFollowersAboutDiscount($variant, $oldPrice, $newPrice);
+    }
+
+    private function notifyTagFollowersAboutDiscount(ProductVariant $variant, float $oldPrice, float $newPrice): void
+    {
+        $product = $variant->product;
+
+        if ($product === null || $product->status !== 'active') {
+            return;
+        }
+
+        $product->loadMissing('tags:id,name,type,is_active');
+        $activeTagIds = $product->tags
+            ->where('is_active', true)
+            ->pluck('id')
+            ->all();
+
+        if ($activeTagIds === []) {
+            return;
+        }
+
+        $priceReference = number_format($newPrice, 2, '.', '');
+
+        TagFollow::query()
+            ->whereIn('tag_id', $activeTagIds)
+            ->where('notify_discounts', true)
+            ->with([
+                'user:id,name,email',
+                'tag:id,name,type,is_active',
+            ])
+            ->get()
+            ->each(function (TagFollow $tagFollow) use ($variant, $product, $oldPrice, $newPrice, $priceReference): void {
+                $user = $tagFollow->user;
+                $tag = $tagFollow->tag;
+
+                if ($user === null || $tag === null || ! $tag->is_active) {
+                    return;
+                }
+
+                $dispatch = TagNotificationDispatch::query()->firstOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'tag_id' => $tag->id,
+                        'product_id' => $product->id,
+                        'product_variant_id' => $variant->id,
+                        'notification_type' => 'discount',
+                        'reference' => $priceReference,
+                    ],
+                    [
+                        'dispatched_at' => now(),
+                    ]
+                );
+
+                if ($dispatch->wasRecentlyCreated) {
+                    Mail::to($user)->queue(new TagDiscountNotification($user, $tag, $variant, $oldPrice, $newPrice));
                 }
             });
     }

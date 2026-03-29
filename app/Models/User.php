@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -62,5 +63,17 @@ class User extends Authenticatable
     public function stockAlertSubscriptions(): HasMany
     {
         return $this->hasMany(StockAlertSubscription::class);
+    }
+
+    public function tagFollows(): HasMany
+    {
+        return $this->hasMany(TagFollow::class);
+    }
+
+    public function followedTags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class, 'tag_follows')
+            ->withPivot(['notify_new_drops', 'notify_discounts'])
+            ->withTimestamps();
     }
 }

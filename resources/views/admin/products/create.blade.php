@@ -46,6 +46,18 @@
         </div>
 
         <div>
+            <label class="mb-1 block text-sm font-medium">Artists / Brands</label>
+            <select name="tag_ids[]" multiple class="w-full rounded border border-slate-300 px-3 py-2">
+                @foreach ($tags as $tag)
+                    <option value="{{ $tag->id }}" @selected(in_array((string) $tag->id, array_map('strval', old('tag_ids', [])), true))>
+                        {{ ucfirst($tag->type) }}: {{ $tag->name }}
+                    </option>
+                @endforeach
+            </select>
+            <p class="mt-1 text-xs text-slate-500">Assign one or multiple artists/brands to power storefront filters and follower notifications.</p>
+        </div>
+
+        <div>
             <label class="mb-1 block text-sm font-medium">Excerpt</label>
             <textarea name="excerpt" rows="2" class="w-full rounded border border-slate-300 px-3 py-2">{{ old('excerpt') }}</textarea>
         </div>

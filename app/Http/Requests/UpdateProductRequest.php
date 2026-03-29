@@ -29,6 +29,8 @@ class UpdateProductRequest extends FormRequest
             'primary_category_id' => ['nullable', 'exists:categories,id'],
             'category_ids' => ['nullable', 'array'],
             'category_ids.*' => ['integer', 'exists:categories,id'],
+            'tag_ids' => ['nullable', 'array'],
+            'tag_ids.*' => ['integer', 'exists:tags,id'],
             'name' => ['required', 'string', 'max:255', Rule::unique('products', 'name')->ignore($productId)],
             'slug' => ['required', 'string', 'max:255', Rule::unique('products', 'slug')->ignore($productId)],
             'status' => ['required', 'string', Rule::in(['draft', 'active', 'archived'])],

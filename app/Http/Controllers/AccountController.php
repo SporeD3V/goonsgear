@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Tag;
+use App\Models\TagFollow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -10,7 +12,25 @@ class AccountController extends Controller
 {
     public function index(): View
     {
-        return view('account.index');
+        $user = request()->user();
+
+        $tagFollows = TagFollow::query()
+            ->where('user_id', $user->id)
+            ->with('tag:id,name,slug,type,is_active')
+            ->orderByDesc('id')
+            ->get();
+
+        $availableTags = Tag::query()
+            ->where('is_active', true)
+            ->whereNotIn('id', $tagFollows->pluck('tag_id'))
+            ->orderBy('type')
+            ->orderBy('name')
+            ->get(['id', 'name', 'type']);
+
+        return view('account.index', [
+            'tagFollows' => $tagFollows,
+            'availableTags' => $availableTags,
+        ]);
     }
 
     public function updateEmailPreferences(Request $request): RedirectResponse

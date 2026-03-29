@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AccountTagFollowController;
 use App\Http\Controllers\Admin\BundleDiscountController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\CouponController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductMediaController;
 use App\Http\Controllers\Admin\ProductVariantController;
 use App\Http\Controllers\Admin\RegionalDiscountController;
+use App\Http\Controllers\Admin\TagController;
 use App\Http\Controllers\Admin\UrlRedirectController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\RegionalDiscountController as ApiRegionalDiscountController;
@@ -55,6 +57,18 @@ Route::patch('/account/email-preferences', [AccountController::class, 'updateEma
     ->middleware('auth')
     ->name('account.email-preferences.update');
 
+Route::post('/account/tag-follows', [AccountTagFollowController::class, 'store'])
+    ->middleware('auth')
+    ->name('account.tag-follows.store');
+
+Route::patch('/account/tag-follows/{tagFollow}', [AccountTagFollowController::class, 'update'])
+    ->middleware('auth')
+    ->name('account.tag-follows.update');
+
+Route::delete('/account/tag-follows/{tagFollow}', [AccountTagFollowController::class, 'destroy'])
+    ->middleware('auth')
+    ->name('account.tag-follows.destroy');
+
 Route::post('/stock-alert-subscriptions', [StockAlertSubscriptionController::class, 'store'])
     ->middleware('auth')
     ->name('stock-alert-subscriptions.store');
@@ -89,6 +103,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin', 'admin.noin
     Route::resource('bundle-discounts', BundleDiscountController::class)->except('show');
     Route::resource('orders', OrderController::class)->only(['index', 'show', 'update']);
     Route::resource('products', ProductController::class)->except('show');
+    Route::resource('tags', TagController::class)->except('show');
     Route::get('products/{product}/stock-alerts', [ProductController::class, 'stockAlerts'])
         ->name('products.stock-alerts');
     Route::resource('regional-discounts', RegionalDiscountController::class)->except('show');
