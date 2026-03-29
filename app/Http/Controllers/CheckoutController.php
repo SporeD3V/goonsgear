@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\OrderConfirmation;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\ProductVariant;
@@ -12,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -122,6 +124,8 @@ class CheckoutController extends Controller
         $request->session()->forget(self::CART_SESSION_KEY);
         $request->session()->forget(self::COUPON_SESSION_KEY);
 
+        Mail::to($order->email)->send(new OrderConfirmation($order->load('items')));
+
         return redirect()->route('checkout.success', $order)->with('status', 'Order placed successfully.');
     }
 
@@ -231,6 +235,8 @@ class CheckoutController extends Controller
         $request->session()->forget(self::PAYPAL_PENDING_ORDER_SESSION_KEY.'.'.$paypalOrderId);
         $request->session()->forget(self::CART_SESSION_KEY);
         $request->session()->forget(self::COUPON_SESSION_KEY);
+
+        Mail::to($order->email)->send(new OrderConfirmation($order->load('items')));
 
         return response()->json([
             'redirect_url' => route('checkout.success', $order),
