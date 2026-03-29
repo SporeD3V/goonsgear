@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\ProductVariant;
+use App\Support\CartPricing;
 use App\Support\PayPalClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -20,6 +22,8 @@ class CheckoutController extends Controller
 {
     private const CART_SESSION_KEY = 'cart.items';
 
+    private const COUPON_SESSION_KEY = 'cart.coupon_code';
+
     private const PAYPAL_PENDING_ORDER_SESSION_KEY = 'checkout.paypal.pending_orders';
 
     private static ?bool $orderPaymentColumnsAvailable = null;
@@ -29,7 +33,7 @@ class CheckoutController extends Controller
      */
     private static array $orderColumnAvailability = [];
 
-    public function index(Request $request, PayPalClient $paypalClient): View|RedirectResponse
+    public function index(Request $request, PayPalClient $paypalClient, CartPricing $cartPricing): View|RedirectResponse
     {
         $items = $this->getCartItems($request);
         $authenticatedUser = $request->user();
@@ -46,11 +50,20 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->withErrors(['cart' => 'Your cart is empty.']);
         }
 
-        $subtotal = collect($items)->sum(fn (array $item): float => (float) $item['price'] * (int) $item['quantity']);
+        $pricing = $cartPricing->summarize($items, $request->session()->get(self::COUPON_SESSION_KEY));
+
+        if ($pricing['error'] !== null) {
+            $request->session()->forget(self::COUPON_SESSION_KEY);
+
+            return redirect()->route('cart.index')->withErrors(['coupon_code' => $pricing['error']]);
+        }
 
         return view('checkout.index', [
             'items' => $items,
-            'subtotal' => $subtotal,
+            'subtotal' => $pricing['subtotal'],
+            'discountTotal' => $pricing['discount_total'],
+            'total' => $pricing['total'],
+            'appliedCoupon' => $pricing['coupon'],
             'countries' => $this->getCountries(),
             'paypalEnabled' => $paypalClient->isEnabled(),
             'paypalClientId' => $paypalClient->clientId(),
@@ -73,7 +86,7 @@ class CheckoutController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, CartPricing $cartPricing): RedirectResponse
     {
         $items = $this->getCartItems($request);
 
@@ -89,20 +102,30 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->withErrors($exception->errors());
         }
 
+        try {
+            $pricing = $this->resolvePricing($request, $checkoutContext['subtotal'], $cartPricing);
+        } catch (ValidationException $exception) {
+            return redirect()->route('cart.index')->withErrors($exception->errors());
+        }
+
         $order = $this->createOrder(
             payload: $payload,
             normalizedItems: $checkoutContext['normalized_items'],
             subtotal: $checkoutContext['subtotal'],
+            discountTotal: $pricing['discount_total'],
+            total: $pricing['total'],
+            couponCode: $pricing['coupon_code'],
             paymentMethod: 'manual',
             paymentStatus: 'pending',
         );
 
         $request->session()->forget(self::CART_SESSION_KEY);
+        $request->session()->forget(self::COUPON_SESSION_KEY);
 
         return redirect()->route('checkout.success', $order)->with('status', 'Order placed successfully.');
     }
 
-    public function createPayPalOrder(Request $request, PayPalClient $paypalClient): JsonResponse
+    public function createPayPalOrder(Request $request, PayPalClient $paypalClient, CartPricing $cartPricing): JsonResponse
     {
         if (! $paypalClient->isEnabled()) {
             return response()->json([
@@ -120,7 +143,8 @@ class CheckoutController extends Controller
 
         $payload = $this->validateCheckoutPayload($request);
         $checkoutContext = $this->buildCheckoutContext($items);
-        $amount = number_format((float) $checkoutContext['subtotal'], 2, '.', '');
+        $pricing = $this->resolvePricing($request, $checkoutContext['subtotal'], $cartPricing);
+        $amount = number_format((float) $pricing['total'], 2, '.', '');
 
         try {
             $paypalOrder = $paypalClient->createOrder($amount, 'EUR');
@@ -142,6 +166,9 @@ class CheckoutController extends Controller
             'payload' => $payload,
             'normalized_items' => $checkoutContext['normalized_items'],
             'subtotal' => $checkoutContext['subtotal'],
+            'discount_total' => $pricing['discount_total'],
+            'total' => $pricing['total'],
+            'coupon_code' => $pricing['coupon_code'],
         ]);
 
         return response()->json([
@@ -191,6 +218,9 @@ class CheckoutController extends Controller
             payload: (array) ($pendingOrder['payload'] ?? []),
             normalizedItems: (array) ($pendingOrder['normalized_items'] ?? []),
             subtotal: (float) ($pendingOrder['subtotal'] ?? 0),
+            discountTotal: (float) ($pendingOrder['discount_total'] ?? 0),
+            total: (float) ($pendingOrder['total'] ?? 0),
+            couponCode: ($pendingOrder['coupon_code'] ?? null) !== null ? (string) $pendingOrder['coupon_code'] : null,
             paymentMethod: 'paypal',
             paymentStatus: 'paid',
             paypalOrderId: $paypalOrderId,
@@ -200,6 +230,7 @@ class CheckoutController extends Controller
 
         $request->session()->forget(self::PAYPAL_PENDING_ORDER_SESSION_KEY.'.'.$paypalOrderId);
         $request->session()->forget(self::CART_SESSION_KEY);
+        $request->session()->forget(self::COUPON_SESSION_KEY);
 
         return response()->json([
             'redirect_url' => route('checkout.success', $order),
@@ -311,13 +342,16 @@ class CheckoutController extends Controller
         array $payload,
         array $normalizedItems,
         float $subtotal,
+        float $discountTotal,
+        float $total,
+        ?string $couponCode,
         string $paymentMethod,
         string $paymentStatus,
         ?string $paypalOrderId = null,
         ?string $paypalCaptureId = null,
         bool $markAsPaid = false,
     ): Order {
-        return DB::transaction(function () use ($payload, $normalizedItems, $subtotal, $paymentMethod, $paymentStatus, $paypalOrderId, $paypalCaptureId, $markAsPaid): Order {
+        return DB::transaction(function () use ($payload, $normalizedItems, $subtotal, $discountTotal, $total, $couponCode, $paymentMethod, $paymentStatus, $paypalOrderId, $paypalCaptureId, $markAsPaid): Order {
             $variantIds = collect($normalizedItems)->pluck('product_variant_id')->map(fn ($id): int => (int) $id)->values();
             $variants = ProductVariant::query()->whereIn('id', $variantIds)->get()->keyBy('id');
 
@@ -356,9 +390,17 @@ class CheckoutController extends Controller
                 'apartment_number' => isset($payload['apartment_number']) ? (string) $payload['apartment_number'] : null,
                 'currency' => 'EUR',
                 'subtotal' => $subtotal,
-                'total' => $subtotal,
+                'total' => $total,
                 'placed_at' => now(),
             ];
+
+            if ($this->orderColumnAvailable('coupon_code')) {
+                $orderPayload['coupon_code'] = $couponCode;
+            }
+
+            if ($this->orderColumnAvailable('discount_total')) {
+                $orderPayload['discount_total'] = $discountTotal;
+            }
 
             if ($this->orderColumnAvailable('state')) {
                 $orderPayload['state'] = isset($payload['state']) ? (string) $payload['state'] : null;
@@ -383,8 +425,30 @@ class CheckoutController extends Controller
                 }
             }
 
+            if ($couponCode !== null) {
+                Coupon::query()->where('code', $couponCode)->increment('used_count');
+            }
+
             return $order;
         });
+    }
+
+    /**
+     * @return array{subtotal: float, discount_total: float, total: float, coupon: ?App\Models\Coupon, coupon_code: ?string, requested_coupon_code: ?string, error: ?string}
+     */
+    private function resolvePricing(Request $request, float $subtotal, CartPricing $cartPricing): array
+    {
+        $pricing = $cartPricing->summarizeFromSubtotal($subtotal, $request->session()->get(self::COUPON_SESSION_KEY));
+
+        if ($pricing['error'] !== null) {
+            $request->session()->forget(self::COUPON_SESSION_KEY);
+
+            throw ValidationException::withMessages([
+                'coupon_code' => $pricing['error'],
+            ]);
+        }
+
+        return $pricing;
     }
 
     private function orderPaymentColumnsAvailable(): bool

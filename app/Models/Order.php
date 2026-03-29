@@ -37,6 +37,8 @@ class Order extends Model
         'floor',
         'apartment_number',
         'currency',
+        'coupon_code',
+        'discount_total',
         'subtotal',
         'total',
         'placed_at',
@@ -48,6 +50,7 @@ class Order extends Model
     protected function casts(): array
     {
         return [
+            'discount_total' => 'decimal:2',
             'subtotal' => 'decimal:2',
             'total' => 'decimal:2',
             'placed_at' => 'datetime',

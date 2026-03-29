@@ -39,6 +39,8 @@ class OrderFactory extends Factory
             'floor' => null,
             'apartment_number' => null,
             'currency' => 'EUR',
+            'coupon_code' => null,
+            'discount_total' => 0,
             'subtotal' => 99.99,
             'total' => 99.99,
             'placed_at' => now(),

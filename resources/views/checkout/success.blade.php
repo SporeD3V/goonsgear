@@ -48,9 +48,21 @@
                     </table>
                 </div>
 
-                <div class="mt-4 flex items-center justify-between">
-                    <p class="text-sm text-slate-600">Grand total</p>
-                    <p class="text-lg font-semibold">${{ number_format((float) $order->total, 2) }}</p>
+                <div class="mt-4 space-y-2">
+                    <div class="flex items-center justify-between text-sm text-slate-600">
+                        <p>Subtotal</p>
+                        <p>${{ number_format((float) $order->subtotal, 2) }}</p>
+                    </div>
+                    @if ((float) $order->discount_total > 0)
+                        <div class="flex items-center justify-between text-sm text-emerald-700">
+                            <p>Discount @if ($order->coupon_code)( {{ $order->coupon_code }} )@endif</p>
+                            <p>- ${{ number_format((float) $order->discount_total, 2) }}</p>
+                        </div>
+                    @endif
+                    <div class="flex items-center justify-between border-t border-slate-200 pt-3">
+                        <p class="text-sm text-slate-600">Grand total</p>
+                        <p class="text-lg font-semibold">${{ number_format((float) $order->total, 2) }}</p>
+                    </div>
                 </div>
 
                 <div class="mt-6">

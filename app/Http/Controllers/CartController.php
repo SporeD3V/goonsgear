@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductVariant;
+use App\Support\CartPricing;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -11,15 +12,59 @@ class CartController extends Controller
 {
     private const CART_SESSION_KEY = 'cart.items';
 
-    public function index(Request $request): View
+    private const COUPON_SESSION_KEY = 'cart.coupon_code';
+
+    public function index(Request $request, CartPricing $cartPricing): View
     {
         $cartItems = $this->getCartItems($request);
-        $subtotal = collect($cartItems)->sum(fn (array $item): float => (float) $item['price'] * (int) $item['quantity']);
+        $pricing = $cartPricing->summarize($cartItems, $request->session()->get(self::COUPON_SESSION_KEY));
+
+        if ($pricing['error'] !== null) {
+            $request->session()->forget(self::COUPON_SESSION_KEY);
+        }
 
         return view('cart.index', [
             'items' => $cartItems,
-            'subtotal' => $subtotal,
+            'subtotal' => $pricing['subtotal'],
+            'discountTotal' => $pricing['discount_total'],
+            'total' => $pricing['total'],
+            'appliedCoupon' => $pricing['coupon'],
+            'couponCode' => $pricing['requested_coupon_code'],
+            'couponError' => $pricing['error'],
         ]);
+    }
+
+    public function applyCoupon(Request $request, CartPricing $cartPricing): RedirectResponse
+    {
+        $payload = $request->validate([
+            'coupon_code' => ['required', 'string', 'max:50'],
+        ]);
+
+        $cartItems = $this->getCartItems($request);
+
+        if ($cartItems === []) {
+            return redirect()->route('cart.index')->withErrors(['cart' => 'Your cart is empty.']);
+        }
+
+        $pricing = $cartPricing->summarize($cartItems, $payload['coupon_code']);
+
+        if ($pricing['error'] !== null || $pricing['coupon_code'] === null) {
+            return redirect()
+                ->route('cart.index')
+                ->withErrors(['coupon_code' => $pricing['error'] ?? 'Unable to apply coupon.'])
+                ->withInput();
+        }
+
+        $request->session()->put(self::COUPON_SESSION_KEY, $pricing['coupon_code']);
+
+        return redirect()->route('cart.index')->with('status', 'Coupon applied successfully.');
+    }
+
+    public function removeCoupon(Request $request): RedirectResponse
+    {
+        $request->session()->forget(self::COUPON_SESSION_KEY);
+
+        return redirect()->route('cart.index')->with('status', 'Coupon removed.');
     }
 
     public function store(Request $request): RedirectResponse

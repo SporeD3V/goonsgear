@@ -15,6 +15,7 @@
                     <h1 class="text-xl font-semibold">GoonsGear Admin</h1>
                     <nav class="flex items-center gap-3 text-sm">
                         <a class="text-blue-700 hover:underline" href="{{ route('admin.categories.index') }}">Categories</a>
+                        <a class="text-blue-700 hover:underline" href="{{ route('admin.coupons.index') }}">Coupons</a>
                         <a class="text-blue-700 hover:underline" href="{{ route('admin.orders.index') }}">Orders</a>
                         <a class="text-blue-700 hover:underline" href="{{ route('admin.products.index') }}">Products</a>
                     </nav>

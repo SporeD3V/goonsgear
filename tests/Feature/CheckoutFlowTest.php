@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductMedia;
@@ -164,6 +165,48 @@ class CheckoutFlowTest extends TestCase
         $response->assertRedirect(route('cart.index'));
         $response->assertSessionHasErrors('cart');
         $this->assertSame(0, Order::query()->count());
+    }
+
+    public function test_checkout_applies_coupon_discount_to_order_totals(): void
+    {
+        $fixture = $this->createCheckoutFixture();
+        $variant = $fixture['variant'];
+
+        Coupon::factory()->create([
+            'code' => 'SAVE10',
+            'type' => Coupon::TYPE_PERCENT,
+            'value' => 10,
+            'minimum_subtotal' => 100,
+        ]);
+
+        $response = $this->withSession([
+            'cart.items' => [
+                $variant->id => [
+                    'variant_id' => $variant->id,
+                    'product_id' => $variant->product_id,
+                    'product_name' => 'Checkout Hoodie',
+                    'product_slug' => 'checkout-hoodie',
+                    'variant_name' => 'Large',
+                    'sku' => 'CO-HOODIE-L',
+                    'price' => 120.00,
+                    'quantity' => 2,
+                    'max_quantity' => 5,
+                    'image' => null,
+                    'url' => route('shop.show', $fixture['product']),
+                ],
+            ],
+            'cart.coupon_code' => 'SAVE10',
+        ])->post(route('checkout.store'), $this->validCheckoutPayload());
+
+        $order = Order::query()->latest('id')->first();
+
+        $this->assertNotNull($order);
+        $this->assertSame('SAVE10', $order?->coupon_code);
+        $this->assertSame('24.00', $order?->discount_total);
+        $this->assertSame('216.00', $order?->total);
+
+        $response->assertRedirect(route('checkout.success', $order));
+        $response->assertSessionMissing('cart.coupon_code');
     }
 
     public function test_checkout_requires_valid_input(): void

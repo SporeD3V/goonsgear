@@ -23,9 +23,39 @@
                 <div class="mb-4 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ $errors->first('cart') }}</div>
             @endif
 
+            @if ($couponError)
+                <div class="mb-4 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ $couponError }}</div>
+            @endif
+
             @if (empty($items))
                 <p class="rounded border border-slate-200 bg-white p-4 text-sm text-slate-600">Your cart is empty.</p>
             @else
+                <div class="mb-4 rounded border border-slate-200 bg-white p-4">
+                    <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                        <form method="POST" action="{{ route('cart.coupon.apply') }}" class="flex flex-1 flex-col gap-2 sm:flex-row sm:items-end">
+                            @csrf
+                            <div class="flex-1">
+                                <label for="coupon_code" class="mb-1 block text-sm font-medium text-slate-700">Coupon code</label>
+                                <input id="coupon_code" name="coupon_code" type="text" value="{{ old('coupon_code', $couponCode) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm uppercase" placeholder="SAVE10">
+                                @error('coupon_code')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
+                            </div>
+                            <button type="submit" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Apply coupon</button>
+                        </form>
+
+                        @if ($appliedCoupon)
+                            <form method="POST" action="{{ route('cart.coupon.remove') }}">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Remove {{ $appliedCoupon->code }}</button>
+                            </form>
+                        @endif
+                    </div>
+
+                    @if ($appliedCoupon)
+                        <p class="mt-3 text-sm text-emerald-700">Coupon {{ $appliedCoupon->code }} applied.</p>
+                    @endif
+                </div>
+
                 <div class="overflow-x-auto rounded border border-slate-200 bg-white">
                     <table class="min-w-full text-sm">
                         <thead class="bg-slate-50 text-slate-700">
@@ -89,11 +119,25 @@
                     </table>
                 </div>
 
-                <div class="mt-4 flex items-center justify-between rounded border border-slate-200 bg-white p-4">
-                    <p class="text-sm text-slate-600">Subtotal</p>
-                    <div class="flex items-center gap-4">
-                        <p class="text-lg font-semibold">${{ number_format((float) $subtotal, 2) }}</p>
-                        <a href="{{ route('checkout.index') }}" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Proceed to checkout</a>
+                <div class="mt-4 rounded border border-slate-200 bg-white p-4">
+                    <div class="flex items-center justify-between text-sm text-slate-600">
+                        <p>Subtotal</p>
+                        <p>${{ number_format((float) $subtotal, 2) }}</p>
+                    </div>
+
+                    @if ($discountTotal > 0)
+                        <div class="mt-2 flex items-center justify-between text-sm text-emerald-700">
+                            <p>Discount @if ($appliedCoupon)( {{ $appliedCoupon->code }} )@endif</p>
+                            <p>- ${{ number_format((float) $discountTotal, 2) }}</p>
+                        </div>
+                    @endif
+
+                    <div class="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
+                        <p class="text-sm text-slate-600">Total</p>
+                        <div class="flex items-center gap-4">
+                            <p class="text-lg font-semibold">${{ number_format((float) $total, 2) }}</p>
+                            <a href="{{ route('checkout.index') }}" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Proceed to checkout</a>
+                        </div>
                     </div>
                 </div>
             @endif

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -182,5 +183,57 @@ class CheckoutPayPalFlowTest extends TestCase
 
         $variant->refresh();
         $this->assertSame(2, $variant->stock_quantity);
+    }
+
+    public function test_paypal_order_amount_uses_discounted_total_when_coupon_is_applied(): void
+    {
+        config()->set('services.paypal.client_id', 'test-client-id');
+        config()->set('services.paypal.client_secret', 'test-client-secret');
+        config()->set('services.paypal.base_url', 'https://api-m.sandbox.paypal.com');
+
+        Coupon::factory()->create([
+            'code' => 'SAVE10',
+            'type' => Coupon::TYPE_PERCENT,
+            'value' => 10,
+            'minimum_subtotal' => 100,
+        ]);
+
+        Http::fake([
+            'https://api-m.sandbox.paypal.com/v1/oauth2/token' => Http::response([
+                'access_token' => 'paypal-access-token',
+            ]),
+            'https://api-m.sandbox.paypal.com/v2/checkout/orders' => Http::response([
+                'id' => 'PAYPAL-ORDER-1',
+            ]),
+        ]);
+
+        $fixture = $this->createCheckoutFixture();
+        $variant = $fixture['variant'];
+
+        $response = $this->withSession([
+            'cart.items' => [
+                $variant->id => [
+                    'variant_id' => $variant->id,
+                    'product_id' => $variant->product_id,
+                    'product_name' => 'PayPal Hoodie',
+                    'product_slug' => 'paypal-hoodie',
+                    'variant_name' => 'Large',
+                    'sku' => 'PP-HOODIE-L',
+                    'price' => 99.00,
+                    'quantity' => 2,
+                    'max_quantity' => 4,
+                    'image' => null,
+                    'url' => route('shop.show', $fixture['product']),
+                ],
+            ],
+            'cart.coupon_code' => 'SAVE10',
+        ])->postJson(route('checkout.paypal.create-order'), $this->validCheckoutPayload());
+
+        $response->assertOk();
+
+        Http::assertSent(function ($request): bool {
+            return $request->url() === 'https://api-m.sandbox.paypal.com/v2/checkout/orders'
+                && data_get($request->data(), 'purchase_units.0.amount.value') === '178.20';
+        });
     }
 }

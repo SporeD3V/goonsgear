@@ -28,6 +28,8 @@
             <h3 class="text-sm font-semibold text-slate-800">Payment</h3>
             <p class="mt-2 text-sm text-slate-700">Method: {{ ucfirst($order->payment_method) }}</p>
             <p class="text-sm text-slate-700">Status: {{ ucfirst($order->payment_status) }}</p>
+            <p class="text-sm text-slate-700">Coupon: {{ $order->coupon_code ?: '-' }}</p>
+            <p class="text-sm text-slate-700">Discount: ${{ number_format((float) $order->discount_total, 2) }}</p>
             <p class="text-sm text-slate-700">PayPal Order: {{ $order->paypal_order_id ?: '-' }}</p>
             <p class="text-sm text-slate-700">PayPal Capture: {{ $order->paypal_capture_id ?: '-' }}</p>
         </div>
@@ -98,7 +100,20 @@
         </table>
     </div>
 
-    <div class="mt-4 flex justify-end">
-        <p class="text-lg font-semibold">Grand total: ${{ number_format((float) $order->total, 2) }}</p>
+    <div class="mt-4 ml-auto max-w-sm space-y-2">
+        <div class="flex items-center justify-between text-sm text-slate-600">
+            <p>Subtotal</p>
+            <p>${{ number_format((float) $order->subtotal, 2) }}</p>
+        </div>
+        @if ((float) $order->discount_total > 0)
+            <div class="flex items-center justify-between text-sm text-emerald-700">
+                <p>Discount @if ($order->coupon_code)( {{ $order->coupon_code }} )@endif</p>
+                <p>- ${{ number_format((float) $order->discount_total, 2) }}</p>
+            </div>
+        @endif
+        <div class="flex items-center justify-between border-t border-slate-200 pt-3">
+            <p class="text-lg font-semibold">Grand total</p>
+            <p class="text-lg font-semibold">${{ number_format((float) $order->total, 2) }}</p>
+        </div>
     </div>
 @endsection

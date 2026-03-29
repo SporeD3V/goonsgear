@@ -165,8 +165,20 @@
                     </div>
 
                     <div class="mt-4 flex items-center justify-between border-t border-slate-200 pt-3">
-                        <p class="text-sm text-slate-600">Total</p>
+                        <p class="text-sm text-slate-600">Subtotal</p>
                         <p class="text-lg font-semibold">${{ number_format((float) $subtotal, 2) }}</p>
+                    </div>
+
+                    @if ($discountTotal > 0)
+                        <div class="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
+                            <p class="text-sm text-emerald-700">Discount @if ($appliedCoupon)( {{ $appliedCoupon->code }} )@endif</p>
+                            <p class="text-lg font-semibold text-emerald-700">- ${{ number_format((float) $discountTotal, 2) }}</p>
+                        </div>
+                    @endif
+
+                    <div class="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
+                        <p class="text-sm text-slate-600">Grand total</p>
+                        <p class="text-lg font-semibold">${{ number_format((float) $total, 2) }}</p>
                     </div>
                 </aside>
             </div>
