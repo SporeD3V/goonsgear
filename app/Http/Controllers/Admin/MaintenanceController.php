@@ -3,14 +3,50 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\AbandonedCartSetting;
+use App\Models\Coupon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\View\View;
 
 class MaintenanceController extends Controller
 {
+    public function editAbandonedCartSettings(): View
+    {
+        return view('admin.maintenance.abandoned-cart', [
+            'settings' => AbandonedCartSetting::current(),
+            'coupons' => Coupon::query()->orderBy('code')->get(['code', 'is_active']),
+        ]);
+    }
+
+    public function updateAbandonedCartSettings(Request $request): RedirectResponse
+    {
+        $request->merge([
+            'coupon_code' => strtoupper($request->string('coupon_code')->trim()->toString()),
+        ]);
+
+        $payload = $request->validate([
+            'is_enabled' => ['sometimes', 'boolean'],
+            'delay_minutes' => ['required', 'integer', 'min:15', 'max:10080'],
+            'coupon_code' => ['nullable', 'string', 'max:50', 'exists:coupons,code'],
+        ]);
+
+        $settings = AbandonedCartSetting::current();
+
+        $couponCode = isset($payload['coupon_code']) ? strtoupper(trim((string) $payload['coupon_code'])) : null;
+
+        $settings->update([
+            'is_enabled' => (bool) ($payload['is_enabled'] ?? false),
+            'delay_minutes' => (int) $payload['delay_minutes'],
+            'coupon_code' => $couponCode !== '' ? $couponCode : null,
+        ]);
+
+        return redirect()->route('admin.maintenance.abandoned-cart.edit')->with('status', 'Abandoned cart reminder settings updated.');
+    }
+
     public function clearCaches(Request $request): RedirectResponse
     {
         if (! $this->hasValidMaintenanceToken($request)) {

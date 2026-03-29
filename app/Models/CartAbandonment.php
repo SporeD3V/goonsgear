@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 class CartAbandonment extends Model
 {
     /** @use HasFactory<CartAbandonmentFactory> */
-    /** @use HasFactory<CartAbandonmentFactory> */
     use HasFactory;
 
     /**

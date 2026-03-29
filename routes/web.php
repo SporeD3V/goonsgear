@@ -74,6 +74,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         ->name('maintenance.clear-caches');
     Route::post('maintenance/clear-logs', [MaintenanceController::class, 'clearLogs'])
         ->name('maintenance.clear-logs');
+    Route::get('maintenance/abandoned-cart', [MaintenanceController::class, 'editAbandonedCartSettings'])
+        ->name('maintenance.abandoned-cart.edit');
+    Route::post('maintenance/abandoned-cart', [MaintenanceController::class, 'updateAbandonedCartSettings'])
+        ->name('maintenance.abandoned-cart.update');
     Route::get('maintenance/fallback-media', [FallbackMediaController::class, 'index'])
         ->name('maintenance.fallback-media.index');
     Route::post('maintenance/fallback-media/reconvert', [FallbackMediaController::class, 'reconvertAndUse'])

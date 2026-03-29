@@ -40,6 +40,7 @@
                     >
                         Clear Logs
                     </button>
+                    <a href="{{ route('admin.maintenance.abandoned-cart.edit') }}" class="rounded bg-emerald-600 px-3 py-2 text-white hover:bg-emerald-700">Cart Reminders</a>
                     <a href="{{ route('admin.maintenance.fallback-media.index') }}" class="rounded bg-blue-600 px-3 py-2 text-white hover:bg-blue-700">Fallback Media</a>
                 </form>
             </header>

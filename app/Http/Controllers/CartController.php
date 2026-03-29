@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CartAbandonment;
+use App\Models\Coupon;
 use App\Models\ProductVariant;
 use App\Support\CartPricing;
 use Illuminate\Http\JsonResponse;
@@ -229,6 +230,12 @@ class CartController extends Controller
         }
 
         $request->session()->put(self::CART_SESSION_KEY, $abandonment->cart_data);
+
+        $couponCode = strtoupper($request->string('coupon')->trim()->toString());
+
+        if ($couponCode !== '' && Coupon::query()->where('code', $couponCode)->exists()) {
+            $request->session()->put(self::COUPON_SESSION_KEY, $couponCode);
+        }
 
         $abandonment->update(['recovered_at' => now()]);
 

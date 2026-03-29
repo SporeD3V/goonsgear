@@ -15,7 +15,12 @@ You added items to your cart but didn't complete your order. Here's what you lef
 
 Your cart will be waiting for you — just click the button below to pick up where you left off.
 
-<x-mail::button :url="route('cart.recover', $abandonment->token)">
+@if ($couponCode)
+Use coupon code **{{ $couponCode }}** at checkout for your configured abandoned-cart discount.
+
+@endif
+
+<x-mail::button :url="route('cart.recover', ['abandonment' => $abandonment->token, 'coupon' => $couponCode])">
 Complete My Order
 </x-mail::button>
 

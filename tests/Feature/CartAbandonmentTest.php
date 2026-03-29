@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Mail\AbandonedCartReminder;
+use App\Models\AbandonedCartSetting;
 use App\Models\CartAbandonment;
+use App\Models\Coupon;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -92,6 +94,23 @@ class CartAbandonmentTest extends TestCase
         $this->assertNotNull($abandonment->recovered_at);
     }
 
+    public function test_recover_cart_applies_coupon_from_recovery_link_when_valid(): void
+    {
+        Coupon::factory()->create([
+            'code' => 'SAVE10',
+            'is_active' => true,
+            'type' => Coupon::TYPE_PERCENT,
+            'value' => 10,
+        ]);
+
+        $abandonment = CartAbandonment::factory()->create(['email' => 'shopper@example.com']);
+
+        $response = $this->get(route('cart.recover', ['abandonment' => $abandonment->token, 'coupon' => 'save10']));
+
+        $response->assertRedirect(route('checkout.index'));
+        $response->assertSessionHas('cart.coupon_code', 'SAVE10');
+    }
+
     public function test_recover_cart_rejects_already_recovered_link(): void
     {
         $abandonment = CartAbandonment::factory()->recovered()->create();
@@ -126,6 +145,48 @@ class CartAbandonmentTest extends TestCase
         $this->artisan('app:send-abandoned-cart-reminders')->assertSuccessful();
 
         Mail::assertQueued(AbandonedCartReminder::class, 2);
+    }
+
+    public function test_send_reminders_command_respects_settings_toggle_and_delay(): void
+    {
+        Mail::fake();
+
+        AbandonedCartSetting::current()->update([
+            'is_enabled' => false,
+            'delay_minutes' => 180,
+        ]);
+
+        CartAbandonment::factory()->create([
+            'abandoned_at' => now()->subHours(6),
+        ]);
+
+        $this->artisan('app:send-abandoned-cart-reminders')->assertSuccessful();
+        Mail::assertNothingQueued();
+
+        AbandonedCartSetting::current()->update([
+            'is_enabled' => true,
+            'delay_minutes' => 180,
+        ]);
+
+        $this->artisan('app:send-abandoned-cart-reminders')->assertSuccessful();
+        Mail::assertQueued(AbandonedCartReminder::class, 1);
+    }
+
+    public function test_admin_can_update_abandoned_cart_settings(): void
+    {
+        Coupon::factory()->create(['code' => 'SAVE15']);
+
+        $this->post(route('admin.maintenance.abandoned-cart.update'), [
+            'is_enabled' => '1',
+            'delay_minutes' => '90',
+            'coupon_code' => 'save15',
+        ])->assertRedirect(route('admin.maintenance.abandoned-cart.edit'));
+
+        $settings = AbandonedCartSetting::current();
+
+        $this->assertTrue($settings->is_enabled);
+        $this->assertSame(90, $settings->delay_minutes);
+        $this->assertSame('SAVE15', $settings->coupon_code);
     }
 
     public function test_send_reminders_command_marks_sent_records(): void

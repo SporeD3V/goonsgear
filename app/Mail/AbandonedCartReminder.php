@@ -17,7 +17,7 @@ class AbandonedCartReminder extends Mailable implements ShouldQueue
     /**
      * Create a new message instance.
      */
-    public function __construct(public readonly CartAbandonment $abandonment)
+    public function __construct(public readonly CartAbandonment $abandonment, public readonly ?string $couponCode = null)
     {
         $this->afterCommit();
     }
