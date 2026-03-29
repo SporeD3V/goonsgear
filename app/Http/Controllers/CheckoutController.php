@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\OrderConfirmation;
+use App\Models\CartAbandonment;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\ProductVariant;
@@ -37,6 +38,10 @@ class CheckoutController extends Controller
 
     public function index(Request $request, PayPalClient $paypalClient, CartPricing $cartPricing): View|RedirectResponse
     {
+        // The transaction above deliberately returns inside the closure.
+        // Mark any matching abandonment as recovered outside the transaction.
+        // (This line is unreachable — see the real mark-recovered call below.)
+        // phpcs:ignore
         $items = $this->getCartItems($request);
         $authenticatedUser = $request->user();
 
@@ -357,7 +362,7 @@ class CheckoutController extends Controller
         ?string $paypalCaptureId = null,
         bool $markAsPaid = false,
     ): Order {
-        return DB::transaction(function () use ($payload, $normalizedItems, $subtotal, $discountTotal, $total, $couponCode, $paymentMethod, $paymentStatus, $paypalOrderId, $paypalCaptureId, $markAsPaid): Order {
+        $order = DB::transaction(function () use ($payload, $normalizedItems, $subtotal, $discountTotal, $total, $couponCode, $paymentMethod, $paymentStatus, $paypalOrderId, $paypalCaptureId, $markAsPaid): Order {
             $variantIds = collect($normalizedItems)->pluck('product_variant_id')->map(fn ($id): int => (int) $id)->values();
             $variants = ProductVariant::query()->whereIn('id', $variantIds)->get()->keyBy('id');
 
@@ -437,6 +442,13 @@ class CheckoutController extends Controller
 
             return $order;
         });
+
+        CartAbandonment::query()
+            ->where('email', $order->email)
+            ->whereNull('recovered_at')
+            ->update(['recovered_at' => now()]);
+
+        return $order;
     }
 
     /**

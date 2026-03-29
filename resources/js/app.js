@@ -581,3 +581,32 @@ document.addEventListener('DOMContentLoaded', () => {
 		}).render('#paypal-checkout');
 	}
 });
+
+// Cart abandonment: record email + cart when user blurs the checkout email field
+document.addEventListener('DOMContentLoaded', () => {
+	const emailInput = document.getElementById('email');
+	const trackEmailUrl = document.querySelector('meta[name="csrf-token"]') ? '/cart/track-email' : null;
+
+	if (!emailInput || !trackEmailUrl) {
+		return;
+	}
+
+	emailInput.addEventListener('blur', () => {
+		const email = emailInput.value.trim();
+
+		if (!email || !email.includes('@')) {
+			return;
+		}
+
+		const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+		fetch(trackEmailUrl, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-CSRF-TOKEN': csrfToken,
+			},
+			body: JSON.stringify({ email }),
+		}).catch(() => {});
+	});
+});

@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CartAbandonment;
 use App\Models\ProductVariant;
 use App\Support\CartPricing;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class CartController extends Controller
@@ -178,5 +181,57 @@ class CartController extends Controller
         }
 
         return max(0, (int) $variant->stock_quantity);
+    }
+
+    public function trackEmail(Request $request): JsonResponse
+    {
+        $data = $request->validate(['email' => ['required', 'email', 'max:255']]);
+
+        $items = $this->getCartItems($request);
+
+        if (empty($items)) {
+            return response()->json(['ok' => true]);
+        }
+
+        $existing = CartAbandonment::query()
+            ->where('email', $data['email'])
+            ->whereNull('recovered_at')
+            ->latest()
+            ->first();
+
+        if ($existing instanceof CartAbandonment) {
+            $existing->update([
+                'cart_data' => $items,
+                'abandoned_at' => now(),
+                'reminder_sent_at' => null,
+                'token' => Str::uuid()->toString(),
+            ]);
+        } else {
+            CartAbandonment::query()->create([
+                'email' => $data['email'],
+                'cart_data' => $items,
+                'token' => Str::uuid()->toString(),
+                'abandoned_at' => now(),
+            ]);
+        }
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function recoverCart(Request $request, CartAbandonment $abandonment): RedirectResponse
+    {
+        if ($abandonment->recovered_at !== null) {
+            return redirect()->route('cart.index')->withErrors(['cart' => 'This recovery link has already been used.']);
+        }
+
+        if ($abandonment->abandoned_at < now()->subDays(7)) {
+            return redirect()->route('cart.index')->withErrors(['cart' => 'This recovery link has expired.']);
+        }
+
+        $request->session()->put(self::CART_SESSION_KEY, $abandonment->cart_data);
+
+        $abandonment->update(['recovered_at' => now()]);
+
+        return redirect()->route('checkout.index')->with('status', 'Your cart has been restored. Please complete your order below.');
     }
 }

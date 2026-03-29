@@ -44,6 +44,8 @@ Route::get('/account', [AccountController::class, 'index'])
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::post('/cart/coupon', [CartController::class, 'applyCoupon'])->name('cart.coupon.apply');
 Route::delete('/cart/coupon', [CartController::class, 'removeCoupon'])->name('cart.coupon.remove');
+Route::post('/cart/track-email', [CartController::class, 'trackEmail'])->name('cart.track-email');
+Route::get('/cart/recover/{abandonment}', [CartController::class, 'recoverCart'])->name('cart.recover');
 Route::post('/cart/items', [CartController::class, 'store'])->name('cart.items.store');
 Route::patch('/cart/items/{variant}', [CartController::class, 'update'])->name('cart.items.update');
 Route::delete('/cart/items/{variant}', [CartController::class, 'destroy'])->name('cart.items.destroy');
