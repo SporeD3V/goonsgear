@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'geodb' => [
+        'base_url' => env('GEODB_BASE_URL', 'http://geodb-free-service.wirefreethought.com/v1/geo'),
+    ],
+
 ];

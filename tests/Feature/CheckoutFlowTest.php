@@ -51,6 +51,7 @@ class CheckoutFlowTest extends TestCase
             'last_name' => 'Mustermann',
             'phone' => '+49123456789',
             'country' => 'DE',
+            'state' => 'BE',
             'city' => 'Berlin',
             'postal_code' => '10115',
             'street_name' => 'Alexanderplatz',
@@ -122,6 +123,7 @@ class CheckoutFlowTest extends TestCase
         $this->assertNotNull($order);
         $this->assertSame('customer@example.com', $order?->email);
         $this->assertSame('DE', $order?->country);
+        $this->assertSame('BE', $order?->state);
         $this->assertCount(1, $order?->items ?? []);
         $this->assertSame('CO-HOODIE-L', $order?->items->first()?->sku);
         $this->assertSame('240.00', $order?->total);

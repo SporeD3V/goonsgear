@@ -63,20 +63,31 @@
                             </div>
                         </div>
 
+                        <div id="location-endpoints"
+                             data-states-url="{{ route('api.locations.states') }}"
+                             data-cities-url="{{ route('api.locations.cities') }}"></div>
+
                         <div class="grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label for="state" class="mb-1 block text-sm font-medium text-slate-700">State / Region <span class="text-slate-400">(optional)</span></label>
+                                <div id="state-wrapper" data-initial-state="{{ $formDefaults['state'] }}">
+                                    <input id="state" name="state" type="text" value="{{ $formDefaults['state'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                </div>
+                                @error('state')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
+                            </div>
                             <div>
                                 <label for="city" class="mb-1 block text-sm font-medium text-slate-700">City</label>
                                 <div id="city-wrapper" data-initial-city="{{ $formDefaults['city'] }}">
-                                    {{-- populated by JS; fallback for no-JS --}}
                                     <input id="city" name="city" type="text" value="{{ $formDefaults['city'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
                                 </div>
                                 @error('city')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
-                            <div>
-                                <label for="postal_code" class="mb-1 block text-sm font-medium text-slate-700">Postal code</label>
-                                <input id="postal_code" name="postal_code" type="text" value="{{ $formDefaults['postal_code'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
-                                @error('postal_code')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
-                            </div>
+                        </div>
+
+                        <div>
+                            <label for="postal_code" class="mb-1 block text-sm font-medium text-slate-700">Postal code</label>
+                            <input id="postal_code" name="postal_code" type="text" value="{{ $formDefaults['postal_code'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                            @error('postal_code')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                         </div>
 
                         <div class="grid gap-3 sm:grid-cols-2">

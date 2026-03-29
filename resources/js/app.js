@@ -251,12 +251,53 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	}
 
-	// Checkout city selector
+	// Checkout country/state/city selectors
 	const countrySelect = document.getElementById('country');
+	const stateWrapper = document.getElementById('state-wrapper');
 	const cityWrapper = document.getElementById('city-wrapper');
+	const locationEndpoints = document.getElementById('location-endpoints');
 
-	if (countrySelect && cityWrapper) {
+	if (countrySelect && stateWrapper && cityWrapper && locationEndpoints) {
+		const statesUrl = locationEndpoints.dataset.statesUrl;
+		const citiesUrl = locationEndpoints.dataset.citiesUrl;
+		const initialState = stateWrapper.dataset.initialState || '';
 		const initialCity = cityWrapper.dataset.initialCity || '';
+
+		const renderStateSelect = (states, selectedState) => {
+			const select = document.createElement('select');
+			select.id = 'state';
+			select.name = 'state';
+			select.className = 'w-full rounded border border-slate-300 px-3 py-2 text-sm';
+
+			const placeholder = document.createElement('option');
+			placeholder.value = '';
+			placeholder.textContent = '-- Select state / region --';
+			select.appendChild(placeholder);
+
+			states.forEach((state) => {
+				const option = document.createElement('option');
+				option.value = state.code;
+				option.textContent = state.name;
+				if (state.code === selectedState) {
+					option.selected = true;
+				}
+				select.appendChild(option);
+			});
+
+			stateWrapper.innerHTML = '';
+			stateWrapper.appendChild(select);
+		};
+
+		const renderStateInput = (value) => {
+			const input = document.createElement('input');
+			input.id = 'state';
+			input.name = 'state';
+			input.type = 'text';
+			input.value = value || '';
+			input.className = 'w-full rounded border border-slate-300 px-3 py-2 text-sm';
+			stateWrapper.innerHTML = '';
+			stateWrapper.appendChild(input);
+		};
 
 		const renderCitySelect = (cities, selectedCity) => {
 			const select = document.createElement('select');
@@ -267,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			const placeholder = document.createElement('option');
 			placeholder.value = '';
-			placeholder.textContent = '— Select city —';
+			placeholder.textContent = '-- Select city --';
 			select.appendChild(placeholder);
 
 			cities.forEach((city) => {
@@ -296,26 +337,32 @@ document.addEventListener('DOMContentLoaded', () => {
 			cityWrapper.appendChild(input);
 		};
 
-		const loadCities = async (countryCode, selectedCity) => {
-			if (!countryCode) {
+		const loadCities = async (countryCode, stateCode, selectedCity) => {
+			if (!countryCode || !citiesUrl) {
 				renderCityInput(selectedCity);
 				return;
 			}
 
-			const countryName = countrySelect.options[countrySelect.selectedIndex]?.text || '';
-
-			cityWrapper.innerHTML = '<p class="py-2 text-xs text-slate-500">Loading cities…</p>';
+			cityWrapper.innerHTML = '<p class="py-2 text-xs text-slate-500">Loading cities...</p>';
 
 			try {
-				const response = await fetch('https://countriesnow.space/api/v0.1/countries/cities', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ country: countryName }),
-				});
-				const data = await response.json();
+				const params = new URLSearchParams({ country: countryCode });
 
-				if (data.data && Array.isArray(data.data) && data.data.length > 0) {
-					renderCitySelect(data.data.sort(), selectedCity);
+				if (stateCode) {
+					params.set('state', stateCode);
+				}
+
+				const response = await fetch(`${citiesUrl}?${params.toString()}`);
+
+				if (!response.ok) {
+					throw new Error('Failed to load cities');
+				}
+
+				const payload = await response.json();
+				const cities = Array.isArray(payload.data) ? payload.data : [];
+
+				if (cities.length > 0) {
+					renderCitySelect(cities, selectedCity);
 				} else {
 					renderCityInput(selectedCity);
 				}
@@ -324,15 +371,57 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 		};
 
+		const loadStates = async (countryCode, selectedState, selectedCity) => {
+			if (!countryCode || !statesUrl) {
+				renderStateInput(selectedState);
+				renderCityInput(selectedCity);
+				return;
+			}
+
+			stateWrapper.innerHTML = '<p class="py-2 text-xs text-slate-500">Loading states...</p>';
+
+			try {
+				const params = new URLSearchParams({ country: countryCode });
+				const response = await fetch(`${statesUrl}?${params.toString()}`);
+
+				if (!response.ok) {
+					throw new Error('Failed to load states');
+				}
+
+				const payload = await response.json();
+				const states = Array.isArray(payload.data) ? payload.data : [];
+
+				if (states.length > 0) {
+					renderStateSelect(states, selectedState);
+
+					const stateSelect = document.getElementById('state');
+					const activeState = stateSelect?.value || '';
+					await loadCities(countryCode, activeState, selectedCity);
+
+					stateSelect?.addEventListener('change', () => {
+						const currentCity = document.getElementById('city')?.value || '';
+						loadCities(countrySelect.value, stateSelect.value, currentCity);
+					});
+				} else {
+					renderStateInput(selectedState);
+					await loadCities(countryCode, '', selectedCity);
+				}
+			} catch {
+				renderStateInput(selectedState);
+				await loadCities(countryCode, '', selectedCity);
+			}
+		};
+
 		countrySelect.addEventListener('change', () => {
+			const currentState = document.getElementById('state')?.value || '';
 			const currentCity = document.getElementById('city')?.value || '';
-			loadCities(countrySelect.value, currentCity);
+			loadStates(countrySelect.value, currentState, currentCity);
 		});
 
-		// Pre-load cities if country is already selected on page load
 		if (countrySelect.value) {
-			loadCities(countrySelect.value, initialCity);
+			loadStates(countrySelect.value, initialState, initialCity);
 		} else {
+			renderStateInput(initialState);
 			renderCityInput(initialCity);
 		}
 	}

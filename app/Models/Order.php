@@ -23,6 +23,7 @@ class Order extends Model
         'last_name',
         'phone',
         'country',
+        'state',
         'city',
         'postal_code',
         'street_name',

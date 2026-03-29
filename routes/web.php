@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductMediaController;
 use App\Http\Controllers\Admin\ProductVariantController;
+use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\MediaController;
@@ -30,6 +31,8 @@ Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.s
 Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
 
 Route::get('/api/shop/search', [ShopController::class, 'search'])->name('api.shop.search');
+Route::get('/api/locations/states', [LocationController::class, 'states'])->name('api.locations.states');
+Route::get('/api/locations/cities', [LocationController::class, 'cities'])->name('api.locations.cities');
 
 Route::get('/media/{path}', [MediaController::class, 'show'])
     ->where('path', '.*')

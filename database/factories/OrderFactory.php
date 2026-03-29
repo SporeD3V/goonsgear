@@ -25,6 +25,7 @@ class OrderFactory extends Factory
             'last_name' => fake()->lastName(),
             'phone' => fake()->e164PhoneNumber(),
             'country' => 'DE',
+            'state' => fake()->state(),
             'city' => fake()->city(),
             'postal_code' => fake()->postcode(),
             'street_name' => fake()->streetName(),
