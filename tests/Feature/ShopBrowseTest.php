@@ -290,6 +290,64 @@ class ShopBrowseTest extends TestCase
         $descendingResponse->assertSeeInOrder(['Expensive Hoodie', 'Budget Hoodie']);
     }
 
+    public function test_shop_index_filters_by_variant_price_range(): void
+    {
+        $lowPriceProduct = Product::factory()->create([
+            'name' => 'Low Price Tee',
+            'slug' => 'low-price-tee',
+            'status' => 'active',
+        ]);
+
+        $midPriceProduct = Product::factory()->create([
+            'name' => 'Mid Price Hoodie',
+            'slug' => 'mid-price-hoodie',
+            'status' => 'active',
+        ]);
+
+        $highPriceProduct = Product::factory()->create([
+            'name' => 'High Price Jacket',
+            'slug' => 'high-price-jacket',
+            'status' => 'active',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $lowPriceProduct->id,
+            'is_active' => true,
+            'price' => 25.00,
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $midPriceProduct->id,
+            'is_active' => true,
+            'price' => 75.00,
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $highPriceProduct->id,
+            'is_active' => true,
+            'price' => 140.00,
+        ]);
+
+        $rangeResponse = $this->get(route('shop.index', [
+            'min_price' => 50,
+            'max_price' => 100,
+        ]));
+
+        $rangeResponse->assertOk();
+        $rangeResponse->assertSee('Mid Price Hoodie');
+        $rangeResponse->assertDontSee('Low Price Tee');
+        $rangeResponse->assertDontSee('High Price Jacket');
+
+        $minOnlyResponse = $this->get(route('shop.index', [
+            'min_price' => 100,
+        ]));
+
+        $minOnlyResponse->assertOk();
+        $minOnlyResponse->assertSee('High Price Jacket');
+        $minOnlyResponse->assertDontSee('Low Price Tee');
+        $minOnlyResponse->assertDontSee('Mid Price Hoodie');
+    }
+
     public function test_api_shop_search_returns_matching_products(): void
     {
         $category = Category::factory()->create(['name' => 'Jackets', 'slug' => 'jackets']);

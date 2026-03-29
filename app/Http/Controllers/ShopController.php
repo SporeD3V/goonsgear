@@ -106,6 +106,8 @@ class ShopController extends Controller
         $search = $request->string('q')->trim()->toString();
         $requestedCategorySlug = $request->string('category')->trim()->toString();
         $categorySlug = $forcedCategory?->slug ?? $requestedCategorySlug;
+        $minPrice = is_numeric($request->input('min_price')) ? max(0, (float) $request->input('min_price')) : null;
+        $maxPrice = is_numeric($request->input('max_price')) ? max(0, (float) $request->input('max_price')) : null;
         $sort = $request->string('sort')->trim()->toString();
         $sort = in_array($sort, ['newest', 'name_asc', 'name_desc', 'price_asc', 'price_desc'], true) ? $sort : 'newest';
 
@@ -138,6 +140,14 @@ class ShopController extends Controller
                 $categorySlug !== '',
                 fn ($query) => $query->whereHas('primaryCategory', fn ($categoryQuery) => $categoryQuery->where('slug', $categorySlug))
             )
+            ->when(
+                $minPrice !== null || $maxPrice !== null,
+                fn ($query) => $query->whereHas('variants', function ($variantQuery) use ($minPrice, $maxPrice): void {
+                    $variantQuery->where('is_active', true)
+                        ->when($minPrice !== null, fn ($priceQuery) => $priceQuery->where('price', '>=', $minPrice))
+                        ->when($maxPrice !== null, fn ($priceQuery) => $priceQuery->where('price', '<=', $maxPrice));
+                })
+            )
             ->with([
                 'primaryCategory:id,name,slug',
                 'media' => fn ($query) => $query
@@ -166,6 +176,8 @@ class ShopController extends Controller
             'filters' => [
                 'q' => $search,
                 'category' => $categorySlug,
+                'min_price' => $minPrice,
+                'max_price' => $maxPrice,
                 'sort' => $sort,
             ],
             'seo' => [

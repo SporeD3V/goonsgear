@@ -16,7 +16,7 @@
                 <a href="{{ url('/') }}" class="text-sm text-blue-700 hover:underline">Home</a>
             </header>
 
-            <form method="GET" action="{{ route('shop.index') }}" class="mb-5 grid gap-3 rounded border border-slate-200 bg-white p-3 md:grid-cols-5">
+            <form method="GET" action="{{ route('shop.index') }}" class="mb-5 grid gap-3 rounded border border-slate-200 bg-white p-3 md:grid-cols-7">
                 <div class="relative md:col-span-2">
                     <label class="mb-1 block text-xs font-medium text-slate-700">Search</label>
                     <input
@@ -51,6 +51,32 @@
                         <option value="price_asc" @selected($filters['sort'] === 'price_asc')>Price low-high</option>
                         <option value="price_desc" @selected($filters['sort'] === 'price_desc')>Price high-low</option>
                     </select>
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-slate-700">Min Price</label>
+                    <input
+                        type="number"
+                        name="min_price"
+                        min="0"
+                        step="0.01"
+                        value="{{ $filters['min_price'] ?? '' }}"
+                        placeholder="0.00"
+                        class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                    >
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-slate-700">Max Price</label>
+                    <input
+                        type="number"
+                        name="max_price"
+                        min="0"
+                        step="0.01"
+                        value="{{ $filters['max_price'] ?? '' }}"
+                        placeholder="999.99"
+                        class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                    >
                 </div>
 
                 <div class="flex items-end gap-2">
