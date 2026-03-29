@@ -92,7 +92,7 @@ class ShopController extends Controller
                     'slug' => $product->slug,
                     'excerpt' => $product->excerpt,
                     'category' => $product->primaryCategory?->name,
-                    'price' => $minPrice ?? null,
+                    'price' => $minPrice !== null ? (float) $minPrice : null,
                     'image' => $media ? route('media.show', ['path' => $media->path]) : null,
                     'url' => route('shop.show', $product),
                 ];

@@ -191,16 +191,24 @@ document.addEventListener('DOMContentLoaded', () => {
 				if (data.results && data.results.length > 0) {
 					searchResults.innerHTML = data.results
 						.map(
-							(result) => `
+							(result) => {
+								const hasPrice = result.price !== null && result.price !== undefined;
+								const parsedPrice = hasPrice ? Number(result.price) : null;
+								const priceMarkup = hasPrice && Number.isFinite(parsedPrice)
+									? `<div class="text-xs font-medium text-slate-800">$${parsedPrice.toFixed(2)}</div>`
+									: '';
+
+								return `
 						<a href="${result.url}" class="flex gap-3 border-b border-slate-100 p-2 text-sm hover:bg-slate-50">
 							${result.image ? `<img src="${result.image}" alt="${result.name}" class="h-10 w-10 rounded object-cover">` : '<div class="h-10 w-10 rounded bg-slate-100"></div>'}
 							<div class="flex-1">
 								<div class="font-medium text-slate-900">${escapeHtml(result.name)}</div>
 								<div class="text-xs text-slate-600">${result.category ? escapeHtml(result.category) : 'Uncategorized'}</div>
-								${result.price ? `<div class="text-xs font-medium text-slate-800">$${(result.price).toFixed(2)}</div>` : ''}
+								${priceMarkup}
 							</div>
 						</a>
-					`
+					`;
+							}
 						)
 						.join('');
 					searchResults.classList.remove('hidden');
