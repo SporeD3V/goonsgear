@@ -41,6 +41,10 @@ Route::get('/account', [AccountController::class, 'index'])
     ->middleware('auth')
     ->name('account.index');
 
+Route::patch('/account/email-preferences', [AccountController::class, 'updateEmailPreferences'])
+    ->middleware('auth')
+    ->name('account.email-preferences.update');
+
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::post('/cart/coupon', [CartController::class, 'applyCoupon'])->name('cart.coupon.apply');
 Route::delete('/cart/coupon', [CartController::class, 'removeCoupon'])->name('cart.coupon.remove');

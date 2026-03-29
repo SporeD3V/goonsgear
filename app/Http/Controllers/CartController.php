@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CartAbandonment;
 use App\Models\Coupon;
 use App\Models\ProductVariant;
+use App\Models\UserCartItem;
 use App\Support\CartPricing;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -20,6 +21,8 @@ class CartController extends Controller
 
     public function index(Request $request, CartPricing $cartPricing): View
     {
+        $this->restoreCartFromDb($request);
+
         $cartItems = $this->getCartItems($request);
         $pricing = $cartPricing->summarize($cartItems, $request->session()->get(self::COUPON_SESSION_KEY));
 
@@ -107,21 +110,13 @@ class CartController extends Controller
 
         $primaryMedia = $variant->product?->media->first();
 
-        $cartItems[$variant->id] = [
-            'variant_id' => $variant->id,
-            'product_id' => $variant->product_id,
-            'product_name' => (string) $variant->product?->name,
-            'product_slug' => (string) $variant->product?->slug,
-            'variant_name' => $variant->name,
-            'sku' => $variant->sku,
-            'price' => (float) $variant->price,
-            'quantity' => $nextQuantity,
-            'max_quantity' => $maxQuantity,
-            'image' => $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null,
-            'url' => $variant->product ? route('shop.show', $variant->product) : null,
-        ];
+        $cartItems[$variant->id] = array_merge(
+            $this->buildCartItemData($variant),
+            ['quantity' => $nextQuantity],
+        );
 
         $request->session()->put(self::CART_SESSION_KEY, $cartItems);
+        $this->syncCartItemToDb($request, $variant->id, $nextQuantity);
 
         return back()->with('status', 'Added item to cart.');
     }
@@ -151,6 +146,7 @@ class CartController extends Controller
         $cartItems[$variant->id]['max_quantity'] = $maxQuantity;
 
         $request->session()->put(self::CART_SESSION_KEY, $cartItems);
+        $this->syncCartItemToDb($request, $variant->id, $nextQuantity);
 
         return redirect()->route('cart.index')->with('status', 'Cart item updated.');
     }
@@ -161,6 +157,7 @@ class CartController extends Controller
         unset($cartItems[$variant->id]);
 
         $request->session()->put(self::CART_SESSION_KEY, $cartItems);
+        $this->removeCartItemFromDb($request, $variant->id);
 
         return redirect()->route('cart.index')->with('status', 'Item removed from cart.');
     }
@@ -182,6 +179,98 @@ class CartController extends Controller
         }
 
         return max(0, (int) $variant->stock_quantity);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildCartItemData(ProductVariant $variant): array
+    {
+        $primaryMedia = $variant->product?->media->first();
+
+        return [
+            'variant_id' => $variant->id,
+            'product_id' => $variant->product_id,
+            'product_name' => (string) $variant->product?->name,
+            'product_slug' => (string) $variant->product?->slug,
+            'variant_name' => $variant->name,
+            'sku' => $variant->sku,
+            'price' => (float) $variant->price,
+            'max_quantity' => $this->getMaxAllowedQuantity($variant),
+            'image' => $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null,
+            'url' => $variant->product ? route('shop.show', $variant->product) : null,
+        ];
+    }
+
+    private function syncCartItemToDb(Request $request, int $variantId, int $quantity): void
+    {
+        $user = $request->user();
+
+        if ($user === null) {
+            return;
+        }
+
+        UserCartItem::query()->updateOrCreate(
+            ['user_id' => $user->id, 'product_variant_id' => $variantId],
+            ['quantity' => $quantity],
+        );
+    }
+
+    private function removeCartItemFromDb(Request $request, int $variantId): void
+    {
+        $user = $request->user();
+
+        if ($user === null) {
+            return;
+        }
+
+        UserCartItem::query()
+            ->where('user_id', $user->id)
+            ->where('product_variant_id', $variantId)
+            ->delete();
+    }
+
+    private function restoreCartFromDb(Request $request): void
+    {
+        $user = $request->user();
+
+        if ($user === null || $this->getCartItems($request) !== []) {
+            return;
+        }
+
+        $dbItems = UserCartItem::query()
+            ->where('user_id', $user->id)
+            ->with([
+                'variant.product:id,name,slug,status',
+                'variant.product.media' => fn ($q) => $q
+                    ->orderByDesc('is_primary')
+                    ->orderBy('position')
+                    ->orderBy('id'),
+            ])
+            ->get();
+
+        if ($dbItems->isEmpty()) {
+            return;
+        }
+
+        $items = [];
+
+        foreach ($dbItems as $dbItem) {
+            $variant = $dbItem->variant;
+
+            if ($variant === null || ! $variant->is_active || $variant->product?->status !== 'active') {
+                continue;
+            }
+
+            $items[$variant->id] = array_merge(
+                $this->buildCartItemData($variant),
+                ['quantity' => $dbItem->quantity],
+            );
+        }
+
+        if ($items !== []) {
+            $request->session()->put(self::CART_SESSION_KEY, $items);
+        }
     }
 
     public function trackEmail(Request $request): JsonResponse
@@ -238,6 +327,12 @@ class CartController extends Controller
         }
 
         $abandonment->update(['recovered_at' => now()]);
+
+        if ($request->user() !== null) {
+            foreach ($abandonment->cart_data as $variantId => $item) {
+                $this->syncCartItemToDb($request, (int) $variantId, (int) $item['quantity']);
+            }
+        }
 
         return redirect()->route('checkout.index')->with('status', 'Your cart has been restored. Please complete your order below.');
     }
