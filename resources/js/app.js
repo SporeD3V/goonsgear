@@ -96,20 +96,129 @@ document.addEventListener('DOMContentLoaded', () => {
 		const mainImage = gallery.querySelector('[data-media-main-image]');
 		const mainVideo = gallery.querySelector('[data-media-main-video]');
 		const thumbnails = gallery.querySelectorAll('[data-media-thumb]');
+		const lightboxLaunch = gallery.querySelector('[data-lightbox-launch]');
+		const lightbox = gallery.querySelector('[data-lightbox]');
+		const lightboxStage = gallery.querySelector('[data-lightbox-stage]');
+		const lightboxImage = gallery.querySelector('[data-lightbox-image]');
+		const lightboxVideo = gallery.querySelector('[data-lightbox-video]');
+		const lightboxCaption = gallery.querySelector('[data-lightbox-caption]');
+		const lightboxClose = gallery.querySelector('[data-lightbox-close]');
+		const lightboxPrev = gallery.querySelector('[data-lightbox-prev]');
+		const lightboxNext = gallery.querySelector('[data-lightbox-next]');
 
 		if (!mainImage || thumbnails.length === 0) {
 			return;
 		}
 
-		const setActiveThumbnail = (activeThumb) => {
+		let activeThumb = null;
+		let touchStartX = 0;
+		let touchStartY = 0;
+
+		const getVisibleThumbnails = () => Array.from(thumbnails).filter((thumb) => !thumb.classList.contains('hidden'));
+
+		const isLightboxOpen = () => Boolean(lightbox) && !lightbox.classList.contains('hidden');
+
+		const setActiveThumbnail = (selectedThumb) => {
 			thumbnails.forEach((thumb) => {
-				const isActive = thumb === activeThumb;
+				const isActive = thumb === selectedThumb;
 				thumb.classList.toggle('ring-2', isActive);
 				thumb.classList.toggle('ring-blue-500', isActive);
 				thumb.classList.toggle('border-blue-500', isActive);
 				thumb.classList.toggle('border-slate-200', !isActive);
 				thumb.setAttribute('aria-pressed', isActive ? 'true' : 'false');
 			});
+
+			activeThumb = selectedThumb;
+		};
+
+		const setLightboxMedia = (thumb) => {
+			if (!lightbox || !lightboxImage || !thumb) {
+				return;
+			}
+
+			const mediaType = thumb.dataset.mediaType;
+			const mediaUrl = thumb.dataset.mediaUrl;
+			const mediaAlt = thumb.dataset.mediaAlt || '';
+
+			if (!mediaUrl) {
+				return;
+			}
+
+			if (mediaType === 'video') {
+				if (lightboxVideo) {
+					lightboxVideo.src = mediaUrl;
+					lightboxVideo.classList.remove('hidden');
+					lightboxVideo.classList.remove('lightbox-media-animate');
+					void lightboxVideo.offsetWidth;
+					lightboxVideo.classList.add('lightbox-media-animate');
+				}
+
+				lightboxImage.classList.add('hidden');
+				if (lightboxCaption) {
+					lightboxCaption.textContent = `${mediaAlt || 'Video'} (video)`;
+				}
+			} else {
+				lightboxImage.src = mediaUrl;
+				lightboxImage.alt = mediaAlt;
+				lightboxImage.classList.remove('hidden');
+				lightboxImage.classList.remove('lightbox-media-animate');
+				void lightboxImage.offsetWidth;
+				lightboxImage.classList.add('lightbox-media-animate');
+
+				if (lightboxVideo) {
+					lightboxVideo.pause();
+					lightboxVideo.classList.add('hidden');
+				}
+
+				if (lightboxCaption) {
+					lightboxCaption.textContent = mediaAlt || 'Image';
+				}
+			}
+		};
+
+		const navigateLightbox = (direction) => {
+			const visibleThumbnails = getVisibleThumbnails();
+
+			if (visibleThumbnails.length <= 1) {
+				return;
+			}
+
+			const currentThumb = activeThumb && visibleThumbnails.includes(activeThumb)
+				? activeThumb
+				: visibleThumbnails[0];
+			const currentIndex = visibleThumbnails.indexOf(currentThumb);
+			const nextIndex = (currentIndex + direction + visibleThumbnails.length) % visibleThumbnails.length;
+			const nextThumb = visibleThumbnails[nextIndex];
+
+			setMainMedia(nextThumb);
+			setLightboxMedia(nextThumb);
+		};
+
+		const openLightbox = (thumb = activeThumb) => {
+			if (!lightbox || !thumb) {
+				return;
+			}
+
+			setMainMedia(thumb);
+			setLightboxMedia(thumb);
+			lightbox.classList.remove('hidden');
+			document.body.classList.add('overflow-hidden');
+			lightboxClose?.focus();
+		};
+
+		const closeLightbox = () => {
+			if (!lightbox || !isLightboxOpen()) {
+				return;
+			}
+
+			lightbox.classList.add('hidden');
+			document.body.classList.remove('overflow-hidden');
+
+			if (lightboxVideo) {
+				lightboxVideo.pause();
+				lightboxVideo.removeAttribute('src');
+				lightboxVideo.load();
+			}
 		};
 
 		const setMainMedia = (thumb) => {
@@ -178,6 +287,84 @@ document.addEventListener('DOMContentLoaded', () => {
 					setMainMedia(thumb);
 				}
 			});
+
+			thumb.addEventListener('dblclick', () => {
+				if (!thumb.classList.contains('hidden')) {
+					openLightbox(thumb);
+				}
+			});
+		});
+
+		if (lightboxLaunch) {
+			lightboxLaunch.addEventListener('click', () => {
+				openLightbox(activeThumb || getVisibleThumbnails()[0] || null);
+			});
+		}
+
+		mainImage.addEventListener('click', () => {
+			openLightbox(activeThumb || getVisibleThumbnails()[0] || null);
+		});
+
+		mainImage.addEventListener('keydown', (event) => {
+			if (event.key === 'Enter' || event.key === ' ') {
+				event.preventDefault();
+				openLightbox(activeThumb || getVisibleThumbnails()[0] || null);
+			}
+		});
+
+		lightboxClose?.addEventListener('click', closeLightbox);
+		lightboxPrev?.addEventListener('click', () => navigateLightbox(-1));
+		lightboxNext?.addEventListener('click', () => navigateLightbox(1));
+
+		lightbox?.addEventListener('click', (event) => {
+			if (event.target === lightbox) {
+				closeLightbox();
+			}
+		});
+
+		lightboxStage?.addEventListener('touchstart', (event) => {
+			const touch = event.changedTouches[0];
+			touchStartX = touch.clientX;
+			touchStartY = touch.clientY;
+		}, { passive: true });
+
+		lightboxStage?.addEventListener('touchend', (event) => {
+			const touch = event.changedTouches[0];
+			const deltaX = touch.clientX - touchStartX;
+			const deltaY = touch.clientY - touchStartY;
+
+			if (Math.abs(deltaX) < 50 || Math.abs(deltaX) < Math.abs(deltaY)) {
+				return;
+			}
+
+			if (deltaX > 0) {
+				navigateLightbox(-1);
+			} else {
+				navigateLightbox(1);
+			}
+		}, { passive: true });
+
+		document.addEventListener('keydown', (event) => {
+			if (!isLightboxOpen()) {
+				return;
+			}
+
+			if (event.key === 'Escape') {
+				event.preventDefault();
+				closeLightbox();
+				return;
+			}
+
+			if (event.key === 'ArrowLeft') {
+				event.preventDefault();
+				navigateLightbox(-1);
+				return;
+			}
+
+			if (event.key === 'ArrowRight') {
+				event.preventDefault();
+				navigateLightbox(1);
+			}
 		});
 
 		if (variantFilter) {

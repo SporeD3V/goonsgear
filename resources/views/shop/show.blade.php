@@ -76,14 +76,21 @@
                         <img
                             src="{{ $primaryMediaUrl }}"
                             alt="{{ $primaryMedia?->alt_text ?: $product->name }}"
-                            class="h-112 w-full rounded border border-slate-200 bg-white object-contain p-2"
+                            class="h-112 w-full cursor-zoom-in rounded border border-slate-200 bg-white object-contain p-2"
                             data-media-main-image
+                            tabindex="0"
                         >
                         <video
                             class="hidden h-112 w-full rounded border border-slate-200 bg-black object-contain p-2"
                             controls
                             data-media-main-video
                         ></video>
+
+                        <div class="mt-2 flex justify-end">
+                            <button type="button" class="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50" data-lightbox-launch>
+                                Open lightbox
+                            </button>
+                        </div>
                     @else
                         <div class="flex h-112 items-center justify-center rounded border border-slate-200 bg-white text-sm text-slate-500">No media available</div>
                     @endif
@@ -126,6 +133,58 @@
                             @endforeach
                         </div>
                     @endif
+
+                    <div class="fixed inset-0 z-50 hidden bg-black/90 p-3 sm:p-6" data-lightbox role="dialog" aria-modal="true" aria-label="Product media lightbox">
+                        <div class="mx-auto flex h-full w-full max-w-6xl flex-col" data-lightbox-backdrop>
+                            <div class="mb-3 flex items-center justify-between gap-3 text-slate-200">
+                                <p class="text-xs sm:text-sm" data-lightbox-caption>Media preview</p>
+                                <button
+                                    type="button"
+                                    class="rounded border border-slate-500 px-3 py-1 text-sm font-semibold text-white hover:bg-slate-800"
+                                    data-lightbox-close
+                                    aria-label="Close lightbox"
+                                >
+                                    X
+                                </button>
+                            </div>
+
+                            <div class="relative flex-1 overflow-hidden rounded border border-slate-700/80 bg-black/70" data-lightbox-stage>
+                                <img
+                                    src=""
+                                    alt=""
+                                    class="h-full w-full object-contain"
+                                    data-lightbox-image
+                                >
+                                <video
+                                    class="hidden h-full w-full object-contain"
+                                    controls
+                                    data-lightbox-video
+                                ></video>
+
+                                <button
+                                    type="button"
+                                    class="absolute left-2 top-1/2 -translate-y-1/2 rounded bg-black/60 px-3 py-2 text-lg font-semibold text-white hover:bg-black/80"
+                                    data-lightbox-prev
+                                    aria-label="Previous media"
+                                >
+                                    &#8592;
+                                </button>
+                                <button
+                                    type="button"
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 rounded bg-black/60 px-3 py-2 text-lg font-semibold text-white hover:bg-black/80"
+                                    data-lightbox-next
+                                    aria-label="Next media"
+                                >
+                                    &#8594;
+                                </button>
+                            </div>
+
+                            <div class="mt-3 rounded border border-slate-700/80 bg-slate-900/70 p-3 text-xs text-slate-200 sm:text-sm">
+                                <p class="font-semibold">Controls</p>
+                                <p class="mt-1">Esc: close, Left/Right arrows: previous or next, Swipe left/right: navigate, X: close.</p>
+                            </div>
+                        </div>
+                    </div>
                 </section>
 
                 <section class="rounded border border-slate-200 bg-white p-5">

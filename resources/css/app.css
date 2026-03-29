@@ -10,3 +10,33 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+@keyframes lightbox-stage-enter {
+    from {
+        opacity: 0;
+        transform: scale(0.985);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes lightbox-media-fade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+[data-lightbox]:not(.hidden) [data-lightbox-stage] {
+    animation: lightbox-stage-enter 180ms ease-out;
+}
+
+.lightbox-media-animate {
+    animation: lightbox-media-fade 150ms ease-out;
+}
