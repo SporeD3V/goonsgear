@@ -92,9 +92,16 @@
                     <div class="mt-4 space-y-3">
                         @foreach ($items as $item)
                             <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
-                                <div>
-                                    <p class="text-sm font-medium text-slate-900">{{ $item['product_name'] }}</p>
-                                    <p class="text-xs text-slate-600">{{ $item['variant_name'] }} x {{ $item['quantity'] }}</p>
+                                <div class="flex items-start gap-3">
+                                    @if ($item['image'])
+                                        <img src="{{ $item['image'] }}" alt="{{ $item['product_name'] }}" class="h-12 w-12 rounded object-cover">
+                                    @else
+                                        <div class="h-12 w-12 rounded bg-slate-100"></div>
+                                    @endif
+                                    <div>
+                                        <p class="text-sm font-medium text-slate-900">{{ $item['product_name'] }}</p>
+                                        <p class="text-xs text-slate-600">{{ $item['variant_name'] }} x {{ $item['quantity'] }}</p>
+                                    </div>
                                 </div>
                                 <p class="text-sm font-medium">${{ number_format((float) $item['price'] * (int) $item['quantity'], 2) }}</p>
                             </div>

@@ -82,7 +82,7 @@ class CheckoutFlowTest extends TestCase
                     'price' => 120.00,
                     'quantity' => 2,
                     'max_quantity' => 5,
-                    'image' => null,
+                    'image' => '/media/products/checkout-hoodie/main.webp',
                     'url' => route('shop.show', $fixture['product']),
                 ],
             ],
@@ -90,6 +90,7 @@ class CheckoutFlowTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Checkout Hoodie');
+        $response->assertSee('/media/products/checkout-hoodie/main.webp');
         $response->assertSee('$240.00');
     }
 
