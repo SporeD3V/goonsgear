@@ -25,11 +25,8 @@ use App\Http\Controllers\MediaController;
 use App\Http\Controllers\ShopController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
-
-Route::get('/shop', [ShopController::class, 'index'])->name('shop.index');
+Route::get('/', [ShopController::class, 'index'])->name('shop.index');
+Route::redirect('/shop', '/');
 Route::get('/shop/category/{category:slug}', [ShopController::class, 'category'])->name('shop.category');
 Route::get('/shop/{product:slug}', [ShopController::class, 'show'])->name('shop.show');
 

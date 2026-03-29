@@ -63,7 +63,11 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('account.index'));
+        $defaultRoute = Auth::user()?->is_admin
+            ? route('admin.orders.index')
+            : route('account.index');
+
+        return redirect()->intended($defaultRoute);
     }
 
     public function destroy(Request $request): RedirectResponse

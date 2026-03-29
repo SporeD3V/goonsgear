@@ -51,6 +51,23 @@ class UserAuthTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
+    public function test_admin_user_is_redirected_to_admin_area_after_login(): void
+    {
+        $admin = User::factory()->create([
+            'email' => 'admin@example.com',
+            'password' => Hash::make('password1234'),
+            'is_admin' => true,
+        ]);
+
+        $response = $this->post(route('login.store'), [
+            'email' => $admin->email,
+            'password' => 'password1234',
+        ]);
+
+        $response->assertRedirect(route('admin.orders.index'));
+        $this->assertAuthenticatedAs($admin);
+    }
+
     public function test_login_rejects_invalid_credentials(): void
     {
         User::factory()->create([
