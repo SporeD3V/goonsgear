@@ -97,16 +97,20 @@ class OrderDashboardTest extends TestCase
         $response->assertSee(route('media.show', ['path' => $media->path]));
     }
 
-    public function test_admin_can_update_order_and_payment_status(): void
+    public function test_admin_can_update_order_payment_and_dhl_tracking(): void
     {
         $order = Order::factory()->create([
             'status' => 'pending',
             'payment_status' => 'pending',
+            'tracking_number' => null,
+            'shipping_carrier' => null,
+            'shipped_at' => null,
         ]);
 
         $response = $this->patch(route('admin.orders.update', $order), [
             'status' => 'shipped',
             'payment_status' => 'paid',
+            'tracking_number' => '00340434161094000000',
         ]);
 
         $response->assertRedirect(route('admin.orders.show', $order));
@@ -115,7 +119,26 @@ class OrderDashboardTest extends TestCase
             'id' => $order->id,
             'status' => 'shipped',
             'payment_status' => 'paid',
+            'shipping_carrier' => 'dhl',
+            'tracking_number' => '00340434161094000000',
         ]);
+
+        $this->assertNotNull($order->fresh()?->shipped_at);
+    }
+
+    public function test_admin_order_show_displays_dhl_tracking_link_when_present(): void
+    {
+        $order = Order::factory()->create([
+            'tracking_number' => '00340434161094000000',
+            'shipping_carrier' => 'dhl',
+            'shipped_at' => now(),
+        ]);
+
+        $response = $this->get(route('admin.orders.show', $order));
+
+        $response->assertOk();
+        $response->assertSee('Track with DHL');
+        $response->assertSee('tracking-id=00340434161094000000', false);
     }
 
     public function test_admin_order_update_validates_status_values(): void

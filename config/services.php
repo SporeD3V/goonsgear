@@ -45,4 +45,8 @@ return [
         'base_url' => env('PAYPAL_BASE_URL', 'https://api-m.sandbox.paypal.com'),
     ],
 
+    'dhl' => [
+        'tracking_url' => env('DHL_TRACKING_URL', 'https://www.dhl.com/global-en/home/tracking.html?tracking-id=%s&submit=1'),
+    ],
+
 ];

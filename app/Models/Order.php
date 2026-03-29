@@ -20,6 +20,8 @@ class Order extends Model
         'status',
         'payment_method',
         'payment_status',
+        'shipping_carrier',
+        'tracking_number',
         'paypal_order_id',
         'paypal_capture_id',
         'email',
@@ -42,6 +44,7 @@ class Order extends Model
         'subtotal',
         'total',
         'placed_at',
+        'shipped_at',
     ];
 
     /**
@@ -54,6 +57,7 @@ class Order extends Model
             'subtotal' => 'decimal:2',
             'total' => 'decimal:2',
             'placed_at' => 'datetime',
+            'shipped_at' => 'datetime',
         ];
     }
 

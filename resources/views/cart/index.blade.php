@@ -92,7 +92,9 @@
                                         <form method="POST" action="{{ route('cart.items.update', $item['variant_id']) }}" class="flex items-center gap-2">
                                             @csrf
                                             @method('PATCH')
+                                            <label for="cart_quantity_{{ $item['variant_id'] }}" class="sr-only">Quantity for {{ $item['product_name'] }}</label>
                                             <input
+                                                id="cart_quantity_{{ $item['variant_id'] }}"
                                                 type="number"
                                                 name="quantity"
                                                 min="1"

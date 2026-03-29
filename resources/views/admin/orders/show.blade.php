@@ -9,7 +9,7 @@
         <a href="{{ route('admin.orders.index') }}" class="text-sm text-blue-700 hover:underline">Back to orders</a>
     </div>
 
-    <div class="mb-5 grid gap-4 md:grid-cols-3">
+    <div class="mb-5 grid gap-4 md:grid-cols-4">
         <div class="rounded border border-slate-200 p-3">
             <h3 class="text-sm font-semibold text-slate-800">Customer</h3>
             <p class="mt-2 text-sm">{{ $order->first_name }} {{ $order->last_name }}</p>
@@ -33,9 +33,19 @@
             <p class="text-sm text-slate-700">PayPal Order: {{ $order->paypal_order_id ?: '-' }}</p>
             <p class="text-sm text-slate-700">PayPal Capture: {{ $order->paypal_capture_id ?: '-' }}</p>
         </div>
+
+        <div class="rounded border border-slate-200 p-3">
+            <h3 class="text-sm font-semibold text-slate-800">Shipment</h3>
+            <p class="mt-2 text-sm text-slate-700">Carrier: {{ $order->shipping_carrier ? strtoupper($order->shipping_carrier) : '-' }}</p>
+            <p class="text-sm text-slate-700">Tracking: {{ $order->tracking_number ?: '-' }}</p>
+            <p class="text-sm text-slate-700">Shipped At: {{ optional($order->shipped_at)->format('Y-m-d H:i') ?? '-' }}</p>
+            @if ($dhlTrackingUrl)
+                <a href="{{ $dhlTrackingUrl }}" target="_blank" rel="noreferrer" class="mt-2 inline-block text-sm text-blue-700 hover:underline">Track with DHL</a>
+            @endif
+        </div>
     </div>
 
-    <form method="POST" action="{{ route('admin.orders.update', $order) }}" class="mb-5 grid gap-3 rounded border border-slate-200 bg-slate-50 p-3 md:grid-cols-3">
+    <form method="POST" action="{{ route('admin.orders.update', $order) }}" class="mb-5 grid gap-3 rounded border border-slate-200 bg-slate-50 p-3 md:grid-cols-4">
         @csrf
         @method('PATCH')
 
@@ -57,8 +67,13 @@
             </select>
         </div>
 
+        <div>
+            <label for="tracking_number" class="mb-1 block text-xs font-medium text-slate-700">DHL tracking number</label>
+            <input id="tracking_number" name="tracking_number" type="text" value="{{ old('tracking_number', $order->tracking_number) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" placeholder="e.g. 00340434161094000000">
+        </div>
+
         <div class="flex items-end">
-            <button type="submit" class="rounded bg-slate-800 px-3 py-2 text-sm text-white hover:bg-slate-900">Save Status</button>
+            <button type="submit" class="rounded bg-slate-800 px-3 py-2 text-sm text-white hover:bg-slate-900">Save Order</button>
         </div>
     </form>
 

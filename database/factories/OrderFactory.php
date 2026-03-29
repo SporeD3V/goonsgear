@@ -22,6 +22,8 @@ class OrderFactory extends Factory
             'status' => 'pending',
             'payment_method' => 'manual',
             'payment_status' => 'pending',
+            'shipping_carrier' => null,
+            'tracking_number' => null,
             'paypal_order_id' => null,
             'paypal_capture_id' => null,
             'email' => fake()->safeEmail(),
@@ -44,6 +46,7 @@ class OrderFactory extends Factory
             'subtotal' => 99.99,
             'total' => 99.99,
             'placed_at' => now(),
+            'shipped_at' => null,
         ];
     }
 }

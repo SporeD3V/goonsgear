@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Support\DhlTracking;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -46,7 +47,7 @@ class OrderController extends Controller
         ]);
     }
 
-    public function show(Order $order): View
+    public function show(Order $order, DhlTracking $dhlTracking): View
     {
         $order->load([
             'items' => fn ($query) => $query->orderBy('id'),
@@ -60,6 +61,9 @@ class OrderController extends Controller
             'order' => $order,
             'statusOptions' => $this->statusOptions(),
             'paymentStatusOptions' => $this->paymentStatusOptions(),
+            'dhlTrackingUrl' => $order->shipping_carrier === 'dhl'
+                ? $dhlTracking->trackingUrl($order->tracking_number)
+                : null,
         ]);
     }
 
@@ -68,7 +72,20 @@ class OrderController extends Controller
         $validated = $request->validate([
             'status' => ['required', 'string', Rule::in($this->statusOptions())],
             'payment_status' => ['required', 'string', Rule::in($this->paymentStatusOptions())],
+            'tracking_number' => ['nullable', 'string', 'max:100'],
         ]);
+
+        $trackingNumber = strtoupper(trim((string) ($validated['tracking_number'] ?? '')));
+        $validated['tracking_number'] = $trackingNumber !== '' ? $trackingNumber : null;
+        $validated['shipping_carrier'] = $validated['tracking_number'] !== null ? 'dhl' : null;
+
+        if ($validated['tracking_number'] !== null && in_array($validated['status'], ['shipped', 'completed'], true)) {
+            $validated['shipped_at'] = $order->shipped_at ?? now();
+        }
+
+        if ($validated['tracking_number'] === null) {
+            $validated['shipped_at'] = null;
+        }
 
         $order->update($validated);
 

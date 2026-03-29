@@ -23,7 +23,9 @@
 
                 <form method="POST" action="{{ route('admin.maintenance.clear-caches') }}" class="mt-4 flex flex-wrap items-center gap-2 text-sm">
                     @csrf
+                    <label for="maintenance_token" class="sr-only">Maintenance token</label>
                     <input
+                        id="maintenance_token"
                         type="password"
                         name="maintenance_token"
                         placeholder="Maintenance token (optional if not configured)"
