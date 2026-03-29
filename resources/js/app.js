@@ -9,9 +9,20 @@ document.addEventListener('DOMContentLoaded', () => {
 		const mainVideo = gallery.querySelector('[data-media-main-video]');
 		const thumbnails = gallery.querySelectorAll('[data-media-thumb]');
 
-		if (!mainImage || !mainVideo || thumbnails.length === 0) {
+		if (!mainImage || thumbnails.length === 0) {
 			return;
 		}
+
+		const setActiveThumbnail = (activeThumb) => {
+			thumbnails.forEach((thumb) => {
+				const isActive = thumb === activeThumb;
+				thumb.classList.toggle('ring-2', isActive);
+				thumb.classList.toggle('ring-blue-500', isActive);
+				thumb.classList.toggle('border-blue-500', isActive);
+				thumb.classList.toggle('border-slate-200', !isActive);
+				thumb.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+			});
+		};
 
 		const setMainMedia = (thumb) => {
 			const mediaType = thumb.dataset.mediaType;
@@ -23,16 +34,22 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 
 			if (mediaType === 'video') {
-				mainVideo.src = mediaUrl;
-				mainVideo.classList.remove('hidden');
-				mainImage.classList.add('hidden');
+				if (mainVideo) {
+					mainVideo.src = mediaUrl;
+					mainVideo.classList.remove('hidden');
+					mainImage.classList.add('hidden');
+				}
 			} else {
 				mainImage.src = mediaUrl;
 				mainImage.alt = mediaAlt;
 				mainImage.classList.remove('hidden');
-				mainVideo.pause();
-				mainVideo.classList.add('hidden');
+				if (mainVideo) {
+					mainVideo.pause();
+					mainVideo.classList.add('hidden');
+				}
 			}
+
+			setActiveThumbnail(thumb);
 		};
 
 		const applyVariantFilter = () => {
@@ -56,6 +73,12 @@ document.addEventListener('DOMContentLoaded', () => {
 		};
 
 		thumbnails.forEach((thumb) => {
+			thumb.addEventListener('click', () => {
+				if (!thumb.classList.contains('hidden')) {
+					setMainMedia(thumb);
+				}
+			});
+
 			thumb.addEventListener('mouseenter', () => {
 				if (!thumb.classList.contains('hidden')) {
 					setMainMedia(thumb);

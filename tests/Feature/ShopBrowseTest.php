@@ -154,4 +154,26 @@ class ShopBrowseTest extends TestCase
         $response->assertSee('Lightning Jacket');
         $response->assertDontSee('Shadow Pants');
     }
+
+    public function test_shop_index_sorts_by_name_when_requested(): void
+    {
+        Product::factory()->create([
+            'name' => 'Zulu Hoodie',
+            'slug' => 'zulu-hoodie',
+            'status' => 'active',
+        ]);
+
+        Product::factory()->create([
+            'name' => 'Alpha Hoodie',
+            'slug' => 'alpha-hoodie',
+            'status' => 'active',
+        ]);
+
+        $response = $this->get(route('shop.index', [
+            'sort' => 'name_asc',
+        ]));
+
+        $response->assertOk();
+        $response->assertSeeInOrder(['Alpha Hoodie', 'Zulu Hoodie']);
+    }
 }

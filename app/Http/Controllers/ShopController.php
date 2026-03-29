@@ -14,6 +14,8 @@ class ShopController extends Controller
     {
         $search = $request->string('q')->trim()->toString();
         $categorySlug = $request->string('category')->trim()->toString();
+        $sort = $request->string('sort')->trim()->toString();
+        $sort = in_array($sort, ['newest', 'name_asc', 'name_desc'], true) ? $sort : 'newest';
 
         $shopCategories = Category::query()
             ->where('is_active', true)
@@ -42,7 +44,9 @@ class ShopController extends Controller
                     ->orderBy('position')
                     ->orderBy('id'),
             ])
-            ->latest('id')
+            ->when($sort === 'newest', fn ($query) => $query->latest('id'))
+            ->when($sort === 'name_asc', fn ($query) => $query->orderBy('name'))
+            ->when($sort === 'name_desc', fn ($query) => $query->orderByDesc('name'))
             ->paginate(12)
             ->withQueryString();
 
@@ -52,6 +56,7 @@ class ShopController extends Controller
             'filters' => [
                 'q' => $search,
                 'category' => $categorySlug,
+                'sort' => $sort,
             ],
         ]);
     }

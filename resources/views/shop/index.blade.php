@@ -15,7 +15,7 @@
                 <a href="{{ url('/') }}" class="text-sm text-blue-700 hover:underline">Home</a>
             </header>
 
-            <form method="GET" action="{{ route('shop.index') }}" class="mb-5 grid gap-3 rounded border border-slate-200 bg-white p-3 md:grid-cols-4">
+            <form method="GET" action="{{ route('shop.index') }}" class="mb-5 grid gap-3 rounded border border-slate-200 bg-white p-3 md:grid-cols-5">
                 <div class="md:col-span-2">
                     <label class="mb-1 block text-xs font-medium text-slate-700">Search</label>
                     <input
@@ -34,6 +34,15 @@
                         @foreach ($shopCategories as $shopCategory)
                             <option value="{{ $shopCategory->slug }}" @selected($filters['category'] === $shopCategory->slug)>{{ $shopCategory->name }}</option>
                         @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-slate-700">Sort</label>
+                    <select name="sort" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                        <option value="newest" @selected($filters['sort'] === 'newest')>Newest</option>
+                        <option value="name_asc" @selected($filters['sort'] === 'name_asc')>Name A-Z</option>
+                        <option value="name_desc" @selected($filters['sort'] === 'name_desc')>Name Z-A</option>
                     </select>
                 </div>
 

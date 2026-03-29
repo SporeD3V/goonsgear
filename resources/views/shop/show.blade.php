@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ $product->name }} | GoonsGear</title>
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
-            @vite(['resources/css/app.css'])
+            @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif
     </head>
     <body class="bg-slate-100 text-slate-900">
@@ -16,14 +16,24 @@
             </header>
 
             <div class="grid gap-6 lg:grid-cols-2">
-                <section>
+                <section data-media-gallery>
                     @php
                         $primaryMedia = $product->media->first();
                         $primaryMediaUrl = $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null;
                     @endphp
 
                     @if ($primaryMediaUrl)
-                        <img src="{{ $primaryMediaUrl }}" alt="{{ $primaryMedia?->alt_text ?: $product->name }}" class="h-112 w-full rounded border border-slate-200 bg-white object-contain p-2">
+                        <img
+                            src="{{ $primaryMediaUrl }}"
+                            alt="{{ $primaryMedia?->alt_text ?: $product->name }}"
+                            class="h-112 w-full rounded border border-slate-200 bg-white object-contain p-2"
+                            data-media-main-image
+                        >
+                        <video
+                            class="hidden h-112 w-full rounded border border-slate-200 bg-black object-contain p-2"
+                            controls
+                            data-media-main-video
+                        ></video>
                     @else
                         <div class="flex h-112 items-center justify-center rounded border border-slate-200 bg-white text-sm text-slate-500">No media available</div>
                     @endif
@@ -34,7 +44,16 @@
                                 @php
                                     $thumbnailUrl = route('media.show', ['path' => $media->path]);
                                 @endphp
-                                <img src="{{ $thumbnailUrl }}" alt="{{ $media->alt_text ?: $product->name }}" class="h-20 w-full rounded border border-slate-200 bg-white object-cover">
+                                <button
+                                    type="button"
+                                    class="h-20 w-full cursor-pointer rounded border border-slate-200 bg-white p-0 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                    data-media-thumb
+                                    data-media-type="{{ str_starts_with((string) $media->mime_type, 'video/') ? 'video' : 'image' }}"
+                                    data-media-url="{{ $thumbnailUrl }}"
+                                    data-media-alt="{{ $media->alt_text ?: $product->name }}"
+                                >
+                                    <img src="{{ $thumbnailUrl }}" alt="{{ $media->alt_text ?: $product->name }}" class="h-20 w-full rounded bg-white object-cover">
+                                </button>
                             @endforeach
                         </div>
                     @endif
