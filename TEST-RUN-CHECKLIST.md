@@ -2,17 +2,6 @@
 
 Run this checklist after pulling the latest `main` branch.
 
-## Important: Development Server Required
-
-If you're using Apache (`localhost`), you'll need to use the **development server** for testing. The Laravel development server properly handles all route rewriting.
-
-**Start the dev server:**
-```bash
-php artisan serve --host=127.0.0.1 --port=8000
-```
-
-Then visit: `http://127.0.0.1:8000/shop` instead of `http://localhost/shop`
-
 ## 1) Automated tests (recommended order)
 
 ### A. Focused storefront suite (fast)
@@ -47,8 +36,6 @@ Expected: all pass (plus known environment-dependent skips only).
 
 ### A. Shop listing
 
-Test at: `http://127.0.0.1:8000/shop` (and use this URL for all tests below)
-
 - `/shop`
 - `/shop?sort=name_asc`
 - `/shop?sort=name_desc`
@@ -81,7 +68,6 @@ Verify:
 - Variant dropdown updates price, SKU, stock status, and qty panel.
 - Variant dropdown syncs gallery filter and visible media.
 - Product page contains JSON-LD (`application/ld+json`) in page source.
-- **Live search:** Test on shop page by typing in search (should show dropdown results).
 
 ## 3) Manual admin/media regression checks
 
