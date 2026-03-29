@@ -18,6 +18,7 @@
                         <a class="text-blue-700 hover:underline" href="{{ route('admin.coupons.index') }}">Coupons</a>
                         <a class="text-blue-700 hover:underline" href="{{ route('admin.orders.index') }}">Orders</a>
                         <a class="text-blue-700 hover:underline" href="{{ route('admin.products.index') }}">Products</a>
+                        <a class="text-blue-700 hover:underline" href="{{ route('admin.regional-discounts.index') }}">Regional Discounts</a>
                     </nav>
                 </div>
 

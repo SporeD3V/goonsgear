@@ -41,6 +41,7 @@ class Order extends Model
         'currency',
         'coupon_code',
         'discount_total',
+        'regional_discount_total',
         'subtotal',
         'total',
         'placed_at',
@@ -54,6 +55,7 @@ class Order extends Model
     {
         return [
             'discount_total' => 'decimal:2',
+            'regional_discount_total' => 'decimal:2',
             'subtotal' => 'decimal:2',
             'total' => 'decimal:2',
             'placed_at' => 'datetime',

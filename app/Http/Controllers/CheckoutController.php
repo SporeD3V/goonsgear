@@ -8,6 +8,7 @@ use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\ProductVariant;
 use App\Support\CartPricing;
+use App\Support\Countries;
 use App\Support\PayPalClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -71,7 +72,7 @@ class CheckoutController extends Controller
             'discountTotal' => $pricing['discount_total'],
             'total' => $pricing['total'],
             'appliedCoupon' => $pricing['coupon'],
-            'countries' => $this->getCountries(),
+            'countries' => Countries::all(),
             'paypalEnabled' => $paypalClient->isEnabled(),
             'paypalClientId' => $paypalClient->clientId(),
             'formDefaults' => [
@@ -110,7 +111,7 @@ class CheckoutController extends Controller
         }
 
         try {
-            $pricing = $this->resolvePricing($request, $checkoutContext['subtotal'], $cartPricing);
+            $pricing = $this->resolvePricing($request, $checkoutContext['subtotal'], $cartPricing, (string) $payload['country']);
         } catch (ValidationException $exception) {
             return redirect()->route('cart.index')->withErrors($exception->errors());
         }
@@ -124,6 +125,7 @@ class CheckoutController extends Controller
             couponCode: $pricing['coupon_code'],
             paymentMethod: 'manual',
             paymentStatus: 'pending',
+            regionalDiscountTotal: $pricing['regional_discount_total'],
         );
 
         $request->session()->forget(self::CART_SESSION_KEY);
@@ -152,7 +154,7 @@ class CheckoutController extends Controller
 
         $payload = $this->validateCheckoutPayload($request);
         $checkoutContext = $this->buildCheckoutContext($items);
-        $pricing = $this->resolvePricing($request, $checkoutContext['subtotal'], $cartPricing);
+        $pricing = $this->resolvePricing($request, $checkoutContext['subtotal'], $cartPricing, (string) $payload['country']);
         $amount = number_format((float) $pricing['total'], 2, '.', '');
 
         try {
@@ -178,6 +180,7 @@ class CheckoutController extends Controller
             'discount_total' => $pricing['discount_total'],
             'total' => $pricing['total'],
             'coupon_code' => $pricing['coupon_code'],
+            'regional_discount_total' => $pricing['regional_discount_total'],
         ]);
 
         return response()->json([
@@ -235,6 +238,7 @@ class CheckoutController extends Controller
             paypalOrderId: $paypalOrderId,
             paypalCaptureId: $captureId !== '' ? $captureId : null,
             markAsPaid: true,
+            regionalDiscountTotal: (float) ($pendingOrder['regional_discount_total'] ?? 0),
         );
 
         $request->session()->forget(self::PAYPAL_PENDING_ORDER_SESSION_KEY.'.'.$paypalOrderId);
@@ -361,8 +365,9 @@ class CheckoutController extends Controller
         ?string $paypalOrderId = null,
         ?string $paypalCaptureId = null,
         bool $markAsPaid = false,
+        float $regionalDiscountTotal = 0.0,
     ): Order {
-        $order = DB::transaction(function () use ($payload, $normalizedItems, $subtotal, $discountTotal, $total, $couponCode, $paymentMethod, $paymentStatus, $paypalOrderId, $paypalCaptureId, $markAsPaid): Order {
+        $order = DB::transaction(function () use ($payload, $normalizedItems, $subtotal, $discountTotal, $total, $couponCode, $paymentMethod, $paymentStatus, $paypalOrderId, $paypalCaptureId, $markAsPaid, $regionalDiscountTotal): Order {
             $variantIds = collect($normalizedItems)->pluck('product_variant_id')->map(fn ($id): int => (int) $id)->values();
             $variants = ProductVariant::query()->whereIn('id', $variantIds)->get()->keyBy('id');
 
@@ -417,6 +422,10 @@ class CheckoutController extends Controller
                 $orderPayload['state'] = isset($payload['state']) ? (string) $payload['state'] : null;
             }
 
+            if ($this->orderColumnAvailable('regional_discount_total')) {
+                $orderPayload['regional_discount_total'] = $regionalDiscountTotal;
+            }
+
             if ($this->orderPaymentColumnsAvailable()) {
                 $orderPayload['payment_method'] = $paymentMethod;
                 $orderPayload['payment_status'] = $paymentStatus;
@@ -454,9 +463,9 @@ class CheckoutController extends Controller
     /**
      * @return array{subtotal: float, discount_total: float, total: float, coupon: ?App\Models\Coupon, coupon_code: ?string, requested_coupon_code: ?string, error: ?string}
      */
-    private function resolvePricing(Request $request, float $subtotal, CartPricing $cartPricing): array
+    private function resolvePricing(Request $request, float $subtotal, CartPricing $cartPricing, string $countryCode = ''): array
     {
-        $pricing = $cartPricing->summarizeFromSubtotal($subtotal, $request->session()->get(self::COUPON_SESSION_KEY));
+        $pricing = $cartPricing->summarizeFromSubtotal($subtotal, $request->session()->get(self::COUPON_SESSION_KEY), $countryCode !== '' ? $countryCode : null);
 
         if ($pricing['error'] !== null) {
             $request->session()->forget(self::COUPON_SESSION_KEY);

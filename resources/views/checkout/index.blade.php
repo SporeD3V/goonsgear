@@ -144,7 +144,11 @@
                     </form>
                 </section>
 
-                <aside class="rounded border border-slate-200 bg-white p-5">
+                <aside class="rounded border border-slate-200 bg-white p-5"
+                       id="order-summary"
+                       data-subtotal="{{ number_format((float) $subtotal, 2, '.', '') }}"
+                       data-coupon-discount="{{ number_format((float) $discountTotal, 2, '.', '') }}"
+                       data-regional-discount-url="{{ route('api.regional-discount') }}">
                     <h2 class="text-base font-semibold">Order summary</h2>
                     <div class="mt-4 space-y-3">
                         @foreach ($items as $item)
@@ -177,9 +181,14 @@
                         </div>
                     @endif
 
+                    <div id="regional-discount-line" class="mt-3 hidden items-center justify-between border-t border-slate-200 pt-3">
+                        <p class="text-sm text-emerald-700">Regional discount<br><span id="regional-discount-reason" class="text-xs font-normal"></span></p>
+                        <p id="regional-discount-amount" class="text-lg font-semibold text-emerald-700"></p>
+                    </div>
+
                     <div class="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
                         <p class="text-sm text-slate-600">Grand total</p>
-                        <p class="text-lg font-semibold">${{ number_format((float) $total, 2) }}</p>
+                        <p id="grand-total" class="text-lg font-semibold">${{ number_format((float) $total, 2) }}</p>
                     </div>
                 </aside>
             </div>
@@ -188,5 +197,64 @@
         @if ($paypalEnabled && $paypalClientId)
             <script src="https://www.paypal.com/sdk/js?client-id={{ $paypalClientId }}&currency=EUR&intent=capture"></script>
         @endif
+
+        <script>
+            (function () {
+                const summary = document.getElementById('order-summary');
+                const countrySelect = document.getElementById('country');
+                const regionalLine = document.getElementById('regional-discount-line');
+                const regionalAmount = document.getElementById('regional-discount-amount');
+                const regionalReason = document.getElementById('regional-discount-reason');
+                const grandTotal = document.getElementById('grand-total');
+
+                if (!summary || !countrySelect) return;
+
+                const subtotal = parseFloat(summary.dataset.subtotal) || 0;
+                const couponDiscount = parseFloat(summary.dataset.couponDiscount) || 0;
+                const apiUrl = summary.dataset.regionalDiscountUrl;
+
+                function fmt(n) {
+                    return '$' + n.toFixed(2);
+                }
+
+                function updateRegionalDiscount(countryCode) {
+                    if (!countryCode) {
+                        regionalLine.classList.add('hidden');
+                        regionalLine.classList.remove('flex');
+                        grandTotal.textContent = fmt(Math.max(0, subtotal - couponDiscount));
+                        return;
+                    }
+
+                    fetch(apiUrl + '?country=' + encodeURIComponent(countryCode) + '&subtotal=' + subtotal)
+                        .then(function (res) { return res.json(); })
+                        .then(function (data) {
+                            if (data && data.discount_total > 0) {
+                                regionalAmount.textContent = '- ' + fmt(data.discount_total);
+                                regionalReason.textContent = data.reason;
+                                regionalLine.classList.remove('hidden');
+                                regionalLine.classList.add('flex');
+                                grandTotal.textContent = fmt(Math.max(0, subtotal - couponDiscount - data.discount_total));
+                            } else {
+                                regionalLine.classList.add('hidden');
+                                regionalLine.classList.remove('flex');
+                                grandTotal.textContent = fmt(Math.max(0, subtotal - couponDiscount));
+                            }
+                        })
+                        .catch(function () {
+                            regionalLine.classList.add('hidden');
+                            regionalLine.classList.remove('flex');
+                        });
+                }
+
+                countrySelect.addEventListener('change', function () {
+                    updateRegionalDiscount(this.value);
+                });
+
+                // Run on page load for pre-selected country
+                if (countrySelect.value) {
+                    updateRegionalDiscount(countrySelect.value);
+                }
+            })();
+        </script>
     </body>
 </html>

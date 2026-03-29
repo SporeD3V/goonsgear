@@ -9,7 +9,9 @@ use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductMediaController;
 use App\Http\Controllers\Admin\ProductVariantController;
+use App\Http\Controllers\Admin\RegionalDiscountController;
 use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\Api\RegionalDiscountController as ApiRegionalDiscountController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\CartController;
@@ -63,6 +65,7 @@ Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])-
 Route::get('/api/shop/search', [ShopController::class, 'search'])->name('api.shop.search');
 Route::get('/api/locations/states', [LocationController::class, 'states'])->name('api.locations.states');
 Route::get('/api/locations/cities', [LocationController::class, 'cities'])->name('api.locations.cities');
+Route::get('/api/regional-discount', [ApiRegionalDiscountController::class, 'show'])->name('api.regional-discount');
 
 Route::get('/media/{path}', [MediaController::class, 'show'])
     ->where('path', '.*')
@@ -73,6 +76,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::resource('coupons', CouponController::class)->except('show');
     Route::resource('orders', OrderController::class)->only(['index', 'show', 'update']);
     Route::resource('products', ProductController::class)->except('show');
+    Route::resource('regional-discounts', RegionalDiscountController::class)->except('show');
     Route::resource('products.variants', ProductVariantController::class)->except(['index', 'show']);
     Route::post('maintenance/clear-caches', [MaintenanceController::class, 'clearCaches'])
         ->name('maintenance.clear-caches');
