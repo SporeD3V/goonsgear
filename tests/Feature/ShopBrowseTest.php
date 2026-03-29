@@ -48,6 +48,8 @@ class ShopBrowseTest extends TestCase
             'name' => 'Black Hoodie',
             'slug' => 'black-hoodie',
             'status' => 'active',
+            'meta_title' => 'Black Hoodie Product Page',
+            'meta_description' => 'Official Black Hoodie by GoonsGear.',
         ]);
 
         ProductMedia::factory()->create([
@@ -94,6 +96,11 @@ class ShopBrowseTest extends TestCase
         $response->assertSee('data-media-variant-id="'.$activeVariant->id.'"', false);
         $response->assertSee('data-product-variant-picker', false);
         $response->assertSee('application/ld+json', false);
+        $response->assertSee('<title>Black Hoodie Product Page</title>', false);
+        $response->assertSee('meta name="description" content="Official Black Hoodie by GoonsGear."', false);
+        $response->assertSee('property="og:type" content="product"', false);
+        $response->assertSee('property="og:title" content="Black Hoodie Product Page"', false);
+        $response->assertSee('rel="canonical" href="'.route('shop.show', $product).'"', false);
     }
 
     public function test_shop_show_returns_not_found_for_non_active_product(): void

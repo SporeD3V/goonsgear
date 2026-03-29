@@ -39,8 +39,18 @@ class ShopController extends Controller
                 ->orderBy('id'),
         ]);
 
+        $primaryMedia = $product->media->first();
+
+        $seo = [
+            'title' => $product->meta_title ?: $product->name.' | GoonsGear',
+            'description' => $product->meta_description ?: ($product->excerpt ?: 'Shop '.$product->name.' at GoonsGear.'),
+            'canonical_url' => route('shop.show', $product),
+            'og_image' => $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null,
+        ];
+
         return view('shop.show', [
             'product' => $product,
+            'seo' => $seo,
         ]);
     }
 

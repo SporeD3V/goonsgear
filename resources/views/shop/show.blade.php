@@ -3,7 +3,16 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>{{ $product->name }} | GoonsGear</title>
+        <title>{{ $seo['title'] }}</title>
+        <meta name="description" content="{{ $seo['description'] }}">
+        <link rel="canonical" href="{{ $seo['canonical_url'] }}">
+        <meta property="og:type" content="product">
+        <meta property="og:title" content="{{ $seo['title'] }}">
+        <meta property="og:description" content="{{ $seo['description'] }}">
+        <meta property="og:url" content="{{ $seo['canonical_url'] }}">
+        @if ($seo['og_image'])
+            <meta property="og:image" content="{{ $seo['og_image'] }}">
+        @endif
         @php
             $jsonLdImage = $product->media->first() ? route('media.show', ['path' => $product->media->first()->path]) : null;
             $jsonLdOffers = $product->variants
