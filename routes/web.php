@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\FallbackMediaController;
 use App\Http\Controllers\Admin\MaintenanceController;
+use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductMediaController;
 use App\Http\Controllers\Admin\ProductVariantController;
@@ -42,6 +43,7 @@ Route::get('/media/{path}', [MediaController::class, 'show'])
 
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::resource('categories', CategoryController::class)->except('show');
+    Route::resource('orders', OrderController::class)->only(['index', 'show', 'update']);
     Route::resource('products', ProductController::class)->except('show');
     Route::resource('products.variants', ProductVariantController::class)->except(['index', 'show']);
     Route::post('maintenance/clear-caches', [MaintenanceController::class, 'clearCaches'])
