@@ -4,6 +4,8 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Product;
+use App\Models\ProductMedia;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -66,8 +68,18 @@ class OrderDashboardTest extends TestCase
             'order_number' => 'GG-SHOW-123',
         ]);
 
+        $product = Product::factory()->create();
+
+        $media = ProductMedia::factory()->create([
+            'product_id' => $product->id,
+            'path' => 'products/dashboard/gallery/thumb.avif',
+            'is_primary' => true,
+            'position' => 0,
+        ]);
+
         OrderItem::factory()->create([
             'order_id' => $order->id,
+            'product_id' => $product->id,
             'product_name' => 'Dashboard Hoodie',
             'variant_name' => 'Large',
             'sku' => 'DASH-HOODIE-L',
@@ -82,6 +94,7 @@ class OrderDashboardTest extends TestCase
         $response->assertSee('GG-SHOW-123');
         $response->assertSee('Dashboard Hoodie');
         $response->assertSee('DASH-HOODIE-L');
+        $response->assertSee(route('media.show', ['path' => $media->path]));
     }
 
     public function test_admin_can_update_order_and_payment_status(): void

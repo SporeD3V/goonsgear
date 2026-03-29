@@ -64,6 +64,7 @@
         <table class="min-w-full border border-slate-200 text-sm">
             <thead class="bg-slate-50">
                 <tr>
+                    <th class="border border-slate-200 px-3 py-2 text-left">Thumb</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Item</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">SKU</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Qty</th>
@@ -74,6 +75,14 @@
             <tbody>
                 @forelse ($order->items as $item)
                     <tr>
+                        <td class="border border-slate-200 px-3 py-2">
+                            @php($thumbnailPath = $item->product?->media->first()?->path)
+                            @if ($thumbnailPath)
+                                <img src="{{ route('media.show', ['path' => $thumbnailPath]) }}" alt="{{ $item->product_name }}" class="h-12 w-12 rounded object-cover">
+                            @else
+                                <div class="h-12 w-12 rounded bg-slate-100"></div>
+                            @endif
+                        </td>
                         <td class="border border-slate-200 px-3 py-2">{{ $item->product_name }} @if($item->variant_name)({{ $item->variant_name }})@endif</td>
                         <td class="border border-slate-200 px-3 py-2">{{ $item->sku }}</td>
                         <td class="border border-slate-200 px-3 py-2">{{ $item->quantity }}</td>
@@ -82,7 +91,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="border border-slate-200 px-3 py-6 text-center text-slate-500">No order items.</td>
+                        <td colspan="6" class="border border-slate-200 px-3 py-6 text-center text-slate-500">No order items.</td>
                     </tr>
                 @endforelse
             </tbody>

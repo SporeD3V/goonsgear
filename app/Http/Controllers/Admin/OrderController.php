@@ -50,6 +50,10 @@ class OrderController extends Controller
     {
         $order->load([
             'items' => fn ($query) => $query->orderBy('id'),
+            'items.product.media' => fn ($query) => $query
+                ->orderByDesc('is_primary')
+                ->orderBy('position')
+                ->orderBy('id'),
         ]);
 
         return view('admin.orders.show', [

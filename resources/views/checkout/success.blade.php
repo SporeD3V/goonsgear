@@ -22,6 +22,7 @@
                     <table class="min-w-full text-sm">
                         <thead class="bg-slate-50 text-slate-700">
                             <tr>
+                                <th class="border-b border-slate-200 px-3 py-2 text-left">Thumb</th>
                                 <th class="border-b border-slate-200 px-3 py-2 text-left">Item</th>
                                 <th class="border-b border-slate-200 px-3 py-2 text-left">Qty</th>
                                 <th class="border-b border-slate-200 px-3 py-2 text-left">Total</th>
@@ -30,6 +31,14 @@
                         <tbody>
                             @foreach ($order->items as $item)
                                 <tr>
+                                    <td class="border-b border-slate-200 px-3 py-2">
+                                        @php($thumbnailPath = $item->product?->media->first()?->path)
+                                        @if ($thumbnailPath)
+                                            <img src="{{ route('media.show', ['path' => $thumbnailPath]) }}" alt="{{ $item->product_name }}" class="h-12 w-12 rounded object-cover">
+                                        @else
+                                            <div class="h-12 w-12 rounded bg-slate-100"></div>
+                                        @endif
+                                    </td>
                                     <td class="border-b border-slate-200 px-3 py-2">{{ $item->product_name }} @if($item->variant_name)({{ $item->variant_name }})@endif</td>
                                     <td class="border-b border-slate-200 px-3 py-2">{{ $item->quantity }}</td>
                                     <td class="border-b border-slate-200 px-3 py-2">${{ number_format((float) $item->line_total, 2) }}</td>

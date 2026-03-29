@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -207,5 +208,38 @@ class CheckoutFlowTest extends TestCase
             'street_name',
             'street_number',
         ]);
+    }
+
+    public function test_success_page_displays_product_thumbnail_for_order_items(): void
+    {
+        $fixture = $this->createCheckoutFixture();
+        $product = $fixture['product'];
+
+        $order = Order::factory()->create([
+            'status' => 'paid',
+        ]);
+
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_variant_id' => $fixture['variant']->id,
+            'product_name' => $product->name,
+            'variant_name' => $fixture['variant']->name,
+            'sku' => $fixture['variant']->sku,
+            'unit_price' => 120.00,
+            'quantity' => 1,
+            'line_total' => 120.00,
+        ]);
+
+        $media = ProductMedia::factory()->create([
+            'product_id' => $product->id,
+            'path' => 'products/checkout-hoodie/gallery/thumb.avif',
+            'is_primary' => true,
+            'position' => 0,
+        ]);
+
+        $response = $this->get(route('checkout.success', $order));
+
+        $response->assertOk();
+        $response->assertSee(route('media.show', ['path' => $media->path]));
     }
 }

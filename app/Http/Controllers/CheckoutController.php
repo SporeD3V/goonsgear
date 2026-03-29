@@ -199,7 +199,13 @@ class CheckoutController extends Controller
 
     public function success(Order $order): View
     {
-        $order->load('items');
+        $order->load([
+            'items' => fn ($query) => $query->orderBy('id'),
+            'items.product.media' => fn ($query) => $query
+                ->orderByDesc('is_primary')
+                ->orderBy('position')
+                ->orderBy('id'),
+        ]);
 
         return view('checkout.success', [
             'order' => $order,
