@@ -10,6 +10,8 @@ class GeoDbLocationProvider
 {
     private const PAGE_LIMIT = 10;
 
+    private const MAX_CITY_RESULTS = 100;
+
     /**
      * @return array<int, array{code: string, name: string}>
      */
@@ -94,7 +96,7 @@ class GeoDbLocationProvider
         $rows = $this->paginate($path, [
             'sort' => '-population',
             'types' => 'CITY',
-        ]);
+        ], self::MAX_CITY_RESULTS);
 
         $cities = [];
 
@@ -116,7 +118,7 @@ class GeoDbLocationProvider
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function paginate(string $path, array $query = []): array
+    private function paginate(string $path, array $query = [], ?int $maxItems = null): array
     {
         $offset = 0;
         $rows = [];
@@ -139,6 +141,10 @@ class GeoDbLocationProvider
             foreach ($batch as $row) {
                 if (is_array($row)) {
                     $rows[] = $row;
+
+                    if ($maxItems !== null && count($rows) >= $maxItems) {
+                        return $rows;
+                    }
                 }
             }
 

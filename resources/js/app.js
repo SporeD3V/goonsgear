@@ -262,6 +262,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		const citiesUrl = locationEndpoints.dataset.citiesUrl;
 		const initialState = stateWrapper.dataset.initialState || '';
 		const initialCity = cityWrapper.dataset.initialCity || '';
+		const statesCache = new Map();
+		const citiesCache = new Map();
 
 		const renderStateSelect = (states, selectedState) => {
 			const select = document.createElement('select');
@@ -337,9 +339,26 @@ document.addEventListener('DOMContentLoaded', () => {
 			cityWrapper.appendChild(input);
 		};
 
+		const renderCitySelectPlaceholder = (placeholderText = '-- Select city --') => {
+			renderCitySelect([], '');
+			const citySelect = document.getElementById('city');
+
+			if (citySelect && citySelect.options.length > 0) {
+				citySelect.options[0].textContent = placeholderText;
+			}
+		};
+
 		const loadCities = async (countryCode, stateCode, selectedCity) => {
 			if (!countryCode || !citiesUrl) {
 				renderCityInput(selectedCity);
+				return;
+			}
+
+			const cacheKey = `${countryCode}|${stateCode || ''}`;
+
+			if (citiesCache.has(cacheKey)) {
+				const cities = citiesCache.get(cacheKey);
+				renderCitySelect(cities, selectedCity);
 				return;
 			}
 
@@ -362,6 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				const cities = Array.isArray(payload.data) ? payload.data : [];
 
 				if (cities.length > 0) {
+					citiesCache.set(cacheKey, cities);
 					renderCitySelect(cities, selectedCity);
 				} else {
 					renderCityInput(selectedCity);
@@ -378,6 +398,41 @@ document.addEventListener('DOMContentLoaded', () => {
 				return;
 			}
 
+			if (statesCache.has(countryCode)) {
+				const states = statesCache.get(countryCode);
+
+				if (states.length > 0) {
+					renderStateSelect(states, selectedState);
+
+					const stateSelect = document.getElementById('state');
+					const activeState = stateSelect?.value || '';
+
+					if (activeState) {
+						await loadCities(countryCode, activeState, selectedCity);
+					} else {
+						renderCitySelectPlaceholder('-- Select state / region first --');
+					}
+
+					stateSelect?.addEventListener('change', () => {
+						const currentCity = document.getElementById('city')?.value || '';
+						const currentState = stateSelect.value;
+
+						if (!currentState) {
+							renderCitySelectPlaceholder('-- Select state / region first --');
+							return;
+						}
+
+						loadCities(countrySelect.value, currentState, currentCity);
+					});
+
+					return;
+				}
+
+				renderStateInput(selectedState);
+				await loadCities(countryCode, '', selectedCity);
+				return;
+			}
+
 			stateWrapper.innerHTML = '<p class="py-2 text-xs text-slate-500">Loading states...</p>';
 
 			try {
@@ -390,17 +445,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
 				const payload = await response.json();
 				const states = Array.isArray(payload.data) ? payload.data : [];
+				statesCache.set(countryCode, states);
 
 				if (states.length > 0) {
 					renderStateSelect(states, selectedState);
 
 					const stateSelect = document.getElementById('state');
 					const activeState = stateSelect?.value || '';
-					await loadCities(countryCode, activeState, selectedCity);
+
+					if (activeState) {
+						await loadCities(countryCode, activeState, selectedCity);
+					} else {
+						renderCitySelectPlaceholder('-- Select state / region first --');
+					}
 
 					stateSelect?.addEventListener('change', () => {
 						const currentCity = document.getElementById('city')?.value || '';
-						loadCities(countrySelect.value, stateSelect.value, currentCity);
+						const currentState = stateSelect.value;
+
+						if (!currentState) {
+							renderCitySelectPlaceholder('-- Select state / region first --');
+							return;
+						}
+
+						loadCities(countrySelect.value, currentState, currentCity);
 					});
 				} else {
 					renderStateInput(selectedState);
@@ -413,9 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		};
 
 		countrySelect.addEventListener('change', () => {
-			const currentState = document.getElementById('state')?.value || '';
-			const currentCity = document.getElementById('city')?.value || '';
-			loadStates(countrySelect.value, currentState, currentCity);
+			loadStates(countrySelect.value, '', '');
 		});
 
 		if (countrySelect.value) {
