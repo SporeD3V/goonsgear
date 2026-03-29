@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Checkout | GoonsGear</title>
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
-            @vite(['resources/css/app.css'])
+            @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif
     </head>
     <body class="bg-slate-100 text-slate-900">
@@ -52,34 +52,69 @@
                                 @error('phone')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
-                                <label for="country" class="mb-1 block text-sm font-medium text-slate-700">Country (ISO2)</label>
-                                <input id="country" name="country" type="text" maxlength="2" value="{{ $formDefaults['country'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm uppercase">
+                                <label for="country" class="mb-1 block text-sm font-medium text-slate-700">Country</label>
+                                <select id="country" name="country" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                    <option value="">— Select country —</option>
+                                    @foreach ($countries as $code => $name)
+                                        <option value="{{ $code }}" @selected($formDefaults['country'] === $code)>{{ $name }}</option>
+                                    @endforeach
+                                </select>
                                 @error('country')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
-                        </div>
-
-                        <div>
-                            <label for="address_line_1" class="mb-1 block text-sm font-medium text-slate-700">Address line 1</label>
-                            <input id="address_line_1" name="address_line_1" type="text" value="{{ $formDefaults['address_line_1'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
-                            @error('address_line_1')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
-                        </div>
-
-                        <div>
-                            <label for="address_line_2" class="mb-1 block text-sm font-medium text-slate-700">Address line 2 (optional)</label>
-                            <input id="address_line_2" name="address_line_2" type="text" value="{{ $formDefaults['address_line_2'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
-                            @error('address_line_2')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                         </div>
 
                         <div class="grid gap-3 sm:grid-cols-2">
                             <div>
                                 <label for="city" class="mb-1 block text-sm font-medium text-slate-700">City</label>
-                                <input id="city" name="city" type="text" value="{{ $formDefaults['city'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <div id="city-wrapper" data-initial-city="{{ $formDefaults['city'] }}">
+                                    {{-- populated by JS; fallback for no-JS --}}
+                                    <input id="city" name="city" type="text" value="{{ $formDefaults['city'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                </div>
                                 @error('city')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
                                 <label for="postal_code" class="mb-1 block text-sm font-medium text-slate-700">Postal code</label>
                                 <input id="postal_code" name="postal_code" type="text" value="{{ $formDefaults['postal_code'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
                                 @error('postal_code')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
+                            </div>
+                        </div>
+
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label for="street_name" class="mb-1 block text-sm font-medium text-slate-700">Street name</label>
+                                <input id="street_name" name="street_name" type="text" value="{{ $formDefaults['street_name'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                @error('street_name')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
+                            </div>
+                            <div>
+                                <label for="street_number" class="mb-1 block text-sm font-medium text-slate-700">Street number</label>
+                                <input id="street_number" name="street_number" type="text" value="{{ $formDefaults['street_number'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                @error('street_number')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
+                            </div>
+                        </div>
+
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label for="apartment_block" class="mb-1 block text-sm font-medium text-slate-700">Apartment block <span class="text-slate-400">(optional)</span></label>
+                                <input id="apartment_block" name="apartment_block" type="text" value="{{ $formDefaults['apartment_block'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                @error('apartment_block')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
+                            </div>
+                            <div>
+                                <label for="entrance" class="mb-1 block text-sm font-medium text-slate-700">Entrance <span class="text-slate-400">(optional)</span></label>
+                                <input id="entrance" name="entrance" type="text" value="{{ $formDefaults['entrance'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                @error('entrance')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
+                            </div>
+                        </div>
+
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <div>
+                                <label for="floor" class="mb-1 block text-sm font-medium text-slate-700">Floor <span class="text-slate-400">(optional)</span></label>
+                                <input id="floor" name="floor" type="text" value="{{ $formDefaults['floor'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                @error('floor')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
+                            </div>
+                            <div>
+                                <label for="apartment_number" class="mb-1 block text-sm font-medium text-slate-700">Apartment number <span class="text-slate-400">(optional)</span></label>
+                                <input id="apartment_number" name="apartment_number" type="text" value="{{ $formDefaults['apartment_number'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                @error('apartment_number')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                         </div>
 

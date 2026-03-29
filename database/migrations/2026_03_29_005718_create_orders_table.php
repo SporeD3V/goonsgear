@@ -22,8 +22,12 @@ return new class extends Migration
             $table->string('country', 2)->default('DE');
             $table->string('city');
             $table->string('postal_code');
-            $table->string('address_line_1');
-            $table->string('address_line_2')->nullable();
+            $table->string('street_name');
+            $table->string('street_number');
+            $table->string('apartment_block')->nullable();
+            $table->string('entrance')->nullable();
+            $table->string('floor')->nullable();
+            $table->string('apartment_number')->nullable();
             $table->string('currency', 3)->default('EUR');
             $table->decimal('subtotal', 10, 2);
             $table->decimal('total', 10, 2);

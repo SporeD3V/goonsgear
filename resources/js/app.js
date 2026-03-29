@@ -250,4 +250,90 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 		});
 	}
+
+	// Checkout city selector
+	const countrySelect = document.getElementById('country');
+	const cityWrapper = document.getElementById('city-wrapper');
+
+	if (countrySelect && cityWrapper) {
+		const initialCity = cityWrapper.dataset.initialCity || '';
+
+		const renderCitySelect = (cities, selectedCity) => {
+			const select = document.createElement('select');
+			select.id = 'city';
+			select.name = 'city';
+			select.required = true;
+			select.className = 'w-full rounded border border-slate-300 px-3 py-2 text-sm';
+
+			const placeholder = document.createElement('option');
+			placeholder.value = '';
+			placeholder.textContent = '— Select city —';
+			select.appendChild(placeholder);
+
+			cities.forEach((city) => {
+				const option = document.createElement('option');
+				option.value = city;
+				option.textContent = city;
+				if (city === selectedCity) {
+					option.selected = true;
+				}
+				select.appendChild(option);
+			});
+
+			cityWrapper.innerHTML = '';
+			cityWrapper.appendChild(select);
+		};
+
+		const renderCityInput = (value) => {
+			const input = document.createElement('input');
+			input.id = 'city';
+			input.name = 'city';
+			input.type = 'text';
+			input.required = true;
+			input.value = value || '';
+			input.className = 'w-full rounded border border-slate-300 px-3 py-2 text-sm';
+			cityWrapper.innerHTML = '';
+			cityWrapper.appendChild(input);
+		};
+
+		const loadCities = async (countryCode, selectedCity) => {
+			if (!countryCode) {
+				renderCityInput(selectedCity);
+				return;
+			}
+
+			const countryName = countrySelect.options[countrySelect.selectedIndex]?.text || '';
+
+			cityWrapper.innerHTML = '<p class="py-2 text-xs text-slate-500">Loading cities…</p>';
+
+			try {
+				const response = await fetch('https://countriesnow.space/api/v0.1/countries/cities', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ country: countryName }),
+				});
+				const data = await response.json();
+
+				if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+					renderCitySelect(data.data.sort(), selectedCity);
+				} else {
+					renderCityInput(selectedCity);
+				}
+			} catch {
+				renderCityInput(selectedCity);
+			}
+		};
+
+		countrySelect.addEventListener('change', () => {
+			const currentCity = document.getElementById('city')?.value || '';
+			loadCities(countrySelect.value, currentCity);
+		});
+
+		// Pre-load cities if country is already selected on page load
+		if (countrySelect.value) {
+			loadCities(countrySelect.value, initialCity);
+		} else {
+			renderCityInput(initialCity);
+		}
+	}
 });

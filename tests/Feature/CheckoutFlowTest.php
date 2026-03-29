@@ -53,8 +53,8 @@ class CheckoutFlowTest extends TestCase
             'country' => 'DE',
             'city' => 'Berlin',
             'postal_code' => '10115',
-            'address_line_1' => 'Alexanderplatz 1',
-            'address_line_2' => 'Apt 5',
+            'street_name' => 'Alexanderplatz',
+            'street_number' => '1',
         ];
     }
 
@@ -189,7 +189,8 @@ class CheckoutFlowTest extends TestCase
             'country' => 'DEU',
             'city' => '',
             'postal_code' => '',
-            'address_line_1' => '',
+            'street_name' => '',
+            'street_number' => '',
         ]);
 
         $response->assertSessionHasErrors([
@@ -199,7 +200,8 @@ class CheckoutFlowTest extends TestCase
             'country',
             'city',
             'postal_code',
-            'address_line_1',
+            'street_name',
+            'street_number',
         ]);
     }
 }
