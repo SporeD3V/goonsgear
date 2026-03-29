@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -20,6 +21,8 @@ class CheckoutController extends Controller
     private const CART_SESSION_KEY = 'cart.items';
 
     private const PAYPAL_PENDING_ORDER_SESSION_KEY = 'checkout.paypal.pending_orders';
+
+    private static ?bool $orderPaymentColumnsAvailable = null;
 
     public function index(Request $request, PayPalClient $paypalClient): View|RedirectResponse
     {
@@ -315,13 +318,9 @@ class CheckoutController extends Controller
                 }
             }
 
-            $order = Order::query()->create([
+            $orderPayload = [
                 'order_number' => $this->generateOrderNumber(),
                 'status' => $markAsPaid ? 'paid' : 'pending',
-                'payment_method' => $paymentMethod,
-                'payment_status' => $paymentStatus,
-                'paypal_order_id' => $paypalOrderId,
-                'paypal_capture_id' => $paypalCaptureId,
                 'email' => (string) $payload['email'],
                 'first_name' => (string) $payload['first_name'],
                 'last_name' => (string) $payload['last_name'],
@@ -340,7 +339,16 @@ class CheckoutController extends Controller
                 'subtotal' => $subtotal,
                 'total' => $subtotal,
                 'placed_at' => now(),
-            ]);
+            ];
+
+            if ($this->orderPaymentColumnsAvailable()) {
+                $orderPayload['payment_method'] = $paymentMethod;
+                $orderPayload['payment_status'] = $paymentStatus;
+                $orderPayload['paypal_order_id'] = $paypalOrderId;
+                $orderPayload['paypal_capture_id'] = $paypalCaptureId;
+            }
+
+            $order = Order::query()->create($orderPayload);
 
             $order->items()->createMany($normalizedItems);
 
@@ -354,6 +362,22 @@ class CheckoutController extends Controller
 
             return $order;
         });
+    }
+
+    private function orderPaymentColumnsAvailable(): bool
+    {
+        if (self::$orderPaymentColumnsAvailable !== null) {
+            return self::$orderPaymentColumnsAvailable;
+        }
+
+        self::$orderPaymentColumnsAvailable = Schema::hasColumns('orders', [
+            'payment_method',
+            'payment_status',
+            'paypal_order_id',
+            'paypal_capture_id',
+        ]);
+
+        return self::$orderPaymentColumnsAvailable;
     }
 
     /**
