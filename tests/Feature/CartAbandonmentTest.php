@@ -174,6 +174,8 @@ class CartAbandonmentTest extends TestCase
 
     public function test_admin_can_update_abandoned_cart_settings(): void
     {
+        $this->actingAsAdmin();
+
         Coupon::factory()->create(['code' => 'SAVE15']);
 
         $this->post(route('admin.maintenance.abandoned-cart.update'), [

@@ -11,6 +11,13 @@ class ProductVariantCrudTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->actingAsAdmin();
+    }
+
     /**
      * Variants can be created from the product variant admin form.
      */

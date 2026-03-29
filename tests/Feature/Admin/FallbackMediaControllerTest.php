@@ -12,6 +12,13 @@ class FallbackMediaControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->actingAsAdmin();
+    }
+
     public function test_fallback_media_page_lists_product_and_usage_status(): void
     {
         Storage::fake('public');

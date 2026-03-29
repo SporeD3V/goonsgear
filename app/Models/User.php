@@ -23,6 +23,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'is_admin',
         'notify_cart_discounts',
         'notify_cart_low_stock',
     ];
@@ -47,6 +48,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_admin' => 'boolean',
             'notify_cart_discounts' => 'boolean',
             'notify_cart_low_stock' => 'boolean',
         ];

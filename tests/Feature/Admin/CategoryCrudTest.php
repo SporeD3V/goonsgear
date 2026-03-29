@@ -10,6 +10,13 @@ class CategoryCrudTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->actingAsAdmin();
+    }
+
     /**
      * Categories can be created from the admin flow.
      */

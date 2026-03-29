@@ -10,6 +10,13 @@ class CouponManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->actingAsAdmin();
+    }
+
     public function test_admin_coupons_index_lists_existing_coupons(): void
     {
         $coupon = Coupon::factory()->create([

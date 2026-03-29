@@ -13,6 +13,13 @@ class OrderDashboardTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->actingAsAdmin();
+    }
+
     public function test_admin_orders_index_lists_orders(): void
     {
         $orderA = Order::factory()->create([

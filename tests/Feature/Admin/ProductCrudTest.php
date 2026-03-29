@@ -14,6 +14,13 @@ class ProductCrudTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->actingAsAdmin();
+    }
+
     /**
      * Products can be created and linked to categories from admin.
      */

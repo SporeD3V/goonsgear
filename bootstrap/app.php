@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\AddAdminNoIndexHeaders;
+use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleLegacyRedirects;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -12,6 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->alias([
+            'admin' => EnsureUserIsAdmin::class,
+            'admin.noindex' => AddAdminNoIndexHeaders::class,
+        ]);
         $middleware->append(HandleLegacyRedirects::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {

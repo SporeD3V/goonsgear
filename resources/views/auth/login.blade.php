@@ -14,6 +14,10 @@
                 <h1 class="text-2xl font-semibold">Welcome back</h1>
                 <p class="mt-1 text-sm text-slate-600">Log in to manage your account and orders.</p>
 
+                @if (session('status'))
+                    <div class="mt-4 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{{ session('status') }}</div>
+                @endif
+
                 <form method="POST" action="{{ route('login.store') }}" class="mt-5 grid gap-4">
                     @csrf
 
@@ -36,6 +40,10 @@
 
                     <button type="submit" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Log in</button>
                 </form>
+
+                <p class="mt-3 text-sm text-slate-600">
+                    <a href="{{ route('password.request') }}" class="text-blue-700 hover:underline">Forgot your password?</a>
+                </p>
 
                 <p class="mt-4 text-sm text-slate-600">
                     No account yet?

@@ -10,6 +10,13 @@ class UrlRedirectTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->actingAsAdmin();
+    }
+
     public function test_admin_can_create_url_redirect(): void
     {
         $response = $this->post(route('admin.url-redirects.store'), [

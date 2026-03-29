@@ -15,6 +15,13 @@ class RegionalDiscountTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->actingAsAdmin();
+    }
+
     // ─── Admin CRUD ───────────────────────────────────────────────────────────
 
     public function test_admin_can_list_regional_discounts(): void
