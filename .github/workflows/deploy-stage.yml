@@ -99,6 +99,10 @@ jobs:
             cd '${{ secrets.REMOTE_PATH }}'
 
             echo "=== Post-deploy checks ==="
+
+            echo "--- Fixing permissions ---"
+            chmod -R 770 storage bootstrap/cache
+
             echo "--- PHP version ---"
             php -v | head -n 1
 
