@@ -27,6 +27,14 @@ Date: 2026-03-29
 - [x] Run Pint formatting
 - [x] Run focused tests
 
+## Staging Incidents
+
+- [x] Prevent cart/account 500s when `coupon_user` pivot table is missing on staging
+- [ ] Apply pending staging migration `2026_03_29_155259_create_coupon_user_table`
+- [ ] Verify staging `migrations` table includes `2026_03_29_155258_add_rule_columns_to_coupons_table`
+- [ ] Verify staging `migrations` table includes `2026_03_29_155300_create_order_coupon_usages_table`
+- [ ] Remove temporary “personal coupons unavailable while assignments are being updated” fallback after staging schema is aligned
+
 ## Deeper Refactors (Phase 2)
 
 - [x] Introduce policy classes for user-owned storefront resources (tag follows, stock alerts)

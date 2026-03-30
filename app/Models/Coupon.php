@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
 
 class Coupon extends Model
 {
@@ -79,6 +80,11 @@ class Coupon extends Model
     public static function supportedScopes(): array
     {
         return [self::SCOPE_ALL, self::SCOPE_PRODUCT, self::SCOPE_CATEGORY, self::SCOPE_TAG];
+    }
+
+    public static function assignmentTableExists(): bool
+    {
+        return Schema::hasTable('coupon_user');
     }
 
     public function validationError(float $subtotal): ?string

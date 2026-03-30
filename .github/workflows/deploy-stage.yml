@@ -4,14 +4,21 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      STAGING_URL: https://goonsgear.macaw.studio
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -21,7 +28,7 @@ jobs:
           coverage: none
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
@@ -44,6 +51,11 @@ jobs:
             --exclude="node_modules" \
             --exclude="tests" \
             --exclude="deploy" \
+            --exclude=".env" \
+            --exclude="storage/logs/*" \
+            --exclude="storage/framework/sessions/*" \
+            --exclude="storage/framework/cache/data/*" \
+            --exclude="storage/framework/views/*" \
             ./ ./deploy
           # Remove vendor test files to reduce payload size
           find deploy/vendor -type d \( -name "tests" -o -name "Tests" \) -exec rm -rf {} + 2>/dev/null || true
@@ -59,6 +71,9 @@ jobs:
             exit 1
           fi
 
+      # FTP server-dir is "/" because the FTP user is rooted at the site directory.
+      # If FTP lands in a parent directory instead, change "/" to the relative
+      # subdirectory path (e.g. "htdocs/goonsgear.macaw.studio/").
       - name: FTP Deploy to staging
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
@@ -69,5 +84,61 @@ jobs:
           port: 21
           local-dir: ./deploy/
           server-dir: /
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            .env
+            storage/logs/**
+            storage/framework/sessions/**
+            storage/framework/cache/data/**
+            storage/framework/views/**
           log-level: standard
           timeout: 600000
+
+      # SSH uses REMOTE_PATH because SSH user (spored3v) has a different home
+      # directory than the site owner (macaw-goonsgear).
+      - name: SSH smoke-check
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          password: ${{ secrets.SSH_PASSPHRASE }}
+          script_stop: true
+          script: |
+            set -eu
+            TARGET_PATH='${{ secrets.REMOTE_PATH }}'
+
+            if [ ! -d "$TARGET_PATH" ]; then
+              echo "FAIL: Remote path does not exist: $TARGET_PATH"
+              exit 1
+            fi
+
+            cd "$TARGET_PATH"
+
+            if [ ! -f artisan ]; then
+              echo "FAIL: artisan not found in $TARGET_PATH after deploy"
+              exit 1
+            fi
+
+            echo "=== Smoke-check OK at $(pwd) ==="
+            echo "--- File listing ---"
+            ls -la | head -n 20
+            echo "--- PHP version ---"
+            php -v | head -n 1
+            echo "--- Laravel version ---"
+            php artisan --version 2>/dev/null || echo "(artisan failed — .env may be missing)"
+
+      - name: Deployment summary
+        run: |
+          echo "=== Staging deployment completed ==="
+          echo "Domain: ${STAGING_URL}"
+          echo "Remote path: ${{ secrets.REMOTE_PATH }}"
+          echo ""
+          echo "Next steps if this is a fresh deploy:"
+          echo "  1. Create .env on the server (SSH or file manager)"
+          echo "  2. Create the database and update DB_* in .env"
+          echo "  3. Run: php artisan migrate --force"
+          echo "  4. Run: php artisan storage:link"

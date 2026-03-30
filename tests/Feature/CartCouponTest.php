@@ -6,6 +6,7 @@ use App\Models\Coupon;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class CartCouponTest extends TestCase
@@ -216,5 +217,48 @@ class CartCouponTest extends TestCase
         $response->assertOk();
         $response->assertSee('Best coupon applied: STACK50.');
         $response->assertSee('- $50.00');
+    }
+
+    public function test_cart_page_still_loads_when_coupon_assignment_table_is_missing(): void
+    {
+        $product = Product::factory()->create(['status' => 'active']);
+
+        $variant = ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'price' => 120,
+            'track_inventory' => false,
+            'is_active' => true,
+        ]);
+
+        Coupon::factory()->create([
+            'code' => 'SAVE10',
+            'type' => Coupon::TYPE_PERCENT,
+            'value' => 10,
+        ]);
+
+        Schema::dropIfExists('coupon_user');
+
+        $response = $this->withSession([
+            'cart.items' => [
+                $variant->id => [
+                    'variant_id' => $variant->id,
+                    'product_id' => $variant->product_id,
+                    'product_name' => $product->name,
+                    'product_slug' => $product->slug,
+                    'variant_name' => $variant->name,
+                    'sku' => $variant->sku,
+                    'price' => 120.00,
+                    'quantity' => 1,
+                    'max_quantity' => null,
+                    'image' => null,
+                    'url' => route('shop.show', $product),
+                ],
+            ],
+            'cart.coupon_codes' => ['SAVE10'],
+        ])->get(route('cart.index'));
+
+        $response->assertOk();
+        $response->assertSee('Best coupon applied: SAVE10.');
+        $response->assertDontSee('Choose from your account coupons');
     }
 }

@@ -391,7 +391,7 @@ class CartController extends Controller
     {
         $user = $request->user();
 
-        if ($user === null) {
+        if ($user === null || ! Coupon::assignmentTableExists()) {
             return collect();
         }
 

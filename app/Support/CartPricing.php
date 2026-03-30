@@ -129,16 +129,19 @@ class CartPricing
     private function resolveCouponPricing(array $items, float $subtotal, array $requestedCodes, ?User $user): array
     {
         $invalidCouponMessages = [];
+        $assignmentTableExists = Coupon::assignmentTableExists();
 
-        $requestedCoupons = Coupon::query()
-            ->whereIn('code', $requestedCodes)
-            ->with([
+        $requestedCouponsQuery = Coupon::query()->whereIn('code', $requestedCodes);
+
+        if ($assignmentTableExists && $user !== null) {
+            $requestedCouponsQuery->with([
                 'users' => fn ($query) => $query
                     ->select('users.id')
-                    ->where('users.id', $user?->id ?? 0),
-            ])
-            ->get()
-            ->keyBy('code');
+                    ->where('users.id', $user->id),
+            ]);
+        }
+
+        $requestedCoupons = $requestedCouponsQuery->get()->keyBy('code');
 
         $productsById = $this->loadProductsById($items);
         $eligibleCoupons = collect();
@@ -161,6 +164,12 @@ class CartPricing
             }
 
             if ($coupon->is_personal) {
+                if (! $assignmentTableExists) {
+                    $invalidCouponMessages[$code] = 'This coupon is temporarily unavailable while coupon assignments are being updated.';
+
+                    continue;
+                }
+
                 if ($user === null) {
                     $invalidCouponMessages[$code] = 'This coupon is only available for signed-in accounts.';
 

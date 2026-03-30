@@ -138,6 +138,12 @@ class CreateOrderAction
                     $coupon = $couponLookup->get($couponCode);
 
                     if ($customer !== null && $coupon instanceof Coupon && $coupon->is_personal) {
+                        if (! Coupon::assignmentTableExists()) {
+                            throw ValidationException::withMessages([
+                                'coupon_code' => 'Personal coupons are temporarily unavailable while coupon assignments are being updated.',
+                            ]);
+                        }
+
                         $updated = DB::table('coupon_user')
                             ->where('coupon_id', $coupon->id)
                             ->where('user_id', $customer->id)
