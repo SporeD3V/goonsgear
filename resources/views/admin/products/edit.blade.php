@@ -184,6 +184,8 @@
                             class="{{ $isPrimaryVideo ? '' : 'hidden' }} h-72 w-full bg-black object-contain"
                             src="{{ $isPrimaryVideo ? $primaryMediaUrl : '' }}"
                         ></video>
+                    @else
+                        <img src="{{ asset('images/placeholder-product.svg') }}" alt="No image available" class="h-72 w-full object-contain">
                     @endif
                 </div>
 

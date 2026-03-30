@@ -169,7 +169,7 @@
                                     @if ($item['image'])
                                         <img src="{{ $item['image'] }}" alt="{{ $item['product_name'] }}" class="h-12 w-12 rounded object-cover">
                                     @else
-                                        <div class="h-12 w-12 rounded bg-slate-100"></div>
+                                        <img src="{{ asset('images/placeholder-product.svg') }}" alt="No image available" class="h-12 w-12 rounded object-cover">
                                     @endif
                                     <div>
                                         <p class="text-sm font-medium text-slate-900">{{ $item['product_name'] }}</p>

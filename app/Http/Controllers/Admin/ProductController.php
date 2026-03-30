@@ -492,12 +492,12 @@ class ProductController extends Controller
             }
 
             // Try Imagick first for AVIF (GD often lacks AVIF support)
-            if ($targetFormat === 'avif' && ! function_exists('imageavif') && class_exists(\Imagick::class)) {
+            if ($targetFormat === 'avif' && ! function_exists('imageavif') && class_exists('Imagick')) {
                 return $this->convertWithImagick($sourceAbsolutePath, $absoluteTargetPath, 'avif', 62);
             }
 
             // Fall back to Imagick for WebP when GD is missing
-            if ($targetFormat === 'webp' && ! function_exists('imagewebp') && class_exists(\Imagick::class)) {
+            if ($targetFormat === 'webp' && ! function_exists('imagewebp') && class_exists('Imagick')) {
                 return $this->convertWithImagick($sourceAbsolutePath, $absoluteTargetPath, 'webp', 82);
             }
 
@@ -575,7 +575,7 @@ class ProductController extends Controller
     private function convertWithImagick(string $sourcePath, string $targetPath, string $format, int $quality): bool
     {
         try {
-            $imagick = new \Imagick($sourcePath);
+            $imagick = $this->createImagick($sourcePath);
             $imagick->setImageFormat($format);
             $imagick->setImageCompressionQuality($quality);
             $imagick->stripImage();
@@ -597,6 +597,16 @@ class ProductController extends Controller
     }
 
     /**
+     * @return object{setImageFormat: callable, setImageCompressionQuality: callable, stripImage: callable, writeImage: callable, cropThumbnailImage: callable, clear: callable, destroy: callable}
+     */
+    private function createImagick(string $path): object
+    {
+        $class = 'Imagick';
+
+        return new $class($path);
+    }
+
+    /**
      * Create responsive size variants of an image for different breakpoints.
      * Variants are stored as: {base}-{variant-name}-{width}x{height}.{avif|webp}
      *
@@ -606,7 +616,7 @@ class ProductController extends Controller
      */
     private function createImageVariants(string $sourceAbsolutePath, string $mediaDirectory, string $baseFilename): void
     {
-        $useImagick = class_exists(\Imagick::class);
+        $useImagick = class_exists('Imagick');
         $useGd = function_exists('imagecreatetruecolor');
 
         if (! $useGd && ! $useImagick) {
@@ -639,7 +649,7 @@ class ProductController extends Controller
                 continue;
             }
 
-            $imagick = new \Imagick($sourceAbsolutePath);
+            $imagick = $this->createImagick($sourceAbsolutePath);
             $imagick->cropThumbnailImage($variantWidth, $variantHeight);
             $imagick->setImageFormat('avif');
             $imagick->setImageCompressionQuality(62);

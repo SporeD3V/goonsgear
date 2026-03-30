@@ -97,7 +97,7 @@
                             @if ($thumbnailPath)
                                 <img src="{{ route('media.show', ['path' => $thumbnailPath]) }}" alt="{{ $item->product_name }}" class="h-12 w-12 rounded object-cover">
                             @else
-                                <div class="h-12 w-12 rounded bg-slate-100"></div>
+                                <img src="{{ asset('images/placeholder-product.svg') }}" alt="No image available" class="h-12 w-12 rounded object-cover">
                             @endif
                         </td>
                         <td class="border border-slate-200 px-3 py-2">{{ $item->product_name }} @if($item->variant_name)({{ $item->variant_name }})@endif</td>

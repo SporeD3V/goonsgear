@@ -356,11 +356,11 @@ class FallbackMediaController extends Controller
             mkdir($targetDirectory, 0755, true);
         }
 
-        if ($targetFormat === 'avif' && ! function_exists('imageavif') && class_exists(\Imagick::class)) {
+        if ($targetFormat === 'avif' && ! function_exists('imageavif') && class_exists('Imagick')) {
             return $this->convertWithImagick($sourceAbsolutePath, $absoluteTargetPath, 'avif', 62);
         }
 
-        if ($targetFormat === 'webp' && ! function_exists('imagewebp') && class_exists(\Imagick::class)) {
+        if ($targetFormat === 'webp' && ! function_exists('imagewebp') && class_exists('Imagick')) {
             return $this->convertWithImagick($sourceAbsolutePath, $absoluteTargetPath, 'webp', 82);
         }
 
@@ -426,7 +426,7 @@ class FallbackMediaController extends Controller
     private function convertWithImagick(string $sourcePath, string $targetPath, string $format, int $quality): bool
     {
         try {
-            $imagick = new \Imagick($sourcePath);
+            $imagick = $this->createImagick($sourcePath);
             $imagick->setImageFormat($format);
             $imagick->setImageCompressionQuality($quality);
             $imagick->stripImage();
@@ -438,5 +438,15 @@ class FallbackMediaController extends Controller
         } catch (\Throwable) {
             return false;
         }
+    }
+
+    /**
+     * @return object{setImageFormat: callable, setImageCompressionQuality: callable, stripImage: callable, writeImage: callable, clear: callable, destroy: callable}
+     */
+    private function createImagick(string $path): object
+    {
+        $class = 'Imagick';
+
+        return new $class($path);
     }
 }

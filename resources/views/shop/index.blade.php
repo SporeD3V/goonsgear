@@ -159,7 +159,9 @@
                                         @endif
                                     </div>
                                 @else
-                                    <div class="mb-3 flex h-52 items-center justify-center rounded bg-slate-100 text-sm text-slate-500">No image</div>
+                                    <div class="mb-3 h-52 w-full overflow-hidden rounded">
+                                        <img src="{{ asset('images/placeholder-product.svg') }}" alt="No image available" class="h-52 w-full object-cover">
+                                    </div>
                                 @endif
                                 <h2 class="text-lg font-semibold">{{ $product->name }}</h2>
                                 <p class="mt-1 text-sm text-slate-600">{{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>

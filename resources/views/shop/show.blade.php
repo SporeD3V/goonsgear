@@ -92,7 +92,7 @@
                             </button>
                         </div>
                     @else
-                        <div class="flex h-112 items-center justify-center rounded border border-slate-200 bg-white text-sm text-slate-500">No media available</div>
+                        <img src="{{ asset('images/placeholder-product.svg') }}" alt="No image available" class="h-112 w-full rounded border border-slate-200 bg-white object-contain p-2">
                     @endif
 
                     @if ($product->media->count() > 1)
