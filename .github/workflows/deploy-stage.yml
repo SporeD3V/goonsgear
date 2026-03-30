@@ -121,6 +121,15 @@ jobs:
             echo "--- Running migrations ---"
             php artisan migrate --force --no-interaction
 
+            echo "--- Verifying no pending migrations ---"
+            REMAINING=$(php artisan migrate:status --no-interaction 2>&1 | grep -c 'Pending' || true)
+            if [ "$REMAINING" -gt 0 ]; then
+              echo "FAIL: ${REMAINING} migration(s) still pending after migrate. Aborting deploy."
+              php artisan migrate:status --no-interaction
+              exit 1
+            fi
+            echo "All migrations applied successfully."
+
             echo "--- Clearing caches ---"
             php artisan config:clear --no-interaction
             php artisan route:clear --no-interaction

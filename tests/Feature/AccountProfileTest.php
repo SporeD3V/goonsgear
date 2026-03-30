@@ -6,7 +6,6 @@ use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class AccountProfileTest extends TestCase
@@ -88,18 +87,5 @@ class AccountProfileTest extends TestCase
         $response->assertSee('My Discount Codes');
         $response->assertSee('MEMBER15');
         $response->assertSee('2');
-    }
-
-    public function test_account_page_still_loads_when_coupon_assignment_table_is_missing(): void
-    {
-        $user = User::factory()->create();
-
-        Schema::dropIfExists('coupon_user');
-
-        $response = $this->actingAs($user)->get(route('account.index'));
-
-        $response->assertOk();
-        $response->assertSee('My Discount Codes');
-        $response->assertSee('No active discount codes are assigned to your account.');
     }
 }

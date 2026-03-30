@@ -1,0 +1,481 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,string\>\:\:sum\(\) expects \(callable\(string\)\: float\)\|string\|null, Closure\(array\)\: float given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/SendAbandonedCartReminders.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), mixed\>\|iterable\<\(int\|string\), mixed\>\|null, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Console/Commands/SendAbandonedCartReminders.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$min_quantity\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/BundleDiscountController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/BundleDiscountController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$product_variant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/BundleDiscountController.php
+
+		-
+			message: '#^Offset int\<1, max\> on array\<string, mixed\> on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Admin/BundleDiscountController.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Http/Controllers/Admin/CouponController.php
+
+		-
+			message: '#^Instanceof between App\\Models\\ProductMedia and App\\Models\\ProductMedia will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Http/Controllers/Admin/FallbackMediaController.php
+
+		-
+			message: '#^Match arm comparison between ''avif'' and ''avif'' is always true\.$#'
+			identifier: match.alwaysTrue
+			count: 1
+			path: app/Http/Controllers/Admin/FallbackMediaController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\Admin\\FallbackMediaController\:\:collectFallbackFiles\(\) should return Illuminate\\Support\\Collection\<int, array\{relative_path\: string, product_slug\: string, filename\: string, path_without_extension\: string, optimized_variants\: array\<int, string\>\}\> but returns Illuminate\\Support\\Collection\<int, array\{relative_path\: string, product_slug\: string, filename\: string, path_without_extension\: string, optimized_variants\: list\<string\>\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/Admin/FallbackMediaController.php
+
+		-
+			message: '#^Offset ''mime'' on array\{0\: int\<0, max\>, 1\: int\<0, max\>, 2\: int, 3\: string, mime\: string, channels\?\: int, bits\?\: int\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Http/Controllers/Admin/FallbackMediaController.php
+
+		-
+			message: '#^Variable \$allMedia in PHPDoc tag @var does not match assigned variable \$mediaColumns\.$#'
+			identifier: varTag.differentVariable
+			count: 1
+			path: app/Http/Controllers/Admin/FallbackMediaController.php
+
+		-
+			message: '#^Match arm comparison between ''avif'' and ''avif'' is always true\.$#'
+			identifier: match.alwaysTrue
+			count: 1
+			path: app/Http/Controllers/Admin/ProductController.php
+
+		-
+			message: '#^Offset ''mime'' on array\{0\: int\<0, max\>, 1\: int\<0, max\>, 2\: int, 3\: string, mime\: string, channels\?\: int, bits\?\: int\} in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.offset
+			count: 1
+			path: app/Http/Controllers/Admin/ProductController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$disk\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/ProductMediaController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/ProductMediaController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_primary\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/ProductMediaController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$path\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/ProductMediaController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/CartController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/CartController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$media\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/CartController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/CartController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$product\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/CartController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/CartController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/CartController.php
+
+		-
+			message: '#^Argument of an invalid type string supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 1
+			path: app/Http/Controllers/CartController.php
+
+		-
+			message: '#^Parameter \#1 \$variant of method App\\Http\\Controllers\\CartController\:\:buildCartItemData\(\) expects App\\Models\\ProductVariant, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/CartController.php
+
+		-
+			message: '#^Using nullsafe property access on non\-nullable type Illuminate\\Database\\Eloquent\\Model\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/CartController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\CheckoutController\:\:getCountries\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\CheckoutController\:\:resolvePricing\(\) has invalid return type App\\Http\\Controllers\\App\\Models\\BundleDiscount\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\CheckoutController\:\:resolvePricing\(\) has invalid return type App\\Http\\Controllers\\App\\Models\\Coupon\.$#'
+			identifier: class.notFound
+			count: 2
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\CheckoutController\:\:resolvePricing\(\) has invalid return type App\\Http\\Controllers\\App\\Models\\RegionalDiscount\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\CheckoutController\:\:resolvePricing\(\) should return array\{subtotal\: float, discount_total\: float, regional_discount_total\: float, bundle_discount_total\: float, total\: float, coupon\: App\\Http\\Controllers\\App\\Models\\Coupon\|null, coupons\: Illuminate\\Support\\Collection\<int, App\\Http\\Controllers\\App\\Models\\Coupon\>, coupon_code\: string\|null, \.\.\.\} but returns array\{subtotal\: float, discount_total\: float, regional_discount_total\: float, bundle_discount_total\: float, total\: float, coupon\: App\\Models\\Coupon\|null, coupons\: Illuminate\\Support\\Collection\<int, App\\Models\\Coupon\>, coupon_code\: string\|null, \.\.\.\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>delivery_apartment_block" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>delivery_apartment_number" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>delivery_city" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>delivery_country" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>delivery_entrance" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>delivery_floor" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>delivery_phone" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>delivery_postal_code" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>delivery_state" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>delivery_street_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>delivery_street_number" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Offset ''filename'' on array\{dirname\?\: string, basename\: string, extension\?\: string, filename\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/MediaController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$allow_backorder\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ShopController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_preorder\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ShopController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ShopController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$path\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/ShopController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$stock_quantity\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ShopController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$track_inventory\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ShopController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Product\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/ShopController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>slug" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/ShopController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/StockAlertSubscriptionController.php
+
+		-
+			message: '#^Method App\\Http\\Requests\\UpdateProductVariantRequest\:\:rules\(\) should return array\<string, array\<int, Illuminate\\Validation\\Rules\\RequiredIf\|Illuminate\\Validation\\Rules\\Unique\|string\>\> but returns array\<string, list\<Illuminate\\Validation\\ConditionalRules\|Illuminate\\Validation\\Rules\\Unique\|string\>\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Requests/UpdateProductVariantRequest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/BackInStockAlert.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/TagDiscountNotification.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$min_quantity\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/BundleDiscount.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$product_variant_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/BundleDiscount.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/Coupon.php
+
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/Coupon.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Observers/ProductObserver.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Observers/ProductObserver.php
+
+		-
+			message: '#^Parameter \#1 \$user of class App\\Mail\\TagDropNotification constructor expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Observers/ProductObserver.php
+
+		-
+			message: '#^Parameter \#2 \$tag of class App\\Mail\\TagDropNotification constructor expects App\\Models\\Tag, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Observers/ProductObserver.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Observers/ProductVariantObserver.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Observers/ProductVariantObserver.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$notify_cart_discounts\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Observers/ProductVariantObserver.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$notify_cart_low_stock\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Observers/ProductVariantObserver.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Observers/ProductVariantObserver.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$tags\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Observers/ProductVariantObserver.php
+
+		-
+			message: '#^Parameter \#1 \$user of class App\\Mail\\BackInStockAlert constructor expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Observers/ProductVariantObserver.php
+
+		-
+			message: '#^Parameter \#1 \$user of class App\\Mail\\CartItemDiscounted constructor expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Observers/ProductVariantObserver.php
+
+		-
+			message: '#^Parameter \#1 \$user of class App\\Mail\\CartItemLowStock constructor expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Observers/ProductVariantObserver.php
+
+		-
+			message: '#^Parameter \#1 \$user of class App\\Mail\\TagDiscountNotification constructor expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Observers/ProductVariantObserver.php
+
+		-
+			message: '#^Parameter \#2 \$tag of class App\\Mail\\TagDiscountNotification constructor expects App\\Models\\Tag, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Observers/ProductVariantObserver.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$pivot\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Support/CartPricing.php

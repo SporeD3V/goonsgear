@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\Tag;
 use App\Models\TagFollow;
@@ -47,19 +46,17 @@ class AccountController extends Controller
                 'placed_at',
             ]);
 
-        $availableCoupons = Coupon::assignmentTableExists()
-            ? $user->coupons()
-                ->where('coupon_user.is_active', true)
-                ->where('coupons.is_active', true)
-                ->where(function ($query): void {
-                    $query->whereNull('coupons.starts_at')->orWhere('coupons.starts_at', '<=', now());
-                })
-                ->where(function ($query): void {
-                    $query->whereNull('coupons.ends_at')->orWhere('coupons.ends_at', '>=', now());
-                })
-                ->orderBy('coupons.code')
-                ->get()
-            : collect();
+        $availableCoupons = $user->coupons()
+            ->where('coupon_user.is_active', true)
+            ->where('coupons.is_active', true)
+            ->where(function ($query): void {
+                $query->whereNull('coupons.starts_at')->orWhere('coupons.starts_at', '<=', now());
+            })
+            ->where(function ($query): void {
+                $query->whereNull('coupons.ends_at')->orWhere('coupons.ends_at', '>=', now());
+            })
+            ->orderBy('coupons.code')
+            ->get();
 
         return view('account.index', [
             'tagFollows' => $tagFollows,

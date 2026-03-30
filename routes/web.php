@@ -35,9 +35,13 @@ Route::get('/shop/{product:slug}', [ShopController::class, 'show'])->name('shop.
 
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
-    Route::post('/register', [RegisteredUserController::class, 'store'])->name('register.store');
+    Route::post('/register', [RegisteredUserController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('register.store');
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
-    Route::post('/login', [AuthenticatedSessionController::class, 'store'])->name('login.store');
+    Route::post('/login', [AuthenticatedSessionController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('login.store');
 
     Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
     Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])
@@ -92,9 +96,15 @@ Route::patch('/cart/items/{variant}', [CartController::class, 'update'])->name('
 Route::delete('/cart/items/{variant}', [CartController::class, 'destroy'])->name('cart.items.destroy');
 
 Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
-Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
-Route::post('/checkout/paypal/create-order', [CheckoutController::class, 'createPayPalOrder'])->name('checkout.paypal.create-order');
-Route::post('/checkout/paypal/capture-order', [CheckoutController::class, 'capturePayPalOrder'])->name('checkout.paypal.capture-order');
+Route::post('/checkout', [CheckoutController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('checkout.store');
+Route::post('/checkout/paypal/create-order', [CheckoutController::class, 'createPayPalOrder'])
+    ->middleware('throttle:10,1')
+    ->name('checkout.paypal.create-order');
+Route::post('/checkout/paypal/capture-order', [CheckoutController::class, 'capturePayPalOrder'])
+    ->middleware('throttle:10,1')
+    ->name('checkout.paypal.capture-order');
 Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
 
 Route::get('/api/shop/search', [ShopController::class, 'search'])->name('api.shop.search');

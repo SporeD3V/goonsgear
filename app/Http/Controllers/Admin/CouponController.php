@@ -14,7 +14,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class CouponController extends Controller
@@ -58,11 +57,7 @@ class CouponController extends Controller
     public function edit(Request $request, Coupon $coupon): View
     {
         $userSearch = trim($request->string('user_search')->toString());
-        if (Coupon::assignmentTableExists()) {
-            $coupon->load(['users' => fn ($query) => $query->select(['users.id', 'users.email'])->orderBy('users.email')]);
-        } else {
-            $coupon->setRelation('users', collect());
-        }
+        $coupon->load(['users' => fn ($query) => $query->select(['users.id', 'users.email'])->orderBy('users.email')]);
 
         $assignedUserIds = $coupon->users->pluck('id')->all();
         $assignedUserOptions = $coupon->users;
@@ -143,16 +138,6 @@ class CouponController extends Controller
      */
     private function syncAssignedUsers(Coupon $coupon, array $validated): void
     {
-        if (! Coupon::assignmentTableExists()) {
-            if (! empty($validated['assigned_user_ids'])) {
-                throw ValidationException::withMessages([
-                    'assigned_user_ids' => 'Coupon assignments are unavailable until the coupon migrations are applied.',
-                ]);
-            }
-
-            return;
-        }
-
         $userIds = collect($validated['assigned_user_ids'] ?? [])
             ->map(fn ($id): int => (int) $id)
             ->filter(fn (int $id): bool => $id > 0)
