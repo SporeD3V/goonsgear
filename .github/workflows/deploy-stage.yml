@@ -99,8 +99,6 @@ jobs:
             cd '${{ secrets.REMOTE_PATH }}'
 
             echo "=== Post-deploy checks ==="
-            echo "--- File listing ---"
-            ls -la | head -n 20
             echo "--- PHP version ---"
             php -v | head -n 1
 
@@ -110,7 +108,22 @@ jobs:
             fi
 
             echo "--- Laravel version ---"
-            php artisan --version 2>/dev/null || echo "(artisan failed — .env may be missing)"
+            php artisan --version
+
+            echo "--- Pending migrations ---"
+            PENDING=$(php artisan migrate:status --no-interaction 2>&1 | grep -c 'Pending' || true)
+            echo "Pending migrations: ${PENDING}"
+
+            echo "--- Running migrations ---"
+            php artisan migrate --force --no-interaction
+
+            echo "--- Clearing caches ---"
+            php artisan config:clear --no-interaction
+            php artisan route:clear --no-interaction
+            php artisan view:clear --no-interaction
+
+            echo "--- Storage link ---"
+            php artisan storage:link --force --no-interaction 2>/dev/null || true
 
             echo ""
             echo "=== Deploy OK ==="

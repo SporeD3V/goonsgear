@@ -30,9 +30,9 @@ Date: 2026-03-29
 ## Staging Incidents
 
 - [x] Prevent cart/account 500s when `coupon_user` pivot table is missing on staging
-- [ ] Apply pending staging migration `2026_03_29_155259_create_coupon_user_table`
-- [ ] Verify staging `migrations` table includes `2026_03_29_155258_add_rule_columns_to_coupons_table`
-- [ ] Verify staging `migrations` table includes `2026_03_29_155300_create_order_coupon_usages_table`
+- [x] Apply pending staging migration `2026_03_29_155259_create_coupon_user_table`
+- [x] Verify staging `migrations` table includes `2026_03_29_155258_add_rule_columns_to_coupons_table`
+- [x] Verify staging `migrations` table includes `2026_03_29_155300_create_order_coupon_usages_table`
 - [ ] Remove temporary “personal coupons unavailable while assignments are being updated” fallback after staging schema is aligned
 
 ## Deeper Refactors (Phase 2)
@@ -53,8 +53,7 @@ Date: 2026-03-29
 
 ## Migration Pipeline Follow-up
 
-- [ ] Staging shell access confirmed and tested
-- [ ] Add pre-deploy migration status check to pipeline
-- [ ] Add deploy block when pending migrations are detected
-- [ ] Add post-deploy migration verification step
+- [x] Staging shell access confirmed and tested
+- [x] Add pre-deploy migration status check to pipeline
+- [x] Add post-deploy migration run + verification step
 - [ ] Add rollback playbook for failed migrations
