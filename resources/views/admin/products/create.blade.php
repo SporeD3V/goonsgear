@@ -3,7 +3,7 @@
 @section('content')
     <h2 class="mb-4 text-lg font-semibold">New Product</h2>
 
-    <form method="POST" action="{{ route('admin.products.store') }}" class="space-y-4" novalidate>
+    <form method="POST" action="{{ route('admin.products.store') }}" class="space-y-4" enctype="multipart/form-data" novalidate>
         @csrf
 
         <div>
@@ -103,6 +103,20 @@
                 <label class="mb-1 block text-sm font-medium">Expected Ship At</label>
                 <input type="datetime-local" name="expected_ship_at" value="{{ old('expected_ship_at') }}" class="w-full rounded border border-slate-300 px-3 py-2">
             </div>
+        </div>
+
+        <div class="space-y-3 rounded border border-slate-200 p-4">
+            <h3 class="text-sm font-semibold">Product Media</h3>
+            <div>
+                <label class="mb-1 block text-sm font-medium">Upload Images / Videos</label>
+                <input type="file" name="media_files[]" accept="image/*,video/*" multiple class="w-full rounded border border-slate-300 px-3 py-2">
+                <p class="mt-1 text-xs text-slate-500">Allowed: JPG, JPEG, PNG, WEBP, AVIF, MP4, WEBM, MOV. Max 50MB per file.</p>
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium">Alt Text (optional)</label>
+                <input type="text" name="media_alt_text" value="" class="w-full rounded border border-slate-300 px-3 py-2" placeholder="e.g. Black tee front view">
+            </div>
+            <p class="text-xs text-slate-500">You can assign media to specific variants after creating the product.</p>
         </div>
 
         <div class="flex items-center gap-3">

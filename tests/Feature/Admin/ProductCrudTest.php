@@ -240,4 +240,44 @@ class ProductCrudTest extends TestCase
 
         $this->assertFalse(Storage::disk('public')->exists($firstMedia->path));
     }
+
+    /**
+     * Product media can be uploaded during product creation.
+     */
+    public function test_admin_can_upload_media_when_creating_product(): void
+    {
+        Storage::fake('public');
+
+        $category = Category::factory()->create();
+
+        $response = $this->post(route('admin.products.store'), [
+            'primary_category_id' => $category->id,
+            'category_ids' => [$category->id],
+            'name' => 'Media Upload Tee',
+            'slug' => 'media-upload-tee',
+            'status' => 'draft',
+            'media_files' => [
+                UploadedFile::fake()->create('front-view.jpg', 256, 'image/jpeg'),
+            ],
+            'media_alt_text' => 'Front view of tee',
+        ]);
+
+        $response->assertRedirect(route('admin.products.index'));
+
+        $product = Product::query()->where('slug', 'media-upload-tee')->first();
+        $this->assertNotNull($product);
+
+        $this->assertDatabaseHas('product_media', [
+            'product_id' => $product->id,
+            'product_variant_id' => null,
+            'disk' => 'public',
+            'alt_text' => 'Front view of tee',
+            'is_primary' => true,
+            'position' => 0,
+        ]);
+
+        $storedPath = (string) $product->media()->value('path');
+        $this->assertTrue(Storage::disk('public')->exists($storedPath));
+        $this->assertStringContainsString('products/media-upload-tee/', $storedPath);
+    }
 }

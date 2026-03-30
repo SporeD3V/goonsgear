@@ -3,7 +3,7 @@
 return [
     /*
     | Image size variants for responsive serving
-    | Stored as: {base-filename}-{variant-name}-{width}x{height}.webp
+    | Stored as: {base-filename}-{variant-name}-{width}x{height}.{avif|webp}
     | Usage: Single source of truth for theme breakpoints - update when theme changes
     */
     'sizes' => [

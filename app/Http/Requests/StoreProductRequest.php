@@ -40,6 +40,9 @@ class StoreProductRequest extends FormRequest
             'published_at' => ['nullable', 'date'],
             'preorder_available_from' => ['nullable', 'date'],
             'expected_ship_at' => ['nullable', 'date'],
+            'media_files' => ['nullable', 'array'],
+            'media_files.*' => ['file', 'mimes:jpg,jpeg,png,webp,avif,mp4,webm,mov', 'max:51200'],
+            'media_alt_text' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

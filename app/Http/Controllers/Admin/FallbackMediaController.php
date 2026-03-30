@@ -210,17 +210,17 @@ class FallbackMediaController extends Controller
 
         $absoluteSourcePath = storage_path('app/public/'.$fallbackPath);
 
-        $webpCreated = $this->convertImageToFormat($absoluteSourcePath, $webpPath, 'webp');
         $avifCreated = $this->convertImageToFormat($absoluteSourcePath, $avifPath, 'avif');
+        $webpCreated = $this->convertImageToFormat($absoluteSourcePath, $webpPath, 'webp');
 
-        if (! $webpCreated && ! $avifCreated) {
+        if (! $avifCreated && ! $webpCreated) {
             return redirect()
                 ->back()
                 ->withErrors(['fallback_media' => 'Reconversion failed. No optimized file was created.']);
         }
 
-        $preferredPath = $webpCreated ? $webpPath : $avifPath;
-        $preferredFormat = $webpCreated ? 'webp' : 'avif';
+        $preferredPath = $avifCreated ? $avifPath : $webpPath;
+        $preferredFormat = $avifCreated ? 'avif' : 'webp';
 
         $matchingMedia = ProductMedia::query()
             ->where('product_id', $product->id)
@@ -345,11 +345,26 @@ class FallbackMediaController extends Controller
 
     private function convertImageToFormat(string $sourceAbsolutePath, string $targetRelativePath, string $targetFormat): bool
     {
-        if (! function_exists('imagecreatetruecolor') || ! function_exists('getimagesize')) {
+        if (! in_array($targetFormat, ['webp', 'avif'], true)) {
             return false;
         }
 
-        if (! in_array($targetFormat, ['webp', 'avif'], true)) {
+        $absoluteTargetPath = storage_path('app/public/'.$targetRelativePath);
+        $targetDirectory = dirname($absoluteTargetPath);
+
+        if (! is_dir($targetDirectory)) {
+            mkdir($targetDirectory, 0755, true);
+        }
+
+        if ($targetFormat === 'avif' && ! function_exists('imageavif') && class_exists(\Imagick::class)) {
+            return $this->convertWithImagick($sourceAbsolutePath, $absoluteTargetPath, 'avif', 62);
+        }
+
+        if ($targetFormat === 'webp' && ! function_exists('imagewebp') && class_exists(\Imagick::class)) {
+            return $this->convertWithImagick($sourceAbsolutePath, $absoluteTargetPath, 'webp', 82);
+        }
+
+        if (! function_exists('imagecreatetruecolor') || ! function_exists('getimagesize')) {
             return false;
         }
 
@@ -406,5 +421,22 @@ class FallbackMediaController extends Controller
         };
 
         return $saved && is_file($absoluteTargetPath);
+    }
+
+    private function convertWithImagick(string $sourcePath, string $targetPath, string $format, int $quality): bool
+    {
+        try {
+            $imagick = new \Imagick($sourcePath);
+            $imagick->setImageFormat($format);
+            $imagick->setImageCompressionQuality($quality);
+            $imagick->stripImage();
+            $saved = $imagick->writeImage($targetPath);
+            $imagick->clear();
+            $imagick->destroy();
+
+            return $saved && is_file($targetPath);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }
