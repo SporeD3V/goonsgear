@@ -20,6 +20,7 @@ class ProductVariant extends Model
         'product_id',
         'name',
         'sku',
+        'variant_type',
         'option_values',
         'price',
         'compare_at_price',
@@ -74,5 +75,38 @@ class ProductVariant extends Model
     public function stockAlertSubscriptions(): HasMany
     {
         return $this->hasMany(StockAlertSubscription::class, 'product_variant_id');
+    }
+
+    public function isSize(): bool
+    {
+        return $this->variant_type === 'size';
+    }
+
+    public function isColor(): bool
+    {
+        return $this->variant_type === 'color';
+    }
+
+    public function isCustom(): bool
+    {
+        return $this->variant_type === 'custom';
+    }
+
+    public function isAvailable(): bool
+    {
+        return $this->is_active && ($this->stock_quantity > 0 || $this->allow_backorder || $this->is_preorder);
+    }
+
+    public static function detectTypeFromName(string $name): string
+    {
+        if (preg_match('/^(XXS|XS|S|M|L|XL|XXL|XXXL|2XL|3XL|4XL|5XL|\d+)$/i', trim($name))) {
+            return 'size';
+        }
+
+        if (preg_match('/(black|white|red|blue|green|yellow|navy|gray|grey|purple|orange|pink|brown|beige|tan|olive|maroon|teal|cyan|magenta|gold|silver)/i', $name)) {
+            return 'color';
+        }
+
+        return 'custom';
     }
 }
