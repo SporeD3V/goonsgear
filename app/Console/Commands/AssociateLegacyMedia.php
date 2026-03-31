@@ -240,7 +240,9 @@ class AssociateLegacyMedia extends Command
             return ['synced' => false, 'created' => 0, 'updated' => 0, 'missing' => 1];
         }
 
-        $storedMedia = $this->storeLegacyMediaFile($product, $attachmentId, $sourceAbsolutePath);
+        $storedMedia = $dryRun
+            ? $this->predictLegacyMediaPath($product, $attachmentId, $sourceAbsolutePath)
+            : $this->storeLegacyMediaFile($product, $attachmentId, $sourceAbsolutePath);
 
         $existing = ProductMedia::query()
             ->where('product_id', $product->id)
@@ -334,6 +336,40 @@ class AssociateLegacyMedia extends Command
         }
 
         return null;
+    }
+
+    /**
+     * @return array{path: string, mime_type: string, is_converted: bool, converted_to: ?string}
+     */
+    private function predictLegacyMediaPath(Product $product, int $attachmentId, string $sourceAbsolutePath): array
+    {
+        $productDirectory = 'products/'.Str::slug($product->slug);
+        $mediaDirectory = $productDirectory.'/gallery';
+        $fallbackDirectory = $productDirectory.'/fallback';
+
+        $originalName = pathinfo($sourceAbsolutePath, PATHINFO_FILENAME);
+        $seoBaseName = Str::slug($originalName);
+        $seoBaseName = $seoBaseName !== '' ? $seoBaseName : 'media';
+        $baseFilename = 'legacy-'.$attachmentId.'-'.$seoBaseName;
+
+        $extension = strtolower((string) pathinfo($sourceAbsolutePath, PATHINFO_EXTENSION));
+        $extension = $extension !== '' ? $extension : 'bin';
+
+        if ($this->isImageExtension($extension)) {
+            return [
+                'path' => $mediaDirectory.'/'.$baseFilename.'.avif',
+                'mime_type' => 'image/avif',
+                'is_converted' => true,
+                'converted_to' => 'avif',
+            ];
+        }
+
+        return [
+            'path' => $fallbackDirectory.'/'.$baseFilename.'.'.$extension,
+            'mime_type' => $this->mimeTypeFromExtension($extension),
+            'is_converted' => false,
+            'converted_to' => null,
+        ];
     }
 
     /**
