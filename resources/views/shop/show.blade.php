@@ -286,10 +286,12 @@
                                                 @php
                                                     $available = $variant->isAvailable();
                                                     $stockStatus = $variant->stock_quantity > 0 ? 'In stock' : (($variant->allow_backorder || $variant->is_preorder) ? 'Preorder' : 'Out of stock');
+                                                    // Extract just the size from variant name (e.g., "Product Name - XL" -> "XL")
+                                                    $sizeLabel = trim(preg_replace('/^.*[\-\,]\s*/', '', $variant->name));
                                                 @endphp
                                                 <button
                                                     type="button"
-                                                    class="min-w-[3rem] rounded border-2 px-3 py-2 text-sm font-medium transition {{ $available ? 'border-slate-300 hover:border-slate-800 cursor-pointer' : 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed line-through' }}"
+                                                    class="min-w-[3rem] rounded border px-3 py-2 text-sm font-medium transition {{ $available ? 'border-slate-400 bg-white hover:border-slate-800 cursor-pointer' : 'border-slate-300 bg-slate-50 text-slate-400 cursor-not-allowed' }}"
                                                     data-variant-select
                                                     data-variant-id="{{ $variant->id }}"
                                                     data-variant-price="{{ number_format((float) $variant->price, 2) }}"
@@ -301,7 +303,7 @@
                                                     data-variant-stock-alert-subscribed="{{ in_array($variant->id, $activeStockAlertVariantIds, true) ? '1' : '0' }}"
                                                     {{ $available ? '' : 'disabled' }}
                                                 >
-                                                    {{ $variant->name }}
+                                                    {{ $sizeLabel }}
                                                 </button>
                                             @endforeach
                                         </div>
@@ -316,10 +318,12 @@
                                                 @php
                                                     $available = $variant->isAvailable();
                                                     $stockStatus = $variant->stock_quantity > 0 ? 'In stock' : (($variant->allow_backorder || $variant->is_preorder) ? 'Preorder' : 'Out of stock');
+                                                    // Extract just the color from variant name
+                                                    $colorLabel = trim(preg_replace('/^.*[\-\,]\s*/', '', $variant->name));
                                                 @endphp
                                                 <button
                                                     type="button"
-                                                    class="flex items-center gap-2 rounded border-2 px-3 py-2 text-sm transition {{ $available ? 'border-slate-300 hover:border-slate-800 cursor-pointer' : 'border-slate-200 opacity-50 cursor-not-allowed' }}"
+                                                    class="flex items-center gap-2 rounded border px-3 py-2 text-sm font-medium transition {{ $available ? 'border-slate-400 bg-white hover:border-slate-800 cursor-pointer' : 'border-slate-300 bg-slate-50 text-slate-400 cursor-not-allowed opacity-60' }}"
                                                     data-variant-select
                                                     data-variant-id="{{ $variant->id }}"
                                                     data-variant-price="{{ number_format((float) $variant->price, 2) }}"
@@ -331,8 +335,8 @@
                                                     data-variant-stock-alert-subscribed="{{ in_array($variant->id, $activeStockAlertVariantIds, true) ? '1' : '0' }}"
                                                     {{ $available ? '' : 'disabled' }}
                                                 >
-                                                    <span class="h-5 w-5 rounded border border-slate-300" style="background-color: {{ strtolower($variant->name) }}"></span>
-                                                    <span>{{ $variant->name }}</span>
+                                                    <span class="h-5 w-5 rounded border border-slate-300" style="background-color: {{ strtolower($colorLabel) }}"></span>
+                                                    <span>{{ $colorLabel }}</span>
                                                 </button>
                                             @endforeach
                                         </div>
