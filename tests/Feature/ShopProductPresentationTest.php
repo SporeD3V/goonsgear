@@ -164,4 +164,37 @@ class ShopProductPresentationTest extends TestCase
         $response->assertSee('data-variant-attribute="size"', false);
         $response->assertSee('data-variant-attribute="color"', false);
     }
+
+    public function test_shop_show_does_not_preselect_variant_options_or_render_variant_filter_selects(): void
+    {
+        $product = Product::factory()->create();
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Red M',
+            'sku' => 'RED-M',
+            'price' => 49.99,
+            'option_values' => ['size' => 'M', 'color' => 'Red'],
+            'variant_type' => 'custom',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Black L',
+            'sku' => 'BLK-L',
+            'price' => 49.99,
+            'option_values' => ['size' => 'L', 'color' => 'Black'],
+            'variant_type' => 'custom',
+        ]);
+
+        $response = $this->get(route('shop.show', $product));
+
+        $response->assertOk();
+        $response->assertDontSee('id="shop-variant-select"', false);
+        $response->assertDontSee('data-media-variant-filter', false);
+        $response->assertSeeText('Select variant options to view details.');
+        $response->assertSee('data-cart-variant-input', false);
+        $response->assertSee('data-add-to-cart-button', false);
+        $response->assertSee('disabled', false);
+    }
 }

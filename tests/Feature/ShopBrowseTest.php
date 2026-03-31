@@ -78,15 +78,6 @@ class ShopBrowseTest extends TestCase
             'position' => 1,
         ]);
 
-        $largeVariant = ProductVariant::factory()->create([
-            'product_id' => $product->id,
-            'name' => 'Large',
-            'sku' => 'GG-HOODIE-L',
-            'is_active' => true,
-            'price' => 59.99,
-            'stock_quantity' => 8,
-        ]);
-
         ProductVariant::factory()->create([
             'product_id' => $product->id,
             'name' => 'Hidden Variant',
@@ -102,7 +93,7 @@ class ShopBrowseTest extends TestCase
         $response->assertSee('Black Hoodie');
         $response->assertSee('GG-HOODIE-M');
         $response->assertDontSee('GG-HIDDEN');
-        $response->assertSee('data-media-variant-filter', false);
+        $response->assertDontSee('data-media-variant-filter', false);
         $response->assertSee('data-media-variant-id="'.$activeVariant->id.'"', false);
         $response->assertSee('data-product-variant-picker', false);
         $response->assertSee('application/ld+json', false);
@@ -176,21 +167,19 @@ class ShopBrowseTest extends TestCase
             'is_active' => true,
         ]);
 
-        $featuredProduct = Product::factory()->create([
+        Product::factory()->create([
             'name' => 'Featured Hoodie',
             'slug' => 'featured-hoodie',
             'status' => 'active',
             'primary_category_id' => $featuredCategory->id,
         ]);
-        $featuredProduct->categories()->sync([$featuredCategory->id]);
 
-        $otherProduct = Product::factory()->create([
+        Product::factory()->create([
             'name' => 'Other Hoodie',
             'slug' => 'other-hoodie',
             'status' => 'active',
             'primary_category_id' => $otherCategory->id,
         ]);
-        $otherProduct->categories()->sync([$otherCategory->id]);
 
         $response = $this->get(route('shop.index', [
             'category' => 'featured',
@@ -218,21 +207,19 @@ class ShopBrowseTest extends TestCase
             'is_active' => true,
         ]);
 
-        $featuredProduct = Product::factory()->create([
+        Product::factory()->create([
             'name' => 'Featured Hoodie',
             'slug' => 'featured-hoodie',
             'status' => 'active',
             'primary_category_id' => $featuredCategory->id,
         ]);
-        $featuredProduct->categories()->sync([$featuredCategory->id]);
 
-        $otherProduct = Product::factory()->create([
+        Product::factory()->create([
             'name' => 'Other Hoodie',
             'slug' => 'other-hoodie',
             'status' => 'active',
             'primary_category_id' => $otherCategory->id,
         ]);
-        $otherProduct->categories()->sync([$otherCategory->id]);
 
         $response = $this->get(route('shop.category', $featuredCategory));
 
@@ -257,7 +244,6 @@ class ShopBrowseTest extends TestCase
             'status' => 'active',
             'primary_category_id' => $category->id,
         ]);
-        $inStockProduct->categories()->sync([$category->id]);
 
         $outOfStockProduct = Product::factory()->create([
             'name' => 'Out Of Stock Hoodie',
@@ -265,7 +251,6 @@ class ShopBrowseTest extends TestCase
             'status' => 'active',
             'primary_category_id' => $category->id,
         ]);
-        $outOfStockProduct->categories()->sync([$category->id]);
 
         ProductVariant::factory()->create([
             'product_id' => $inStockProduct->id,
@@ -307,7 +292,6 @@ class ShopBrowseTest extends TestCase
             'status' => 'active',
             'primary_category_id' => $category->id,
         ]);
-        $outOfStockProduct->categories()->sync([$category->id]);
 
         ProductVariant::factory()->create([
             'product_id' => $outOfStockProduct->id,
@@ -489,8 +473,8 @@ class ShopBrowseTest extends TestCase
             'name' => 'Premium Jacket',
             'slug' => 'premium-jacket',
             'status' => 'active',
+            'excerpt' => 'A high-quality jacket.',
         ]);
-        $matchingProduct->categories()->sync([$category->id]);
 
         $nonMatchingProduct = Product::factory()->create([
             'name' => 'Shadow Pants',

@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	variantPickers.forEach((picker) => {
 		const variantSelect = picker.querySelector('[data-variant-select]');
+		const requiresAttributeSelection = picker.dataset.requiresAttributeSelection === '1';
 		const attributeOrder = (picker.dataset.variantAttributeOrder || '')
 			.split(',')
 			.map((value) => value.trim())
@@ -21,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const stockAlertVariantInput = picker.querySelector('[data-stock-alert-variant-input]');
 		const stockAlertSubscribedLabel = picker.querySelector('[data-stock-alert-subscribed-label]');
 		const stockAlertLoginNote = picker.querySelector('[data-stock-alert-login-note]');
-		const galleryFilterId = picker.dataset.galleryFilterId || '';
+		const addToCartButton = picker.querySelector('[data-add-to-cart-button]');
 
 		if (!variantSelect || !priceElement || !skuElement || !statusElement || !qtyElement) {
 			return;
@@ -42,9 +43,19 @@ document.addEventListener('DOMContentLoaded', () => {
 		const variantOptions = Array.from(variantSelect.options).map((option) => ({
 			option,
 			attributes: parseVariantAttributes(option),
-		}));
+		})).filter(({ option }) => option.value !== '');
 
-		let selectedAttributes = parseVariantAttributes(variantSelect.options[variantSelect.selectedIndex]);
+		let selectedAttributes = requiresAttributeSelection
+			? {}
+			: parseVariantAttributes(variantSelect.options[variantSelect.selectedIndex]);
+
+		const dispatchColorSelection = () => {
+			document.dispatchEvent(new CustomEvent('variant-color-selected', {
+				detail: {
+					color: selectedAttributes.color || '',
+				},
+			}));
+		};
 
 		const optionMatchesAttributes = (optionAttributes, attributes) => Object.entries(attributes)
 			.every(([attributeKey, attributeValue]) => optionAttributes[attributeKey] === attributeValue);
@@ -114,10 +125,45 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 		};
 
+		const clearVariantDetails = () => {
+			priceElement.textContent = '--';
+			skuElement.textContent = '--';
+			statusElement.textContent = 'Select options';
+			qtyElement.textContent = '--';
+
+			if (availabilityElement) {
+				availabilityElement.textContent = '';
+			}
+
+			if (availabilityLine) {
+				availabilityLine.classList.add('hidden');
+			}
+
+			if (cartVariantInput) {
+				cartVariantInput.value = '';
+			}
+
+			if (addToCartButton) {
+				addToCartButton.disabled = true;
+			}
+
+			if (stockAlertForm) {
+				stockAlertForm.classList.add('hidden');
+			}
+
+			if (stockAlertLoginNote) {
+				stockAlertLoginNote.classList.add('hidden');
+			}
+
+			dispatchColorSelection();
+			updateAttributeButtons();
+		};
+
 		const syncVariantDetails = () => {
 			const selectedOption = variantSelect.options[variantSelect.selectedIndex];
 
-			if (!selectedOption) {
+			if (!selectedOption || selectedOption.value === '') {
+				clearVariantDetails();
 				return;
 			}
 
@@ -136,6 +182,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			if (cartVariantInput) {
 				cartVariantInput.value = selectedOption.value;
+			}
+
+			if (addToCartButton) {
+				addToCartButton.disabled = false;
 			}
 
 			const isOutOfStock = selectedOption.dataset.variantOutOfStock === '1';
@@ -157,37 +207,9 @@ document.addEventListener('DOMContentLoaded', () => {
 				stockAlertLoginNote.classList.toggle('hidden', !isOutOfStock);
 			}
 
-			if (galleryFilterId) {
-				const galleryFilter = document.getElementById(galleryFilterId);
-
-				if (galleryFilter && galleryFilter.value !== selectedOption.value) {
-					galleryFilter.value = selectedOption.value;
-					galleryFilter.dispatchEvent(new Event('change'));
-				}
-			}
-
+			dispatchColorSelection();
 			updateAttributeButtons();
 		};
-
-		if (galleryFilterId) {
-			const galleryFilter = document.getElementById(galleryFilterId);
-
-			if (galleryFilter) {
-				galleryFilter.addEventListener('change', () => {
-					if (galleryFilter.value === 'all') {
-						return;
-					}
-
-					const matchingOption = Array.from(variantSelect.options)
-						.find((option) => option.value === galleryFilter.value);
-
-					if (matchingOption) {
-						variantSelect.value = matchingOption.value;
-						syncVariantDetails();
-					}
-				});
-			}
-		}
 
 		variantSelect.addEventListener('change', syncVariantDetails);
 
@@ -205,6 +227,14 @@ document.addEventListener('DOMContentLoaded', () => {
 					[attributeKey]: attributeValue,
 				};
 
+				if (requiresAttributeSelection && attributeOrder.length > 1) {
+					const selectedCount = attributeOrder.filter((key) => selectedAttributes[key]).length;
+					if (selectedCount < attributeOrder.length) {
+						clearVariantDetails();
+						return;
+					}
+				}
+
 				const matchingOption = resolveMatchingOption(selectedAttributes);
 				if (matchingOption) {
 					variantSelect.value = matchingOption.value;
@@ -214,13 +244,17 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 		});
 
-		syncVariantDetails();
+		if (requiresAttributeSelection) {
+			variantSelect.selectedIndex = 0;
+			clearVariantDetails();
+		} else {
+			syncVariantDetails();
+		}
 	});
 
 	const galleries = document.querySelectorAll('[data-media-gallery]');
 
 	galleries.forEach((gallery) => {
-		const variantFilter = gallery.querySelector('[data-media-variant-filter]');
 		const mainImage = gallery.querySelector('[data-media-main-image]');
 		const mainVideo = gallery.querySelector('[data-media-main-video]');
 		const thumbnails = gallery.querySelectorAll('[data-media-thumb]');
@@ -428,13 +462,16 @@ document.addEventListener('DOMContentLoaded', () => {
 			setActiveThumbnail(thumb);
 		};
 
-		const applyVariantFilter = () => {
-			const selectedVariantId = variantFilter ? variantFilter.value : 'all';
+		const applyColorFilter = (selectedColor) => {
+			const normalizedSelectedColor = (selectedColor || '').trim().toLowerCase();
 			let firstVisibleThumb = null;
 
 			thumbnails.forEach((thumb) => {
-				const thumbVariantId = thumb.dataset.mediaVariantId || '';
-				const showThumb = selectedVariantId === 'all' || thumbVariantId === '' || thumbVariantId === selectedVariantId;
+				const thumbVariantId = (thumb.dataset.mediaVariantId || '').trim();
+				const thumbColor = (thumb.dataset.mediaVariantColor || '').trim().toLowerCase();
+				const showThumb = normalizedSelectedColor === ''
+					? true
+					: (thumbVariantId === '' || thumbColor === '' || thumbColor === normalizedSelectedColor);
 
 				thumb.classList.toggle('hidden', !showThumb);
 
@@ -447,6 +484,10 @@ document.addEventListener('DOMContentLoaded', () => {
 				setMainMedia(firstVisibleThumb);
 			}
 		};
+
+		document.addEventListener('variant-color-selected', (event) => {
+			applyColorFilter(event.detail?.color || '');
+		});
 
 		thumbnails.forEach((thumb) => {
 			thumb.addEventListener('click', () => {
@@ -628,11 +669,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 		});
 
-		if (variantFilter) {
-			variantFilter.addEventListener('change', applyVariantFilter);
-		}
-
-		applyVariantFilter();
+		applyColorFilter('');
 	});
 
 	// Live search functionality
