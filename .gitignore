@@ -23,3 +23,18 @@ yarn-error.log
 /.vscode
 /.zed
 /temporary_import
+
+# Local operational helper scripts (not part of app source)
+/analyze_media_archive.py
+/analyze_media_patterns.py
+/check_import_status.py
+/check_server.py
+/deploy_and_import.py
+/deploy_catalog_and_backfill.py
+/deploy_fixes.py
+/fix_staging.py
+/query_legacy_remote.py
+/query_variant_samples_remote.py
+/reset_staging_db.py
+/run_import.py
+/upload_media.py
