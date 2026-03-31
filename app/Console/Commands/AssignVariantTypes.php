@@ -165,21 +165,15 @@ class AssignVariantTypes extends Command
 
     private function isSizeVariant(string $name, string $productName, string $categoryName): bool
     {
-        if (preg_match('/^(XXS|XS|S|M|L|XL|XXL|XXXL|2XL|3XL|4XL|5XL)$/i', $name)) {
-            return true;
-        }
+        // Common size patterns - include 4XL, 5XL, and XXXXL, XXXXXL
+        $sizePatterns = [
+            '/^(XXS|XS|S|M|L|XL|XXL|XXXL|XXXXL|XXXXXL|2XL|3XL|4XL|5XL)$/i',
+            '/\b(XXS|XS|Small|Medium|Large|XL|XXL|XXXL|XXXXL|XXXXXL|2XL|3XL|4XL|5XL)\b/i',
+        ];
 
-        if (preg_match('/^\d+(\.\d+)?$/i', $name)) {
-            return true;
-        }
-
-        if (preg_match('/(small|medium|large|extra)/i', $name)) {
-            return true;
-        }
-
-        // Biggie/Smalls ONLY for socks (very specific)
-        if (preg_match('/(biggie|smalls)/i', $name)) {
-            $isSock = stripos($categoryName, 'sock') !== false || 
+        foreach ($sizePatterns as $pattern) {
+            if (preg_match($pattern, $name)) {
+                return true;
                       stripos($productName, 'sock') !== false;
             return $isSock;
         }

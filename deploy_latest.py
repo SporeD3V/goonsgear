@@ -7,5 +7,5 @@ s.put('resources/views/shop/show.blade.php','/home/macaw-goonsgear/htdocs/goonsg
 s.close()  
 c.exec_command('rm -rf /home/macaw-goonsgear/htdocs/goonsgear.macaw.studio/storage/framework/views/*')  
 i,o,e=c.exec_command('cd /home/macaw-goonsgear/htdocs/goonsgear.macaw.studio && php artisan optimize:clear')  
-print('Complete variant UX deployed')  
+print('Deployed latest variant UX')  
 c.close()  

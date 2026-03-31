@@ -497,85 +497,120 @@
 
                         @endif
                     </div>
+                    @endif
                 </section>
             </div>
         </div>
 
-        @if ($variantsWithStockState->count() > 1 && $comboSizes->isNotEmpty() && $comboColors->isNotEmpty())
         <script>
         document.addEventListener('DOMContentLoaded', () => {
             const picker = document.querySelector('[data-product-variant-picker]');
             if (!picker) return;
 
+            // Handle combo variants (size + color)
             const comboMatrixData = picker.dataset.comboMatrix;
-            if (!comboMatrixData) return;
+            if (comboMatrixData) {
+                const comboMatrix = JSON.parse(comboMatrixData);
+                let selectedSize = null;
+                let selectedColor = null;
 
-            const comboMatrix = JSON.parse(comboMatrixData);
-            let selectedSize = null;
-            let selectedColor = null;
+                const sizeButtons = picker.querySelectorAll('[data-size-select]');
+                const colorButtons = picker.querySelectorAll('[data-color-select]');
 
-            // Size button handlers
-            const sizeButtons = picker.querySelectorAll('[data-size-select]');
-            sizeButtons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    selectedSize = btn.dataset.sizeSelect;
-                    
-                    // Update button states
-                    sizeButtons.forEach(b => {
-                        b.classList.remove('border-slate-800', 'bg-slate-800', 'text-white');
-                        b.classList.add('border-slate-400', 'bg-white');
+                sizeButtons.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        selectedSize = btn.dataset.sizeSelect;
+                        sizeButtons.forEach(b => {
+                            b.classList.remove('border-slate-800', 'bg-slate-800', 'text-white');
+                            b.classList.add('border-slate-400', 'bg-white');
+                        });
+                        btn.classList.remove('border-slate-400', 'bg-white');
+                        btn.classList.add('border-slate-800', 'bg-slate-800', 'text-white');
+                        updateComboVariant();
                     });
-                    btn.classList.remove('border-slate-400', 'bg-white');
-                    btn.classList.add('border-slate-800', 'bg-slate-800', 'text-white');
-                    
-                    updateVariant();
                 });
-            });
 
-            // Color button handlers
-            const colorButtons = picker.querySelectorAll('[data-color-select]');
-            colorButtons.forEach(btn => {
+                colorButtons.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        selectedColor = btn.dataset.colorSelect;
+                        colorButtons.forEach(b => b.classList.remove('border-slate-800'));
+                        btn.classList.add('border-slate-800');
+                        updateComboVariant();
+                    });
+                });
+
+                function updateComboVariant() {
+                    if (!selectedSize || !selectedColor) return;
+                    const variant = comboMatrix[selectedSize + '|' + selectedColor];
+                    if (!variant) return;
+                    updateVariantUI(variant);
+                }
+            }
+
+            // Handle regular variants (size-only or color-only)
+            const variantButtons = picker.querySelectorAll('[data-variant-select]');
+            variantButtons.forEach(btn => {
                 btn.addEventListener('click', () => {
-                    selectedColor = btn.dataset.colorSelect;
-                    
                     // Update button states
-                    colorButtons.forEach(b => b.classList.remove('border-slate-800'));
-                    btn.classList.add('border-slate-800');
+                    variantButtons.forEach(b => {
+                        b.classList.remove('border-slate-800', 'bg-slate-800', 'text-white');
+                        if (b.classList.contains('flex')) {
+                            b.classList.add('border-slate-400');
+                        } else {
+                            b.classList.add('border-slate-400', 'bg-white');
+                        }
+                    });
                     
-                    updateVariant();
-                    
-                    // Filter gallery by color
-                    const variantId = comboMatrix[selectedSize + '|' + selectedColor]?.id;
-                    if (variantId) {
-                        filterGalleryByVariant(variantId);
+                    if (btn.classList.contains('flex')) {
+                        btn.classList.remove('border-slate-400');
+                        btn.classList.add('border-slate-800');
+                    } else {
+                        btn.classList.remove('border-slate-400', 'bg-white');
+                        btn.classList.add('border-slate-800', 'bg-slate-800', 'text-white');
                     }
+
+                    const variant = {
+                        id: btn.dataset.variantId,
+                        price: btn.dataset.variantPrice,
+                        sku: btn.dataset.variantSku,
+                        stock_quantity: btn.dataset.variantQty,
+                        availability: btn.dataset.variantAvailability
+                    };
+                    
+                    const stockStatus = btn.dataset.variantStatus;
+                    updateVariantUI({...variant, stockStatus});
                 });
             });
 
-            function updateVariant() {
-                if (!selectedSize || !selectedColor) return;
+            // Handle dropdown variants
+            const customSelect = picker.querySelector('[data-variant-select]');
+            if (customSelect && customSelect.tagName === 'SELECT') {
+                customSelect.addEventListener('change', (e) => {
+                    const option = e.target.selectedOptions[0];
+                    const variant = {
+                        id: option.value,
+                        price: option.dataset.variantPrice,
+                        sku: option.dataset.variantSku,
+                        stock_quantity: option.dataset.variantQty,
+                        availability: option.dataset.variantAvailability,
+                        stockStatus: option.dataset.variantStatus
+                    };
+                    updateVariantUI(variant);
+                });
+            }
 
-                const key = selectedSize + '|' + selectedColor;
-                const variant = comboMatrix[key];
-
-                if (!variant) return;
-
-                // Update variant panel
+            function updateVariantUI(variant) {
                 document.querySelector('[data-variant-price]').textContent = parseFloat(variant.price).toFixed(2);
                 document.querySelector('[data-variant-sku]').textContent = variant.sku;
                 document.querySelector('[data-variant-qty]').textContent = variant.stock_quantity;
                 
-                const stockStatus = variant.stock_quantity > 0 ? 'In stock' : 
-                                  (variant.allow_backorder || variant.is_preorder ? 'Preorder' : 'Out of stock');
+                const stockStatus = variant.stockStatus || (variant.stock_quantity > 0 ? 'In stock' : 
+                                  (variant.allow_backorder || variant.is_preorder ? 'Preorder' : 'Out of stock'));
                 document.querySelector('[data-variant-status]').textContent = stockStatus;
 
-                // Update cart form
                 const cartInput = document.querySelector('[data-cart-variant-input]');
-                if (cartInput) {
-                    cartInput.value = variant.id;
-                }
+                if (cartInput) cartInput.value = variant.id;
 
-                // Update availability date if preorder
                 const availabilityLine = document.querySelector('[data-variant-availability-line]');
                 const availabilitySpan = document.querySelector('[data-variant-availability]');
                 if (stockStatus === 'Preorder' && variant.availability) {
@@ -585,10 +620,10 @@
                     availabilityLine.classList.add('hidden');
                 }
             }
-
-            function filterGalleryByVariant(variantId) {
-                const thumbs = document.querySelectorAll('[data-media-thumb]');
-                thumbs.forEach(thumb => {
+        });
+        </script>
+    </body>
+</html>
                     const mediaVariantId = thumb.dataset.mediaVariantId;
                     if (!mediaVariantId || mediaVariantId == variantId) {
                         thumb.style.display = '';
