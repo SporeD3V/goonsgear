@@ -244,6 +244,7 @@
                                 $defaultStockStatus = $defaultVariant->is_preorder || $defaultVariant->allow_backorder
                                     ? 'Preorder'
                                     : ($defaultVariant->stock_quantity > 0 ? 'In stock' : 'Out of stock');
+                                $defaultVariantAttributes = $variantSelectorData['variantAttributesById'][$defaultVariant->id] ?? [];
                                 $defaultAvailabilityDate = $formatAvailabilityDate(
                                     $defaultVariant->preorder_available_from
                                     ?? $defaultVariant->expected_ship_at
@@ -256,7 +257,33 @@
                                 class="mt-3 rounded border border-slate-200 bg-slate-50 p-3"
                                 data-product-variant-picker
                                 data-gallery-filter-id="media-variant-filter"
+                                data-variant-attribute-order="{{ implode(',', $variantSelectorData['attributeOrder']) }}"
                             >
+                                @if (!empty($variantSelectorData['groups']))
+                                    <div class="mb-3 space-y-3">
+                                        @foreach ($variantSelectorData['groups'] as $attributeKey => $attributeGroup)
+                                            <div data-variant-attribute-group="{{ $attributeKey }}">
+                                                <p class="mb-2 text-sm font-medium text-slate-700">{{ $attributeGroup['label'] }}</p>
+                                                <div class="flex flex-wrap gap-2">
+                                                    @foreach ($attributeGroup['values'] as $attributeValue)
+                                                        @php
+                                                            $isSelected = ($defaultVariantAttributes[$attributeKey] ?? null) === $attributeValue;
+                                                        @endphp
+                                                        <button
+                                                            type="button"
+                                                            data-variant-attribute="{{ $attributeKey }}"
+                                                            data-variant-attribute-value="{{ $attributeValue }}"
+                                                            class="rounded border px-3 py-1.5 text-sm transition {{ $isSelected ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500' }}"
+                                                        >
+                                                            {{ $attributeValue }}
+                                                        </button>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+
                                 @if ($variantsWithStockState->count() > 1)
                                     <label for="shop-variant-select" class="mb-1 block text-sm font-medium text-slate-700">Choose variant</label>
                                     <select id="shop-variant-select" data-variant-select class="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm">
@@ -273,6 +300,7 @@
                                                 data-variant-status="{{ $stockStatus }}"
                                                 data-variant-qty="{{ $variant->stock_quantity }}"
                                                 data-variant-availability="{{ $formatAvailabilityDate($variant->preorder_available_from ?? $variant->expected_ship_at ?? $product->preorder_available_from ?? $product->expected_ship_at) ?? '' }}"
+                                                data-variant-attributes='@json($variantSelectorData['variantAttributesById'][$variant->id] ?? [])'
                                                 data-variant-out-of-stock="{{ $variant->is_out_of_stock ? '1' : '0' }}"
                                                 data-variant-stock-alert-subscribed="{{ in_array($variant->id, $activeStockAlertVariantIds, true) ? '1' : '0' }}"
                                             >

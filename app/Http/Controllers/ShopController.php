@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductMedia;
+use App\Models\ProductVariant;
 use App\Models\StockAlertSubscription;
 use App\Models\Tag;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class ShopController extends Controller
@@ -64,6 +67,8 @@ class ShopController extends Controller
             return $variant;
         });
 
+        $variantSelectorData = $this->buildVariantSelectorData($variantsWithStockState);
+
         $activeStockAlertVariantIds = [];
 
         if ($currentUser !== null && $variantsWithStockState->isNotEmpty()) {
@@ -85,9 +90,226 @@ class ShopController extends Controller
         return view('shop.show', [
             'product' => $product,
             'variantsWithStockState' => $variantsWithStockState,
+            'variantSelectorData' => $variantSelectorData,
             'activeStockAlertVariantIds' => $activeStockAlertVariantIds,
             'seo' => $seo,
         ]);
+    }
+
+    /**
+     * @return array{
+     *   groups: array<string, array{label: string, values: array<int, string>}>,
+     *   variantAttributesById: array<int, array<string, string>>,
+     *   attributeOrder: array<int, string>
+     * }
+     */
+    private function buildVariantSelectorData(Collection $variants): array
+    {
+        $rawVariantAttributes = [];
+        $groupValues = [];
+
+        foreach ($variants as $variant) {
+            $attributes = $this->extractVariantAttributes($variant);
+            $rawVariantAttributes[$variant->id] = $attributes;
+
+            foreach ($attributes as $key => $value) {
+                if (! isset($groupValues[$key])) {
+                    $groupValues[$key] = [];
+                }
+
+                if ($value !== '' && ! in_array($value, $groupValues[$key], true)) {
+                    $groupValues[$key][] = $value;
+                }
+            }
+        }
+
+        $attributeKeys = collect($groupValues)
+            ->filter(fn (array $values) => count($values) > 1)
+            ->keys()
+            ->sortBy(fn (string $key) => match ($key) {
+                'size' => '00-size',
+                'color' => '01-color',
+                default => '10-'.$key,
+            })
+            ->values()
+            ->all();
+
+        $groups = [];
+        foreach ($attributeKeys as $key) {
+            $values = $groupValues[$key] ?? [];
+
+            if ($key === 'size') {
+                $values = $this->sortSizes($values);
+            } else {
+                natcasesort($values);
+                $values = array_values($values);
+            }
+
+            $groups[$key] = [
+                'label' => $this->attributeLabelFromKey($key),
+                'values' => $values,
+            ];
+        }
+
+        $variantAttributesById = [];
+        foreach ($rawVariantAttributes as $variantId => $attributes) {
+            $variantAttributesById[$variantId] = collect($attributes)
+                ->only($attributeKeys)
+                ->map(fn (string $value) => trim($value))
+                ->filter(fn (string $value) => $value !== '')
+                ->all();
+        }
+
+        return [
+            'groups' => $groups,
+            'variantAttributesById' => $variantAttributesById,
+            'attributeOrder' => $attributeKeys,
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function extractVariantAttributes($variant): array
+    {
+        $attributes = [];
+
+        if (is_array($variant->option_values) && $variant->option_values !== []) {
+            foreach ($variant->option_values as $rawKey => $rawValue) {
+                if (! is_scalar($rawValue)) {
+                    continue;
+                }
+
+                $value = trim((string) $rawValue);
+                if ($value === '') {
+                    continue;
+                }
+
+                $key = $this->normalizeAttributeKey((string) $rawKey, $value);
+                $attributes[$key] = $value;
+            }
+
+            if ($attributes !== []) {
+                return $attributes;
+            }
+        }
+
+        $rawName = trim((string) $variant->name);
+        if ($rawName === '' || strcasecmp($rawName, 'Default') === 0) {
+            return [];
+        }
+
+        $parts = preg_split('/\s*[\|,\/-]\s*/', $rawName) ?: [];
+        $parts = array_values(array_filter(array_map(fn (string $part) => trim($part), $parts), fn (string $part) => $part !== ''));
+
+        if ($parts === []) {
+            return [];
+        }
+
+        foreach ($parts as $index => $value) {
+            $baseKey = $this->classifyAttributeKey($value, (string) ($variant->variant_type ?? ''), $index);
+            $key = $baseKey;
+            $suffix = 2;
+
+            while (array_key_exists($key, $attributes)) {
+                $key = $baseKey.'_'.$suffix;
+                $suffix++;
+            }
+
+            $attributes[$key] = $value;
+        }
+
+        return $attributes;
+    }
+
+    private function normalizeAttributeKey(string $rawKey, string $value): string
+    {
+        $normalized = Str::of($rawKey)
+            ->replace(['attribute_', 'pa_'], '')
+            ->snake()
+            ->toString();
+
+        if (in_array($normalized, ['colour', 'farbe', 'couleur'], true)) {
+            return 'color';
+        }
+
+        if (in_array($normalized, ['groesse', 'taille'], true)) {
+            return 'size';
+        }
+
+        if ($normalized !== '') {
+            return $normalized;
+        }
+
+        return $this->classifyAttributeKey($value, '', 0);
+    }
+
+    private function classifyAttributeKey(string $value, string $variantType, int $index): string
+    {
+        $trimmedValue = trim($value);
+
+        if ($trimmedValue === '') {
+            return 'option_'.($index + 1);
+        }
+
+        if ($variantType === 'size' && $index === 0) {
+            return 'size';
+        }
+
+        if ($variantType === 'color' && $index === 0) {
+            return 'color';
+        }
+
+        return match (ProductVariant::detectTypeFromName($trimmedValue)) {
+            'size' => 'size',
+            'color' => 'color',
+            default => 'option_'.($index + 1),
+        };
+    }
+
+    /**
+     * @param  array<int, string>  $values
+     * @return array<int, string>
+     */
+    private function sortSizes(array $values): array
+    {
+        $sizeOrder = [
+            'xxs', 'xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl',
+            '2xl', '3xl', '4xl', '5xl',
+        ];
+
+        usort($values, function (string $left, string $right) use ($sizeOrder): int {
+            $leftIndex = array_search(strtolower($left), $sizeOrder, true);
+            $rightIndex = array_search(strtolower($right), $sizeOrder, true);
+
+            if ($leftIndex !== false && $rightIndex !== false) {
+                return $leftIndex <=> $rightIndex;
+            }
+
+            if ($leftIndex !== false) {
+                return -1;
+            }
+
+            if ($rightIndex !== false) {
+                return 1;
+            }
+
+            return strnatcasecmp($left, $right);
+        });
+
+        return $values;
+    }
+
+    private function attributeLabelFromKey(string $key): string
+    {
+        return match ($key) {
+            'size' => 'Size',
+            'color' => 'Color',
+            default => Str::of($key)
+                ->replace('_', ' ')
+                ->headline()
+                ->toString(),
+        };
     }
 
     private function resolveZoomPath(ProductMedia $media): string
@@ -171,13 +393,13 @@ class ShopController extends Controller
 
                 return [
                     'id' => $product->id,
-                    'slug' => $product->slug,
                     'name' => $product->name,
+                    'slug' => $product->slug,
                     'excerpt' => strip_tags((string) $product->excerpt),
                     'category' => $product->primaryCategory?->name,
                     'price' => $minPrice !== null ? (float) $minPrice : null,
-                    'image' => $primaryMedia ? route('media.show', ['path' => $primaryMedia->getThumbnailPath()]) : null,
-                    'secondary_image' => $secondaryMedia ? route('media.show', ['path' => $secondaryMedia->getThumbnailPath()]) : null,
+                    'image' => $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null,
+                    'secondary_image' => $secondaryMedia ? route('media.show', ['path' => $secondaryMedia->path]) : null,
                     'url' => route('shop.show', $product),
                 ];
             });
@@ -232,7 +454,7 @@ class ShopController extends Controller
             )
             ->when(
                 $categorySlug !== '',
-                fn ($query) => $query->whereHas('categories', fn ($categoryQuery) => $categoryQuery->where('slug', $categorySlug))
+                fn ($query) => $query->whereHas('primaryCategory', fn ($categoryQuery) => $categoryQuery->where('slug', $categorySlug))
             )
             ->when(
                 $tagSlug !== '',

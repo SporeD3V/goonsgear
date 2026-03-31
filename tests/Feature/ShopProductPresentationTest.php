@@ -76,4 +76,92 @@ class ShopProductPresentationTest extends TestCase
         $response->assertSeeText('29. May 2026');
         $response->assertDontSeeText('Status: In stock');
     }
+
+    public function test_shop_show_renders_attribute_boxes_from_option_values(): void
+    {
+        $product = Product::factory()->create();
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Red M',
+            'sku' => 'RED-M',
+            'price' => 49.99,
+            'option_values' => ['size' => 'M', 'color' => 'Red'],
+            'variant_type' => 'custom',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Red L',
+            'sku' => 'RED-L',
+            'price' => 49.99,
+            'option_values' => ['size' => 'L', 'color' => 'Red'],
+            'variant_type' => 'custom',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Black M',
+            'sku' => 'BLK-M',
+            'price' => 49.99,
+            'option_values' => ['size' => 'M', 'color' => 'Black'],
+            'variant_type' => 'custom',
+        ]);
+
+        $response = $this->get(route('shop.show', $product));
+
+        $response->assertOk();
+        $response->assertSeeText('Size');
+        $response->assertSeeText('Color');
+        $response->assertSeeText('M');
+        $response->assertSeeText('L');
+        $response->assertSeeText('Red');
+        $response->assertSeeText('Black');
+        $response->assertSee('data-variant-attribute="size"', false);
+        $response->assertSee('data-variant-attribute="color"', false);
+    }
+
+    public function test_shop_show_renders_attribute_boxes_from_variant_name_fallback(): void
+    {
+        $product = Product::factory()->create();
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Red / M',
+            'sku' => 'RED-M',
+            'price' => 49.99,
+            'option_values' => null,
+            'variant_type' => 'custom',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Red / L',
+            'sku' => 'RED-L',
+            'price' => 49.99,
+            'option_values' => null,
+            'variant_type' => 'custom',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Black / M',
+            'sku' => 'BLK-M',
+            'price' => 49.99,
+            'option_values' => null,
+            'variant_type' => 'custom',
+        ]);
+
+        $response = $this->get(route('shop.show', $product));
+
+        $response->assertOk();
+        $response->assertSeeText('Size');
+        $response->assertSeeText('Color');
+        $response->assertSeeText('M');
+        $response->assertSeeText('L');
+        $response->assertSeeText('Red');
+        $response->assertSeeText('Black');
+        $response->assertSee('data-variant-attribute="size"', false);
+        $response->assertSee('data-variant-attribute="color"', false);
+    }
 }

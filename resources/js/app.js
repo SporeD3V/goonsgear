@@ -5,6 +5,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	variantPickers.forEach((picker) => {
 		const variantSelect = picker.querySelector('[data-variant-select]');
+		const attributeOrder = (picker.dataset.variantAttributeOrder || '')
+			.split(',')
+			.map((value) => value.trim())
+			.filter((value) => value !== '');
+		const attributeButtons = Array.from(picker.querySelectorAll('[data-variant-attribute]'));
 		const priceElement = picker.querySelector('[data-variant-price]');
 		const skuElement = picker.querySelector('[data-variant-sku]');
 		const statusElement = picker.querySelector('[data-variant-status]');
@@ -22,12 +27,101 @@ document.addEventListener('DOMContentLoaded', () => {
 			return;
 		}
 
+		const parseVariantAttributes = (option) => {
+			if (!option) {
+				return {};
+			}
+
+			try {
+				return JSON.parse(option.dataset.variantAttributes || '{}');
+			} catch (_error) {
+				return {};
+			}
+		};
+
+		const variantOptions = Array.from(variantSelect.options).map((option) => ({
+			option,
+			attributes: parseVariantAttributes(option),
+		}));
+
+		let selectedAttributes = parseVariantAttributes(variantSelect.options[variantSelect.selectedIndex]);
+
+		const optionMatchesAttributes = (optionAttributes, attributes) => Object.entries(attributes)
+			.every(([attributeKey, attributeValue]) => optionAttributes[attributeKey] === attributeValue);
+
+		const resolveMatchingOption = (attributes) => {
+			if (variantOptions.length === 0) {
+				return null;
+			}
+
+			const orderedAttributes = attributeOrder.reduce((carry, key) => {
+				if (attributes[key]) {
+					carry[key] = attributes[key];
+				}
+
+				return carry;
+			}, {});
+
+			const exactMatch = variantOptions.find(({ attributes: optionAttributes }) => optionMatchesAttributes(optionAttributes, orderedAttributes));
+
+			if (exactMatch) {
+				return exactMatch.option;
+			}
+
+			let fallbackMatch = null;
+			for (const attributeKey of attributeOrder) {
+				if (!orderedAttributes[attributeKey]) {
+					continue;
+				}
+
+				const relaxedAttributes = { ...orderedAttributes };
+				delete relaxedAttributes[attributeKey];
+
+				fallbackMatch = variantOptions.find(({ attributes: optionAttributes }) => optionMatchesAttributes(optionAttributes, relaxedAttributes));
+				if (fallbackMatch) {
+					selectedAttributes = relaxedAttributes;
+					return fallbackMatch.option;
+				}
+			}
+
+			return variantOptions[0].option;
+		};
+
+		const updateAttributeButtons = () => {
+			if (attributeButtons.length === 0) {
+				return;
+			}
+
+			attributeButtons.forEach((button) => {
+				const attributeKey = button.dataset.variantAttribute || '';
+				const attributeValue = button.dataset.variantAttributeValue || '';
+				const candidateSelection = {
+					...selectedAttributes,
+					[attributeKey]: attributeValue,
+				};
+
+				const hasMatchingVariant = variantOptions.some(({ attributes }) => optionMatchesAttributes(attributes, candidateSelection));
+				const isSelected = selectedAttributes[attributeKey] === attributeValue;
+
+				button.disabled = !hasMatchingVariant;
+				button.classList.toggle('border-slate-900', isSelected);
+				button.classList.toggle('bg-slate-900', isSelected);
+				button.classList.toggle('text-white', isSelected);
+				button.classList.toggle('border-slate-300', !isSelected);
+				button.classList.toggle('bg-white', !isSelected);
+				button.classList.toggle('text-slate-700', !isSelected);
+				button.classList.toggle('opacity-40', !hasMatchingVariant);
+			});
+		};
+
 		const syncVariantDetails = () => {
 			const selectedOption = variantSelect.options[variantSelect.selectedIndex];
 
 			if (!selectedOption) {
 				return;
 			}
+
+			selectedAttributes = parseVariantAttributes(selectedOption);
 
 			priceElement.textContent = selectedOption.dataset.variantPrice || '';
 			skuElement.textContent = selectedOption.dataset.variantSku || '';
@@ -71,6 +165,8 @@ document.addEventListener('DOMContentLoaded', () => {
 					galleryFilter.dispatchEvent(new Event('change'));
 				}
 			}
+
+			updateAttributeButtons();
 		};
 
 		if (galleryFilterId) {
@@ -94,6 +190,30 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 
 		variantSelect.addEventListener('change', syncVariantDetails);
+
+		attributeButtons.forEach((button) => {
+			button.addEventListener('click', () => {
+				const attributeKey = button.dataset.variantAttribute || '';
+				const attributeValue = button.dataset.variantAttributeValue || '';
+
+				if (attributeKey === '' || attributeValue === '') {
+					return;
+				}
+
+				selectedAttributes = {
+					...selectedAttributes,
+					[attributeKey]: attributeValue,
+				};
+
+				const matchingOption = resolveMatchingOption(selectedAttributes);
+				if (matchingOption) {
+					variantSelect.value = matchingOption.value;
+				}
+
+				syncVariantDetails();
+			});
+		});
+
 		syncVariantDetails();
 	});
 
