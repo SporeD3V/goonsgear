@@ -116,7 +116,8 @@ jobs:
             echo "=== Post-deploy checks ==="
 
             echo "--- Fixing permissions ---"
-            chmod -R 770 storage bootstrap/cache
+            find storage bootstrap/cache -type d -exec chmod 770 {} + 2>/dev/null || true
+            find storage bootstrap/cache -type f -exec chmod 660 {} + 2>/dev/null || true
 
             echo "--- PHP version ---"
             php -v | head -n 1
