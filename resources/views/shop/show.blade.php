@@ -280,14 +280,18 @@
                             >
                                 @if ($sizeVariants->isNotEmpty())
                                     <div class="mb-3">
-                                        <label for="shop-size-select" class="mb-1 block text-sm font-medium text-slate-700">Size</label>
-                                        <select id="shop-size-select" data-variant-select class="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm">
-                                            @foreach ($sizeVariants->filter(fn($v) => $v->isAvailable()) as $variant)
+                                        <label class="mb-2 block text-sm font-medium text-slate-700">Size</label>
+                                        <div class="flex flex-wrap gap-2">
+                                            @foreach ($sizeVariants as $variant)
                                                 @php
+                                                    $available = $variant->isAvailable();
                                                     $stockStatus = $variant->stock_quantity > 0 ? 'In stock' : (($variant->allow_backorder || $variant->is_preorder) ? 'Preorder' : 'Out of stock');
                                                 @endphp
-                                                <option
-                                                    value="{{ $variant->id }}"
+                                                <button
+                                                    type="button"
+                                                    class="min-w-[3rem] rounded border-2 px-3 py-2 text-sm font-medium transition {{ $available ? 'border-slate-300 hover:border-slate-800 cursor-pointer' : 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed line-through' }}"
+                                                    data-variant-select
+                                                    data-variant-id="{{ $variant->id }}"
                                                     data-variant-price="{{ number_format((float) $variant->price, 2) }}"
                                                     data-variant-sku="{{ $variant->sku }}"
                                                     data-variant-status="{{ $stockStatus }}"
@@ -295,11 +299,12 @@
                                                     data-variant-availability="{{ $formatAvailabilityDate($variant->preorder_available_from ?? $variant->expected_ship_at ?? $product->preorder_available_from ?? $product->expected_ship_at) ?? '' }}"
                                                     data-variant-out-of-stock="{{ $variant->is_out_of_stock ? '1' : '0' }}"
                                                     data-variant-stock-alert-subscribed="{{ in_array($variant->id, $activeStockAlertVariantIds, true) ? '1' : '0' }}"
+                                                    {{ $available ? '' : 'disabled' }}
                                                 >
                                                     {{ $variant->name }}
-                                                </option>
+                                                </button>
                                             @endforeach
-                                        </select>
+                                        </div>
                                     </div>
                                 @endif
 
