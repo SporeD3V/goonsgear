@@ -150,6 +150,7 @@ class ShopBrowseTest extends TestCase
         $response->assertSee('data-lightbox-video', false);
         $response->assertSee('data-media-type="video"', false);
         $response->assertSee('data-media-thumb', false);
+        $response->assertSee('data-media-zoom-url', false);
     }
 
     public function test_shop_index_filters_by_primary_category_slug(): void

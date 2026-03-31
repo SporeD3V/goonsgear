@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductMedia;
 use App\Models\StockAlertSubscription;
 use App\Models\Tag;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ShopController extends Controller
@@ -41,6 +43,12 @@ class ShopController extends Controller
                 ->orderBy('position')
                 ->orderBy('id'),
         ]);
+
+        $product->setRelation('media', $product->media->map(function (ProductMedia $media): ProductMedia {
+            $media->setAttribute('zoom_path', $this->resolveZoomPath($media));
+
+            return $media;
+        }));
 
         $primaryMedia = $product->media->first();
         $currentUser = request()->user();
@@ -80,6 +88,51 @@ class ShopController extends Controller
             'activeStockAlertVariantIds' => $activeStockAlertVariantIds,
             'seo' => $seo,
         ]);
+    }
+
+    private function resolveZoomPath(ProductMedia $media): string
+    {
+        if (str_starts_with((string) $media->mime_type, 'video/')) {
+            return $media->path;
+        }
+
+        $path = (string) $media->path;
+        $disk = (string) ($media->disk ?: 'public');
+        $pathInfo = pathinfo($path);
+        $directory = $pathInfo['dirname'] ?? '';
+        $filename = $pathInfo['filename'] ?? '';
+
+        if ($filename === '') {
+            return $path;
+        }
+
+        $baseName = $filename;
+        foreach (['-thumbnail-200x200', '-hero-1200x600', '-gallery-600x600'] as $suffix) {
+            if (str_ends_with($baseName, $suffix)) {
+                $baseName = substr($baseName, 0, -strlen($suffix));
+                break;
+            }
+        }
+
+        $basePath = ($directory !== '' && $directory !== '.' ? $directory.'/' : '').$baseName;
+        $candidates = [
+            $basePath.'.avif',
+            $basePath.'.webp',
+            $path,
+        ];
+
+        if (str_contains($path, '/fallback/')) {
+            $galleryBasePath = str_replace('/fallback/', '/gallery/', $basePath);
+            array_unshift($candidates, $galleryBasePath.'.avif', $galleryBasePath.'.webp');
+        }
+
+        foreach ($candidates as $candidate) {
+            if (Storage::disk($disk)->exists($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return $path;
     }
 
     public function search(Request $request): JsonResponse

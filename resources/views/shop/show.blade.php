@@ -118,6 +118,7 @@
                             @foreach ($product->media as $media)
                                 @php
                                     $thumbnailUrl = route('media.show', ['path' => $media->path]);
+                                    $zoomMediaUrl = route('media.show', ['path' => $media->zoom_path ?? $media->path]);
                                     $isVideo = str_starts_with((string) $media->mime_type, 'video/');
                                 @endphp
                                 <button
@@ -126,6 +127,7 @@
                                     data-media-thumb
                                     data-media-type="{{ $isVideo ? 'video' : 'image' }}"
                                     data-media-url="{{ $thumbnailUrl }}"
+                                    data-media-zoom-url="{{ $zoomMediaUrl }}"
                                     data-media-alt="{{ $media->alt_text ?: $product->name }}"
                                     data-media-variant-id="{{ $media->product_variant_id ?? '' }}"
                                     aria-pressed="false"
@@ -155,6 +157,33 @@
                             </div>
 
                             <div class="relative flex-1 overflow-hidden rounded border border-slate-700/80 bg-black/70" data-lightbox-stage>
+                                <div class="absolute right-3 top-3 z-10 flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        class="rounded bg-black/60 px-3 py-1.5 text-sm font-semibold text-white hover:bg-black/80"
+                                        data-lightbox-zoom-out
+                                        aria-label="Zoom out"
+                                    >
+                                        -
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="rounded bg-black/60 px-3 py-1.5 text-sm font-semibold text-white hover:bg-black/80"
+                                        data-lightbox-zoom-in
+                                        aria-label="Zoom in"
+                                    >
+                                        +
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="rounded bg-black/60 px-3 py-1.5 text-xs font-semibold text-white hover:bg-black/80"
+                                        data-lightbox-zoom-reset
+                                        aria-label="Reset zoom"
+                                    >
+                                        1x
+                                    </button>
+                                </div>
+
                                 <img
                                     src=""
                                     alt=""
@@ -187,7 +216,7 @@
 
                             <div class="mt-3 rounded border border-slate-700/80 bg-slate-900/70 p-3 text-xs text-slate-200 sm:text-sm">
                                 <p class="font-semibold">Controls</p>
-                                <p class="mt-1">Esc: close, Left/Right arrows: previous or next, Swipe left/right: navigate, X: close.</p>
+                                <p class="mt-1">Esc: close, Left/Right arrows: previous or next, Swipe left/right: navigate, wheel or +/-: zoom, drag: pan, X: close.</p>
                             </div>
                         </div>
                     </div>
