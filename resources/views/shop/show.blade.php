@@ -248,6 +248,7 @@
                         </div>
                     @endif
 
+                    @if ($variantsWithStockState->count() > 1)
                     <div class="mt-6">
                         <h2 class="text-base font-semibold">Available Variants</h2>
                         @if ($variantsWithStockState->isEmpty())
@@ -279,36 +280,40 @@
                                 foreach ($customVariants as $variant) {
                                     if (str_contains($variant->name, ',')) {
                                         $parts = array_map('trim', explode(',', $variant->name));
-                                        $lastPart = trim(preg_replace('/^.*?\s*-\s*/', '', end($parts)));
                                         
-                                        // Check if last part is size or color
-                                        if (preg_match('/^(XXS|XS|S|M|L|XL|XXL|XXXL|2XL|3XL|4XL|5XL)$/i', $lastPart)) {
-                                            // Format: "Color, Size" - swap them
-                                            $size = $lastPart;
-                                            $color = trim(preg_replace('/^.*?\s*-\s*/', '', $parts[count($parts) - 2]));
-                                        } else {
-                                            // Format: "Size, Color"
-                                            $color = $lastPart;
-                                            $size = trim(preg_replace('/^.*?\s*-\s*/', '', $parts[count($parts) - 2]));
+                                        if (count($parts) >= 2) {
+                                            $firstPart = $parts[0];
+                                            $secondPart = $parts[1];
+                                            
+                                            // Determine which is size and which is color
+                                            if (preg_match('/^(XXS|XS|S|M|L|XL|XXL|XXXL|XXXXL|XXXXXL|2XL|3XL|4XL|5XL)$/i', $firstPart)) {
+                                                $size = $firstPart;
+                                                $color = $secondPart;
+                                            } elseif (preg_match('/^(XXS|XS|S|M|L|XL|XXL|XXXL|XXXXL|XXXXXL|2XL|3XL|4XL|5XL)$/i', $secondPart)) {
+                                                $size = $secondPart;
+                                                $color = $firstPart;
+                                            } else {
+                                                continue; // Not a size/color combo
+                                            }
+                                            
+                                            if (!$comboSizes->contains($size)) {
+                                                $comboSizes->push($size);
+                                            }
+                                            if (!$comboColors->contains($color)) {
+                                                $comboColors->push($color);
+                                            }
+                                            
+                                            // Store variant details for JavaScript
+                                            $comboMatrix[$size . '|' . $color] = [
+                                                'id' => $variant->id,
+                                                'sku' => $variant->sku,
+                                                'price' => number_format((float) $variant->price, 2),
+                                                'stock_quantity' => $variant->stock_quantity,
+                                                'is_preorder' => $variant->is_preorder,
+                                                'allow_backorder' => $variant->allow_backorder,
+                                                'availability' => $formatAvailabilityDate($variant->preorder_available_from ?? $variant->expected_ship_at ?? $product->preorder_available_from ?? $product->expected_ship_at),
+                                            ];
                                         }
-                                        
-                                        if (!$comboSizes->contains($size)) {
-                                            $comboSizes->push($size);
-                                        }
-                                        if (!$comboColors->contains($color)) {
-                                            $comboColors->push($color);
-                                        }
-                                        
-                                        // Store variant details for JavaScript
-                                        $comboMatrix[$size . '|' . $color] = [
-                                            'id' => $variant->id,
-                                            'sku' => $variant->sku,
-                                            'price' => number_format((float) $variant->price, 2),
-                                            'stock_quantity' => $variant->stock_quantity,
-                                            'is_preorder' => $variant->is_preorder,
-                                            'allow_backorder' => $variant->allow_backorder,
-                                            'availability' => $formatAvailabilityDate($variant->preorder_available_from ?? $variant->expected_ship_at ?? $product->preorder_available_from ?? $product->expected_ship_at),
-                                        ];
                                     }
                                 }
                                 
@@ -622,18 +627,5 @@
             }
         });
         </script>
-    </body>
-</html>
-                    const mediaVariantId = thumb.dataset.mediaVariantId;
-                    if (!mediaVariantId || mediaVariantId == variantId) {
-                        thumb.style.display = '';
-                    } else {
-                        thumb.style.display = 'none';
-                    }
-                });
-            }
-        });
-        </script>
-        @endif
     </body>
 </html>
