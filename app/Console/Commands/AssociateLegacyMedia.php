@@ -420,8 +420,12 @@ class AssociateLegacyMedia extends Command
         $webpPath = $mediaDirectory.'/'.$baseFilename.'.webp';
         $avifPath = $mediaDirectory.'/'.$baseFilename.'.avif';
 
-        $avifCreated = $this->convertImageToFormat($sourceAbsolutePath, storage_path('app/public/'.$avifPath), 'avif');
-        $webpCreated = $this->convertImageToFormat($sourceAbsolutePath, storage_path('app/public/'.$webpPath), 'webp');
+        $avifCreated = Storage::disk('public')->exists($avifPath) 
+            ? true 
+            : $this->convertImageToFormat($sourceAbsolutePath, storage_path('app/public/'.$avifPath), 'avif');
+        $webpCreated = Storage::disk('public')->exists($webpPath)
+            ? true
+            : $this->convertImageToFormat($sourceAbsolutePath, storage_path('app/public/'.$webpPath), 'webp');
 
         if ($avifCreated) {
             $storedPath = $avifPath;

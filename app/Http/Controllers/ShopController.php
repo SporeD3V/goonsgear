@@ -232,7 +232,7 @@ class ShopController extends Controller
             )
             ->when(
                 $categorySlug !== '',
-                fn ($query) => $query->whereHas('primaryCategory', fn ($categoryQuery) => $categoryQuery->where('slug', $categorySlug))
+                fn ($query) => $query->whereHas('categories', fn ($categoryQuery) => $categoryQuery->where('slug', $categorySlug))
             )
             ->when(
                 $tagSlug !== '',
