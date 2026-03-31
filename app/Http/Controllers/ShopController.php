@@ -69,7 +69,7 @@ class ShopController extends Controller
 
         $seo = [
             'title' => $product->meta_title ?: $product->name.' | GoonsGear',
-            'description' => $product->meta_description ?: ($product->excerpt ?: 'Shop '.$product->name.' at GoonsGear.'),
+            'description' => $product->meta_description ?: ($product->plainExcerpt() ?: 'Shop '.$product->name.' at GoonsGear.'),
             'canonical_url' => route('shop.show', $product),
             'og_image' => $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null,
         ];
@@ -120,7 +120,7 @@ class ShopController extends Controller
                     'id' => $product->id,
                     'name' => $product->name,
                     'slug' => $product->slug,
-                    'excerpt' => $product->excerpt,
+                    'excerpt' => strip_tags((string) $product->excerpt),
                     'category' => $product->primaryCategory?->name,
                     'price' => $minPrice !== null ? (float) $minPrice : null,
                     'image' => $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null,
@@ -229,7 +229,7 @@ class ShopController extends Controller
             ->withQueryString();
 
         $pageTitle = $activeCategory?->meta_title ?: ($activeCategory ? $activeCategory->name.' | Shop | GoonsGear' : 'Shop | GoonsGear');
-        $pageDescription = $activeCategory?->meta_description ?: ($activeCategory?->description ?: 'Browse active GoonsGear products by category, newest arrivals, and price.');
+        $pageDescription = $activeCategory?->meta_description ?: (strip_tags((string) $activeCategory?->description) ?: 'Browse active GoonsGear products by category, newest arrivals, and price.');
 
         return view('shop.index', [
             'products' => $products,

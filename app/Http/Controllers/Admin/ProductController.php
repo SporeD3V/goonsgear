@@ -12,6 +12,7 @@ use App\Models\ProductVariant;
 use App\Models\Tag;
 use App\Observers\ProductObserver;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -39,21 +40,74 @@ class ProductController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
+        $search = (string) $request->query('q', '');
+        $status = (string) $request->query('status', '');
+        $categoryId = (string) $request->query('category', '');
+        $sales = (string) $request->query('sales', '');
+        $stock = (string) $request->query('stock', '');
+        $preorder = (string) $request->query('preorder', '');
+
         $products = Product::query()
             ->with(['primaryCategory:id,name'])
-            ->withCount(['variants', 'media'])
+            ->withCount(['variants', 'media', 'orderItems'])
             ->withCount([
                 'stockAlertSubscriptions as active_stock_alert_subscriptions_count' => function ($query) {
                     $query->where('stock_alert_subscriptions.is_active', true);
                 },
+                'variants as active_preorder_variants_count' => function ($query) {
+                    $query->where('product_variants.is_active', true)
+                        ->where('product_variants.is_preorder', true);
+                },
             ])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($q) use ($search): void {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('slug', 'like', "%{$search}%")
+                        ->orWhere('excerpt', 'like', "%{$search}%");
+                });
+            })
+            ->when($status !== '', fn ($query) => $query->where('status', $status))
+            ->when($categoryId !== '', fn ($query) => $query->where('primary_category_id', $categoryId))
+            ->when($sales === 'never_sold', fn ($query) => $query->whereDoesntHave('orderItems'))
+            ->when($sales === 'sold', fn ($query) => $query->whereHas('orderItems'))
+            ->when(
+                $stock === 'zero_stock',
+                fn ($query) => $query->whereDoesntHave('variants', fn ($variantQuery) => $variantQuery
+                    ->where('is_active', true)
+                    ->where('stock_quantity', '>', 0))
+            )
+            ->when(
+                $stock === 'in_stock',
+                fn ($query) => $query->whereHas('variants', fn ($variantQuery) => $variantQuery
+                    ->where('is_active', true)
+                    ->where('stock_quantity', '>', 0))
+            )
+            ->when(
+                $preorder === 'only_preorder',
+                fn ($query) => $query->where(function ($preorderQuery): void {
+                    $preorderQuery->where('is_preorder', true)
+                        ->orWhereHas('variants', fn ($variantQuery) => $variantQuery
+                            ->where('is_active', true)
+                            ->where('is_preorder', true));
+                })
+            )
             ->latest('id')
-            ->paginate((int) config('pagination.admin_per_page', 20));
+            ->paginate((int) config('pagination.admin_per_page', 20))
+            ->withQueryString();
 
         return view('admin.products.index', [
             'products' => $products,
+            'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
+            'filters' => [
+                'q' => $search,
+                'status' => $status,
+                'category' => $categoryId,
+                'sales' => $sales,
+                'stock' => $stock,
+                'preorder' => $preorder,
+            ],
         ]);
     }
 

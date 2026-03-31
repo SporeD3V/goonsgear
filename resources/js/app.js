@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		const skuElement = picker.querySelector('[data-variant-sku]');
 		const statusElement = picker.querySelector('[data-variant-status]');
 		const qtyElement = picker.querySelector('[data-variant-qty]');
+		const availabilityElement = picker.querySelector('[data-variant-availability]');
+		const availabilityLine = picker.querySelector('[data-variant-availability-line]');
 		const cartVariantInput = picker.querySelector('[data-cart-variant-input]');
 		const stockAlertForm = picker.querySelector('[data-stock-alert-form]');
 		const stockAlertVariantInput = picker.querySelector('[data-stock-alert-variant-input]');
@@ -31,6 +33,12 @@ document.addEventListener('DOMContentLoaded', () => {
 			skuElement.textContent = selectedOption.dataset.variantSku || '';
 			statusElement.textContent = selectedOption.dataset.variantStatus || '';
 			qtyElement.textContent = selectedOption.dataset.variantQty || '';
+
+			if (availabilityElement && availabilityLine) {
+				const availability = selectedOption.dataset.variantAvailability || '';
+				availabilityElement.textContent = availability;
+				availabilityLine.classList.toggle('hidden', !(selectedOption.dataset.variantStatus === 'Preorder' && availability));
+			}
 
 			if (cartVariantInput) {
 				cartVariantInput.value = selectedOption.value;

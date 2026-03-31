@@ -175,8 +175,8 @@
                                 @if ($startingPrice !== null)
                                     <p class="mt-1 text-sm font-medium text-slate-800">From ${{ number_format((float) $startingPrice, 2) }}</p>
                                 @endif
-                                @if ($product->excerpt)
-                                    <p class="mt-2 text-sm text-slate-700">{{ $product->excerpt }}</p>
+                                @if ($product->plainExcerpt() !== '')
+                                    <p class="mt-2 text-sm text-slate-700">{{ $product->plainExcerpt() }}</p>
                                 @endif
                             </a>
                         </article>

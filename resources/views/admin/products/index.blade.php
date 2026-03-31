@@ -6,6 +6,58 @@
         <a href="{{ route('admin.products.create') }}" class="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">New Product</a>
     </div>
 
+    <form method="GET" action="{{ route('admin.products.index') }}" class="mb-4 grid gap-3 rounded border border-slate-200 bg-slate-50 p-3 md:grid-cols-6">
+        <div>
+            <label for="q" class="mb-1 block text-xs font-medium text-slate-700">Search</label>
+            <input id="q" name="q" type="text" value="{{ $filters['q'] }}" placeholder="Name / slug / excerpt" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+        </div>
+        <div>
+            <label for="status" class="mb-1 block text-xs font-medium text-slate-700">Status</label>
+            <select id="status" name="status" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                <option value="">All</option>
+                @foreach (['draft', 'active', 'archived'] as $statusOption)
+                    <option value="{{ $statusOption }}" @selected($filters['status'] === $statusOption)>{{ ucfirst($statusOption) }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div>
+            <label for="category" class="mb-1 block text-xs font-medium text-slate-700">Category</label>
+            <select id="category" name="category" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                <option value="">All</option>
+                @foreach ($categories as $category)
+                    <option value="{{ $category->id }}" @selected($filters['category'] === (string) $category->id)>{{ $category->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div>
+            <label for="sales" class="mb-1 block text-xs font-medium text-slate-700">Sales</label>
+            <select id="sales" name="sales" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                <option value="">All</option>
+                <option value="never_sold" @selected($filters['sales'] === 'never_sold')>Never sold</option>
+                <option value="sold" @selected($filters['sales'] === 'sold')>Has sales</option>
+            </select>
+        </div>
+        <div>
+            <label for="stock" class="mb-1 block text-xs font-medium text-slate-700">Stock</label>
+            <select id="stock" name="stock" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                <option value="">All</option>
+                <option value="zero_stock" @selected($filters['stock'] === 'zero_stock')>Zero stock</option>
+                <option value="in_stock" @selected($filters['stock'] === 'in_stock')>Has stock</option>
+            </select>
+        </div>
+        <div>
+            <label for="preorder" class="mb-1 block text-xs font-medium text-slate-700">Preorder</label>
+            <select id="preorder" name="preorder" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                <option value="">All</option>
+                <option value="only_preorder" @selected($filters['preorder'] === 'only_preorder')>Only preorder</option>
+            </select>
+        </div>
+        <div class="flex items-end gap-2">
+            <button type="submit" class="rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-800">Filter</button>
+            <a href="{{ route('admin.products.index') }}" class="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-100">Reset</a>
+        </div>
+    </form>
+
     <div class="overflow-x-auto">
         <table class="min-w-full border border-slate-200 text-sm">
             <thead class="bg-slate-50">

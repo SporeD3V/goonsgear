@@ -8,11 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */
     use HasFactory;
+
+    private const ALLOWED_RICH_TEXT_TAGS = '<p><br><strong><em><ul><ol><li>';
 
     /**
      * @var list<string>
@@ -88,5 +91,30 @@ class Product extends Model
             'product_id',
             'product_variant_id'
         );
+    }
+
+    public function formattedExcerpt(): string
+    {
+        return $this->sanitizeRichText($this->excerpt);
+    }
+
+    public function formattedDescription(): string
+    {
+        return $this->sanitizeRichText($this->description);
+    }
+
+    public function plainExcerpt(int $limit = 160): string
+    {
+        return Str::of(strip_tags((string) $this->excerpt))
+            ->squish()
+            ->limit($limit)
+            ->toString();
+    }
+
+    private function sanitizeRichText(?string $value): string
+    {
+        $sanitized = preg_replace('#<(script|style)\b[^>]*>.*?</\1>#is', '', (string) $value);
+
+        return trim(strip_tags($sanitized ?? '', self::ALLOWED_RICH_TEXT_TAGS));
     }
 }

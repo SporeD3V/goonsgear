@@ -3,8 +3,11 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Category;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductMedia;
+use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -279,5 +282,68 @@ class ProductCrudTest extends TestCase
         $storedPath = (string) $product->media()->value('path');
         $this->assertTrue(Storage::disk('public')->exists($storedPath));
         $this->assertStringContainsString('products/media-upload-tee/', $storedPath);
+    }
+
+    public function test_admin_can_filter_products_by_sales_stock_and_preorder(): void
+    {
+        $neverSoldZeroStock = Product::factory()->create([
+            'name' => 'Unsold Empty Inventory',
+            'slug' => 'unsold-empty-inventory',
+        ]);
+        ProductVariant::factory()->create([
+            'product_id' => $neverSoldZeroStock->id,
+            'stock_quantity' => 0,
+            'is_preorder' => false,
+        ]);
+
+        $soldZeroStock = Product::factory()->create([
+            'name' => 'Purchased Empty Inventory',
+            'slug' => 'purchased-empty-inventory',
+        ]);
+        $soldVariant = ProductVariant::factory()->create([
+            'product_id' => $soldZeroStock->id,
+            'stock_quantity' => 0,
+            'is_preorder' => false,
+        ]);
+        $order = Order::factory()->create();
+        OrderItem::factory()->create([
+            'order_id' => $order->id,
+            'product_id' => $soldZeroStock->id,
+            'product_variant_id' => $soldVariant->id,
+            'product_name' => $soldZeroStock->name,
+            'variant_name' => $soldVariant->name,
+            'sku' => $soldVariant->sku,
+        ]);
+
+        $preorderProduct = Product::factory()->create([
+            'name' => 'Future Release Product',
+            'slug' => 'future-release-product',
+            'is_preorder' => true,
+            'preorder_available_from' => now()->addWeek(),
+        ]);
+        ProductVariant::factory()->create([
+            'product_id' => $preorderProduct->id,
+            'stock_quantity' => 10,
+            'is_preorder' => true,
+            'preorder_available_from' => now()->addWeek(),
+        ]);
+
+        $response = $this->get(route('admin.products.index', [
+            'sales' => 'never_sold',
+            'stock' => 'zero_stock',
+        ]));
+
+        $response->assertOk();
+        $response->assertSeeText('Unsold Empty Inventory');
+        $response->assertDontSeeText('Purchased Empty Inventory');
+        $response->assertDontSeeText('Future Release Product');
+
+        $preorderResponse = $this->get(route('admin.products.index', [
+            'preorder' => 'only_preorder',
+        ]));
+
+        $preorderResponse->assertOk();
+        $preorderResponse->assertSeeText('Future Release Product');
+        $preorderResponse->assertDontSeeText('Unsold Empty Inventory');
     }
 }

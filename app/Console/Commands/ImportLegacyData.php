@@ -10,7 +10,10 @@ use App\Models\ProductVariant;
 use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class ImportLegacyData extends Command
 {
@@ -35,6 +38,9 @@ class ImportLegacyData extends Command
 
             // Import products (simple only, no variants yet)
             $this->importProducts();
+
+            // Create purchasable default variants for simple products
+            $this->importSimpleProductVariants();
 
             // Import product variants
             $this->importVariants();
@@ -170,59 +176,216 @@ class ImportLegacyData extends Command
 
         $count = 0;
         foreach ($products as $legacyProd) {
-            // Get meta
-            $meta = $legacy->table('wp_postmeta')
-                ->where('post_id', $legacyProd->ID)
-                ->pluck('meta_value', 'meta_key')
-                ->toArray();
+            $existingProductId = $this->resolveMappedModelId(
+                'import_legacy_products',
+                'legacy_wp_post_id',
+                $legacyProd->ID,
+                'product_id',
+                Product::class,
+            );
 
-            // Get primary category
-            $categoryId = null;
-            $catTerm = $legacy->table('wp_term_relationships')
-                ->join('wp_term_taxonomy', 'wp_term_relationships.term_taxonomy_id', '=', 'wp_term_taxonomy.term_taxonomy_id')
-                ->where('wp_term_relationships.object_id', $legacyProd->ID)
-                ->where('wp_term_taxonomy.taxonomy', 'product_cat')
-                ->first();
+            try {
+                // Get meta
+                $meta = $legacy->table('wp_postmeta')
+                    ->where('post_id', $legacyProd->ID)
+                    ->pluck('meta_value', 'meta_key')
+                    ->toArray();
 
-            if ($catTerm) {
-                $catMapping = DB::table('import_legacy_categories')
-                    ->where('legacy_term_id', $catTerm->term_id)
+                // Get primary category
+                $categoryId = null;
+                $catTerm = $legacy->table('wp_term_relationships')
+                    ->join('wp_term_taxonomy', 'wp_term_relationships.term_taxonomy_id', '=', 'wp_term_taxonomy.term_taxonomy_id')
+                    ->where('wp_term_relationships.object_id', $legacyProd->ID)
+                    ->where('wp_term_taxonomy.taxonomy', 'product_cat')
                     ->first();
-                if ($catMapping) {
-                    $categoryId = $catMapping->category_id;
-                }
-            }
 
-            $product = Product::updateOrCreate(
-                ['slug' => $legacyProd->post_name],
-                [
-                    'name' => $legacyProd->post_title,
+                if ($catTerm) {
+                    $catMapping = DB::table('import_legacy_categories')
+                        ->where('legacy_term_id', $catTerm->term_id)
+                        ->first();
+                    if ($catMapping) {
+                        $categoryId = $catMapping->category_id;
+                    }
+                }
+
+                $preorderAttributes = $this->legacyPreorderAttributes($meta);
+                $slug = $legacyProd->post_name;
+                $fallbackSlug = "{$slug}-legacy-{$legacyProd->ID}";
+                $product = $existingProductId !== null
+                    ? Product::query()->find($existingProductId)
+                    : null;
+
+                if ($product === null) {
+                    $product = Product::query()
+                        ->whereIn('slug', [$slug, $fallbackSlug])
+                        ->first();
+                }
+
+                if ($product === null) {
+                    $product = Product::query()
+                        ->where('name', $legacyProd->post_title)
+                        ->first();
+                }
+
+                if ($product === null) {
+                    if (Product::where('slug', $slug)->exists()) {
+                        $slug = $fallbackSlug;
+                    }
+
+                    $product = new Product;
+                    $product->slug = $slug;
+                }
+
+                $product->fill([
+                    'name' => $this->resolveImportedProductName($legacyProd->post_title, $product, (int) $legacyProd->ID),
                     'primary_category_id' => $categoryId,
                     'excerpt' => $legacyProd->post_excerpt,
                     'description' => $legacyProd->post_content,
                     'meta_title' => $meta['_yoast_wpseo_title'] ?? null,
                     'meta_description' => $meta['_yoast_wpseo_metadesc'] ?? null,
-                    'status' => 'published',
-                    'published_at' => now(),
+                    'status' => 'active',
+                    'published_at' => $product->published_at ?? now(),
+                    'is_preorder' => $preorderAttributes['is_preorder'],
+                    'preorder_available_from' => $preorderAttributes['preorder_available_from'],
+                    'expected_ship_at' => $preorderAttributes['expected_ship_at'],
                     'weight' => $meta['_weight'] ?? null,
                     'length' => $meta['_length'] ?? null,
                     'width' => $meta['_width'] ?? null,
                     'height' => $meta['_height'] ?? null,
-                ]
-            );
+                ]);
+                $product->save();
 
-            DB::table('import_legacy_products')->updateOrInsert(
-                ['legacy_wp_post_id' => $legacyProd->ID],
-                ['product_id' => $product->id, 'synced_at' => now()]
-            );
+                $this->syncLegacyProductMapping($legacyProd->ID, $product->id);
 
-            $count++;
+                $count++;
+            } catch (\Exception $e) {
+                $this->line("  ⚠ Skipped product {$legacyProd->ID} ({$legacyProd->post_title}): {$e->getMessage()}");
+            }
+
             if ($count % 100 === 0) {
                 $this->line("  ... {$count} products");
             }
         }
 
         $this->info("✓ Imported {$count} products.");
+    }
+
+    private function importSimpleProductVariants(): void
+    {
+        $this->info('Importing simple product default variants...');
+
+        $legacy = DB::connection('legacy');
+        $products = $legacy->table('wp_posts')
+            ->where('post_type', 'product')
+            ->where('post_status', 'publish')
+            ->whereNotExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('wp_posts as v')
+                    ->whereColumn('v.post_parent', 'wp_posts.ID')
+                    ->where('v.post_type', 'product_variation')
+                    ->where('v.post_status', 'publish');
+            })
+            ->select('ID', 'post_title')
+            ->get();
+
+        $count = 0;
+        foreach ($products as $legacyProd) {
+            $existingVariantId = $this->resolveMappedModelId(
+                'import_legacy_variants',
+                'legacy_wp_post_id',
+                $legacyProd->ID,
+                'product_variant_id',
+                ProductVariant::class,
+            );
+
+            $productId = $this->resolveMappedModelId(
+                'import_legacy_products',
+                'legacy_wp_post_id',
+                $legacyProd->ID,
+                'product_id',
+                Product::class,
+            );
+
+            if ($productId === null) {
+                continue;
+            }
+
+            try {
+                $meta = $legacy->table('wp_postmeta')
+                    ->where('post_id', $legacyProd->ID)
+                    ->pluck('meta_value', 'meta_key')
+                    ->toArray();
+
+                $price = (float) ($meta['_price'] ?? $meta['_regular_price'] ?? 0);
+                $regularPrice = (float) ($meta['_regular_price'] ?? $meta['_price'] ?? 0);
+                $preorderAttributes = $this->legacyPreorderAttributes($meta);
+
+                if ($price <= 0 && $regularPrice <= 0) {
+                    $fallbackPrice = $this->resolveLegacySimpleProductFallbackPrice($legacy, (int) $legacyProd->ID);
+
+                    if ($fallbackPrice === null) {
+                        $this->line("  ⚠ Skipped simple product {$legacyProd->ID} ({$legacyProd->post_title}): no usable price found");
+
+                        continue;
+                    }
+
+                    $price = $fallbackPrice;
+                    $regularPrice = $fallbackPrice;
+
+                    $this->line("  ↳ Recovered simple product {$legacyProd->ID} ({$legacyProd->post_title}) price from order history: {$fallbackPrice}");
+                }
+
+                $baseSku = (string) ($meta['_sku'] ?? "simple-{$legacyProd->ID}");
+                $variant = $existingVariantId !== null
+                    ? ProductVariant::query()->find($existingVariantId)
+                    : null;
+
+                if ($variant === null) {
+                    $variant = ProductVariant::query()
+                        ->where('product_id', $productId)
+                        ->where('name', 'Default')
+                        ->first();
+                }
+
+                if ($variant === null && $baseSku !== '') {
+                    $variant = ProductVariant::query()
+                        ->where('sku', $baseSku)
+                        ->first();
+                }
+
+                if ($variant === null) {
+                    $variant = new ProductVariant([
+                        'product_id' => $productId,
+                        'name' => 'Default',
+                    ]);
+                }
+
+                $variant->fill([
+                    'product_id' => $productId,
+                    'name' => 'Default',
+                    'sku' => $this->uniqueVariantSku($baseSku, $variant->exists ? $variant->id : null, $legacyProd->ID),
+                    'option_values' => null,
+                    'price' => $price > 0 ? $price : $regularPrice,
+                    'compare_at_price' => $regularPrice > $price && $price > 0 ? $regularPrice : null,
+                    'stock_quantity' => (int) ($meta['_stock'] ?? 0),
+                    'track_inventory' => ($meta['_manage_stock'] ?? 'no') === 'yes',
+                    'allow_backorder' => ($meta['_backorders'] ?? 'no') === 'yes',
+                    'is_active' => true,
+                    'is_preorder' => $preorderAttributes['is_preorder'],
+                    'preorder_available_from' => $preorderAttributes['preorder_available_from'],
+                    'expected_ship_at' => $preorderAttributes['expected_ship_at'],
+                ]);
+                $variant->save();
+
+                $this->syncLegacyVariantMapping($legacyProd->ID, $variant->id);
+
+                $count++;
+            } catch (\Exception $e) {
+                $this->line("  ⚠ Skipped simple product {$legacyProd->ID} ({$legacyProd->post_title}): {$e->getMessage()}");
+            }
+        }
+
+        $this->info("✓ Imported {$count} simple product default variants.");
     }
 
     private function importVariants(): void
@@ -238,46 +401,91 @@ class ImportLegacyData extends Command
 
         $count = 0;
         foreach ($variants as $legacyVar) {
-            // Get parent product
-            $productMapping = DB::table('import_legacy_products')
-                ->where('legacy_wp_post_id', $legacyVar->post_parent)
-                ->first();
+            $existingVariantId = $this->resolveMappedModelId(
+                'import_legacy_variants',
+                'legacy_wp_post_id',
+                $legacyVar->ID,
+                'product_variant_id',
+                ProductVariant::class,
+            );
 
-            if (! $productMapping) {
+            $productId = $this->resolveMappedModelId(
+                'import_legacy_products',
+                'legacy_wp_post_id',
+                $legacyVar->post_parent,
+                'product_id',
+                Product::class,
+            );
+
+            if ($productId === null) {
                 continue; // Skip orphan variants
             }
 
-            // Get meta
-            $meta = $legacy->table('wp_postmeta')
-                ->where('post_id', $legacyVar->ID)
-                ->pluck('meta_value', 'meta_key')
-                ->toArray();
+            try {
+                // Get meta
+                $meta = $legacy->table('wp_postmeta')
+                    ->where('post_id', $legacyVar->ID)
+                    ->pluck('meta_value', 'meta_key')
+                    ->toArray();
 
-            $sku = $meta['_sku'] ?? "var-{$legacyVar->ID}";
-            $price = (float) ($meta['_regular_price'] ?? $meta['_price'] ?? 0);
-            $salePrice = (float) ($meta['_sale_price'] ?? null);
-            $stock = (int) ($meta['_stock'] ?? 0);
+                $sku = $meta['_sku'] ?? "var-{$legacyVar->ID}";
+                $price = (float) ($meta['_price'] ?? $meta['_regular_price'] ?? 0);
+                $regularPrice = (float) ($meta['_regular_price'] ?? $meta['_price'] ?? 0);
+                $stock = (int) ($meta['_stock'] ?? 0);
+                $variantName = $legacyVar->post_title ?: "Variant {$legacyVar->ID}";
+                $parentMeta = $legacy->table('wp_postmeta')
+                    ->where('post_id', $legacyVar->post_parent)
+                    ->pluck('meta_value', 'meta_key')
+                    ->toArray();
+                $preorderAttributes = $this->legacyPreorderAttributes($meta, $parentMeta);
 
-            $variant = ProductVariant::updateOrCreate(
-                ['sku' => $sku],
-                [
-                    'product_id' => $productMapping->product_id,
-                    'name' => $legacyVar->post_title ?: "Variant {$legacyVar->ID}",
+                $variant = $existingVariantId !== null
+                    ? ProductVariant::query()->find($existingVariantId)
+                    : null;
+
+                if ($variant === null) {
+                    $variant = ProductVariant::query()
+                        ->where('sku', $sku)
+                        ->first();
+                }
+
+                if ($variant === null) {
+                    $variant = ProductVariant::query()
+                        ->where('product_id', $productId)
+                        ->where('name', $variantName)
+                        ->first();
+                }
+
+                if ($variant === null) {
+                    $variant = new ProductVariant([
+                        'product_id' => $productId,
+                        'name' => $variantName,
+                    ]);
+                }
+
+                $variant->fill([
+                    'product_id' => $productId,
+                    'name' => $variantName,
+                    'sku' => $this->uniqueVariantSku((string) $sku, $variant->exists ? $variant->id : null, $legacyVar->ID),
                     'price' => $price,
-                    'compare_at_price' => $salePrice && $salePrice < $price ? $price : null,
+                    'compare_at_price' => $regularPrice > $price && $price > 0 ? $regularPrice : null,
                     'stock_quantity' => $stock,
-                    'track_inventory' => $meta['_manage_stock'] === 'yes',
-                    'allow_backorder' => $meta['_backorders'] === 'yes',
+                    'track_inventory' => ($meta['_manage_stock'] ?? 'no') === 'yes',
+                    'allow_backorder' => ($meta['_backorders'] ?? 'no') === 'yes',
                     'is_active' => true,
-                ]
-            );
+                    'is_preorder' => $preorderAttributes['is_preorder'],
+                    'preorder_available_from' => $preorderAttributes['preorder_available_from'],
+                    'expected_ship_at' => $preorderAttributes['expected_ship_at'],
+                ]);
+                $variant->save();
 
-            DB::table('import_legacy_variants')->updateOrInsert(
-                ['legacy_wp_post_id' => $legacyVar->ID],
-                ['product_variant_id' => $variant->id, 'synced_at' => now()]
-            );
+                $this->syncLegacyVariantMapping($legacyVar->ID, $variant->id);
 
-            $count++;
+                $count++;
+            } catch (\Exception $e) {
+                $this->line("  ⚠ Skipped variant {$legacyVar->ID}: {$e->getMessage()}");
+            }
+
             if ($count % 250 === 0) {
                 $this->line("  ... {$count} variants");
             }
@@ -298,20 +506,35 @@ class ImportLegacyData extends Command
 
         $count = 0;
         foreach ($customers as $legacyCust) {
-            $user = User::updateOrCreate(
-                ['email' => $legacyCust->user_email],
-                [
+            $existingUserId = $this->resolveMappedModelId(
+                'import_legacy_customers',
+                'legacy_wp_user_id',
+                $legacyCust->ID,
+                'user_id',
+                User::class,
+            );
+
+            if ($existingUserId !== null) {
+                $count++;
+
+                continue;
+            }
+
+            try {
+                $user = User::firstOrNew(['email' => $legacyCust->user_email]);
+                $user->fill([
                     'name' => $legacyCust->user_login,
-                    'email_verified_at' => now(),
-                ]
-            );
+                    'password' => $user->exists ? $user->password : bcrypt(Str::random(32)),
+                    'email_verified_at' => $user->email_verified_at ?? now(),
+                ]);
+                $user->save();
 
-            DB::table('import_legacy_customers')->updateOrInsert(
-                ['legacy_wp_user_id' => $legacyCust->ID],
-                ['user_id' => $user->id, 'synced_at' => now()]
-            );
+                $this->syncLegacyCustomerMapping($legacyCust->ID, $user->id);
 
-            $count++;
+                $count++;
+            } catch (\Exception $e) {
+                $this->line("  ⚠ Skipped user {$legacyCust->ID} ({$legacyCust->user_email}): {$e->getMessage()}");
+            }
         }
 
         $this->info("✓ Imported {$count} customers.");
@@ -331,138 +554,359 @@ class ImportLegacyData extends Command
 
         $count = 0;
         foreach ($orders as $legacyOrder) {
-            // Get meta
-            $meta = $legacy->table('wp_postmeta')
-                ->where('post_id', $legacyOrder->ID)
-                ->pluck('meta_value', 'meta_key')
-                ->toArray();
+            $existingOrderId = $this->resolveMappedModelId(
+                'import_legacy_orders',
+                'legacy_wc_order_id',
+                $legacyOrder->ID,
+                'order_id',
+                Order::class,
+            );
 
-            // Map status
-            $statusMap = [
-                'wc-completed' => 'completed',
-                'wc-processing' => 'processing',
-                'wc-on-hold' => 'on-hold',
-                'wc-pending' => 'pending',
-                'wc-cancelled' => 'cancelled',
-                'wc-refunded' => 'refunded',
-                'wc-failed' => 'failed',
-                'wc-pre-ordered' => 'pre-ordered',
-            ];
-            $status = $statusMap[$legacyOrder->post_status] ?? 'pending';
+            if ($existingOrderId !== null) {
+                $count++;
 
-            // Find customer
-            $userId = null;
-            if ($legacyOrder->post_author > 0) {
-                $cusMapping = DB::table('import_legacy_customers')
-                    ->where('legacy_wp_user_id', $legacyOrder->post_author)
-                    ->first();
-                if ($cusMapping) {
-                    $userId = $cusMapping->user_id;
-                }
+                continue;
             }
 
-            $order = Order::create([
-                'order_number' => "WC-{$legacyOrder->ID}",
-                'status' => $status,
-                'email' => $meta['_billing_email'] ?? '',
-                'first_name' => $meta['_shipping_first_name'] ?? $meta['_billing_first_name'] ?? '',
-                'last_name' => $meta['_shipping_last_name'] ?? $meta['_billing_last_name'] ?? '',
-                'phone' => $meta['_billing_phone'] ?? null,
-                'country' => $meta['_shipping_country'] ?? $meta['_billing_country'] ?? 'DE',
-                'state' => $meta['_shipping_state'] ?? $meta['_billing_state'] ?? null,
-                'city' => $meta['_shipping_city'] ?? $meta['_billing_city'] ?? '',
-                'postal_code' => $meta['_shipping_postcode'] ?? $meta['_billing_postcode'] ?? '',
-                'street_name' => $meta['_shipping_address_1'] ?? $meta['_billing_address_1'] ?? '',
-                'street_number' => $meta['_shipping_address_2'] ?? $meta['_billing_address_2'] ?? null,
-                'apartment_block' => null,
-                'entrance' => null,
-                'floor' => null,
-                'apartment_number' => null,
-                'currency' => 'EUR',
-                'subtotal' => (float) ($meta['_order_total'] ?? 0),
-                'total' => (float) ($meta['_order_total'] ?? 0),
-                'shipping_total' => (float) ($meta['_order_shipping'] ?? 0),
-                'tax_total' => (float) ($meta['_order_tax'] ?? 0),
-                'discount_total' => (float) ($meta['_cart_discount'] ?? 0),
-                'payment_method' => $meta['_payment_method'] ?? 'manual',
-                'payment_status' => 'completed',
-                'coupon_code' => null,
-                'placed_at' => $legacyOrder->post_date,
-                'billing_first_name' => $meta['_billing_first_name'] ?? null,
-                'billing_last_name' => $meta['_billing_last_name'] ?? null,
-                'billing_country' => $meta['_billing_country'] ?? null,
-                'billing_state' => $meta['_billing_state'] ?? null,
-                'billing_city' => $meta['_billing_city'] ?? null,
-                'billing_postal_code' => $meta['_billing_postcode'] ?? null,
-                'billing_street_name' => $meta['_billing_address_1'] ?? null,
-                'billing_street_number' => $meta['_billing_address_2'] ?? null,
-                'billing_apartment_block' => null,
-                'billing_entrance' => null,
-                'billing_floor' => null,
-                'billing_apartment_number' => null,
-            ]);
-
-            // Import order items
-            $items = $legacy->table('wp_woocommerce_order_items')
-                ->where('order_id', $legacyOrder->ID)
-                ->where('order_item_type', 'line_item')
-                ->select('order_item_id', 'order_item_name')
-                ->get();
-
-            foreach ($items as $item) {
-                $itemMeta = $legacy->table('wp_woocommerce_order_itemmeta')
-                    ->where('order_item_id', $item->order_item_id)
+            try {
+                // Get meta
+                $meta = $legacy->table('wp_postmeta')
+                    ->where('post_id', $legacyOrder->ID)
                     ->pluck('meta_value', 'meta_key')
                     ->toArray();
 
-                $productId = $itemMeta['_product_id'] ?? null;
-                $variantId = $itemMeta['_variation_id'] ?? null;
+                // Map status
+                $statusMap = [
+                    'wc-completed' => 'completed',
+                    'wc-processing' => 'processing',
+                    'wc-on-hold' => 'on-hold',
+                    'wc-pending' => 'pending',
+                    'wc-cancelled' => 'cancelled',
+                    'wc-refunded' => 'refunded',
+                    'wc-failed' => 'failed',
+                    'wc-pre-ordered' => 'pre-ordered',
+                ];
+                $status = $statusMap[$legacyOrder->post_status] ?? 'pending';
 
-                $newProductId = null;
-                $newVariantId = null;
-
-                if ($variantId) {
-                    $varMapping = DB::table('import_legacy_variants')
-                        ->where('legacy_wp_post_id', $variantId)
+                // Find customer
+                $userId = null;
+                if ($legacyOrder->post_author > 0) {
+                    $cusMapping = DB::table('import_legacy_customers')
+                        ->where('legacy_wp_user_id', $legacyOrder->post_author)
                         ->first();
-                    if ($varMapping) {
-                        $newVariantId = $varMapping->product_variant_id;
-                        $variant = ProductVariant::find($newVariantId);
-                        $newProductId = $variant->product_id ?? null;
-                    }
-                } elseif ($productId) {
-                    $prodMapping = DB::table('import_legacy_products')
-                        ->where('legacy_wp_post_id', $productId)
-                        ->first();
-                    if ($prodMapping) {
-                        $newProductId = $prodMapping->product_id;
+                    if ($cusMapping) {
+                        $userId = $cusMapping->user_id;
                     }
                 }
 
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $newProductId,
-                    'product_variant_id' => $newVariantId,
-                    'product_name' => $item->order_item_name,
-                    'variant_name' => $itemMeta['_variation_title'] ?? null,
-                    'sku' => $itemMeta['_sku'] ?? 'LEGACY-ITEM',
-                    'unit_price' => (float) ($itemMeta['_line_subtotal'] ?? 0),
-                    'quantity' => (int) ($itemMeta['_qty'] ?? 1),
-                    'line_total' => (float) ($itemMeta['_line_total'] ?? 0),
+                $order = Order::firstOrNew([
+                    'order_number' => "WC-{$legacyOrder->ID}",
                 ]);
-            }
+                $order->fill([
+                    'status' => $status,
+                    'email' => $meta['_billing_email'] ?? '',
+                    'first_name' => $meta['_shipping_first_name'] ?? $meta['_billing_first_name'] ?? '',
+                    'last_name' => $meta['_shipping_last_name'] ?? $meta['_billing_last_name'] ?? '',
+                    'phone' => $meta['_billing_phone'] ?? null,
+                    'country' => $meta['_shipping_country'] ?? $meta['_billing_country'] ?? 'DE',
+                    'state' => $meta['_shipping_state'] ?? $meta['_billing_state'] ?? '',
+                    'city' => $meta['_shipping_city'] ?? $meta['_billing_city'] ?? '',
+                    'postal_code' => $meta['_shipping_postcode'] ?? $meta['_billing_postcode'] ?? '',
+                    'street_name' => $meta['_shipping_address_1'] ?? $meta['_billing_address_1'] ?? '',
+                    'street_number' => $meta['_shipping_address_2'] ?? $meta['_billing_address_2'] ?? '',
+                    'apartment_block' => null,
+                    'entrance' => null,
+                    'floor' => null,
+                    'apartment_number' => null,
+                    'currency' => 'EUR',
+                    'subtotal' => (float) ($meta['_order_total'] ?? 0),
+                    'total' => (float) ($meta['_order_total'] ?? 0),
+                    'shipping_total' => (float) ($meta['_order_shipping'] ?? 0),
+                    'tax_total' => (float) ($meta['_order_tax'] ?? 0),
+                    'discount_total' => (float) ($meta['_cart_discount'] ?? 0),
+                    'payment_method' => $meta['_payment_method'] ?? 'manual',
+                    'payment_status' => 'completed',
+                    'coupon_code' => null,
+                    'placed_at' => $legacyOrder->post_date,
+                    'billing_first_name' => $meta['_billing_first_name'] ?? null,
+                    'billing_last_name' => $meta['_billing_last_name'] ?? null,
+                    'billing_country' => $meta['_billing_country'] ?? null,
+                    'billing_state' => $meta['_billing_state'] ?? null,
+                    'billing_city' => $meta['_billing_city'] ?? null,
+                    'billing_postal_code' => $meta['_billing_postcode'] ?? null,
+                    'billing_street_name' => $meta['_billing_address_1'] ?? null,
+                    'billing_street_number' => $meta['_billing_address_2'] ?? null,
+                    'billing_apartment_block' => null,
+                    'billing_entrance' => null,
+                    'billing_floor' => null,
+                    'billing_apartment_number' => null,
+                ]);
+                $order->save();
 
-            DB::table('import_legacy_orders')->updateOrInsert(
-                ['legacy_wc_order_id' => $legacyOrder->ID],
-                ['order_id' => $order->id, 'synced_at' => now()]
-            );
+                // Import order items
+                if (! $order->wasRecentlyCreated && DB::table('import_legacy_orders')->where('legacy_wc_order_id', $legacyOrder->ID)->exists()) {
+                    $count++;
 
-            $count++;
-            if ($count % 500 === 0) {
-                $this->line("  ... {$count} orders");
+                    continue;
+                }
+
+                if ($order->wasRecentlyCreated) {
+                    $items = $legacy->table('wp_woocommerce_order_items')
+                        ->where('order_id', $legacyOrder->ID)
+                        ->where('order_item_type', 'line_item')
+                        ->select('order_item_id', 'order_item_name')
+                        ->get();
+
+                    foreach ($items as $item) {
+                        $itemMeta = $legacy->table('wp_woocommerce_order_itemmeta')
+                            ->where('order_item_id', $item->order_item_id)
+                            ->pluck('meta_value', 'meta_key')
+                            ->toArray();
+
+                        $productId = $itemMeta['_product_id'] ?? null;
+                        $variantId = $itemMeta['_variation_id'] ?? null;
+
+                        $newProductId = null;
+                        $newVariantId = null;
+
+                        if ($variantId) {
+                            $mappedVariantId = $this->resolveMappedModelId(
+                                'import_legacy_variants',
+                                'legacy_wp_post_id',
+                                (int) $variantId,
+                                'product_variant_id',
+                                ProductVariant::class,
+                            );
+
+                            if ($mappedVariantId !== null) {
+                                $newVariantId = $mappedVariantId;
+                                $variant = ProductVariant::find($mappedVariantId);
+                                $newProductId = $variant?->product_id;
+                            }
+                        } elseif ($productId) {
+                            $newProductId = $this->resolveMappedModelId(
+                                'import_legacy_products',
+                                'legacy_wp_post_id',
+                                (int) $productId,
+                                'product_id',
+                                Product::class,
+                            );
+                        }
+
+                        OrderItem::create([
+                            'order_id' => $order->id,
+                            'product_id' => $newProductId,
+                            'product_variant_id' => $newVariantId,
+                            'product_name' => $item->order_item_name,
+                            'variant_name' => $itemMeta['_variation_title'] ?? null,
+                            'sku' => $itemMeta['_sku'] ?? 'LEGACY-ITEM',
+                            'unit_price' => (float) ($itemMeta['_line_subtotal'] ?? 0),
+                            'quantity' => (int) ($itemMeta['_qty'] ?? 1),
+                            'line_total' => (float) ($itemMeta['_line_total'] ?? 0),
+                        ]);
+                    }
+                }
+
+                $this->syncLegacyOrderMapping($legacyOrder->ID, $order->id);
+
+                $count++;
+                if ($count % 500 === 0) {
+                    $this->line("  ... {$count} orders");
+                }
+            } catch (\Exception $e) {
+                $this->warn("  ⚠ Failed to import order {$legacyOrder->ID}: {$e->getMessage()}");
+
+                continue;
             }
         }
 
         $this->info("✓ Imported {$count} orders.");
+    }
+
+    /**
+     * @param  class-string<Model>  $modelClass
+     */
+    private function resolveMappedModelId(string $mappingTable, string $legacyColumn, int $legacyId, string $mappedColumn, string $modelClass): ?int
+    {
+        $mapping = DB::table($mappingTable)
+            ->where($legacyColumn, $legacyId)
+            ->first();
+
+        if ($mapping === null) {
+            return null;
+        }
+
+        $mappedId = (int) $mapping->{$mappedColumn};
+
+        return $modelClass::query()->whereKey($mappedId)->exists() ? $mappedId : null;
+    }
+
+    private function syncLegacyProductMapping(int $legacyPostId, int $productId): void
+    {
+        DB::table('import_legacy_products')->updateOrInsert(
+            ['legacy_wp_post_id' => $legacyPostId],
+            ['product_id' => $productId, 'synced_at' => now()]
+        );
+    }
+
+    private function syncLegacyVariantMapping(int $legacyPostId, int $variantId): void
+    {
+        DB::table('import_legacy_variants')->updateOrInsert(
+            ['legacy_wp_post_id' => $legacyPostId],
+            ['product_variant_id' => $variantId, 'synced_at' => now()]
+        );
+    }
+
+    private function syncLegacyCustomerMapping(int $legacyUserId, int $userId): void
+    {
+        DB::table('import_legacy_customers')->updateOrInsert(
+            ['legacy_wp_user_id' => $legacyUserId],
+            ['user_id' => $userId, 'synced_at' => now()]
+        );
+    }
+
+    private function syncLegacyOrderMapping(int $legacyOrderId, int $orderId): void
+    {
+        DB::table('import_legacy_orders')->updateOrInsert(
+            ['legacy_wc_order_id' => $legacyOrderId],
+            ['order_id' => $orderId, 'synced_at' => now()]
+        );
+    }
+
+    private function uniqueVariantSku(string $baseSku, ?int $ignoreVariantId = null, ?int $legacyId = null): string
+    {
+        $baseSku = $baseSku !== '' ? $baseSku : 'legacy-variant';
+        $candidate = $baseSku;
+        $attempt = 0;
+
+        while (
+            ProductVariant::query()
+                ->where('sku', $candidate)
+                ->when($ignoreVariantId !== null, fn ($query) => $query->whereKeyNot($ignoreVariantId))
+                ->exists()
+        ) {
+            $attempt++;
+            $suffix = $legacyId !== null ? (string) $legacyId : (string) $attempt;
+            $candidate = $attempt === 1 ? "{$baseSku}-{$suffix}" : "{$baseSku}-{$suffix}-{$attempt}";
+        }
+
+        return $candidate;
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     * @param  array<string, mixed>|null  $fallbackMeta
+     * @return array{is_preorder: bool, preorder_available_from: ?Carbon, expected_ship_at: ?Carbon}
+     */
+    private function legacyPreorderAttributes(array $meta, ?array $fallbackMeta = null): array
+    {
+        $preorderDate = $this->parseLegacyPreorderDate(
+            $meta['_pre_order_date'] ?? $fallbackMeta['_pre_order_date'] ?? null,
+        );
+
+        if ($preorderDate === null || $preorderDate->endOfDay()->isPast()) {
+            return [
+                'is_preorder' => false,
+                'preorder_available_from' => null,
+                'expected_ship_at' => null,
+            ];
+        }
+
+        return [
+            'is_preorder' => true,
+            'preorder_available_from' => $preorderDate->startOfDay(),
+            'expected_ship_at' => null,
+        ];
+    }
+
+    private function parseLegacyPreorderDate(mixed $value): ?Carbon
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function resolveLegacySimpleProductFallbackPrice($legacyConnection, int $legacyProductId): ?float
+    {
+        $rows = $legacyConnection->table('wp_woocommerce_order_itemmeta as product_meta')
+            ->join('wp_woocommerce_order_items as items', 'items.order_item_id', '=', 'product_meta.order_item_id')
+            ->join('wp_posts as orders', 'orders.ID', '=', 'items.order_id')
+            ->leftJoin('wp_woocommerce_order_itemmeta as qty_meta', function ($join) {
+                $join->on('qty_meta.order_item_id', '=', 'items.order_item_id')
+                    ->where('qty_meta.meta_key', '_qty');
+            })
+            ->leftJoin('wp_woocommerce_order_itemmeta as subtotal_meta', function ($join) {
+                $join->on('subtotal_meta.order_item_id', '=', 'items.order_item_id')
+                    ->where('subtotal_meta.meta_key', '_line_subtotal');
+            })
+            ->leftJoin('wp_woocommerce_order_itemmeta as total_meta', function ($join) {
+                $join->on('total_meta.order_item_id', '=', 'items.order_item_id')
+                    ->where('total_meta.meta_key', '_line_total');
+            })
+            ->where('product_meta.meta_key', '_product_id')
+            ->where('product_meta.meta_value', (string) $legacyProductId)
+            ->where('items.order_item_type', 'line_item')
+            ->whereIn('orders.post_status', ['wc-completed', 'wc-processing', 'wc-on-hold', 'wc-pending', 'wc-pre-ordered'])
+            ->orderByDesc('orders.post_date')
+            ->orderByDesc('items.order_item_id')
+            ->select('qty_meta.meta_value as qty', 'subtotal_meta.meta_value as subtotal', 'total_meta.meta_value as total')
+            ->limit(50)
+            ->get();
+
+        foreach ($rows as $row) {
+            $qty = (float) ($row->qty ?? 0);
+
+            if ($qty <= 0) {
+                continue;
+            }
+
+            $subtotal = (float) ($row->subtotal ?? 0);
+            if ($subtotal > 0) {
+                return round($subtotal / $qty, 2);
+            }
+
+            $total = (float) ($row->total ?? 0);
+            if ($total > 0) {
+                return round($total / $qty, 2);
+            }
+        }
+
+        return null;
+    }
+
+    private function resolveImportedProductName(string $legacyName, Product $product, int $legacyId): string
+    {
+        $conflictExists = Product::query()
+            ->where('name', $legacyName)
+            ->whereKeyNot($product->id)
+            ->exists();
+
+        if (! $conflictExists) {
+            return $legacyName;
+        }
+
+        if ($product->exists && $product->name !== '') {
+            return $product->name;
+        }
+
+        $fallbackName = "{$legacyName} (Legacy {$legacyId})";
+        $suffix = 1;
+
+        while (
+            Product::query()
+                ->where('name', $fallbackName)
+                ->exists()
+        ) {
+            $suffix++;
+            $fallbackName = "{$legacyName} (Legacy {$legacyId}-{$suffix})";
+        }
+
+        return $fallbackName;
     }
 }

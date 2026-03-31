@@ -14,6 +14,7 @@
             <meta property="og:image" content="{{ $seo['og_image'] }}">
         @endif
         @php
+            $formatAvailabilityDate = static fn ($value) => $value?->format('j. F Y');
             $jsonLdImage = $product->media->first() ? route('media.show', ['path' => $product->media->first()->path]) : null;
             $jsonLdOffers = $product->variants
                 ->where('is_active', true)
@@ -22,9 +23,9 @@
                     'priceCurrency' => 'EUR',
                     'price' => number_format((float) $variant->price, 2, '.', ''),
                     'sku' => $variant->sku,
-                    'availability' => $variant->stock_quantity > 0
-                        ? 'https://schema.org/InStock'
-                        : (($variant->allow_backorder || $variant->is_preorder) ? 'https://schema.org/PreOrder' : 'https://schema.org/OutOfStock'),
+                    'availability' => $variant->is_preorder || $variant->allow_backorder
+                        ? 'https://schema.org/PreOrder'
+                        : ($variant->stock_quantity > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock'),
                     'url' => route('shop.show', $product),
                 ])
                 ->values();
@@ -189,13 +190,13 @@
 
                 <section class="rounded border border-slate-200 bg-white p-5">
                     <p class="text-sm text-slate-500">Category: {{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>
-                    @if ($product->excerpt)
-                        <p class="mt-3 text-slate-700">{{ $product->excerpt }}</p>
+                    @if ($product->formattedExcerpt() !== '')
+                        <div class="mt-3 text-slate-700">{!! $product->formattedExcerpt() !!}</div>
                     @endif
 
-                    @if ($product->description)
+                    @if ($product->formattedDescription() !== '')
                         <div class="mt-4 text-sm leading-6 text-slate-700">
-                            {!! nl2br(e($product->description)) !!}
+                            {!! $product->formattedDescription() !!}
                         </div>
                     @endif
 
@@ -206,9 +207,15 @@
                         @else
                             @php
                                 $defaultVariant = $variantsWithStockState->first();
-                                $defaultStockStatus = $defaultVariant->stock_quantity > 0
-                                    ? 'In stock'
-                                    : (($defaultVariant->allow_backorder || $defaultVariant->is_preorder) ? 'Preorder' : 'Out of stock');
+                                $defaultStockStatus = $defaultVariant->is_preorder || $defaultVariant->allow_backorder
+                                    ? 'Preorder'
+                                    : ($defaultVariant->stock_quantity > 0 ? 'In stock' : 'Out of stock');
+                                $defaultAvailabilityDate = $formatAvailabilityDate(
+                                    $defaultVariant->preorder_available_from
+                                    ?? $defaultVariant->expected_ship_at
+                                    ?? $product->preorder_available_from
+                                    ?? $product->expected_ship_at
+                                );
                             @endphp
 
                             <div
@@ -216,33 +223,40 @@
                                 data-product-variant-picker
                                 data-gallery-filter-id="media-variant-filter"
                             >
-                                <label for="shop-variant-select" class="mb-1 block text-sm font-medium text-slate-700">Choose variant</label>
-                                <select id="shop-variant-select" data-variant-select class="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm">
-                                    @foreach ($variantsWithStockState as $variant)
-                                        @php
-                                            $stockStatus = $variant->stock_quantity > 0
-                                                ? 'In stock'
-                                                : (($variant->allow_backorder || $variant->is_preorder) ? 'Preorder' : 'Out of stock');
-                                        @endphp
-                                        <option
-                                            value="{{ $variant->id }}"
-                                            data-variant-price="{{ number_format((float) $variant->price, 2) }}"
-                                            data-variant-sku="{{ $variant->sku }}"
-                                            data-variant-status="{{ $stockStatus }}"
-                                            data-variant-qty="{{ $variant->stock_quantity }}"
-                                            data-variant-out-of-stock="{{ $variant->is_out_of_stock ? '1' : '0' }}"
-                                            data-variant-stock-alert-subscribed="{{ in_array($variant->id, $activeStockAlertVariantIds, true) ? '1' : '0' }}"
-                                        >
-                                            {{ $variant->name }} ({{ $variant->sku }})
-                                        </option>
-                                    @endforeach
-                                </select>
+                                @if ($variantsWithStockState->count() > 1)
+                                    <label for="shop-variant-select" class="mb-1 block text-sm font-medium text-slate-700">Choose variant</label>
+                                    <select id="shop-variant-select" data-variant-select class="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm">
+                                        @foreach ($variantsWithStockState as $variant)
+                                            @php
+                                                $stockStatus = $variant->stock_quantity > 0
+                                                    ? 'In stock'
+                                                    : (($variant->allow_backorder || $variant->is_preorder) ? 'Preorder' : 'Out of stock');
+                                            @endphp
+                                            <option
+                                                value="{{ $variant->id }}"
+                                                data-variant-price="{{ number_format((float) $variant->price, 2) }}"
+                                                data-variant-sku="{{ $variant->sku }}"
+                                                data-variant-status="{{ $stockStatus }}"
+                                                data-variant-qty="{{ $variant->stock_quantity }}"
+                                                data-variant-availability="{{ $formatAvailabilityDate($variant->preorder_available_from ?? $variant->expected_ship_at ?? $product->preorder_available_from ?? $product->expected_ship_at) ?? '' }}"
+                                                data-variant-out-of-stock="{{ $variant->is_out_of_stock ? '1' : '0' }}"
+                                                data-variant-stock-alert-subscribed="{{ in_array($variant->id, $activeStockAlertVariantIds, true) ? '1' : '0' }}"
+                                            >
+                                                {{ $variant->name }} ({{ $variant->sku }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                @endif
 
                                 <div class="mt-3 grid gap-2 text-sm sm:grid-cols-2" data-variant-panel>
                                     <p><span class="font-medium text-slate-700">Price:</span> $<span data-variant-price>{{ number_format((float) $defaultVariant->price, 2) }}</span></p>
                                     <p><span class="font-medium text-slate-700">SKU:</span> <span data-variant-sku>{{ $defaultVariant->sku }}</span></p>
                                     <p><span class="font-medium text-slate-700">Status:</span> <span data-variant-status>{{ $defaultStockStatus }}</span></p>
                                     <p><span class="font-medium text-slate-700">Qty:</span> <span data-variant-qty>{{ $defaultVariant->stock_quantity }}</span></p>
+                                    <p class="{{ $defaultStockStatus === 'Preorder' && $defaultAvailabilityDate ? '' : 'hidden' }} sm:col-span-2" data-variant-availability-line>
+                                        <span class="font-medium text-slate-700">Available on:</span>
+                                        <span data-variant-availability>{{ $defaultAvailabilityDate }}</span>
+                                    </p>
                                 </div>
 
                                 <form method="POST" action="{{ route('cart.items.store') }}" class="mt-4 flex flex-wrap items-end gap-3">
@@ -298,6 +312,7 @@
                                 @endauth
                             </div>
 
+                            @if ($variantsWithStockState->count() > 1)
                             <div class="mt-3 overflow-x-auto">
                                 <table class="min-w-full border border-slate-200 text-sm">
                                     <thead class="bg-slate-50">
@@ -311,9 +326,15 @@
                                     <tbody>
                                         @foreach ($variantsWithStockState as $variant)
                                             @php
-                                                $stockStatus = $variant->stock_quantity > 0
-                                                    ? 'In stock'
-                                                    : ($variant->allow_backorder || $variant->is_preorder ? 'Preorder' : 'Out of stock');
+                                                $stockStatus = $variant->is_preorder || $variant->allow_backorder
+                                                    ? 'Preorder'
+                                                    : ($variant->stock_quantity > 0 ? 'In stock' : 'Out of stock');
+                                                $availabilityDate = $formatAvailabilityDate(
+                                                    $variant->preorder_available_from
+                                                    ?? $variant->expected_ship_at
+                                                    ?? $product->preorder_available_from
+                                                    ?? $product->expected_ship_at
+                                                );
                                             @endphp
                                             <tr>
                                                 <td class="border border-slate-200 px-3 py-2">{{ $variant->name }}</td>
@@ -324,12 +345,16 @@
                                                         {{ $stockStatus }}
                                                     </span>
                                                     <div class="mt-1 text-xs text-slate-500">Qty: {{ $variant->stock_quantity }}</div>
+                                                    @if ($stockStatus === 'Preorder' && $availabilityDate)
+                                                        <div class="mt-1 text-xs text-slate-500">Available on {{ $availabilityDate }}</div>
+                                                    @endif
                                                 </td>
                                             </tr>
                                         @endforeach
                                     </tbody>
                                 </table>
                             </div>
+                            @endif
                         @endif
                     </div>
                 </section>

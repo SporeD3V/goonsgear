@@ -52,6 +52,7 @@ jobs:
             --exclude="tests" \
             --exclude="deploy" \
             --exclude=".env" \
+            --exclude="bootstrap/cache/*.php" \
             --exclude="storage/logs/*" \
             --exclude="storage/framework/sessions/*" \
             --exclude="storage/framework/cache/data/*" \
@@ -73,6 +74,20 @@ jobs:
 
       # Deploy via SCP over SSH. The SSH user (spored3v) writes to the
       # site owner's directory (macaw-goonsgear) via REMOTE_PATH.
+      - name: Prepare staging cache directories
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          password: ${{ secrets.SSH_PASSPHRASE }}
+          script_stop: true
+          script: |
+            set -eu
+            mkdir -p '${{ secrets.REMOTE_PATH }}/bootstrap/cache' '${{ secrets.REMOTE_PATH }}/storage'
+            find '${{ secrets.REMOTE_PATH }}/bootstrap/cache' -maxdepth 1 -type f -name '*.php' -delete || true
+            chmod -R ug+rwX '${{ secrets.REMOTE_PATH }}/storage' '${{ secrets.REMOTE_PATH }}/bootstrap/cache' || true
+
       - name: Deploy to staging via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -131,12 +146,13 @@ jobs:
             echo "All migrations applied successfully."
 
             echo "--- Clearing caches ---"
-            php artisan config:clear --no-interaction
-            php artisan route:clear --no-interaction
-            php artisan view:clear --no-interaction
+            php artisan optimize:clear --no-interaction
 
             echo "--- Storage link ---"
             php artisan storage:link --force --no-interaction 2>/dev/null || true
+
+            echo "--- Rebuilding caches ---"
+            php artisan optimize --no-interaction
 
             echo ""
             echo "=== Deploy OK ==="
