@@ -43,6 +43,16 @@ class ProductMedia extends Model
 
     public function getThumbnailPath(): string
     {
+        return $this->getVariantPath('thumbnail');
+    }
+
+    public function getGalleryPath(): string
+    {
+        return $this->getVariantPath('gallery');
+    }
+
+    private function getVariantPath(string $variant): string
+    {
         $pathInfo = pathinfo($this->path);
         $dirname = $pathInfo['dirname'];
         $filename = $pathInfo['filename'];
@@ -55,7 +65,14 @@ class ProductMedia extends Model
             }
         }
 
-        return $dirname.'/'.$filename.'-thumbnail-200x200.'.$extension;
+        $variantSuffix = match ($variant) {
+            'thumbnail' => '-thumbnail-200x200',
+            'gallery' => '-gallery-600x600',
+            'hero' => '-hero-1200x600',
+            default => '',
+        };
+
+        return $dirname.'/'.$filename.$variantSuffix.'.'.$extension;
     }
 
     public function product(): BelongsTo

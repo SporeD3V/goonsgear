@@ -144,8 +144,8 @@
                         @php
                             $primaryMedia = $product->media->first();
                             $secondaryMedia = $product->media->skip(1)->first();
-                            $mediaUrl = $primaryMedia ? route('media.show', ['path' => $primaryMedia->getThumbnailPath()]) : null;
-                            $secondaryMediaUrl = $secondaryMedia ? route('media.show', ['path' => $secondaryMedia->getThumbnailPath()]) : null;
+                            $mediaUrl = $primaryMedia ? route('media.show', ['path' => $primaryMedia->getGalleryPath()]) : null;
+                            $secondaryMediaUrl = $secondaryMedia ? route('media.show', ['path' => $secondaryMedia->getGalleryPath()]) : null;
                             $startingPrice = $product->min_active_variant_price;
                         @endphp
 
