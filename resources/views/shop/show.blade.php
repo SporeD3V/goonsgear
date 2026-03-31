@@ -313,10 +313,14 @@
                                 $hasMultipleTypes = ($sizeVariants->isNotEmpty() ? 1 : 0) + ($colorVariants->isNotEmpty() ? 1 : 0) + ($customVariants->isNotEmpty() ? 1 : 0) > 1;
                             @endphp
 
+                            @if ($variantsWithStockState->count() > 1)
                             <div
                                 class="mt-3 rounded border border-slate-200 bg-slate-50 p-3"
                                 data-product-variant-picker
                                 data-gallery-filter-id="media-variant-filter"
+                                @if ($comboSizes->isNotEmpty() && $comboColors->isNotEmpty())
+                                data-combo-matrix="{{ json_encode($comboMatrix) }}"
+                                @endif
                             >
                                 @if ($sizeVariants->isNotEmpty())
                                     <div class="mb-3">
@@ -415,7 +419,10 @@
                                     </div>
                                 @endif
 
-                                <div class="mt-3 grid gap-2 text-sm sm:grid-cols-2" data-variant-panel>
+                            </div>
+                            @endif
+
+                            <div class="mt-3 grid gap-2 text-sm sm:grid-cols-2" data-variant-panel>
                                     <p><span class="font-medium text-slate-700">Price:</span> $<span data-variant-price>{{ number_format((float) $defaultVariant->price, 2) }}</span></p>
                                     <p><span class="font-medium text-slate-700">SKU:</span> <span data-variant-sku>{{ $defaultVariant->sku }}</span></p>
                                     <p><span class="font-medium text-slate-700">Status:</span> <span data-variant-status>{{ $defaultStockStatus }}</span></p>
@@ -484,5 +491,105 @@
                 </section>
             </div>
         </div>
+
+        @if ($variantsWithStockState->count() > 1 && $comboSizes->isNotEmpty() && $comboColors->isNotEmpty())
+        <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const picker = document.querySelector('[data-product-variant-picker]');
+            if (!picker) return;
+
+            const comboMatrixData = picker.dataset.comboMatrix;
+            if (!comboMatrixData) return;
+
+            const comboMatrix = JSON.parse(comboMatrixData);
+            let selectedSize = null;
+            let selectedColor = null;
+
+            // Size button handlers
+            const sizeButtons = picker.querySelectorAll('[data-size-select]');
+            sizeButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    selectedSize = btn.dataset.sizeSelect;
+                    
+                    // Update button states
+                    sizeButtons.forEach(b => {
+                        b.classList.remove('border-slate-800', 'bg-slate-800', 'text-white');
+                        b.classList.add('border-slate-400', 'bg-white');
+                    });
+                    btn.classList.remove('border-slate-400', 'bg-white');
+                    btn.classList.add('border-slate-800', 'bg-slate-800', 'text-white');
+                    
+                    updateVariant();
+                });
+            });
+
+            // Color button handlers
+            const colorButtons = picker.querySelectorAll('[data-color-select]');
+            colorButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    selectedColor = btn.dataset.colorSelect;
+                    
+                    // Update button states
+                    colorButtons.forEach(b => b.classList.remove('border-slate-800'));
+                    btn.classList.add('border-slate-800');
+                    
+                    updateVariant();
+                    
+                    // Filter gallery by color
+                    const variantId = comboMatrix[selectedSize + '|' + selectedColor]?.id;
+                    if (variantId) {
+                        filterGalleryByVariant(variantId);
+                    }
+                });
+            });
+
+            function updateVariant() {
+                if (!selectedSize || !selectedColor) return;
+
+                const key = selectedSize + '|' + selectedColor;
+                const variant = comboMatrix[key];
+
+                if (!variant) return;
+
+                // Update variant panel
+                document.querySelector('[data-variant-price]').textContent = parseFloat(variant.price).toFixed(2);
+                document.querySelector('[data-variant-sku]').textContent = variant.sku;
+                document.querySelector('[data-variant-qty]').textContent = variant.stock_quantity;
+                
+                const stockStatus = variant.stock_quantity > 0 ? 'In stock' : 
+                                  (variant.allow_backorder || variant.is_preorder ? 'Preorder' : 'Out of stock');
+                document.querySelector('[data-variant-status]').textContent = stockStatus;
+
+                // Update cart form
+                const cartInput = document.querySelector('[data-cart-variant-input]');
+                if (cartInput) {
+                    cartInput.value = variant.id;
+                }
+
+                // Update availability date if preorder
+                const availabilityLine = document.querySelector('[data-variant-availability-line]');
+                const availabilitySpan = document.querySelector('[data-variant-availability]');
+                if (stockStatus === 'Preorder' && variant.availability) {
+                    availabilitySpan.textContent = variant.availability;
+                    availabilityLine.classList.remove('hidden');
+                } else {
+                    availabilityLine.classList.add('hidden');
+                }
+            }
+
+            function filterGalleryByVariant(variantId) {
+                const thumbs = document.querySelectorAll('[data-media-thumb]');
+                thumbs.forEach(thumb => {
+                    const mediaVariantId = thumb.dataset.mediaVariantId;
+                    if (!mediaVariantId || mediaVariantId == variantId) {
+                        thumb.style.display = '';
+                    } else {
+                        thumb.style.display = 'none';
+                    }
+                });
+            }
+        });
+        </script>
+        @endif
     </body>
 </html>
