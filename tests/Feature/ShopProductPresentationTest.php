@@ -253,4 +253,38 @@ class ShopProductPresentationTest extends TestCase
         $response->assertOk();
         $response->assertSee('$<span data-variant-price>39.99 - 59.99</span>', false);
     }
+
+    public function test_shop_show_extracts_color_from_prefixed_color_variant_names(): void
+    {
+        $product = Product::factory()->create([
+            'name' => 'Sean P! Socks',
+            'slug' => 'sean-p-socks-test',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Sean P! Socks - Black',
+            'sku' => 'SEAN-BLK',
+            'price' => 19.99,
+            'option_values' => null,
+            'variant_type' => 'color',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Sean P! Socks - White',
+            'sku' => 'SEAN-WHT',
+            'price' => 19.99,
+            'option_values' => null,
+            'variant_type' => 'color',
+        ]);
+
+        $response = $this->get(route('shop.show', $product));
+
+        $response->assertOk();
+        $response->assertSee('data-variant-attribute="color"', false);
+        $response->assertSee('data-variant-attribute-value="Black"', false);
+        $response->assertSee('data-variant-attribute-value="White"', false);
+        $response->assertDontSee('data-variant-attribute="color_2"', false);
+    }
 }

@@ -252,14 +252,6 @@ class ShopController extends Controller
             return 'option_'.($index + 1);
         }
 
-        if ($variantType === 'size' && $index === 0) {
-            return 'size';
-        }
-
-        if ($variantType === 'color' && $index === 0) {
-            return 'color';
-        }
-
         return match (ProductVariant::detectTypeFromName($trimmedValue)) {
             'size' => 'size',
             'color' => 'color',
