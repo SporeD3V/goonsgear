@@ -23,20 +23,20 @@ class AssignVariantTypes extends Command
     public function handle(): int
     {
         $dryRun = $this->option('dry-run');
-        
+
         if ($dryRun) {
             $this->warn('DRY RUN MODE - No changes will be saved');
         }
 
         $variants = ProductVariant::with('product.primaryCategory')->get();
         $this->info("Processing {$variants->count()} variants...");
-        
+
         $uncertain = [];
         $progressBar = $this->output->createProgressBar($variants->count());
 
         foreach ($variants as $variant) {
             $type = $this->detectVariantType($variant);
-            
+
             if ($type === 'uncertain') {
                 $uncertain[] = [
                     'id' => $variant->id,
@@ -47,12 +47,12 @@ class AssignVariantTypes extends Command
                 $this->stats['uncertain']++;
             } else {
                 $this->stats[$type]++;
-                
-                if (!$dryRun) {
+
+                if (! $dryRun) {
                     $variant->update(['variant_type' => $type]);
                 }
             }
-            
+
             $progressBar->advance();
         }
 
@@ -70,7 +70,7 @@ class AssignVariantTypes extends Command
             ]
         );
 
-        if (!empty($uncertain)) {
+        if (! empty($uncertain)) {
             $this->newLine();
             $this->warn('Uncertain variants (defaulted to custom):');
             $this->table(
@@ -93,7 +93,7 @@ class AssignVariantTypes extends Command
         if (str_contains($name, ',')) {
             $parts = array_map('trim', explode(',', $name));
             $lastPart = end($parts);
-            
+
             // If last part after comma looks like a size or color, it's a combo
             if (preg_match('/^(XXS|XS|S|M|L|XL|XXL|XXXL|2XL|3XL|4XL|5XL)$/i', $lastPart) ||
                 preg_match('/black|white|red|blue|green|yellow|navy|gray|grey|purple|orange|pink|brown/i', $lastPart)) {
@@ -103,7 +103,7 @@ class AssignVariantTypes extends Command
 
         // Try to get WordPress attribute taxonomy from legacy DB
         $wpAttributeType = $this->getWpAttributeType($variant);
-        
+
         if ($wpAttributeType) {
             return $wpAttributeType;
         }
@@ -130,7 +130,7 @@ class AssignVariantTypes extends Command
                 ->where('meta_value', $variant->sku)
                 ->first();
 
-            if (!$wpVariation) {
+            if (! $wpVariation) {
                 return null;
             }
 
@@ -144,12 +144,12 @@ class AssignVariantTypes extends Command
                 // Extract attribute taxonomy from meta_key (e.g., attribute_pa_size -> pa_size)
                 if (preg_match('/attribute_(pa_[^_]+)/', $attr->meta_key, $matches)) {
                     $taxonomy = $matches[1];
-                    
+
                     // Check taxonomy name for type hints
                     if (Str::contains($taxonomy, ['size', 'groesse', 'taille'])) {
                         return 'size';
                     }
-                    
+
                     if (Str::contains($taxonomy, ['color', 'colour', 'farbe', 'couleur'])) {
                         return 'color';
                     }
@@ -173,11 +173,18 @@ class AssignVariantTypes extends Command
 
         foreach ($sizePatterns as $pattern) {
             if (preg_match($pattern, $name)) {
+                // Single-letter sizes like 'S', 'M', 'L' are only sizes if not a sock product
+                if (preg_match('/^[SML]$/i', $name)) {
+                    $isSock = stripos($productName, 'sock') !== false;
+                    if ($isSock) {
+                        continue;
+                    }
+                }
+
                 return true;
-                      stripos($productName, 'sock') !== false;
-            return $isSock;
+            }
         }
-        
+
         // Other size keywords (conservative)
         if (preg_match('/(mini|tiny)/i', $name)) {
             $sizeKeywords = ['shirt', 'tee', 'hoodie', 'jacket'];

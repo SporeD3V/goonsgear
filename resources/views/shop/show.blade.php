@@ -46,18 +46,6 @@
     </head>
     <body class="bg-slate-100 text-slate-900">
         <div class="mx-auto max-w-6xl p-6">
-            <nav class="mb-4 flex items-center gap-2 text-sm text-slate-600">
-                <a href="{{ url('/') }}" class="hover:text-slate-900 hover:underline">Home</a>
-                <span>/</span>
-                <a href="{{ route('shop.index') }}" class="hover:text-slate-900 hover:underline">Shop</a>
-                @if ($product->primaryCategory)
-                    <span>/</span>
-                    <a href="{{ route('shop.index', ['category' => $product->primaryCategory->slug]) }}" class="hover:text-slate-900 hover:underline">{{ $product->primaryCategory->name }}</a>
-                @endif
-                <span>/</span>
-                <span class="text-slate-900">{{ $product->name }}</span>
-            </nav>
-
             <header class="mb-6 flex items-center justify-between gap-3">
                 <h1 class="text-2xl font-semibold">{{ $product->name }}</h1>
                 <div class="flex items-center gap-4">
@@ -82,7 +70,7 @@
                 <section data-media-gallery>
                     @php
                         $primaryMedia = $product->media->first();
-                        $primaryMediaUrl = $primaryMedia ? route('media.show', ['path' => $primaryMedia->getGalleryPath()]) : null;
+                        $primaryMediaUrl = $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null;
                         $primaryIsVideo = $primaryMedia ? str_starts_with((string) $primaryMedia->mime_type, 'video/') : false;
                     @endphp
 
@@ -114,7 +102,7 @@
                     @endif
 
                     @if ($product->media->count() > 0)
-                        @if ($product->variants->count() > 1 && $product->media->count() > 1)
+                        @if ($product->variants->isNotEmpty() && $product->media->count() > 1)
                             <div class="mt-3">
                                 <label for="media-variant-filter" class="mb-1 block text-sm font-medium text-slate-700">Filter gallery by variant</label>
                                 <select id="media-variant-filter" data-media-variant-filter class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
@@ -129,9 +117,8 @@
                         <div class="mt-3 grid grid-cols-4 gap-2">
                             @foreach ($product->media as $media)
                                 @php
-                                    $thumbnailUrl = route('media.show', ['path' => $media->getThumbnailPath()]);
-                                    $galleryUrl = route('media.show', ['path' => $media->getGalleryPath()]);
-                                    $zoomMediaUrl = route('media.show', ['path' => $media->path]);
+                                    $thumbnailUrl = route('media.show', ['path' => $media->path]);
+                                    $zoomMediaUrl = route('media.show', ['path' => $media->zoom_path ?? $media->path]);
                                     $isVideo = str_starts_with((string) $media->mime_type, 'video/');
                                 @endphp
                                 <button
@@ -139,7 +126,7 @@
                                     class="h-20 w-full cursor-pointer rounded border border-slate-200 bg-white p-0 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                     data-media-thumb
                                     data-media-type="{{ $isVideo ? 'video' : 'image' }}"
-                                    data-media-url="{{ $galleryUrl }}"
+                                    data-media-url="{{ $thumbnailUrl }}"
                                     data-media-zoom-url="{{ $zoomMediaUrl }}"
                                     data-media-alt="{{ $media->alt_text ?: $product->name }}"
                                     data-media-variant-id="{{ $media->product_variant_id ?? '' }}"
@@ -200,7 +187,6 @@
                                 <img
                                     src=""
                                     alt=""
-                                    loading="lazy"
                                     class="h-full w-full object-contain"
                                     data-lightbox-image
                                 >
@@ -248,7 +234,6 @@
                         </div>
                     @endif
 
-                    @if ($variantsWithStockState->count() > 1)
                     <div class="mt-6">
                         <h2 class="text-base font-semibold">Available Variants</h2>
                         @if ($variantsWithStockState->isEmpty())
@@ -267,176 +252,37 @@
                                 );
                             @endphp
 
-                            @php
-                                $sizeVariants = $variantsWithStockState->filter(fn($v) => $v->variant_type === 'size');
-                                $colorVariants = $variantsWithStockState->filter(fn($v) => $v->variant_type === 'color');
-                                $customVariants = $variantsWithStockState->filter(fn($v) => $v->variant_type === 'custom');
-                                
-                                // Parse combo variants (e.g., "M, Black") into separate size/color options
-                                $comboSizes = collect();
-                                $comboColors = collect();
-                                $comboMatrix = []; // Maps "size|color" => variant
-                                
-                                foreach ($customVariants as $variant) {
-                                    if (str_contains($variant->name, ',')) {
-                                        $parts = array_map('trim', explode(',', $variant->name));
-                                        
-                                        if (count($parts) >= 2) {
-                                            $firstPart = $parts[0];
-                                            $secondPart = $parts[1];
-                                            
-                                            // Determine which is size and which is color
-                                            if (preg_match('/^(XXS|XS|S|M|L|XL|XXL|XXXL|XXXXL|XXXXXL|2XL|3XL|4XL|5XL)$/i', $firstPart)) {
-                                                $size = $firstPart;
-                                                $color = $secondPart;
-                                            } elseif (preg_match('/^(XXS|XS|S|M|L|XL|XXL|XXXL|XXXXL|XXXXXL|2XL|3XL|4XL|5XL)$/i', $secondPart)) {
-                                                $size = $secondPart;
-                                                $color = $firstPart;
-                                            } else {
-                                                continue; // Not a size/color combo
-                                            }
-                                            
-                                            if (!$comboSizes->contains($size)) {
-                                                $comboSizes->push($size);
-                                            }
-                                            if (!$comboColors->contains($color)) {
-                                                $comboColors->push($color);
-                                            }
-                                            
-                                            // Store variant details for JavaScript
-                                            $comboMatrix[$size . '|' . $color] = [
-                                                'id' => $variant->id,
-                                                'sku' => $variant->sku,
-                                                'price' => number_format((float) $variant->price, 2),
-                                                'stock_quantity' => $variant->stock_quantity,
-                                                'is_preorder' => $variant->is_preorder,
-                                                'allow_backorder' => $variant->allow_backorder,
-                                                'availability' => $formatAvailabilityDate($variant->preorder_available_from ?? $variant->expected_ship_at ?? $product->preorder_available_from ?? $product->expected_ship_at),
-                                            ];
-                                        }
-                                    }
-                                }
-                                
-                                // If we have combo variants, use them as size/color options
-                                if ($comboSizes->isNotEmpty()) {
-                                    $sizeVariants = $comboSizes->map(fn($size) => (object)['name' => $size, 'is_combo' => true]);
-                                    $colorVariants = $comboColors->map(fn($color) => (object)['name' => $color, 'is_combo' => true]);
-                                    $customVariants = collect(); // Hide custom dropdown when showing as size/color
-                                }
-                                
-                                $hasMultipleTypes = ($sizeVariants->isNotEmpty() ? 1 : 0) + ($colorVariants->isNotEmpty() ? 1 : 0) + ($customVariants->isNotEmpty() ? 1 : 0) > 1;
-                            @endphp
-
-                            @if ($variantsWithStockState->count() > 1)
                             <div
                                 class="mt-3 rounded border border-slate-200 bg-slate-50 p-3"
                                 data-product-variant-picker
                                 data-gallery-filter-id="media-variant-filter"
-                                @if ($comboSizes->isNotEmpty() && $comboColors->isNotEmpty())
-                                data-combo-matrix="{{ json_encode($comboMatrix) }}"
-                                @endif
                             >
-                                @if ($sizeVariants->isNotEmpty())
-                                    <div class="mb-3">
-                                        <label class="mb-2 block text-sm font-medium text-slate-700">Size</label>
-                                        <div class="flex flex-wrap gap-2">
-                                            @foreach ($sizeVariants as $sizeOption)
-                                                @php
-                                                    $isCombo = isset($sizeOption->is_combo) && $sizeOption->is_combo;
-                                                    $sizeLabel = $isCombo ? $sizeOption->name : trim(preg_replace('/^.*[\-\,]\s*/', '', $sizeOption->name));
-                                                    
-                                                    if ($isCombo) {
-                                                        // For combo variants, button is always enabled, actual variant determined by size+color selection
-                                                        $available = true;
-                                                        $stockStatus = '';
-                                                    } else {
-                                                        $available = $sizeOption->isAvailable();
-                                                        $stockStatus = $sizeOption->stock_quantity > 0 ? 'In stock' : (($sizeOption->allow_backorder || $sizeOption->is_preorder) ? 'Preorder' : 'Out of stock');
-                                                    }
-                                                @endphp
-                                                <button
-                                                    type="button"
-                                                    class="min-w-[3rem] rounded border px-3 py-2 text-sm font-medium transition {{ $available ? 'border-slate-400 bg-white hover:border-slate-800 cursor-pointer' : 'border-slate-300 bg-slate-50 text-slate-400 cursor-not-allowed' }}"
-                                                    data-size-select="{{ $sizeLabel }}"
-                                                    {{ $isCombo ? '' : 'data-variant-select' }}
-                                                    {{ $isCombo ? '' : 'data-variant-id=' . $sizeOption->id }}
-                                                    {{ $isCombo ? '' : 'data-variant-price=' . number_format((float) $sizeOption->price, 2) }}
-                                                    {{ $isCombo ? '' : 'data-variant-sku=' . $sizeOption->sku }}
-                                                    {{ $isCombo ? '' : 'data-variant-status=' . $stockStatus }}
-                                                    {{ $available ? '' : 'disabled' }}
-                                                >
-                                                    {{ $sizeLabel }}
-                                                </button>
-                                            @endforeach
-                                        </div>
-                                    </div>
+                                @if ($variantsWithStockState->count() > 1)
+                                    <label for="shop-variant-select" class="mb-1 block text-sm font-medium text-slate-700">Choose variant</label>
+                                    <select id="shop-variant-select" data-variant-select class="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm">
+                                        @foreach ($variantsWithStockState as $variant)
+                                            @php
+                                                $stockStatus = $variant->stock_quantity > 0
+                                                    ? 'In stock'
+                                                    : (($variant->allow_backorder || $variant->is_preorder) ? 'Preorder' : 'Out of stock');
+                                            @endphp
+                                            <option
+                                                value="{{ $variant->id }}"
+                                                data-variant-price="{{ number_format((float) $variant->price, 2) }}"
+                                                data-variant-sku="{{ $variant->sku }}"
+                                                data-variant-status="{{ $stockStatus }}"
+                                                data-variant-qty="{{ $variant->stock_quantity }}"
+                                                data-variant-availability="{{ $formatAvailabilityDate($variant->preorder_available_from ?? $variant->expected_ship_at ?? $product->preorder_available_from ?? $product->expected_ship_at) ?? '' }}"
+                                                data-variant-out-of-stock="{{ $variant->is_out_of_stock ? '1' : '0' }}"
+                                                data-variant-stock-alert-subscribed="{{ in_array($variant->id, $activeStockAlertVariantIds, true) ? '1' : '0' }}"
+                                            >
+                                                {{ $variant->name }} ({{ $variant->sku }})
+                                            </option>
+                                        @endforeach
+                                    </select>
                                 @endif
 
-                                @if ($colorVariants->isNotEmpty())
-                                    <div class="{{ $sizeVariants->isNotEmpty() ? 'mb-3' : '' }}">
-                                        <label class="mb-2 block text-sm font-medium text-slate-700">Color</label>
-                                        <div class="flex flex-wrap gap-2">
-                                            @foreach ($colorVariants as $colorOption)
-                                                @php
-                                                    $isCombo = isset($colorOption->is_combo) && $colorOption->is_combo;
-                                                    $colorLabel = $isCombo ? $colorOption->name : trim(preg_replace('/^.*[\-\,]\s*/', '', $colorOption->name));
-                                                    
-                                                    if ($isCombo) {
-                                                        $available = true;
-                                                        $stockStatus = '';
-                                                    } else {
-                                                        $available = $colorOption->isAvailable();
-                                                        $stockStatus = $colorOption->stock_quantity > 0 ? 'In stock' : (($colorOption->allow_backorder || $colorOption->is_preorder) ? 'Preorder' : 'Out of stock');
-                                                    }
-                                                @endphp
-                                                <button
-                                                    type="button"
-                                                    class="flex items-center gap-2 rounded border px-3 py-2 text-sm font-medium transition {{ $available ? 'border-slate-400 bg-white hover:border-slate-800 cursor-pointer' : 'border-slate-300 bg-slate-50 text-slate-400 cursor-not-allowed opacity-60' }}"
-                                                    data-color-select="{{ $colorLabel }}"
-                                                    {{ $isCombo ? '' : 'data-variant-select' }}
-                                                    {{ $isCombo ? '' : 'data-variant-id=' . $colorOption->id }}
-                                                    {{ $isCombo ? '' : 'data-variant-price=' . number_format((float) $colorOption->price, 2) }}
-                                                    {{ $available ? '' : 'disabled' }}
-                                                >
-                                                    <span class="h-5 w-5 rounded border border-slate-300" style="background-color: {{ strtolower($colorLabel) }}"></span>
-                                                    <span>{{ $colorLabel }}</span>
-                                                </button>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                @endif
-
-                                @if ($customVariants->isNotEmpty())
-                                    <div class="{{ ($sizeVariants->isNotEmpty() || $colorVariants->isNotEmpty()) ? 'mb-3' : '' }}">
-                                        <label for="shop-custom-select" class="mb-1 block text-sm font-medium text-slate-700">{{ $sizeVariants->isEmpty() && $colorVariants->isEmpty() ? 'Variant' : 'Options' }}</label>
-                                        <select id="shop-custom-select" data-variant-select class="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm">
-                                            @foreach ($customVariants as $variant)
-                                                @php
-                                                    $stockStatus = $variant->stock_quantity > 0 ? 'In stock' : (($variant->allow_backorder || $variant->is_preorder) ? 'Preorder' : 'Out of stock');
-                                                    // Extract just the meaningful part from variant name
-                                                    $variantLabel = trim(preg_replace('/^.*?\s*-\s*/', '', $variant->name));
-                                                @endphp
-                                                <option
-                                                    value="{{ $variant->id }}"
-                                                    data-variant-price="{{ number_format((float) $variant->price, 2) }}"
-                                                    data-variant-sku="{{ $variant->sku }}"
-                                                    data-variant-status="{{ $stockStatus }}"
-                                                    data-variant-qty="{{ $variant->stock_quantity }}"
-                                                    data-variant-availability="{{ $formatAvailabilityDate($variant->preorder_available_from ?? $variant->expected_ship_at ?? $product->preorder_available_from ?? $product->expected_ship_at) ?? '' }}"
-                                                    data-variant-out-of-stock="{{ $variant->is_out_of_stock ? '1' : '0' }}"
-                                                    data-variant-stock-alert-subscribed="{{ in_array($variant->id, $activeStockAlertVariantIds, true) ? '1' : '0' }}"
-                                                >
-                                                    {{ $variantLabel }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                @endif
-
-                            </div>
-                            @endif
-
-                            <div class="mt-3 grid gap-2 text-sm sm:grid-cols-2" data-variant-panel>
+                                <div class="mt-3 grid gap-2 text-sm sm:grid-cols-2" data-variant-panel>
                                     <p><span class="font-medium text-slate-700">Price:</span> $<span data-variant-price>{{ number_format((float) $defaultVariant->price, 2) }}</span></p>
                                     <p><span class="font-medium text-slate-700">SKU:</span> <span data-variant-sku>{{ $defaultVariant->sku }}</span></p>
                                     <p><span class="font-medium text-slate-700">Status:</span> <span data-variant-status>{{ $defaultStockStatus }}</span></p>
@@ -500,132 +346,53 @@
                                 @endauth
                             </div>
 
+                            @if ($variantsWithStockState->count() > 1)
+                            <div class="mt-3 overflow-x-auto">
+                                <table class="min-w-full border border-slate-200 text-sm">
+                                    <thead class="bg-slate-50">
+                                        <tr>
+                                            <th class="border border-slate-200 px-3 py-2 text-left">Variant</th>
+                                            <th class="border border-slate-200 px-3 py-2 text-left">SKU</th>
+                                            <th class="border border-slate-200 px-3 py-2 text-left">Price</th>
+                                            <th class="border border-slate-200 px-3 py-2 text-left">Stock</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($variantsWithStockState as $variant)
+                                            @php
+                                                $stockStatus = $variant->is_preorder || $variant->allow_backorder
+                                                    ? 'Preorder'
+                                                    : ($variant->stock_quantity > 0 ? 'In stock' : 'Out of stock');
+                                                $availabilityDate = $formatAvailabilityDate(
+                                                    $variant->preorder_available_from
+                                                    ?? $variant->expected_ship_at
+                                                    ?? $product->preorder_available_from
+                                                    ?? $product->expected_ship_at
+                                                );
+                                            @endphp
+                                            <tr>
+                                                <td class="border border-slate-200 px-3 py-2">{{ $variant->name }}</td>
+                                                <td class="border border-slate-200 px-3 py-2">{{ $variant->sku }}</td>
+                                                <td class="border border-slate-200 px-3 py-2">${{ number_format((float) $variant->price, 2) }}</td>
+                                                <td class="border border-slate-200 px-3 py-2">
+                                                    <span class="inline-flex rounded px-2 py-0.5 text-xs {{ $stockStatus === 'In stock' ? 'bg-emerald-100 text-emerald-700' : ($stockStatus === 'Preorder' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700') }}">
+                                                        {{ $stockStatus }}
+                                                    </span>
+                                                    <div class="mt-1 text-xs text-slate-500">Qty: {{ $variant->stock_quantity }}</div>
+                                                    @if ($stockStatus === 'Preorder' && $availabilityDate)
+                                                        <div class="mt-1 text-xs text-slate-500">Available on {{ $availabilityDate }}</div>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            @endif
                         @endif
                     </div>
-                    @endif
                 </section>
             </div>
         </div>
-
-        <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const picker = document.querySelector('[data-product-variant-picker]');
-            if (!picker) return;
-
-            // Handle combo variants (size + color)
-            const comboMatrixData = picker.dataset.comboMatrix;
-            if (comboMatrixData) {
-                const comboMatrix = JSON.parse(comboMatrixData);
-                let selectedSize = null;
-                let selectedColor = null;
-
-                const sizeButtons = picker.querySelectorAll('[data-size-select]');
-                const colorButtons = picker.querySelectorAll('[data-color-select]');
-
-                sizeButtons.forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        selectedSize = btn.dataset.sizeSelect;
-                        sizeButtons.forEach(b => {
-                            b.classList.remove('border-slate-800', 'bg-slate-800', 'text-white');
-                            b.classList.add('border-slate-400', 'bg-white');
-                        });
-                        btn.classList.remove('border-slate-400', 'bg-white');
-                        btn.classList.add('border-slate-800', 'bg-slate-800', 'text-white');
-                        updateComboVariant();
-                    });
-                });
-
-                colorButtons.forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        selectedColor = btn.dataset.colorSelect;
-                        colorButtons.forEach(b => b.classList.remove('border-slate-800'));
-                        btn.classList.add('border-slate-800');
-                        updateComboVariant();
-                    });
-                });
-
-                function updateComboVariant() {
-                    if (!selectedSize || !selectedColor) return;
-                    const variant = comboMatrix[selectedSize + '|' + selectedColor];
-                    if (!variant) return;
-                    updateVariantUI(variant);
-                }
-            }
-
-            // Handle regular variants (size-only or color-only)
-            const variantButtons = picker.querySelectorAll('[data-variant-select]');
-            variantButtons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    // Update button states
-                    variantButtons.forEach(b => {
-                        b.classList.remove('border-slate-800', 'bg-slate-800', 'text-white');
-                        if (b.classList.contains('flex')) {
-                            b.classList.add('border-slate-400');
-                        } else {
-                            b.classList.add('border-slate-400', 'bg-white');
-                        }
-                    });
-                    
-                    if (btn.classList.contains('flex')) {
-                        btn.classList.remove('border-slate-400');
-                        btn.classList.add('border-slate-800');
-                    } else {
-                        btn.classList.remove('border-slate-400', 'bg-white');
-                        btn.classList.add('border-slate-800', 'bg-slate-800', 'text-white');
-                    }
-
-                    const variant = {
-                        id: btn.dataset.variantId,
-                        price: btn.dataset.variantPrice,
-                        sku: btn.dataset.variantSku,
-                        stock_quantity: btn.dataset.variantQty,
-                        availability: btn.dataset.variantAvailability
-                    };
-                    
-                    const stockStatus = btn.dataset.variantStatus;
-                    updateVariantUI({...variant, stockStatus});
-                });
-            });
-
-            // Handle dropdown variants
-            const customSelect = picker.querySelector('[data-variant-select]');
-            if (customSelect && customSelect.tagName === 'SELECT') {
-                customSelect.addEventListener('change', (e) => {
-                    const option = e.target.selectedOptions[0];
-                    const variant = {
-                        id: option.value,
-                        price: option.dataset.variantPrice,
-                        sku: option.dataset.variantSku,
-                        stock_quantity: option.dataset.variantQty,
-                        availability: option.dataset.variantAvailability,
-                        stockStatus: option.dataset.variantStatus
-                    };
-                    updateVariantUI(variant);
-                });
-            }
-
-            function updateVariantUI(variant) {
-                document.querySelector('[data-variant-price]').textContent = parseFloat(variant.price).toFixed(2);
-                document.querySelector('[data-variant-sku]').textContent = variant.sku;
-                document.querySelector('[data-variant-qty]').textContent = variant.stock_quantity;
-                
-                const stockStatus = variant.stockStatus || (variant.stock_quantity > 0 ? 'In stock' : 
-                                  (variant.allow_backorder || variant.is_preorder ? 'Preorder' : 'Out of stock'));
-                document.querySelector('[data-variant-status]').textContent = stockStatus;
-
-                const cartInput = document.querySelector('[data-cart-variant-input]');
-                if (cartInput) cartInput.value = variant.id;
-
-                const availabilityLine = document.querySelector('[data-variant-availability-line]');
-                const availabilitySpan = document.querySelector('[data-variant-availability]');
-                if (stockStatus === 'Preorder' && variant.availability) {
-                    availabilitySpan.textContent = variant.availability;
-                    availabilityLine.classList.remove('hidden');
-                } else {
-                    availabilityLine.classList.add('hidden');
-                }
-            }
-        });
-        </script>
     </body>
 </html>
