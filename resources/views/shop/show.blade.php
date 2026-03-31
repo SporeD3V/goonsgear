@@ -299,7 +299,16 @@
                                             $comboColors->push($color);
                                         }
                                         
-                                        $comboMatrix[$size . '|' . $color] = $variant;
+                                        // Store variant details for JavaScript
+                                        $comboMatrix[$size . '|' . $color] = [
+                                            'id' => $variant->id,
+                                            'sku' => $variant->sku,
+                                            'price' => number_format((float) $variant->price, 2),
+                                            'stock_quantity' => $variant->stock_quantity,
+                                            'is_preorder' => $variant->is_preorder,
+                                            'allow_backorder' => $variant->allow_backorder,
+                                            'availability' => $formatAvailabilityDate($variant->preorder_available_from ?? $variant->expected_ship_at ?? $product->preorder_available_from ?? $product->expected_ship_at),
+                                        ];
                                     }
                                 }
                                 
