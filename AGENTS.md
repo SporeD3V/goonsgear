@@ -5,6 +5,19 @@
 
 The Laravel Boost guidelines are specifically curated by Laravel maintainers for this application. These guidelines should be followed closely to ensure the best experience when building Laravel applications.
 
+## IDE & Agent Configuration
+
+This project is optimized for **Windsurf IDE** with Laravel Boost MCP server integration. Configuration:
+- **Agents:** Windsurf (primary), GitHub Copilot (secondary)
+- **MCP Server:** Laravel Boost enabled (`boost.json`)
+- **Skills:** `laravel-best-practices`, `livewire-development`
+
+### Windsurf-Specific Features
+- Cascade AI agents have direct access to Boost MCP tools
+- Use Boost tools via function calls rather than manual commands when available
+- AGENTS.md is automatically loaded into agent context
+- Skills are domain-triggered and loaded on-demand
+
 ## Foundational Context
 
 This application is a Laravel application and its main Laravel ecosystems package & versions are below. You are an expert with them all. Ensure you abide by these specific packages & versions.

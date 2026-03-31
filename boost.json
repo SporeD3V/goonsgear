@@ -1,6 +1,7 @@
 {
     "agents": [
-        "copilot"
+        "copilot",
+        "windsurf"
     ],
     "guidelines": true,
     "mcp": true,

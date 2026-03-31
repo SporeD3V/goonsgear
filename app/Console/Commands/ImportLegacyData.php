@@ -222,12 +222,6 @@ class ImportLegacyData extends Command
                 }
 
                 if ($product === null) {
-                    $product = Product::query()
-                        ->where('name', $legacyProd->post_title)
-                        ->first();
-                }
-
-                if ($product === null) {
                     if (Product::where('slug', $slug)->exists()) {
                         $slug = $fallbackSlug;
                     }
@@ -254,6 +248,11 @@ class ImportLegacyData extends Command
                     'height' => $meta['_height'] ?? null,
                 ]);
                 $product->save();
+
+                // Sync all categories to pivot table
+                if (!empty($categoryIds)) {
+                    $product->categories()->sync($categoryIds);
+                }
 
                 $this->syncLegacyProductMapping($legacyProd->ID, $product->id);
 

@@ -102,7 +102,7 @@
                     @endif
 
                     @if ($product->media->count() > 0)
-                        @if ($product->variants->isNotEmpty() && $product->media->count() > 1)
+                        @if ($product->variants->count() > 1 && $product->media->count() > 1)
                             <div class="mt-3">
                                 <label for="media-variant-filter" class="mb-1 block text-sm font-medium text-slate-700">Filter gallery by variant</label>
                                 <select id="media-variant-filter" data-media-variant-filter class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
