@@ -42,7 +42,7 @@ def main():
         # Test via Tinker
         run_cmd(client,
                 "cd /home/macaw-goonsgear/htdocs/goonsgear.macaw.studio && "
-                "php artisan tinker --execute '$m = App\\\\Models\\\\ProductMedia::first(); "
+            "php artisan tinker --execute '$m = App\\Models\\ProductMedia::first(); "
                 "echo method_exists($m, \"getGalleryPath\") ? \"Method exists\" : \"Method missing\";'",
                 'Test if method is callable')
         
