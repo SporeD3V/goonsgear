@@ -425,11 +425,24 @@ class AssociateLegacyMedia extends Command
         $avifPath = $mediaDirectory.'/'.$baseFilename.'.avif';
 
         $avifCreated = Storage::disk('public')->exists($avifPath) 
-            ? true 
+            ? (Storage::disk('public')->size($avifPath) > 0)
             : $this->convertImageToFormat($sourceAbsolutePath, storage_path('app/public/'.$avifPath), 'avif');
+        
+        if ($avifCreated && Storage::disk('public')->size($avifPath) === 0) {
+            Storage::disk('public')->delete($avifPath);
+            $avifCreated = false;
+            $this->warn("AVIF conversion resulted in 0-byte file, skipping: {$avifPath}");
+        }
+        
         $webpCreated = Storage::disk('public')->exists($webpPath)
-            ? true
+            ? (Storage::disk('public')->size($webpPath) > 0)
             : $this->convertImageToFormat($sourceAbsolutePath, storage_path('app/public/'.$webpPath), 'webp');
+        
+        if ($webpCreated && Storage::disk('public')->size($webpPath) === 0) {
+            Storage::disk('public')->delete($webpPath);
+            $webpCreated = false;
+            $this->warn("WebP conversion resulted in 0-byte file, skipping: {$webpPath}");
+        }
 
         if ($avifCreated) {
             $storedPath = $avifPath;
