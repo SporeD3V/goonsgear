@@ -117,8 +117,9 @@
                         <div class="mt-3 grid grid-cols-4 gap-2">
                             @foreach ($product->media as $media)
                                 @php
-                                    $thumbnailUrl = route('media.show', ['path' => $media->path]);
-                                    $zoomMediaUrl = route('media.show', ['path' => $media->zoom_path ?? $media->path]);
+                                    $thumbnailUrl = route('media.show', ['path' => $media->getThumbnailPath()]);
+                                    $galleryUrl = route('media.show', ['path' => $media->getGalleryPath()]);
+                                    $zoomMediaUrl = route('media.show', ['path' => $media->path]);
                                     $isVideo = str_starts_with((string) $media->mime_type, 'video/');
                                 @endphp
                                 <button
@@ -126,7 +127,7 @@
                                     class="h-20 w-full cursor-pointer rounded border border-slate-200 bg-white p-0 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                     data-media-thumb
                                     data-media-type="{{ $isVideo ? 'video' : 'image' }}"
-                                    data-media-url="{{ $thumbnailUrl }}"
+                                    data-media-url="{{ $galleryUrl }}"
                                     data-media-zoom-url="{{ $zoomMediaUrl }}"
                                     data-media-alt="{{ $media->alt_text ?: $product->name }}"
                                     data-media-variant-id="{{ $media->product_variant_id ?? '' }}"
