@@ -153,6 +153,10 @@ class AssociateLegacyMedia extends Command
                     continue;
                 }
 
+                if (in_array($variantAttachmentId, $productAttachmentIds, true)) {
+                    continue;
+                }
+
                 $result = $this->syncAttachmentForProduct(
                     legacy: $legacy,
                     legacyRoot: $legacyRoot,
