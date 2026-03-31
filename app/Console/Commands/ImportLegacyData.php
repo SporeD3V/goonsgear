@@ -21,6 +21,11 @@ class ImportLegacyData extends Command
 
     protected $description = 'Import categories, products, variants, customers, and orders from legacy WooCommerce database';
 
+    /**
+     * @var array<string, string>
+     */
+    private array $legacyAttributeTermNameCache = [];
+
     public function handle(): int
     {
         $this->info('=== WooCommerce Legacy Import ===');
@@ -222,6 +227,12 @@ class ImportLegacyData extends Command
                 }
 
                 if ($product === null) {
+                    $product = Product::query()
+                        ->where('name', $legacyProd->post_title)
+                        ->first();
+                }
+
+                if ($product === null) {
                     if (Product::where('slug', $slug)->exists()) {
                         $slug = $fallbackSlug;
                     }
@@ -248,11 +259,6 @@ class ImportLegacyData extends Command
                     'height' => $meta['_height'] ?? null,
                 ]);
                 $product->save();
-
-                // Sync all categories to pivot table
-                if (!empty($categoryIds)) {
-                    $product->categories()->sync($categoryIds);
-                }
 
                 $this->syncLegacyProductMapping($legacyProd->ID, $product->id);
 
@@ -437,6 +443,8 @@ class ImportLegacyData extends Command
                     ->pluck('meta_value', 'meta_key')
                     ->toArray();
                 $preorderAttributes = $this->legacyPreorderAttributes($meta, $parentMeta);
+                $optionValues = $this->resolveLegacyVariantOptionValues($legacy, $meta);
+                $variantType = $this->resolveLegacyVariantType($variantName, $optionValues);
 
                 $variant = $existingVariantId !== null
                     ? ProductVariant::query()->find($existingVariantId)
@@ -466,6 +474,8 @@ class ImportLegacyData extends Command
                     'product_id' => $productId,
                     'name' => $variantName,
                     'sku' => $this->uniqueVariantSku((string) $sku, $variant->exists ? $variant->id : null, $legacyVar->ID),
+                    'variant_type' => $variantType,
+                    'option_values' => $optionValues !== [] ? $optionValues : null,
                     'price' => $price,
                     'compare_at_price' => $regularPrice > $price && $price > 0 ? $regularPrice : null,
                     'stock_quantity' => $stock,
@@ -907,5 +917,106 @@ class ImportLegacyData extends Command
         }
 
         return $fallbackName;
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta
+     * @return array<string, string>
+     */
+    private function resolveLegacyVariantOptionValues($legacyConnection, array $meta): array
+    {
+        $optionValues = [];
+
+        foreach ($meta as $metaKey => $metaValue) {
+            if (! is_string($metaKey) || ! str_starts_with($metaKey, 'attribute_')) {
+                continue;
+            }
+
+            if (! is_scalar($metaValue)) {
+                continue;
+            }
+
+            $value = trim((string) $metaValue);
+            if ($value === '') {
+                continue;
+            }
+
+            $taxonomy = Str::replaceFirst('attribute_', '', $metaKey);
+            $attributeKey = $this->normalizeLegacyAttributeKey($taxonomy);
+            $attributeValue = $this->resolveLegacyAttributeValueName($legacyConnection, (string) $taxonomy, $value, $attributeKey);
+
+            if ($attributeValue === '') {
+                continue;
+            }
+
+            $optionValues[$attributeKey] = $attributeValue;
+        }
+
+        return $optionValues;
+    }
+
+    private function normalizeLegacyAttributeKey(string $taxonomy): string
+    {
+        $normalized = Str::of($taxonomy)
+            ->replace('pa_', '')
+            ->snake()
+            ->toString();
+
+        return match ($normalized) {
+            'colour', 'farbe', 'couleur' => 'color',
+            'groesse', 'taille' => 'size',
+            default => $normalized !== '' ? $normalized : 'option',
+        };
+    }
+
+    private function resolveLegacyAttributeValueName($legacyConnection, string $taxonomy, string $rawValue, string $attributeKey): string
+    {
+        $cacheKey = $taxonomy.'|'.$rawValue;
+
+        if (array_key_exists($cacheKey, $this->legacyAttributeTermNameCache)) {
+            return $this->legacyAttributeTermNameCache[$cacheKey];
+        }
+
+        $termName = $legacyConnection->table('wp_terms')
+            ->join('wp_term_taxonomy', 'wp_terms.term_id', '=', 'wp_term_taxonomy.term_id')
+            ->where('wp_term_taxonomy.taxonomy', $taxonomy)
+            ->where('wp_terms.slug', $rawValue)
+            ->value('wp_terms.name');
+
+        if (is_string($termName) && trim($termName) !== '') {
+            $resolved = trim($termName);
+        } else {
+            $resolved = trim(str_replace(['-', '_'], ' ', $rawValue));
+
+            if ($attributeKey === 'size') {
+                $resolved = Str::upper($resolved);
+            } else {
+                $resolved = Str::of($resolved)->headline()->toString();
+            }
+        }
+
+        $this->legacyAttributeTermNameCache[$cacheKey] = $resolved;
+
+        return $resolved;
+    }
+
+    /**
+     * @param  array<string, string>  $optionValues
+     */
+    private function resolveLegacyVariantType(string $variantName, array $optionValues): string
+    {
+        if (count($optionValues) > 1) {
+            return 'custom';
+        }
+
+        if (array_key_exists('size', $optionValues)) {
+            return 'size';
+        }
+
+        if (array_key_exists('color', $optionValues)) {
+            return 'color';
+        }
+
+        return ProductVariant::detectTypeFromName($variantName);
     }
 }

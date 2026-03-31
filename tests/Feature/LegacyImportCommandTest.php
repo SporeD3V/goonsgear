@@ -301,6 +301,70 @@ class LegacyImportCommandTest extends TestCase
         $this->assertSame('Conflicting Legacy Name', $existingNameOwner->name);
     }
 
+    public function test_variation_attributes_are_imported_into_option_values(): void
+    {
+        DB::connection('legacy')->table('wp_posts')->insert([
+            'ID' => 410,
+            'post_parent' => 0,
+            'post_author' => 0,
+            'post_type' => 'product',
+            'post_status' => 'publish',
+            'post_title' => 'SnowFlake Hoodie',
+            'post_name' => 'snowflake-hoodie',
+            'post_excerpt' => 'Legacy variable product',
+            'post_content' => 'Legacy variable content',
+            'post_date' => now()->toDateTimeString(),
+        ]);
+
+        DB::connection('legacy')->table('wp_posts')->insert([
+            'ID' => 34382,
+            'post_parent' => 410,
+            'post_author' => 0,
+            'post_type' => 'product_variation',
+            'post_status' => 'publish',
+            'post_title' => 'Red / M',
+            'post_name' => 'snowflake-hoodie-red-m',
+            'post_excerpt' => '',
+            'post_content' => '',
+            'post_date' => now()->toDateTimeString(),
+        ]);
+
+        DB::connection('legacy')->table('wp_postmeta')->insert([
+            ['post_id' => 410, 'meta_key' => '_price', 'meta_value' => '0'],
+            ['post_id' => 410, 'meta_key' => '_regular_price', 'meta_value' => '0'],
+            ['post_id' => 34382, 'meta_key' => '_sku', 'meta_value' => 'SNOW-RED-M'],
+            ['post_id' => 34382, 'meta_key' => '_price', 'meta_value' => '59.95'],
+            ['post_id' => 34382, 'meta_key' => '_regular_price', 'meta_value' => '64.95'],
+            ['post_id' => 34382, 'meta_key' => '_stock', 'meta_value' => '12'],
+            ['post_id' => 34382, 'meta_key' => '_manage_stock', 'meta_value' => 'yes'],
+            ['post_id' => 34382, 'meta_key' => 'attribute_pa_color', 'meta_value' => 'red'],
+            ['post_id' => 34382, 'meta_key' => 'attribute_pa_size', 'meta_value' => 'm'],
+        ]);
+
+        DB::connection('legacy')->table('wp_terms')->insert([
+            ['term_id' => 801, 'name' => 'Red', 'slug' => 'red'],
+            ['term_id' => 802, 'name' => 'M', 'slug' => 'm'],
+        ]);
+
+        DB::connection('legacy')->table('wp_term_taxonomy')->insert([
+            ['term_taxonomy_id' => 901, 'term_id' => 801, 'taxonomy' => 'pa_color', 'parent' => 0],
+            ['term_taxonomy_id' => 902, 'term_id' => 802, 'taxonomy' => 'pa_size', 'parent' => 0],
+        ]);
+
+        $this->artisan('import:legacy-data', ['--skip-cleanup' => true])->assertSuccessful();
+
+        $variant = ProductVariant::query()
+            ->where('sku', 'SNOW-RED-M')
+            ->first();
+
+        $this->assertNotNull($variant);
+        $this->assertSame('custom', $variant->variant_type);
+        $this->assertSame([
+            'color' => 'Red',
+            'size' => 'M',
+        ], $variant->option_values);
+    }
+
     private function createLegacySchema(): void
     {
         $schema = Schema::connection('legacy');
