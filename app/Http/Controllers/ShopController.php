@@ -171,13 +171,13 @@ class ShopController extends Controller
 
                 return [
                     'id' => $product->id,
-                    'name' => $product->name,
                     'slug' => $product->slug,
+                    'name' => $product->name,
                     'excerpt' => strip_tags((string) $product->excerpt),
                     'category' => $product->primaryCategory?->name,
                     'price' => $minPrice !== null ? (float) $minPrice : null,
-                    'image' => $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null,
-                    'secondary_image' => $secondaryMedia ? route('media.show', ['path' => $secondaryMedia->path]) : null,
+                    'image' => $primaryMedia ? route('media.show', ['path' => $primaryMedia->getThumbnailPath()]) : null,
+                    'secondary_image' => $secondaryMedia ? route('media.show', ['path' => $secondaryMedia->getThumbnailPath()]) : null,
                     'url' => route('shop.show', $product),
                 ];
             });

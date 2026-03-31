@@ -41,6 +41,23 @@ class ProductMedia extends Model
         ];
     }
 
+    public function getThumbnailPath(): string
+    {
+        $pathInfo = pathinfo($this->path);
+        $dirname = $pathInfo['dirname'];
+        $filename = $pathInfo['filename'];
+        $extension = $pathInfo['extension'];
+
+        foreach (['-thumbnail-200x200', '-hero-1200x600', '-gallery-600x600'] as $suffix) {
+            if (str_ends_with($filename, $suffix)) {
+                $filename = substr($filename, 0, -strlen($suffix));
+                break;
+            }
+        }
+
+        return $dirname.'/'.$filename.'-thumbnail-200x200.'.$extension;
+    }
+
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
