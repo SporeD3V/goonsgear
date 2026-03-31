@@ -70,7 +70,7 @@
                 <section data-media-gallery>
                     @php
                         $primaryMedia = $product->media->first();
-                        $primaryMediaUrl = $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null;
+                        $primaryMediaUrl = $primaryMedia ? route('media.show', ['path' => $primaryMedia->getGalleryPath()]) : null;
                         $primaryIsVideo = $primaryMedia ? str_starts_with((string) $primaryMedia->mime_type, 'video/') : false;
                     @endphp
 
@@ -187,6 +187,7 @@
                                 <img
                                     src=""
                                     alt=""
+                                    loading="lazy"
                                     class="h-full w-full object-contain"
                                     data-lightbox-image
                                 >
