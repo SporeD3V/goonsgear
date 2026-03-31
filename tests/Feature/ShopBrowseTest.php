@@ -118,6 +118,40 @@ class ShopBrowseTest extends TestCase
         $response->assertNotFound();
     }
 
+    public function test_shop_show_renders_video_media_with_lightbox_markup(): void
+    {
+        $product = Product::factory()->create([
+            'name' => 'Video Product',
+            'slug' => 'video-product',
+            'status' => 'active',
+        ]);
+
+        ProductMedia::factory()->create([
+            'product_id' => $product->id,
+            'path' => 'products/video-product/gallery/spin.mp4',
+            'mime_type' => 'video/mp4',
+            'is_primary' => true,
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Default',
+            'sku' => 'VID-DEFAULT',
+            'is_active' => true,
+            'price' => 29.99,
+            'stock_quantity' => 4,
+        ]);
+
+        $response = $this->get(route('shop.show', $product));
+
+        $response->assertOk();
+        $response->assertSee('data-media-main-video', false);
+        $response->assertSee('data-lightbox', false);
+        $response->assertSee('data-lightbox-video', false);
+        $response->assertSee('data-media-type="video"', false);
+        $response->assertSee('data-media-thumb', false);
+    }
+
     public function test_shop_index_filters_by_primary_category_slug(): void
     {
         $featuredCategory = Category::factory()->create([

@@ -71,20 +71,25 @@
                     @php
                         $primaryMedia = $product->media->first();
                         $primaryMediaUrl = $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null;
+                        $primaryIsVideo = $primaryMedia ? str_starts_with((string) $primaryMedia->mime_type, 'video/') : false;
                     @endphp
 
                     @if ($primaryMediaUrl)
                         <img
                             src="{{ $primaryMediaUrl }}"
                             alt="{{ $primaryMedia?->alt_text ?: $product->name }}"
-                            class="h-112 w-full cursor-zoom-in rounded border border-slate-200 bg-white object-contain p-2"
+                            class="{{ $primaryIsVideo ? 'hidden ' : '' }}h-112 w-full cursor-zoom-in rounded border border-slate-200 bg-white object-contain p-2"
                             data-media-main-image
                             tabindex="0"
                         >
                         <video
-                            class="hidden h-112 w-full rounded border border-slate-200 bg-black object-contain p-2"
+                            class="{{ $primaryIsVideo ? '' : 'hidden ' }}h-112 w-full cursor-zoom-in rounded border border-slate-200 bg-black object-contain p-2"
                             controls
+                            @if ($primaryIsVideo)
+                                src="{{ $primaryMediaUrl }}"
+                            @endif
                             data-media-main-video
+                            tabindex="0"
                         ></video>
 
                         <div class="mt-2 flex justify-end">
@@ -96,8 +101,8 @@
                         <img src="{{ asset('images/placeholder-product.svg') }}" alt="No image available" class="h-112 w-full rounded border border-slate-200 bg-white object-contain p-2">
                     @endif
 
-                    @if ($product->media->count() > 1)
-                        @if ($product->variants->isNotEmpty())
+                    @if ($product->media->count() > 0)
+                        @if ($product->variants->isNotEmpty() && $product->media->count() > 1)
                             <div class="mt-3">
                                 <label for="media-variant-filter" class="mb-1 block text-sm font-medium text-slate-700">Filter gallery by variant</label>
                                 <select id="media-variant-filter" data-media-variant-filter class="w-full rounded border border-slate-300 px-3 py-2 text-sm">

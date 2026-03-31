@@ -250,6 +250,8 @@ document.addEventListener('DOMContentLoaded', () => {
 				mainImage.classList.remove('hidden');
 				if (mainVideo) {
 					mainVideo.pause();
+					mainVideo.removeAttribute('src');
+					mainVideo.load();
 					mainVideo.classList.add('hidden');
 				}
 			}
@@ -313,7 +315,18 @@ document.addEventListener('DOMContentLoaded', () => {
 			openLightbox(activeThumb || getVisibleThumbnails()[0] || null);
 		});
 
+		mainVideo?.addEventListener('click', () => {
+			openLightbox(activeThumb || getVisibleThumbnails()[0] || null);
+		});
+
 		mainImage.addEventListener('keydown', (event) => {
+			if (event.key === 'Enter' || event.key === ' ') {
+				event.preventDefault();
+				openLightbox(activeThumb || getVisibleThumbnails()[0] || null);
+			}
+		});
+
+		mainVideo?.addEventListener('keydown', (event) => {
 			if (event.key === 'Enter' || event.key === ' ') {
 				event.preventDefault();
 				openLightbox(activeThumb || getVisibleThumbnails()[0] || null);
