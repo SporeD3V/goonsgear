@@ -235,6 +235,15 @@
                             @php
                                 $defaultVariant = $variantsWithStockState->first();
                                 $hasAttributeGroups = !empty($variantSelectorData['groups']);
+                                $variantPriceMin = $variantsWithStockState->min(fn ($variant) => (float) $variant->price);
+                                $variantPriceMax = $variantsWithStockState->max(fn ($variant) => (float) $variant->price);
+                                $unselectedPriceText = '--';
+
+                                if ($hasAttributeGroups && $variantPriceMin !== null && $variantPriceMax !== null) {
+                                    $unselectedPriceText = $variantPriceMin === $variantPriceMax
+                                        ? number_format((float) $variantPriceMin, 2)
+                                        : number_format((float) $variantPriceMin, 2).' - '.number_format((float) $variantPriceMax, 2);
+                                }
                                 $defaultStockStatus = $defaultVariant->is_preorder || $defaultVariant->allow_backorder
                                     ? 'Preorder'
                                     : ($defaultVariant->stock_quantity > 0 ? 'In stock' : 'Out of stock');
@@ -253,6 +262,7 @@
                                 class="mt-3 rounded border border-slate-200 bg-slate-50 p-3"
                                 data-product-variant-picker
                                 data-requires-attribute-selection="{{ $hasAttributeGroups ? '1' : '0' }}"
+                                data-unselected-price="{{ $unselectedPriceText }}"
                                 data-variant-attribute-order="{{ implode(',', $variantSelectorData['attributeOrder']) }}"
                             >
                                 @if (!empty($variantSelectorData['groups']))
@@ -308,7 +318,7 @@
                                     @if ($hasAttributeGroups)
                                         <p class="sm:col-span-2 text-xs text-slate-500">Select variant options to view details.</p>
                                     @endif
-                                    <p><span class="font-medium text-slate-700">Price:</span> $<span data-variant-price>{{ $hasAttributeGroups ? '--' : number_format((float) $defaultVariant->price, 2) }}</span></p>
+                                    <p><span class="font-medium text-slate-700">Price:</span> $<span data-variant-price>{{ $hasAttributeGroups ? $unselectedPriceText : number_format((float) $defaultVariant->price, 2) }}</span></p>
                                     <p><span class="font-medium text-slate-700">SKU:</span> <span data-variant-sku>{{ $hasAttributeGroups ? '--' : $defaultVariant->sku }}</span></p>
                                     <p><span class="font-medium text-slate-700">Status:</span> <span data-variant-status>{{ $hasAttributeGroups ? 'Select options' : $defaultStockStatus }}</span></p>
                                     <p><span class="font-medium text-slate-700">Qty:</span> <span data-variant-qty>{{ $hasAttributeGroups ? '--' : $defaultVariant->stock_quantity }}</span></p>

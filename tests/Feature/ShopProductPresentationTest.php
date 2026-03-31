@@ -197,4 +197,60 @@ class ShopProductPresentationTest extends TestCase
         $response->assertSee('data-add-to-cart-button', false);
         $response->assertSee('disabled', false);
     }
+
+    public function test_shop_show_displays_single_price_before_selection_when_all_variant_prices_match(): void
+    {
+        $product = Product::factory()->create();
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Red M',
+            'sku' => 'RED-M',
+            'price' => 49.99,
+            'option_values' => ['size' => 'M', 'color' => 'Red'],
+            'variant_type' => 'custom',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Black M',
+            'sku' => 'BLK-M',
+            'price' => 49.99,
+            'option_values' => ['size' => 'M', 'color' => 'Black'],
+            'variant_type' => 'custom',
+        ]);
+
+        $response = $this->get(route('shop.show', $product));
+
+        $response->assertOk();
+        $response->assertSee('$<span data-variant-price>49.99</span>', false);
+    }
+
+    public function test_shop_show_displays_price_range_before_selection_when_variant_prices_differ(): void
+    {
+        $product = Product::factory()->create();
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Red M',
+            'sku' => 'RED-M',
+            'price' => 39.99,
+            'option_values' => ['size' => 'M', 'color' => 'Red'],
+            'variant_type' => 'custom',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Black M',
+            'sku' => 'BLK-M',
+            'price' => 59.99,
+            'option_values' => ['size' => 'M', 'color' => 'Black'],
+            'variant_type' => 'custom',
+        ]);
+
+        $response = $this->get(route('shop.show', $product));
+
+        $response->assertOk();
+        $response->assertSee('$<span data-variant-price>39.99 - 59.99</span>', false);
+    }
 }

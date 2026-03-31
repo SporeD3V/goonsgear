@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	variantPickers.forEach((picker) => {
 		const variantSelect = picker.querySelector('[data-variant-select]');
 		const requiresAttributeSelection = picker.dataset.requiresAttributeSelection === '1';
+		const unselectedPrice = picker.dataset.unselectedPrice || '--';
 		const attributeOrder = (picker.dataset.variantAttributeOrder || '')
 			.split(',')
 			.map((value) => value.trim())
@@ -126,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		};
 
 		const clearVariantDetails = () => {
-			priceElement.textContent = '--';
+			priceElement.textContent = unselectedPrice;
 			skuElement.textContent = '--';
 			statusElement.textContent = 'Select options';
 			qtyElement.textContent = '--';
@@ -276,6 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 
 		let activeThumb = null;
+		let lastAppliedColor = '';
 		let touchStartX = 0;
 		let touchStartY = 0;
 		let zoomScale = 1;
@@ -286,6 +288,10 @@ document.addEventListener('DOMContentLoaded', () => {
 		let panStartY = 0;
 
 		const getVisibleThumbnails = () => Array.from(thumbnails).filter((thumb) => !thumb.classList.contains('hidden'));
+
+		thumbnails.forEach((thumb, index) => {
+			thumb.dataset.mediaOriginalIndex = String(index);
+		});
 
 		const isLightboxOpen = () => Boolean(lightbox) && !lightbox.classList.contains('hidden');
 
@@ -464,7 +470,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		const applyColorFilter = (selectedColor) => {
 			const normalizedSelectedColor = (selectedColor || '').trim().toLowerCase();
-			let firstVisibleThumb = null;
+			const matchingColorThumbs = [];
+			const sharedThumbs = [];
+			const visibleThumbs = [];
 
 			thumbnails.forEach((thumb) => {
 				const thumbVariantId = (thumb.dataset.mediaVariantId || '').trim();
@@ -475,14 +483,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
 				thumb.classList.toggle('hidden', !showThumb);
 
-				if (showThumb && firstVisibleThumb === null) {
-					firstVisibleThumb = thumb;
+				if (!showThumb) {
+					thumb.style.order = '999';
+					return;
+				}
+
+				visibleThumbs.push(thumb);
+
+				if (normalizedSelectedColor !== '' && thumbColor === normalizedSelectedColor) {
+					matchingColorThumbs.push(thumb);
+				} else {
+					sharedThumbs.push(thumb);
 				}
 			});
 
-			if (firstVisibleThumb) {
-				setMainMedia(firstVisibleThumb);
+			const orderedVisibleThumbs = normalizedSelectedColor === ''
+				? visibleThumbs.sort((left, right) => Number(left.dataset.mediaOriginalIndex || 0) - Number(right.dataset.mediaOriginalIndex || 0))
+				: [
+					...matchingColorThumbs.sort((left, right) => Number(left.dataset.mediaOriginalIndex || 0) - Number(right.dataset.mediaOriginalIndex || 0)),
+					...sharedThumbs.sort((left, right) => Number(left.dataset.mediaOriginalIndex || 0) - Number(right.dataset.mediaOriginalIndex || 0)),
+				];
+
+			orderedVisibleThumbs.forEach((thumb, index) => {
+				thumb.style.order = String(index);
+			});
+
+			const activeIsVisible = activeThumb && orderedVisibleThumbs.includes(activeThumb);
+			const colorChanged = normalizedSelectedColor !== lastAppliedColor;
+			let preferredThumb = null;
+
+			if (normalizedSelectedColor !== '' && colorChanged && matchingColorThumbs.length > 0) {
+				preferredThumb = matchingColorThumbs[0];
+			} else if (activeIsVisible) {
+				preferredThumb = activeThumb;
+			} else {
+				preferredThumb = orderedVisibleThumbs[0] || null;
 			}
+
+			if (preferredThumb && preferredThumb !== activeThumb) {
+				setMainMedia(preferredThumb);
+			}
+
+			lastAppliedColor = normalizedSelectedColor;
 		};
 
 		document.addEventListener('variant-color-selected', (event) => {
