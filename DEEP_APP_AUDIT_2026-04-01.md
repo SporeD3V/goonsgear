@@ -466,6 +466,61 @@ If this audit is the basis for cleanup work, the first practical sequence should
 5. Update storefront rendering to consume only that shape.
 6. Add tests before refactoring the remaining UI.
 
+## Remediation Progress (2026-04-01 Session)
+
+### Completed
+
+**1. Fixed AssignVariantTypes.php Syntax Error** ✅
+- Issue: Parse error on line 194 (unexpected T_PRIVATE token)
+- Root cause: Malformed code block with orphaned statements at lines 185-189
+- Fix: Reconstructed socket product detection logic to complete the size variant check cleanly
+- Result: Command is now syntactically valid and executable
+- Evidence: `php -l app/Console/Commands/AssignVariantTypes.php` passes; phpstan completes analysis
+
+**2. Fixed Failing Preorder Presentation Test** ✅
+- Issue: `ShopProductPresentationTest::test_shop_show_prioritizes_preorder_status_and_displays_availability_date` failing
+- Root cause: Stale compiled Blade views in cache preventing template from rendering correctly
+- Fix: Ran `php artisan view:clear` to refresh compiled templates
+- Result: All test assertions now pass
+- Evidence: Test output confirmed "Available on:" text now present in rendered HTML
+
+**3. Full Test Suite Validated** ✅
+- Result: 205 tests passed, 1 skipped, 0 failures
+- Duration: 58 seconds
+- No regressions introduced
+- Previous state: 1 preorder test failing
+
+**4. Code Quality and Formatting** ✅
+- Applied Laravel Pint formatting to corrected AssignVariantTypes.php
+- Fixed whitespace and code style issues
+- phpstan static analysis now completes (3 minor type hint warnings remain, pre-existing)
+
+### Committed
+- Git commit: Fixed AssignVariantTypes command syntax error and preorder test
+- All changes staged and committed to main branch
+
+### Remaining Work
+
+**Phase 1: Contract Definition** (Blocked on decision)
+- [ ] Decide: Are variants generic rows, typed options, or normalized dimensions?
+- [ ] Document the authoritative variant model in code comments
+- [ ] Update models and migrations if needed
+
+**Phase 2: Implement Contract End-to-End** (Planned)
+- [ ] Update import command to enforce contract
+- [ ] Update admin forms to guide contract conformance
+- [ ] Update tests to validate contract
+
+**Phase 3: Simplify UI & Remove Dead Code** (Planned)
+- [ ] Remove or integrate combo-variants.js
+- [ ] Refactor ProductController (709 lines)
+- [ ] Refactor shop/show.blade.php template (589 lines)
+
+**Phase 4: Close Test Gaps** (Planned)
+- [ ] Add tests for typed variants
+- [ ] Add tests for import edge cases
+- [ ] Add concurrency tests for stock changes
+
 ## Storefront Readiness Audit
 
 Evidence reviewed:
