@@ -88,6 +88,19 @@ class AssignVariantTypes extends Command
         $productName = $variant->product->name ?? '';
         $categoryName = $variant->product->primaryCategory?->name ?? '';
 
+        // Detect combination variants (e.g., "M, Black" or "L, Red")
+        // These contain both size and color info and should be marked as custom
+        if (str_contains($name, ',')) {
+            $parts = array_map('trim', explode(',', $name));
+            $lastPart = end($parts);
+            
+            // If last part after comma looks like a size or color, it's a combo
+            if (preg_match('/^(XXS|XS|S|M|L|XL|XXL|XXXL|2XL|3XL|4XL|5XL)$/i', $lastPart) ||
+                preg_match('/black|white|red|blue|green|yellow|navy|gray|grey|purple|orange|pink|brown/i', $lastPart)) {
+                return 'custom';
+            }
+        }
+
         // Try to get WordPress attribute taxonomy from legacy DB
         $wpAttributeType = $this->getWpAttributeType($variant);
         
@@ -96,12 +109,13 @@ class AssignVariantTypes extends Command
         }
 
         // Fallback to pattern matching (conservative)
-        if ($this->isColorVariant($name, $productName, $categoryName)) {
-            return 'color';
-        }
-
+        // IMPORTANT: Check SIZE first to prevent L/M/S being detected as colors
         if ($this->isSizeVariant($name, $productName, $categoryName)) {
             return 'size';
+        }
+
+        if ($this->isColorVariant($name, $productName, $categoryName)) {
+            return 'color';
         }
 
         return 'custom';
