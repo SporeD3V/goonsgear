@@ -432,49 +432,6 @@
                                 @endauth
                             </div>
 
-                            @if ($variantsWithStockState->count() > 1)
-                            <div class="mt-3 overflow-x-auto">
-                                <table class="min-w-full border border-slate-200 text-sm">
-                                    <thead class="bg-slate-50">
-                                        <tr>
-                                            <th class="border border-slate-200 px-3 py-2 text-left">Variant</th>
-                                            <th class="border border-slate-200 px-3 py-2 text-left">SKU</th>
-                                            <th class="border border-slate-200 px-3 py-2 text-left">Price</th>
-                                            <th class="border border-slate-200 px-3 py-2 text-left">Stock</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($variantsWithStockState as $variant)
-                                            @php
-                                                $stockStatus = $variant->is_preorder || $variant->allow_backorder
-                                                    ? 'Preorder'
-                                                    : ($variant->stock_quantity > 0 ? 'In stock' : 'Out of stock');
-                                                $availabilityDate = $formatAvailabilityDate(
-                                                    $variant->preorder_available_from
-                                                    ?? $variant->expected_ship_at
-                                                    ?? $product->preorder_available_from
-                                                    ?? $product->expected_ship_at
-                                                );
-                                            @endphp
-                                            <tr>
-                                                <td class="border border-slate-200 px-3 py-2">{{ $variant->name }}</td>
-                                                <td class="border border-slate-200 px-3 py-2">{{ $variant->sku }}</td>
-                                                <td class="border border-slate-200 px-3 py-2">${{ number_format((float) $variant->price, 2) }}</td>
-                                                <td class="border border-slate-200 px-3 py-2">
-                                                    <span class="inline-flex rounded px-2 py-0.5 text-xs {{ $stockStatus === 'In stock' ? 'bg-emerald-100 text-emerald-700' : ($stockStatus === 'Preorder' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700') }}">
-                                                        {{ $stockStatus }}
-                                                    </span>
-                                                    <div class="mt-1 text-xs text-slate-500">Qty: {{ $variant->stock_quantity }}</div>
-                                                    @if ($stockStatus === 'Preorder' && $availabilityDate)
-                                                        <div class="mt-1 text-xs text-slate-500">Available on {{ $availabilityDate }}</div>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                            @endif
                         @endif
                     </div>
                 </section>
