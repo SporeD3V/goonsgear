@@ -11,16 +11,6 @@
     </head>
     <body class="bg-slate-100 text-slate-900">
         <div class="mx-auto max-w-6xl p-6">
-            <nav class="mb-4 flex items-center gap-2 text-sm text-slate-600">
-                <a href="{{ url('/') }}" class="hover:text-slate-900 hover:underline">Home</a>
-                <span>/</span>
-                <a href="{{ route('shop.index') }}" class="hover:text-slate-900 hover:underline">Shop</a>
-                @if ($activeCategory)
-                    <span>/</span>
-                    <span class="text-slate-900">{{ $activeCategory->name }}</span>
-                @endif
-            </nav>
-
             <header class="mb-6 flex items-center justify-between gap-3">
                 <h1 class="text-2xl font-semibold">{{ $activeCategory?->name ? $activeCategory->name.' | GoonsGear Shop' : 'GoonsGear Shop' }}</h1>
                 <div class="flex items-center gap-4">
@@ -154,8 +144,8 @@
                         @php
                             $primaryMedia = $product->media->first();
                             $secondaryMedia = $product->media->skip(1)->first();
-                            $mediaUrl = $primaryMedia ? route('media.show', ['path' => $primaryMedia->getGalleryPath()]) : null;
-                            $secondaryMediaUrl = $secondaryMedia ? route('media.show', ['path' => $secondaryMedia->getGalleryPath()]) : null;
+                            $mediaUrl = $primaryMedia ? route('media.show', ['path' => $primaryMedia->catalog_path ?? $primaryMedia->path]) : null;
+                            $secondaryMediaUrl = $secondaryMedia ? route('media.show', ['path' => $secondaryMedia->catalog_path ?? $secondaryMedia->path]) : null;
                             $startingPrice = $product->min_active_variant_price;
                         @endphp
 

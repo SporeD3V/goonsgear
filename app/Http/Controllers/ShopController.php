@@ -48,6 +48,8 @@ class ShopController extends Controller
         ]);
 
         $product->setRelation('media', $product->media->map(function (ProductMedia $media): ProductMedia {
+            $media->setAttribute('display_path', $this->resolveGalleryPath($media));
+            $media->setAttribute('thumbnail_path', $this->resolveThumbnailPath($media));
             $media->setAttribute('zoom_path', $this->resolveZoomPath($media));
 
             return $media;
@@ -349,6 +351,41 @@ class ShopController extends Controller
         return $path;
     }
 
+    private function resolveGalleryPath(ProductMedia $media): string
+    {
+        return $this->resolveSizedPath($media, $media->getGalleryPath());
+    }
+
+    private function resolveThumbnailPath(ProductMedia $media): string
+    {
+        return $this->resolveSizedPath($media, $media->getThumbnailPath());
+    }
+
+    private function resolveSizedPath(ProductMedia $media, string $preferredPath): string
+    {
+        if (str_starts_with((string) $media->mime_type, 'video/')) {
+            return $media->path;
+        }
+
+        $disk = (string) ($media->disk ?: 'public');
+        $candidates = [$preferredPath];
+
+        if (str_contains($preferredPath, '/fallback/')) {
+            $galleryPreferredPath = str_replace('/fallback/', '/gallery/', $preferredPath);
+            array_unshift($candidates, $galleryPreferredPath);
+        }
+
+        $candidates[] = $media->path;
+
+        foreach (array_values(array_unique($candidates)) as $candidate) {
+            if (Storage::disk($disk)->exists($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return $media->path;
+    }
+
     public function search(Request $request): JsonResponse
     {
         $search = $request->string('q')->trim()->toString();
@@ -366,7 +403,7 @@ class ShopController extends Controller
             ->with([
                 'primaryCategory:id,name',
                 'media' => fn ($query) => $query
-                    ->select(['id', 'product_id', 'path', 'alt_text', 'is_primary', 'position'])
+                    ->select(['id', 'product_id', 'disk', 'path', 'mime_type', 'alt_text', 'is_primary', 'position'])
                     ->orderByDesc('is_primary')
                     ->orderBy('position')
                     ->orderBy('id'),
@@ -381,6 +418,8 @@ class ShopController extends Controller
             ->map(function ($product) {
                 $primaryMedia = $product->media->first();
                 $secondaryMedia = $product->media->skip(1)->first();
+                $primaryImagePath = $primaryMedia ? $this->resolveThumbnailPath($primaryMedia) : null;
+                $secondaryImagePath = $secondaryMedia ? $this->resolveThumbnailPath($secondaryMedia) : null;
                 $minPrice = $product->variants->min('price');
 
                 return [
@@ -390,8 +429,8 @@ class ShopController extends Controller
                     'excerpt' => strip_tags((string) $product->excerpt),
                     'category' => $product->primaryCategory?->name,
                     'price' => $minPrice !== null ? (float) $minPrice : null,
-                    'image' => $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null,
-                    'secondary_image' => $secondaryMedia ? route('media.show', ['path' => $secondaryMedia->path]) : null,
+                    'image' => $primaryImagePath ? route('media.show', ['path' => $primaryImagePath]) : null,
+                    'secondary_image' => $secondaryImagePath ? route('media.show', ['path' => $secondaryImagePath]) : null,
                     'url' => route('shop.show', $product),
                 ];
             });
@@ -493,6 +532,15 @@ class ShopController extends Controller
             ->when($sort === 'price_asc', fn ($query) => $query->orderByRaw('min_active_variant_price IS NULL')->orderBy('min_active_variant_price'))
             ->when($sort === 'price_desc', fn ($query) => $query->orderByDesc('min_active_variant_price')->orderByRaw('min_active_variant_price IS NULL'))
             ->paginate((int) config('pagination.shop_products_per_page', 12))
+            ->through(function (Product $product): Product {
+                $product->setRelation('media', $product->media->map(function (ProductMedia $media): ProductMedia {
+                    $media->setAttribute('catalog_path', $this->resolveGalleryPath($media));
+
+                    return $media;
+                }));
+
+                return $product;
+            })
             ->withQueryString();
 
         $pageTitle = $activeCategory?->meta_title ?: ($activeCategory ? $activeCategory->name.' | Shop | GoonsGear' : 'Shop | GoonsGear');

@@ -70,7 +70,7 @@
                 <section data-media-gallery>
                     @php
                         $primaryMedia = $product->media->first();
-                        $primaryMediaUrl = $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null;
+                        $primaryMediaUrl = $primaryMedia ? route('media.show', ['path' => $primaryMedia->display_path ?? $primaryMedia->path]) : null;
                         $primaryIsVideo = $primaryMedia ? str_starts_with((string) $primaryMedia->mime_type, 'video/') : false;
                     @endphp
 
@@ -105,7 +105,8 @@
                         <div class="mt-3 grid grid-cols-4 gap-2">
                             @foreach ($product->media as $media)
                                 @php
-                                    $thumbnailUrl = route('media.show', ['path' => $media->path]);
+                                    $displayUrl = route('media.show', ['path' => $media->display_path ?? $media->path]);
+                                    $thumbnailUrl = route('media.show', ['path' => $media->thumbnail_path ?? $media->path]);
                                     $zoomMediaUrl = route('media.show', ['path' => $media->zoom_path ?? $media->path]);
                                     $isVideo = str_starts_with((string) $media->mime_type, 'video/');
                                     $mediaVariantAttributes = $media->product_variant_id
@@ -118,7 +119,7 @@
                                     class="h-20 w-full cursor-pointer rounded border border-slate-200 bg-white p-0 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                                     data-media-thumb
                                     data-media-type="{{ $isVideo ? 'video' : 'image' }}"
-                                    data-media-url="{{ $thumbnailUrl }}"
+                                    data-media-url="{{ $displayUrl }}"
                                     data-media-zoom-url="{{ $zoomMediaUrl }}"
                                     data-media-alt="{{ $media->alt_text ?: $product->name }}"
                                     data-media-variant-id="{{ $media->product_variant_id ?? '' }}"
