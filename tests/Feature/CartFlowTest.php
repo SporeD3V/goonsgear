@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Product;
+use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class CartFlowTest extends TestCase
@@ -52,6 +54,36 @@ class CartFlowTest extends TestCase
         $response->assertRedirect();
         $response->assertSessionHas('cart.items.'.$variant->id.'.quantity', 2);
         $response->assertSessionHas('cart.items.'.$variant->id.'.sku', 'CART-HOODIE-L');
+    }
+
+    public function test_cart_item_uses_thumbnail_variant_image_when_available(): void
+    {
+        Storage::fake('public');
+
+        $fixture = $this->createPurchasableVariant();
+        $variant = $fixture['variant'];
+
+        $media = ProductMedia::factory()->create([
+            'product_id' => $fixture['product']->id,
+            'disk' => 'public',
+            'path' => 'products/cart-hoodie/gallery/main.webp',
+            'mime_type' => 'image/webp',
+            'is_primary' => true,
+            'position' => 0,
+        ]);
+
+        Storage::disk('public')->put($media->getThumbnailPath(), 'thumbnail-image-bytes');
+
+        $response = $this->post(route('cart.items.store'), [
+            'variant_id' => $variant->id,
+            'quantity' => 1,
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas(
+            'cart.items.'.$variant->id.'.image',
+            route('media.show', ['path' => $media->getThumbnailPath()])
+        );
     }
 
     public function test_adding_same_variant_increments_quantity(): void

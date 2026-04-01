@@ -9,6 +9,7 @@ use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class CheckoutFlowTest extends TestCase
@@ -337,6 +338,8 @@ class CheckoutFlowTest extends TestCase
 
     public function test_success_page_displays_product_thumbnail_for_order_items(): void
     {
+        Storage::fake('public');
+
         $fixture = $this->createCheckoutFixture();
         $product = $fixture['product'];
 
@@ -357,14 +360,18 @@ class CheckoutFlowTest extends TestCase
 
         $media = ProductMedia::factory()->create([
             'product_id' => $product->id,
-            'path' => 'products/checkout-hoodie/gallery/thumb.avif',
+            'disk' => 'public',
+            'path' => 'products/checkout-hoodie/gallery/main.webp',
+            'mime_type' => 'image/webp',
             'is_primary' => true,
             'position' => 0,
         ]);
 
+        Storage::disk('public')->put($media->getThumbnailPath(), 'checkout-thumb-bytes');
+
         $response = $this->get(route('checkout.success', $order));
 
         $response->assertOk();
-        $response->assertSee(route('media.show', ['path' => $media->path]));
+        $response->assertSee(route('media.show', ['path' => $media->getThumbnailPath()]));
     }
 }

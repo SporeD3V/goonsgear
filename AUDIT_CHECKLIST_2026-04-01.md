@@ -66,10 +66,15 @@ Use this file as the working checklist for the deep app review and remediation e
 
 - [ ] Review product-level versus variant-level media rules.
 - [ ] Confirm storefront uses variant media where appropriate.
-- [ ] Confirm cart previews use the correct image source.
+- [x] Confirm cart previews use the correct image source.
 - [ ] Review media primary-selection rules.
 - [ ] Review media deletion logic for orphaned derivatives and fallback originals.
 - [ ] Review responsive image conversion and storage behavior.
+
+Audit notes (2026-04-01, pass 2):
+- Storefront search/catalog/product gallery now use context-sized variants (search 200x200, catalog/product display 600x600, lightbox full-size).
+- Cart item preview image now resolves to thumbnail-200x200 with fallback-safe behavior.
+- Checkout success page thumbnail now resolves to thumbnail-200x200 with fallback-safe behavior.
 
 ## 6A. Store Readiness Gaps
 
@@ -163,6 +168,16 @@ Use this file as the working checklist for the deep app review and remediation e
 - [ ] Confirm deployment workflow matches the way the team is actually shipping changes.
 - [ ] Identify what should be tested before each push to staging or main.
 - [ ] Identify whether there are release gates missing for catalog integrity and storefront basics.
+
+Audit notes (2026-04-01, pass 2):
+- Critical risk: multiple tracked scripts contain plaintext SSH host/user/password credentials; this should be rotated and removed from versioned files.
+- Delivery currently relies on ad hoc Python deploy scripts with overlapping purposes and no single canonical script, increasing operational risk.
+
+Immediate remediation sequence:
+1. Rotate staging SSH credentials and invalidate current password-based access.
+2. Move deploy script auth to environment variables or key-based auth only.
+3. Consolidate to one canonical deploy entrypoint and archive deprecated scripts.
+4. Add a pre-commit secret scan and CI gate for known credential patterns.
 
 ## 13. Deliverables
 

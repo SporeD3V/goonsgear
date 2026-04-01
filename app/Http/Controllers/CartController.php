@@ -6,12 +6,14 @@ use App\Http\Requests\StoreCartItemRequest;
 use App\Http\Requests\UpdateCartItemRequest;
 use App\Models\CartAbandonment;
 use App\Models\Coupon;
+use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\UserCartItem;
 use App\Support\CartPricing;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -250,6 +252,7 @@ class CartController extends Controller
     private function buildCartItemData(ProductVariant $variant): array
     {
         $primaryMedia = $variant->product?->media->first();
+        $imagePath = $this->resolveCartImagePath($primaryMedia);
 
         return [
             'variant_id' => $variant->id,
@@ -260,9 +263,39 @@ class CartController extends Controller
             'sku' => $variant->sku,
             'price' => (float) $variant->price,
             'max_quantity' => $this->getMaxAllowedQuantity($variant),
-            'image' => $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null,
+            'image' => $imagePath ? route('media.show', ['path' => $imagePath]) : null,
             'url' => $variant->product ? route('shop.show', $variant->product) : null,
         ];
+    }
+
+    private function resolveCartImagePath(?ProductMedia $media): ?string
+    {
+        if ($media === null) {
+            return null;
+        }
+
+        if (str_starts_with((string) $media->mime_type, 'video/')) {
+            return $media->path;
+        }
+
+        $disk = (string) ($media->disk ?: 'public');
+        $thumbnailPath = $media->getThumbnailPath();
+        $candidates = [$thumbnailPath];
+
+        if (str_contains($thumbnailPath, '/fallback/')) {
+            $galleryThumbnailPath = str_replace('/fallback/', '/gallery/', $thumbnailPath);
+            array_unshift($candidates, $galleryThumbnailPath);
+        }
+
+        $candidates[] = $media->path;
+
+        foreach (array_values(array_unique($candidates)) as $candidate) {
+            if (Storage::disk($disk)->exists($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return $media->path;
     }
 
     private function syncCartItemToDb(Request $request, int $variantId, int $quantity): void

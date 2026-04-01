@@ -7,6 +7,7 @@ use App\Http\Requests\StoreCheckoutRequest;
 use App\Mail\OrderConfirmation;
 use App\Models\Coupon;
 use App\Models\Order;
+use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Support\CartPricing;
@@ -19,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -302,9 +304,45 @@ class CheckoutController extends Controller
                 ->orderBy('id'),
         ]);
 
+        $order->setRelation('items', $order->items->map(function ($item) {
+            $primaryMedia = $item->product?->media->first();
+
+            if ($primaryMedia !== null) {
+                $primaryMedia->setAttribute('thumbnail_path', $this->resolveCheckoutThumbnailPath($primaryMedia));
+            }
+
+            return $item;
+        }));
+
         return view('checkout.success', [
             'order' => $order,
         ]);
+    }
+
+    private function resolveCheckoutThumbnailPath(ProductMedia $media): string
+    {
+        if (str_starts_with((string) $media->mime_type, 'video/')) {
+            return $media->path;
+        }
+
+        $disk = (string) ($media->disk ?: 'public');
+        $thumbnailPath = $media->getThumbnailPath();
+        $candidates = [$thumbnailPath];
+
+        if (str_contains($thumbnailPath, '/fallback/')) {
+            $galleryThumbnailPath = str_replace('/fallback/', '/gallery/', $thumbnailPath);
+            array_unshift($candidates, $galleryThumbnailPath);
+        }
+
+        $candidates[] = $media->path;
+
+        foreach (array_values(array_unique($candidates)) as $candidate) {
+            if (Storage::disk($disk)->exists($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return $media->path;
     }
 
     /**

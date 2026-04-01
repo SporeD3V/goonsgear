@@ -32,7 +32,10 @@
                             @foreach ($order->items as $item)
                                 <tr>
                                     <td class="border-b border-slate-200 px-3 py-2">
-                                        @php($thumbnailPath = $item->product?->media->first()?->path)
+                                        @php
+                                            $primaryMedia = $item->product?->media->first();
+                                            $thumbnailPath = $primaryMedia?->thumbnail_path ?? $primaryMedia?->path;
+                                        @endphp
                                         @if ($thumbnailPath)
                                             <img src="{{ route('media.show', ['path' => $thumbnailPath]) }}" alt="{{ $item->product_name }}" class="h-12 w-12 rounded object-cover">
                                         @else
