@@ -150,6 +150,8 @@
 
                             $selectorData = $product->catalog_selector_data;
                             $catalogVariants = $product->catalog_variants;
+                            $maxPrice = $catalogVariants->max('price');
+                            $hasPriceRange = $startingPrice !== null && $maxPrice !== null && (float) $startingPrice !== (float) $maxPrice;
                             $hasGroups = !empty($selectorData['groups']);
                             $hasMultipleVariants = $catalogVariants->count() > 1;
 
@@ -201,7 +203,13 @@
                                     </div>
                                 @endif
                                 @if ($startingPrice !== null)
-                                    <p class="mt-1 text-sm font-medium text-slate-800">From ${{ number_format((float) $startingPrice, 2) }}</p>
+                                    <p class="mt-1 text-sm font-medium text-slate-800" data-catalog-price>
+                                        @if ($hasPriceRange)
+                                            From ${{ number_format((float) $startingPrice, 2) }}
+                                        @else
+                                            ${{ number_format((float) $startingPrice, 2) }}
+                                        @endif
+                                    </p>
                                 @endif
                                 @if ($product->plainExcerpt() !== '')
                                     <p class="mt-2 text-sm text-slate-700">{{ $product->plainExcerpt() }}</p>

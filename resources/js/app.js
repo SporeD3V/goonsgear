@@ -357,6 +357,8 @@ document.addEventListener('DOMContentLoaded', () => {
 		const addToCartButton = card.querySelector('[data-catalog-add-to-cart]');
 		const primaryImage = card.querySelector('[data-catalog-primary-image]');
 		const originalImageSrc = primaryImage?.dataset.catalogOriginalSrc || '';
+		const priceElement = card.querySelector('[data-catalog-price]');
+		const originalPriceHtml = priceElement?.innerHTML.trim() || '';
 
 		let variantMediaMap = {};
 		try {
@@ -431,6 +433,9 @@ document.addEventListener('DOMContentLoaded', () => {
 				if (addToCartButton) {
 					addToCartButton.textContent = `Add to cart — $${matchedOption.dataset.variantPrice}`;
 				}
+				if (priceElement) {
+					priceElement.textContent = `$${matchedOption.dataset.variantPrice}`;
+				}
 			} else {
 				variantSelect.selectedIndex = 0;
 				if (cartVariantInput) {
@@ -438,6 +443,9 @@ document.addEventListener('DOMContentLoaded', () => {
 				}
 				if (addToCartButton) {
 					addToCartButton.textContent = 'Select options';
+				}
+				if (priceElement) {
+					priceElement.innerHTML = originalPriceHtml;
 				}
 			}
 

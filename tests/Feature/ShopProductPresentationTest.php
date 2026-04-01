@@ -51,7 +51,7 @@ class ShopProductPresentationTest extends TestCase
 
         $response->assertOk();
         $response->assertSeeText('Bold release from the archive');
-        $response->assertSeeText('From $24.99');
+        $response->assertSeeText('$24.99');
     }
 
     public function test_shop_show_prioritizes_preorder_status_and_displays_availability_date(): void
