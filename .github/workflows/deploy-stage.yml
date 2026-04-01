@@ -98,13 +98,11 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           port: ${{ secrets.SSH_PORT }}
           password: ${{ secrets.SSH_PASSPHRASE }}
-          source: "deploy/**"
+          source: "deploy/*"
           target: ${{ secrets.REMOTE_PATH }}
           strip_components: 1
           overwrite: true
           timeout: 600s
-          command_timeout: 30m
-          debug: true
 
       - name: Post-deploy setup
         uses: appleboy/ssh-action@v1.2.0
