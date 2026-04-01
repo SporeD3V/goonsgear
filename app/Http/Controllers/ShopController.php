@@ -558,6 +558,24 @@ class ShopController extends Controller
         $sort = $request->string('sort')->trim()->toString();
         $sort = in_array($sort, ['newest', 'name_asc', 'name_desc', 'price_asc', 'price_desc'], true) ? $sort : 'newest';
 
+        $sizeProfileId = $request->integer('size_profile');
+        $activeSizeProfile = null;
+        $sizeProfiles = collect();
+        $user = $request->user();
+
+        if ($user !== null) {
+            $sizeProfiles = $user->sizeProfiles()
+                ->orderByDesc('is_self')
+                ->orderBy('name')
+                ->get();
+
+            if ($sizeProfileId > 0) {
+                $activeSizeProfile = $sizeProfiles->firstWhere('id', $sizeProfileId);
+            }
+        }
+
+        $profileSizes = $activeSizeProfile !== null ? $activeSizeProfile->allSizes() : [];
+
         $shopCategories = Category::query()
             ->where('is_active', true)
             ->orderBy('name')
@@ -623,6 +641,22 @@ class ShopController extends Controller
                         ->when($maxPrice !== null, fn ($priceQuery) => $priceQuery->where('price', '<=', $maxPrice));
                 })
             )
+            ->when(
+                $profileSizes !== [],
+                fn ($query) => $query->whereHas('variants', function ($variantQuery) use ($profileSizes): void {
+                    $variantQuery->where('is_active', true)
+                        ->where(function ($sizeQuery) use ($profileSizes): void {
+                            $sizeQuery->where(function ($q) use ($profileSizes): void {
+                                $q->where('variant_type', 'size')
+                                    ->whereIn('name', $profileSizes);
+                            });
+
+                            foreach ($profileSizes as $size) {
+                                $sizeQuery->orWhere('option_values->size', $size);
+                            }
+                        });
+                })
+            )
             ->with([
                 'primaryCategory:id,name,slug',
                 'tags:id,name,slug,type',
@@ -681,8 +715,11 @@ class ShopController extends Controller
                 'max_price' => $maxPrice,
                 'include_out_of_stock' => $showOutOfStock,
                 'sort' => $sort,
+                'size_profile' => $sizeProfileId,
             ],
             'shopTags' => $shopTags,
+            'sizeProfiles' => $sizeProfiles,
+            'activeSizeProfile' => $activeSizeProfile,
             'seo' => [
                 'title' => $pageTitle,
                 'description' => $pageDescription,

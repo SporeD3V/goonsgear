@@ -58,11 +58,17 @@ class AccountController extends Controller
             ->orderBy('coupons.code')
             ->get();
 
+        $sizeProfiles = $user->sizeProfiles()
+            ->orderByDesc('is_self')
+            ->orderBy('name')
+            ->get();
+
         return view('account.index', [
             'tagFollows' => $tagFollows,
             'availableTags' => $availableTags,
             'recentOrders' => $recentOrders,
             'availableCoupons' => $availableCoupons,
+            'sizeProfiles' => $sizeProfiles,
         ]);
     }
 

@@ -78,6 +78,21 @@
                     </select>
                 </div>
 
+                @if ($sizeProfiles->isNotEmpty())
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-slate-700">Shop for</label>
+                        <select name="size_profile" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                            <option value="">All sizes</option>
+                            @foreach ($sizeProfiles as $profile)
+                                <option value="{{ $profile->id }}" @selected($filters['size_profile'] == $profile->id)>
+                                    {{ $profile->is_self ? 'My sizes' : $profile->name }}
+                                    ({{ implode(', ', $profile->allSizes()) }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
+
                 <div>
                     <label class="mb-1 block text-xs font-medium text-slate-700">Min Price</label>
                     <input

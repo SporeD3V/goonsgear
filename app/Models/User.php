@@ -71,6 +71,11 @@ class User extends Authenticatable
         return $this->hasMany(UserCartItem::class);
     }
 
+    public function sizeProfiles(): HasMany
+    {
+        return $this->hasMany(SizeProfile::class);
+    }
+
     public function stockAlertSubscriptions(): HasMany
     {
         return $this->hasMany(StockAlertSubscription::class);

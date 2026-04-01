@@ -25,6 +25,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\ShopController;
+use App\Http\Controllers\SizeProfileController;
 use App\Http\Controllers\StockAlertSubscriptionController;
 use Illuminate\Support\Facades\Route;
 
@@ -80,6 +81,18 @@ Route::patch('/account/tag-follows/{tagFollow}', [AccountTagFollowController::cl
 Route::delete('/account/tag-follows/{tagFollow}', [AccountTagFollowController::class, 'destroy'])
     ->middleware('auth')
     ->name('account.tag-follows.destroy');
+
+Route::post('/account/size-profiles', [SizeProfileController::class, 'store'])
+    ->middleware('auth')
+    ->name('account.size-profiles.store');
+
+Route::patch('/account/size-profiles/{sizeProfile}', [SizeProfileController::class, 'update'])
+    ->middleware('auth')
+    ->name('account.size-profiles.update');
+
+Route::delete('/account/size-profiles/{sizeProfile}', [SizeProfileController::class, 'destroy'])
+    ->middleware('auth')
+    ->name('account.size-profiles.destroy');
 
 Route::post('/stock-alert-subscriptions', [StockAlertSubscriptionController::class, 'store'])
     ->middleware('auth')

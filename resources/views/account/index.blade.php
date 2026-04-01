@@ -166,6 +166,156 @@
             </section>
 
             <section class="mt-6 rounded border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 class="text-base font-semibold">Size Profiles</h2>
+                <p class="mt-1 text-sm text-slate-500">Save your sizes and sizes for people you buy for. Use these in the shop to filter products by size.</p>
+
+                @if ($sizeProfiles->isNotEmpty())
+                    <div class="mt-4 space-y-3">
+                        @foreach ($sizeProfiles as $profile)
+                            <div class="rounded border border-slate-200 p-4">
+                                <form method="POST" action="{{ route('account.size-profiles.update', $profile) }}">
+                                    @csrf
+                                    @method('PATCH')
+
+                                    <div class="mb-3 flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                name="name"
+                                                value="{{ old('name', $profile->name) }}"
+                                                class="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium"
+                                                required
+                                            >
+                                            @if ($profile->is_self)
+                                                <span class="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">You</span>
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    <div class="grid gap-3 sm:grid-cols-3">
+                                        <div>
+                                            <label class="mb-1 block text-xs font-medium text-slate-500">Top size</label>
+                                            <select name="top_size" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                                <option value="">—</option>
+                                                @foreach (['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL', '4XL', '5XL'] as $size)
+                                                    <option value="{{ $size }}" @selected(old('top_size', $profile->top_size) === $size)>{{ $size }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="mb-1 block text-xs font-medium text-slate-500">Bottom size</label>
+                                            <select name="bottom_size" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                                <option value="">—</option>
+                                                @foreach (['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL', '4XL', '5XL'] as $size)
+                                                    <option value="{{ $size }}" @selected(old('bottom_size', $profile->bottom_size) === $size)>{{ $size }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="mb-1 block text-xs font-medium text-slate-500">Shoe size</label>
+                                            <input type="text" name="shoe_size" value="{{ old('shoe_size', $profile->shoe_size) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" placeholder="e.g. 42">
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3 flex items-center gap-2">
+                                        <button type="submit" class="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700">Save</button>
+                                    </div>
+                                </form>
+
+                                @unless ($profile->is_self)
+                                    <form method="POST" action="{{ route('account.size-profiles.destroy', $profile) }}" class="mt-2">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-xs text-red-600 hover:underline">Remove this person</button>
+                                    </form>
+                                @endunless
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+
+                @if (!$sizeProfiles->where('is_self', true)->count())
+                    <div class="mt-4 rounded border border-dashed border-slate-300 p-4">
+                        <h3 class="text-sm font-medium text-slate-700">Add your sizes</h3>
+                        <form method="POST" action="{{ route('account.size-profiles.store') }}" class="mt-3">
+                            @csrf
+                            <input type="hidden" name="is_self" value="1">
+                            <input type="hidden" name="name" value="{{ auth()->user()?->name ?? 'Me' }}">
+
+                            <div class="grid gap-3 sm:grid-cols-3">
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-slate-500">Top size</label>
+                                    <select name="top_size" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                        <option value="">—</option>
+                                        @foreach (['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL', '4XL', '5XL'] as $size)
+                                            <option value="{{ $size }}">{{ $size }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-slate-500">Bottom size</label>
+                                    <select name="bottom_size" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                        <option value="">—</option>
+                                        @foreach (['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL', '4XL', '5XL'] as $size)
+                                            <option value="{{ $size }}">{{ $size }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-slate-500">Shoe size</label>
+                                    <input type="text" name="shoe_size" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" placeholder="e.g. 42">
+                                </div>
+                            </div>
+
+                            <div class="mt-3">
+                                <button type="submit" class="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700">Save my sizes</button>
+                            </div>
+                        </form>
+                    </div>
+                @endif
+
+                <div class="mt-4 rounded border border-dashed border-slate-300 p-4">
+                    <h3 class="text-sm font-medium text-slate-700">Add another person</h3>
+                    <form method="POST" action="{{ route('account.size-profiles.store') }}" class="mt-3">
+                        @csrf
+                        <div class="mb-3">
+                            <label class="mb-1 block text-xs font-medium text-slate-500">Name</label>
+                            <input type="text" name="name" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" placeholder="e.g. John" required>
+                        </div>
+
+                        <div class="grid gap-3 sm:grid-cols-3">
+                            <div>
+                                <label class="mb-1 block text-xs font-medium text-slate-500">Top size</label>
+                                <select name="top_size" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                    <option value="">—</option>
+                                    @foreach (['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL', '4XL', '5XL'] as $size)
+                                        <option value="{{ $size }}">{{ $size }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="mb-1 block text-xs font-medium text-slate-500">Bottom size</label>
+                                <select name="bottom_size" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                    <option value="">—</option>
+                                    @foreach (['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL', '4XL', '5XL'] as $size)
+                                        <option value="{{ $size }}">{{ $size }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="mb-1 block text-xs font-medium text-slate-500">Shoe size</label>
+                                <input type="text" name="shoe_size" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" placeholder="e.g. 42">
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <button type="submit" class="rounded bg-slate-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800">Add person</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <section class="mt-6 rounded border border-slate-200 bg-white p-6 shadow-sm">
                 <h2 class="text-base font-semibold">My Orders</h2>
                 <p class="mt-1 text-sm text-slate-500">Recent orders placed with your account email.</p>
 

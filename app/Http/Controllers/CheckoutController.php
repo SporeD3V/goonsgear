@@ -9,6 +9,7 @@ use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
+use App\Models\SizeProfile;
 use App\Models\User;
 use App\Support\CartPricing;
 use App\Support\Countries;
@@ -302,6 +303,7 @@ class CheckoutController extends Controller
                 ->orderByDesc('is_primary')
                 ->orderBy('position')
                 ->orderBy('id'),
+            'items.variant',
         ]);
 
         $order->setRelation('items', $order->items->map(function ($item) {
@@ -314,9 +316,96 @@ class CheckoutController extends Controller
             return $item;
         }));
 
+        $sizePromptData = $this->buildSizePromptData($order);
+
         return view('checkout.success', [
             'order' => $order,
+            'sizePromptData' => $sizePromptData,
         ]);
+    }
+
+    /**
+     * Detect sizes from order items and compare with user's size profiles.
+     *
+     * @return array{type: string, orderedSizes: list<string>, selfProfile: ?SizeProfile}|null
+     */
+    private function buildSizePromptData(Order $order): ?array
+    {
+        $user = request()->user();
+
+        if ($user === null) {
+            return null;
+        }
+
+        $orderedSizes = [];
+
+        foreach ($order->items as $item) {
+            $variant = $item->variant;
+
+            if ($variant === null) {
+                continue;
+            }
+
+            // Extract sizes from option_values first
+            if (is_array($variant->option_values) && $variant->option_values !== []) {
+                foreach ($variant->option_values as $key => $value) {
+                    $normalizedKey = strtolower(str_replace(['attribute_', 'pa_'], '', (string) $key));
+
+                    if (in_array($normalizedKey, ['size', 'groesse', 'taille'], true)) {
+                        $orderedSizes[] = trim((string) $value);
+                    }
+                }
+
+                continue;
+            }
+
+            // Fall back to detecting from variant name
+            if ($variant->variant_type === 'size') {
+                $orderedSizes[] = trim((string) $variant->name);
+
+                continue;
+            }
+
+            $parts = preg_split('/\s*[\|,\/-]\s*/', (string) $variant->name) ?: [];
+
+            foreach ($parts as $part) {
+                $part = trim($part);
+
+                if ($part !== '' && ProductVariant::detectTypeFromName($part) === 'size') {
+                    $orderedSizes[] = $part;
+                }
+            }
+        }
+
+        $orderedSizes = array_values(array_unique(array_filter($orderedSizes)));
+
+        if ($orderedSizes === []) {
+            return null;
+        }
+
+        $selfProfile = $user->sizeProfiles()->where('is_self', true)->first();
+
+        if ($selfProfile === null) {
+            return [
+                'type' => 'create',
+                'orderedSizes' => $orderedSizes,
+                'selfProfile' => null,
+            ];
+        }
+
+        $profileSizes = array_map('strtoupper', $selfProfile->allSizes());
+        $orderedUpper = array_map('strtoupper', $orderedSizes);
+        $newSizes = array_values(array_diff($orderedUpper, $profileSizes));
+
+        if ($newSizes === []) {
+            return null;
+        }
+
+        return [
+            'type' => 'mismatch',
+            'orderedSizes' => $orderedSizes,
+            'selfProfile' => $selfProfile,
+        ];
     }
 
     private function resolveCheckoutThumbnailPath(ProductMedia $media): string
