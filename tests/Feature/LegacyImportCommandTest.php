@@ -365,6 +365,108 @@ class LegacyImportCommandTest extends TestCase
         ], $variant->option_values);
     }
 
+    public function test_legacy_order_item_maps_to_imported_variant_id_for_variations(): void
+    {
+        DB::connection('legacy')->table('wp_posts')->insert([
+            'ID' => 510,
+            'post_parent' => 0,
+            'post_author' => 0,
+            'post_type' => 'product',
+            'post_status' => 'publish',
+            'post_title' => 'Mapped Variant Hoodie',
+            'post_name' => 'mapped-variant-hoodie',
+            'post_excerpt' => '',
+            'post_content' => '',
+            'post_date' => now()->toDateTimeString(),
+        ]);
+
+        DB::connection('legacy')->table('wp_posts')->insert([
+            'ID' => 5101,
+            'post_parent' => 510,
+            'post_author' => 0,
+            'post_type' => 'product_variation',
+            'post_status' => 'publish',
+            'post_title' => 'Black / M',
+            'post_name' => 'mapped-variant-hoodie-black-m',
+            'post_excerpt' => '',
+            'post_content' => '',
+            'post_date' => now()->toDateTimeString(),
+        ]);
+
+        DB::connection('legacy')->table('wp_postmeta')->insert([
+            ['post_id' => 510, 'meta_key' => '_price', 'meta_value' => '0'],
+            ['post_id' => 510, 'meta_key' => '_regular_price', 'meta_value' => '0'],
+            ['post_id' => 5101, 'meta_key' => '_sku', 'meta_value' => 'MAP-BLK-M'],
+            ['post_id' => 5101, 'meta_key' => '_price', 'meta_value' => '59.95'],
+            ['post_id' => 5101, 'meta_key' => '_regular_price', 'meta_value' => '64.95'],
+            ['post_id' => 5101, 'meta_key' => '_stock', 'meta_value' => '5'],
+            ['post_id' => 5101, 'meta_key' => '_manage_stock', 'meta_value' => 'yes'],
+            ['post_id' => 5101, 'meta_key' => 'attribute_pa_color', 'meta_value' => 'black'],
+            ['post_id' => 5101, 'meta_key' => 'attribute_pa_size', 'meta_value' => 'm'],
+        ]);
+
+        DB::connection('legacy')->table('wp_terms')->insert([
+            ['term_id' => 811, 'name' => 'Black', 'slug' => 'black'],
+            ['term_id' => 812, 'name' => 'M', 'slug' => 'm'],
+        ]);
+
+        DB::connection('legacy')->table('wp_term_taxonomy')->insert([
+            ['term_taxonomy_id' => 911, 'term_id' => 811, 'taxonomy' => 'pa_color', 'parent' => 0],
+            ['term_taxonomy_id' => 912, 'term_id' => 812, 'taxonomy' => 'pa_size', 'parent' => 0],
+        ]);
+
+        DB::connection('legacy')->table('wp_posts')->insert([
+            'ID' => 920,
+            'post_parent' => 0,
+            'post_author' => 0,
+            'post_type' => 'shop_order',
+            'post_status' => 'wc-completed',
+            'post_title' => 'Order 920',
+            'post_name' => 'order-920',
+            'post_excerpt' => '',
+            'post_content' => '',
+            'post_date' => now()->toDateTimeString(),
+        ]);
+
+        DB::connection('legacy')->table('wp_postmeta')->insert([
+            ['post_id' => 920, 'meta_key' => '_billing_email', 'meta_value' => 'mapped@example.com'],
+            ['post_id' => 920, 'meta_key' => '_billing_first_name', 'meta_value' => 'Mapped'],
+            ['post_id' => 920, 'meta_key' => '_billing_last_name', 'meta_value' => 'Customer'],
+            ['post_id' => 920, 'meta_key' => '_order_total', 'meta_value' => '59.95'],
+        ]);
+
+        DB::connection('legacy')->table('wp_woocommerce_order_items')->insert([
+            'order_item_id' => 9201,
+            'order_id' => 920,
+            'order_item_name' => 'Mapped Variant Hoodie',
+            'order_item_type' => 'line_item',
+        ]);
+
+        DB::connection('legacy')->table('wp_woocommerce_order_itemmeta')->insert([
+            ['order_item_id' => 9201, 'meta_key' => '_product_id', 'meta_value' => '510'],
+            ['order_item_id' => 9201, 'meta_key' => '_variation_id', 'meta_value' => '5101'],
+            ['order_item_id' => 9201, 'meta_key' => '_variation_title', 'meta_value' => 'Black / M'],
+            ['order_item_id' => 9201, 'meta_key' => '_sku', 'meta_value' => 'MAP-BLK-M'],
+            ['order_item_id' => 9201, 'meta_key' => '_qty', 'meta_value' => '1'],
+            ['order_item_id' => 9201, 'meta_key' => '_line_subtotal', 'meta_value' => '59.95'],
+            ['order_item_id' => 9201, 'meta_key' => '_line_total', 'meta_value' => '59.95'],
+        ]);
+
+        $this->artisan('import:legacy-data', ['--skip-cleanup' => true])->assertSuccessful();
+
+        $variant = ProductVariant::query()->where('sku', 'MAP-BLK-M')->first();
+        $this->assertNotNull($variant);
+
+        $order = Order::query()->where('order_number', 'WC-920')->first();
+        $this->assertNotNull($order);
+
+        $this->assertDatabaseHas('order_items', [
+            'order_id' => $order->id,
+            'product_variant_id' => $variant->id,
+            'sku' => 'MAP-BLK-M',
+        ]);
+    }
+
     private function createLegacySchema(): void
     {
         $schema = Schema::connection('legacy');

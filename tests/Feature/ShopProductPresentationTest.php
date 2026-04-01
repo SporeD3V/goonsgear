@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Product;
+use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -286,5 +287,146 @@ class ShopProductPresentationTest extends TestCase
         $response->assertSee('data-variant-attribute-value="Black"', false);
         $response->assertSee('data-variant-attribute-value="White"', false);
         $response->assertDontSee('data-variant-attribute="color_2"', false);
+    }
+
+    public function test_shop_show_supports_typed_size_variants(): void
+    {
+        $product = Product::factory()->create();
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'S',
+            'sku' => 'SIZE-S',
+            'price' => 29.99,
+            'option_values' => null,
+            'variant_type' => 'size',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'M',
+            'sku' => 'SIZE-M',
+            'price' => 29.99,
+            'option_values' => null,
+            'variant_type' => 'size',
+        ]);
+
+        $response = $this->get(route('shop.show', $product));
+
+        $response->assertOk();
+        $response->assertSee('data-variant-attribute="size"', false);
+        $response->assertDontSee('data-variant-attribute="color"', false);
+    }
+
+    public function test_shop_show_supports_typed_color_variants(): void
+    {
+        $product = Product::factory()->create([
+            'name' => 'Color Hoodie',
+            'slug' => 'color-hoodie-test',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Color Hoodie - Black',
+            'sku' => 'COLOR-BLK',
+            'price' => 39.99,
+            'option_values' => null,
+            'variant_type' => 'color',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Color Hoodie - White',
+            'sku' => 'COLOR-WHT',
+            'price' => 39.99,
+            'option_values' => null,
+            'variant_type' => 'color',
+        ]);
+
+        $response = $this->get(route('shop.show', $product));
+
+        $response->assertOk();
+        $response->assertSee('data-variant-attribute="color"', false);
+        $response->assertDontSee('data-variant-attribute="size"', false);
+    }
+
+    public function test_shop_show_supports_combo_variants_with_size_and_color(): void
+    {
+        $product = Product::factory()->create();
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Black / M',
+            'sku' => 'COMBO-BLK-M',
+            'price' => 49.99,
+            'option_values' => ['size' => 'M', 'color' => 'Black'],
+            'variant_type' => 'custom',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Red / L',
+            'sku' => 'COMBO-RED-L',
+            'price' => 49.99,
+            'option_values' => ['size' => 'L', 'color' => 'Red'],
+            'variant_type' => 'custom',
+        ]);
+
+        $response = $this->get(route('shop.show', $product));
+
+        $response->assertOk();
+        $response->assertSee('data-variant-attribute="size"', false);
+        $response->assertSee('data-variant-attribute="color"', false);
+        $response->assertSee('data-variant-attribute-value="M"', false);
+        $response->assertSee('data-variant-attribute-value="Black"', false);
+    }
+
+    public function test_shop_show_exposes_variant_specific_media_metadata_for_gallery_filtering(): void
+    {
+        $product = Product::factory()->create();
+
+        $redVariant = ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Red M',
+            'sku' => 'MEDIA-RED-M',
+            'price' => 44.99,
+            'option_values' => ['size' => 'M', 'color' => 'Red'],
+            'variant_type' => 'custom',
+        ]);
+
+        $blackVariant = ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Black M',
+            'sku' => 'MEDIA-BLK-M',
+            'price' => 44.99,
+            'option_values' => ['size' => 'M', 'color' => 'Black'],
+            'variant_type' => 'custom',
+        ]);
+
+        ProductMedia::factory()->create([
+            'product_id' => $product->id,
+            'product_variant_id' => $redVariant->id,
+            'path' => 'products/media-product/red.webp',
+            'mime_type' => 'image/webp',
+            'is_primary' => true,
+            'position' => 0,
+        ]);
+
+        ProductMedia::factory()->create([
+            'product_id' => $product->id,
+            'product_variant_id' => $blackVariant->id,
+            'path' => 'products/media-product/black.webp',
+            'mime_type' => 'image/webp',
+            'is_primary' => false,
+            'position' => 1,
+        ]);
+
+        $response = $this->get(route('shop.show', $product));
+
+        $response->assertOk();
+        $response->assertSee('data-media-variant-id="'.$redVariant->id.'"', false);
+        $response->assertSee('data-media-variant-id="'.$blackVariant->id.'"', false);
+        $response->assertSee('data-media-variant-color="Red"', false);
+        $response->assertSee('data-media-variant-color="Black"', false);
     }
 }
