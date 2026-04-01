@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Deploy gallery optimization changes to staging"""
+import os
 import paramiko
 import sys
 
-HOST = '91.98.230.33'
-PORT = 1221
-USER = 'spored3v'
-PASSWORD = 'HNjp0cfsKOZ9PoJltRvU'
+HOST = os.environ.get('GOONSGEAR_SSH_HOST', '91.98.230.33')
+PORT = int(os.environ.get('GOONSGEAR_SSH_PORT', '1221'))
+USER = os.environ.get('GOONSGEAR_SSH_USER', 'spored3v')
+PASSWORD = os.environ.get('GOONSGEAR_SSH_PASSWORD', '')
 
 def run_cmd(client, cmd, label=None):
     if label:
@@ -22,6 +23,9 @@ def run_cmd(client, cmd, label=None):
 
 def main():
     try:
+        if PASSWORD == '':
+            raise RuntimeError('Missing GOONSGEAR_SSH_PASSWORD environment variable.')
+
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         client.connect(HOST, port=PORT, username=USER, password=PASSWORD, timeout=15)

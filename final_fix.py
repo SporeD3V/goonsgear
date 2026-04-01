@@ -1,7 +1,7 @@
 import paramiko  
 c=paramiko.SSHClient()  
 c.set_missing_host_key_policy(paramiko.AutoAddPolicy())  
-c.connect('91.98.230.33',1221,'spored3v','HNjp0cfsKOZ9PoJltRvU')  
+c.connect('91.98.230.33',1221,'spored3v','REDACTED_SET_GOONSGEAR_SSH_PASSWORD')  
 s=c.open_sftp()  
 s.put('resources/views/shop/show.blade.php','/home/macaw-goonsgear/htdocs/goonsgear.macaw.studio/resources/views/shop/show.blade.php')  
 s.close()  

@@ -6,7 +6,7 @@ import sys
 HOST = '91.98.230.33'
 PORT = 1221
 USER = 'spored3v'
-PASSWORD = 'HNjp0cfsKOZ9PoJltRvU'
+PASSWORD = 'REDACTED_SET_GOONSGEAR_SSH_PASSWORD'
 BASE_PATH = '/home/macaw-goonsgear/htdocs/goonsgear.macaw.studio'
 
 def run_cmd(client, cmd, label=None):
