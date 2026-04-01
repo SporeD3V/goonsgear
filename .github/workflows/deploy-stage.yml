@@ -84,6 +84,9 @@ jobs:
           script_stop: true
           script: |
             set -eu
+            test -d '${{ secrets.REMOTE_PATH }}'
+            touch '${{ secrets.REMOTE_PATH }}/.deploy-write-test'
+            rm -f '${{ secrets.REMOTE_PATH }}/.deploy-write-test'
             mkdir -p '${{ secrets.REMOTE_PATH }}/bootstrap/cache' '${{ secrets.REMOTE_PATH }}/storage'
             find '${{ secrets.REMOTE_PATH }}/bootstrap/cache' -maxdepth 1 -type f -name '*.php' -delete || true
             chmod -R ug+rwX '${{ secrets.REMOTE_PATH }}/storage' '${{ secrets.REMOTE_PATH }}/bootstrap/cache' || true
@@ -95,11 +98,13 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           port: ${{ secrets.SSH_PORT }}
           password: ${{ secrets.SSH_PASSPHRASE }}
-          source: "deploy/*"
+          source: "deploy/**"
           target: ${{ secrets.REMOTE_PATH }}
           strip_components: 1
           overwrite: true
           timeout: 600s
+          command_timeout: 30m
+          debug: true
 
       - name: Post-deploy setup
         uses: appleboy/ssh-action@v1.2.0
