@@ -139,7 +139,7 @@
             @if ($products->isEmpty())
                 <p class="rounded border border-slate-200 bg-white p-4 text-sm text-slate-600">No active products found.</p>
             @else
-                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     @foreach ($products as $product)
                         @php
                             $primaryMedia = $product->media->first();
@@ -165,14 +165,14 @@
                         @endphp
 
                         <article
-                            class="group/card relative rounded border border-slate-200 bg-white p-4 shadow-sm"
+                            class="group/card relative flex flex-col rounded border border-slate-200 bg-white p-4 shadow-sm"
                             data-catalog-card
                             @if ($hasGroups)
                                 data-catalog-attribute-order="{{ implode(',', $selectorData['attributeOrder']) }}"
                                 data-catalog-variant-media='@json($variantMediaMap)'
                             @endif
                         >
-                            <a href="{{ route('shop.show', $product) }}" class="group block">
+                            <a href="{{ route('shop.show', $product) }}" class="group block flex-1">
                                 @if ($mediaUrl)
                                     <div class="relative mb-3 h-52 w-full overflow-hidden rounded">
                                         <img
@@ -209,8 +209,8 @@
                             </a>
 
                             @if ($hasGroups && $hasMultipleVariants)
-                                {{-- Variant options + add to cart (visible on hover) --}}
-                                <div class="mt-3 hidden group-hover/card:block" data-catalog-hover-section>
+                                {{-- Variant options + add to cart --}}
+                                <div class="mt-auto pt-3" data-catalog-hover-section>
                                     <div class="space-y-2" data-catalog-options>
                                         @foreach ($selectorData['groups'] as $attributeKey => $attributeGroup)
                                             <div>
@@ -272,8 +272,8 @@
                             @elseif (!$hasMultipleVariants && $catalogVariants->count() === 1)
                                 @php $singleVariant = $catalogVariants->first(); @endphp
                                 @if (!$singleVariant->is_out_of_stock)
-                                    {{-- Single variant: direct add to cart on hover --}}
-                                    <div class="mt-3 hidden group-hover/card:block" data-catalog-hover-section>
+                                    {{-- Single variant: direct add to cart --}}
+                                    <div class="mt-auto pt-3" data-catalog-hover-section>
                                         <form method="POST" action="{{ route('cart.items.store') }}" data-catalog-cart-form>
                                             @csrf
                                             <input type="hidden" name="variant_id" value="{{ $singleVariant->id }}">

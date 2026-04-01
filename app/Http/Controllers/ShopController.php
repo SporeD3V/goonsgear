@@ -410,10 +410,7 @@ class ShopController extends Controller
         return match ($canonicalKey) {
             'size' => 'Size',
             'color' => 'Color',
-            default => Str::of($canonicalKey)
-                ->replace('_', ' ')
-                ->headline()
-                ->toString(),
+            default => 'Product options',
         };
     }
 
