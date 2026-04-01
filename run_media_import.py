@@ -23,7 +23,7 @@ def main():
         print("\nThis will:")
         print("  - Import product images from WordPress uploads")
         print("  - Convert to AVIF/WebP formats")
-        print("  - Generate thumbnail/gallery/hero sizes")
+        print("  - Generate thumbnail/gallery sizes")
         print("  - Associate images with products and variants")
         print("\nEstimated time: 20-30 minutes")
         print("="*70 + "\n")

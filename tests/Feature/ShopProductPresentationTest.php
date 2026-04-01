@@ -196,6 +196,8 @@ class ShopProductPresentationTest extends TestCase
         $response->assertSeeText('Select variant options to view details.');
         $response->assertSee('data-cart-variant-input', false);
         $response->assertSee('data-add-to-cart-button', false);
+        $response->assertSee('data-variant-sku="RED-M"', false);
+        $response->assertSee('data-variant-sku="BLK-L"', false);
         $response->assertSee('disabled', false);
     }
 

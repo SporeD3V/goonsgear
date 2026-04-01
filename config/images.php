@@ -9,7 +9,6 @@ return [
     'sizes' => [
         'thumbnail' => ['width' => 200, 'height' => 200],     // Cart items, search results
         'gallery' => ['width' => 600, 'height' => 600],        // Product detail gallery
-        'hero' => ['width' => 1200, 'height' => 600],          // Homepage hero
     ],
 
     'responsive' => [

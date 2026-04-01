@@ -41,6 +41,27 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 		};
 
+		const resolveVariantSku = (option) => {
+			if (!option) {
+				return '--';
+			}
+
+			const datasetSku = (option.dataset.variantSku || '').trim();
+			if (datasetSku !== '') {
+				return datasetSku;
+			}
+
+			const attributeSku = (option.getAttribute('data-variant-sku') || '').trim();
+			if (attributeSku !== '') {
+				return attributeSku;
+			}
+
+			const optionText = (option.textContent || '').trim();
+			const textMatch = optionText.match(/\(([^)]+)\)\s*$/);
+
+			return textMatch && textMatch[1] ? textMatch[1].trim() : '--';
+		};
+
 		const variantOptions = Array.from(variantSelect.options).map((option) => ({
 			option,
 			attributes: parseVariantAttributes(option),
@@ -171,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			selectedAttributes = parseVariantAttributes(selectedOption);
 
 			priceElement.textContent = selectedOption.dataset.variantPrice || '';
-			skuElement.textContent = selectedOption.dataset.variantSku || '';
+			skuElement.textContent = resolveVariantSku(selectedOption);
 			statusElement.textContent = selectedOption.dataset.variantStatus || '';
 			qtyElement.textContent = selectedOption.dataset.variantQty || '';
 
