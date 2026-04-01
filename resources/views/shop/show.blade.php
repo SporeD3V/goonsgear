@@ -305,6 +305,9 @@
                                             data-variant-sku="{{ $variant->sku }}"
                                             data-variant-status="{{ $stockStatus }}"
                                             data-variant-qty="{{ $variant->stock_quantity }}"
+                                            data-variant-track-inventory="{{ $variant->track_inventory ? '1' : '0' }}"
+                                            data-variant-allow-backorder="{{ $variant->allow_backorder ? '1' : '0' }}"
+                                            data-variant-is-preorder="{{ $variant->is_preorder ? '1' : '0' }}"
                                             data-variant-availability="{{ $formatAvailabilityDate($variant->preorder_available_from ?? $variant->expected_ship_at ?? $product->preorder_available_from ?? $product->expected_ship_at) ?? '' }}"
                                             data-variant-attributes='@json($variantSelectorData['variantAttributesById'][$variant->id] ?? [])'
                                             data-variant-out-of-stock="{{ $variant->is_out_of_stock ? '1' : '0' }}"
@@ -341,6 +344,7 @@
                                             name="quantity"
                                             min="1"
                                             value="1"
+                                            data-cart-quantity-input
                                             class="w-24 rounded border border-slate-300 bg-white px-3 py-2 text-sm"
                                         >
                                     </div>

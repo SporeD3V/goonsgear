@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const availabilityElement = picker.querySelector('[data-variant-availability]');
 		const availabilityLine = picker.querySelector('[data-variant-availability-line]');
 		const cartVariantInput = picker.querySelector('[data-cart-variant-input]');
+		const quantityInput = picker.querySelector('[data-cart-quantity-input]');
 		const stockAlertForm = picker.querySelector('[data-stock-alert-form]');
 		const stockAlertVariantInput = picker.querySelector('[data-stock-alert-variant-input]');
 		const stockAlertSubscribedLabel = picker.querySelector('[data-stock-alert-subscribed-label]');
@@ -165,6 +166,11 @@ document.addEventListener('DOMContentLoaded', () => {
 				cartVariantInput.value = '';
 			}
 
+			if (quantityInput) {
+				quantityInput.removeAttribute('max');
+				quantityInput.value = '1';
+			}
+
 			if (addToCartButton) {
 				addToCartButton.disabled = true;
 			}
@@ -206,8 +212,33 @@ document.addEventListener('DOMContentLoaded', () => {
 				cartVariantInput.value = selectedOption.value;
 			}
 
+			const selectedQuantity = Number.parseInt(selectedOption.dataset.variantQty || '0', 10);
+			const tracksInventory = selectedOption.dataset.variantTrackInventory === '1';
+			const allowsBackorder = selectedOption.dataset.variantAllowBackorder === '1';
+			const isPreorder = selectedOption.dataset.variantIsPreorder === '1';
+
 			if (addToCartButton) {
-				addToCartButton.disabled = false;
+				addToCartButton.disabled = selectedOption.dataset.variantOutOfStock === '1';
+			}
+
+			if (quantityInput) {
+				const hasFiniteStockLimit = tracksInventory && !allowsBackorder && !isPreorder && selectedQuantity > 0;
+
+				if (hasFiniteStockLimit) {
+					quantityInput.max = String(selectedQuantity);
+
+					const currentQuantity = Number.parseInt(quantityInput.value || '1', 10);
+					if (Number.isNaN(currentQuantity) || currentQuantity < 1) {
+						quantityInput.value = '1';
+					} else if (currentQuantity > selectedQuantity) {
+						quantityInput.value = String(selectedQuantity);
+					}
+				} else {
+					quantityInput.removeAttribute('max');
+					if (!quantityInput.value || Number.parseInt(quantityInput.value, 10) < 1) {
+						quantityInput.value = '1';
+					}
+				}
 			}
 
 			const isOutOfStock = selectedOption.dataset.variantOutOfStock === '1';

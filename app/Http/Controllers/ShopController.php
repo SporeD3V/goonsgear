@@ -69,7 +69,7 @@ class ShopController extends Controller
             return $variant;
         });
 
-        $variantSelectorData = $this->buildVariantSelectorData($variantsWithStockState);
+        $variantSelectorData = $this->buildVariantSelectorData($variantsWithStockState, $product->name);
 
         $activeStockAlertVariantIds = [];
 
@@ -105,22 +105,24 @@ class ShopController extends Controller
      *   attributeOrder: array<int, string>
      * }
      */
-    private function buildVariantSelectorData(Collection $variants): array
+    private function buildVariantSelectorData(Collection $variants, string $productName = ''): array
     {
         $rawVariantAttributes = [];
         $groupValues = [];
 
         foreach ($variants as $variant) {
-            $attributes = $this->extractVariantAttributes($variant);
+            $attributes = $this->extractVariantAttributes($variant, $productName);
             $rawVariantAttributes[$variant->id] = $attributes;
 
             foreach ($attributes as $key => $value) {
-                if (! isset($groupValues[$key])) {
-                    $groupValues[$key] = [];
+                $canonicalKey = $this->canonicalAttributeKey($key);
+
+                if (! isset($groupValues[$canonicalKey])) {
+                    $groupValues[$canonicalKey] = [];
                 }
 
-                if ($value !== '' && ! in_array($value, $groupValues[$key], true)) {
-                    $groupValues[$key][] = $value;
+                if ($value !== '' && ! in_array($value, $groupValues[$canonicalKey], true)) {
+                    $groupValues[$canonicalKey][] = $value;
                 }
             }
         }
@@ -155,11 +157,24 @@ class ShopController extends Controller
 
         $variantAttributesById = [];
         foreach ($rawVariantAttributes as $variantId => $attributes) {
-            $variantAttributesById[$variantId] = collect($attributes)
-                ->only($attributeKeys)
-                ->map(fn (string $value) => trim($value))
-                ->filter(fn (string $value) => $value !== '')
-                ->all();
+            $normalizedAttributes = [];
+
+            foreach ($attributes as $attributeKey => $attributeValue) {
+                $canonicalKey = $this->canonicalAttributeKey($attributeKey);
+
+                if (! in_array($canonicalKey, $attributeKeys, true)) {
+                    continue;
+                }
+
+                $value = trim($attributeValue);
+                if ($value === '' || isset($normalizedAttributes[$canonicalKey])) {
+                    continue;
+                }
+
+                $normalizedAttributes[$canonicalKey] = $value;
+            }
+
+            $variantAttributesById[$variantId] = $normalizedAttributes;
         }
 
         return [
@@ -172,7 +187,7 @@ class ShopController extends Controller
     /**
      * @return array<string, string>
      */
-    private function extractVariantAttributes($variant): array
+    private function extractVariantAttributes($variant, string $productName = ''): array
     {
         $attributes = [];
 
@@ -199,6 +214,21 @@ class ShopController extends Controller
         $rawName = trim((string) $variant->name);
         if ($rawName === '' || strcasecmp($rawName, 'Default') === 0) {
             return [];
+        }
+
+        $explicitVariantType = strtolower((string) ($variant->variant_type ?? ''));
+        if (in_array($explicitVariantType, ['size', 'color'], true)) {
+            $typedValue = $rawName;
+
+            if ($productName !== '') {
+                $escapedProductName = preg_quote(trim($productName), '/');
+                $typedValue = preg_replace('/^'.$escapedProductName.'\s*[\-|\|,\/]\s*/i', '', $typedValue) ?? $typedValue;
+            }
+
+            $typedValue = trim($typedValue);
+            if ($typedValue !== '') {
+                return [$explicitVariantType => $typedValue];
+            }
         }
 
         $parts = preg_split('/\s*[\|,\/-]\s*/', $rawName) ?: [];
@@ -231,6 +261,8 @@ class ShopController extends Controller
             ->snake()
             ->toString();
 
+        $normalized = $this->canonicalAttributeKey($normalized);
+
         if (in_array($normalized, ['colour', 'farbe', 'couleur'], true)) {
             return 'color';
         }
@@ -244,6 +276,14 @@ class ShopController extends Controller
         }
 
         return $this->classifyAttributeKey($value, '', 0);
+    }
+
+    private function canonicalAttributeKey(string $key): string
+    {
+        return match (true) {
+            preg_match('/^(color|size)_\d+$/', $key) === 1 => preg_replace('/_\d+$/', '', $key) ?? $key,
+            default => $key,
+        };
     }
 
     private function classifyAttributeKey(string $value, string $variantType, int $index): string
@@ -296,10 +336,12 @@ class ShopController extends Controller
 
     private function attributeLabelFromKey(string $key): string
     {
-        return match ($key) {
+        $canonicalKey = $this->canonicalAttributeKey($key);
+
+        return match ($canonicalKey) {
             'size' => 'Size',
             'color' => 'Color',
-            default => Str::of($key)
+            default => Str::of($canonicalKey)
                 ->replace('_', ' ')
                 ->headline()
                 ->toString(),

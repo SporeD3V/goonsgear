@@ -198,6 +198,10 @@ class ShopProductPresentationTest extends TestCase
         $response->assertSee('data-add-to-cart-button', false);
         $response->assertSee('data-variant-sku="RED-M"', false);
         $response->assertSee('data-variant-sku="BLK-L"', false);
+        $response->assertSee('data-variant-track-inventory="1"', false);
+        $response->assertSee('data-variant-allow-backorder="0"', false);
+        $response->assertSee('data-variant-is-preorder="0"', false);
+        $response->assertSee('data-cart-quantity-input', false);
         $response->assertSee('disabled', false);
     }
 
@@ -289,6 +293,42 @@ class ShopProductPresentationTest extends TestCase
         $response->assertSee('data-variant-attribute-value="Black"', false);
         $response->assertSee('data-variant-attribute-value="White"', false);
         $response->assertDontSee('data-variant-attribute="color_2"', false);
+    }
+
+    public function test_shop_show_uses_single_color_group_for_typed_color_variants_when_product_name_contains_color_words(): void
+    {
+        $product = Product::factory()->create([
+            'name' => 'Onyx All White Madface Shirt',
+            'slug' => 'onyx-all-white-madface-shirt-test',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Onyx All White Madface Shirt - Black',
+            'sku' => 'ONYX-BLK',
+            'price' => 44.99,
+            'option_values' => null,
+            'variant_type' => 'color',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Onyx All White Madface Shirt - White',
+            'sku' => 'ONYX-WHT',
+            'price' => 44.99,
+            'option_values' => null,
+            'variant_type' => 'color',
+        ]);
+
+        $response = $this->get(route('shop.show', $product));
+
+        $response->assertOk();
+        $response->assertSeeText('Color');
+        $response->assertDontSeeText('Color 2');
+        $response->assertSee('data-variant-attribute="color"', false);
+        $response->assertDontSee('data-variant-attribute="color_2"', false);
+        $response->assertSee('data-variant-attribute-value="Black"', false);
+        $response->assertSee('data-variant-attribute-value="White"', false);
     }
 
     public function test_shop_show_supports_typed_size_variants(): void
