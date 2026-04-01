@@ -542,4 +542,50 @@ class SizeProfileTest extends TestCase
         $response->assertSee('Shirt Alpha');
         $response->assertSee('Shirt Beta');
     }
+
+    public function test_catalog_filters_products_by_size_in_variant_name(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = SizeProfile::factory()->self()->create([
+            'user_id' => $user->id,
+            'top_size' => 'S',
+            'bottom_size' => null,
+            'shoe_size' => null,
+        ]);
+
+        $matchingProduct = Product::factory()->create([
+            'name' => 'Soft Patch Hoodie',
+            'status' => 'active',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $matchingProduct->id,
+            'name' => 'Soft Patch Hoodie - Grey, S',
+            'variant_type' => 'custom',
+            'option_values' => null,
+            'price' => 49.99,
+            'is_active' => true,
+        ]);
+
+        $nonMatchingProduct = Product::factory()->create([
+            'name' => 'Other Hoodie',
+            'status' => 'active',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $nonMatchingProduct->id,
+            'name' => 'Other Hoodie - Grey, XXL',
+            'variant_type' => 'custom',
+            'option_values' => null,
+            'price' => 49.99,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('shop.index', ['size_profile' => $profile->id]));
+
+        $response->assertOk();
+        $response->assertSee('Soft Patch Hoodie');
+        $response->assertDontSee('Other Hoodie');
+    }
 }

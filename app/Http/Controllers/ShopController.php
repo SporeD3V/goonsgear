@@ -646,13 +646,27 @@ class ShopController extends Controller
                 fn ($query) => $query->whereHas('variants', function ($variantQuery) use ($profileSizes): void {
                     $variantQuery->where('is_active', true)
                         ->where(function ($sizeQuery) use ($profileSizes): void {
+                            // Match typed size variants by exact name
                             $sizeQuery->where(function ($q) use ($profileSizes): void {
                                 $q->where('variant_type', 'size')
                                     ->whereIn('name', $profileSizes);
                             });
 
+                            // Match option_values JSON
                             foreach ($profileSizes as $size) {
                                 $sizeQuery->orWhere('option_values->size', $size);
+                            }
+
+                            // Match size embedded in variant name after delimiters
+                            // e.g. "Product - Color, M" or "Product - M" or "Product / M"
+                            foreach ($profileSizes as $size) {
+                                $escapedSize = str_replace(['%', '_'], ['\\%', '\\_'], $size);
+
+                                $sizeQuery->orWhere('name', $size);
+
+                                foreach ([', ', '- ', '/ ', '| '] as $delimiter) {
+                                    $sizeQuery->orWhere('name', 'LIKE', '%'.$delimiter.$escapedSize);
+                                }
                             }
                         });
                 })
