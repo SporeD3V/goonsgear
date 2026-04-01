@@ -11,12 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
 			.split(',')
 			.map((value) => value.trim())
 			.filter((value) => value !== '');
-		const attributeButtons = Array.from(picker.querySelectorAll('[data-variant-attribute]'));
-		const priceElement = picker.querySelector('[data-variant-price]');
-		const skuElement = picker.querySelector('[data-variant-sku]');
-		const statusElement = picker.querySelector('[data-variant-status]');
-		const qtyElement = picker.querySelector('[data-variant-qty]');
-		const availabilityElement = picker.querySelector('[data-variant-availability]');
+		const attributeButtons = Array.from(picker.querySelectorAll('button[data-variant-attribute]'));
+		const priceElement = picker.querySelector('span[data-variant-price]');
+		const skuElement = picker.querySelector('span[data-variant-sku]');
+		const statusElement = picker.querySelector('span[data-variant-status]');
+		const qtyElement = picker.querySelector('span[data-variant-qty]');
+		const availabilityElement = picker.querySelector('span[data-variant-availability]');
 		const availabilityLine = picker.querySelector('[data-variant-availability-line]');
 		const cartVariantInput = picker.querySelector('[data-cart-variant-input]');
 		const quantityInput = picker.querySelector('[data-cart-quantity-input]');
