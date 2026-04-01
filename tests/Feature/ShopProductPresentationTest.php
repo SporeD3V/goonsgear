@@ -423,6 +423,119 @@ class ShopProductPresentationTest extends TestCase
         $response->assertSee('data-variant-attribute-value="Black"', false);
     }
 
+    public function test_shop_show_extracts_size_and_color_from_custom_variants_when_product_name_contains_color_words(): void
+    {
+        // Real-world case: "Onyx - All White MadFace Shirt" has custom-type variants with null option_values.
+        // Variant names follow WooCommerce format: "ProductName - Size, Color".
+        // Before the fix, splitting "Onyx - All White MadFace Shirt - M, Black" on delimiters produced
+        // parts ["Onyx", "All White MadFace Shirt", "M", "Black"]. "All White MadFace Shirt" was
+        // classified as the color value (contains "White"), with "Black"/"Red" ending up as color_2
+        // and being discarded in variantAttributesById. Result: selector buttons for "Black"/"Red"
+        // never matched any variant.
+        $product = Product::factory()->create([
+            'name' => 'Onyx - All White MadFace Shirt',
+            'slug' => 'onyx-all-white-madface-shirt-custom-test',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Onyx - All White MadFace Shirt - M, Black',
+            'sku' => 'ONYX-AW-M-BLK',
+            'price' => 44.99,
+            'option_values' => null,
+            'variant_type' => 'custom',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Onyx - All White MadFace Shirt - M, Red',
+            'sku' => 'ONYX-AW-M-RED',
+            'price' => 44.99,
+            'option_values' => null,
+            'variant_type' => 'custom',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Onyx - All White MadFace Shirt - L, Black',
+            'sku' => 'ONYX-AW-L-BLK',
+            'price' => 44.99,
+            'option_values' => null,
+            'variant_type' => 'custom',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Onyx - All White MadFace Shirt - L, Red',
+            'sku' => 'ONYX-AW-L-RED',
+            'price' => 44.99,
+            'option_values' => null,
+            'variant_type' => 'custom',
+        ]);
+
+        $response = $this->get(route('shop.show', $product));
+
+        $response->assertOk();
+
+        // Size and color groups should be present with real values only.
+        $response->assertSee('data-variant-attribute="size"', false);
+        $response->assertSee('data-variant-attribute="color"', false);
+        $response->assertSee('data-variant-attribute-value="M"', false);
+        $response->assertSee('data-variant-attribute-value="L"', false);
+        $response->assertSee('data-variant-attribute-value="Black"', false);
+        $response->assertSee('data-variant-attribute-value="Red"', false);
+
+        // The product name fragment must not appear as a selector value.
+        $response->assertDontSee('data-variant-attribute-value="All White MadFace Shirt"', false);
+        $response->assertDontSee('data-variant-attribute-value="Onyx - All White MadFace Shirt"', false);
+        $response->assertDontSee('data-variant-attribute-value="Onyx"', false);
+
+        // variantAttributesById JSON must bind each variant to its real size+color combo so JS
+        // can resolve the correct variant when the user picks "M" + "Black" etc.
+        $response->assertSee('"color":"Black"', false);
+        $response->assertSee('"color":"Red"', false);
+        $response->assertSee('"size":"M"', false);
+        $response->assertSee('"size":"L"', false);
+    }
+
+    public function test_shop_show_ignores_product_name_fragments_when_variant_prefix_punctuation_differs(): void
+    {
+        $product = Product::factory()->create([
+            'name' => 'Onyx - All White MadFace Shirt',
+            'slug' => 'onyx-all-white-madface-shirt-mismatch-test',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Onyx All White MadFace Shirt - M, Black',
+            'sku' => 'ONYX-PUNC-M-BLK',
+            'price' => 44.99,
+            'option_values' => null,
+            'variant_type' => 'custom',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Onyx All White MadFace Shirt - L, Red',
+            'sku' => 'ONYX-PUNC-L-RED',
+            'price' => 44.99,
+            'option_values' => null,
+            'variant_type' => 'custom',
+        ]);
+
+        $response = $this->get(route('shop.show', $product));
+
+        $response->assertOk();
+        $response->assertSee('data-variant-attribute="size"', false);
+        $response->assertSee('data-variant-attribute="color"', false);
+        $response->assertSee('data-variant-attribute-value="M"', false);
+        $response->assertSee('data-variant-attribute-value="L"', false);
+        $response->assertSee('data-variant-attribute-value="Black"', false);
+        $response->assertSee('data-variant-attribute-value="Red"', false);
+        $response->assertDontSee('data-variant-attribute-value="All White MadFace Shirt"', false);
+        $response->assertDontSee('data-variant-attribute-value="Onyx"', false);
+    }
+
     public function test_shop_show_exposes_variant_specific_media_metadata_for_gallery_filtering(): void
     {
         $product = Product::factory()->create();

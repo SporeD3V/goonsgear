@@ -227,12 +227,29 @@ class ShopController extends Controller
 
             $typedValue = trim($typedValue);
             if ($typedValue !== '') {
-                return [$explicitVariantType => $typedValue];
+                if (ProductVariant::detectTypeFromName($typedValue) === $explicitVariantType) {
+                    return [$explicitVariantType => $typedValue];
+                }
             }
         }
 
-        $parts = preg_split('/\s*[\|,\/-]\s*/', $rawName) ?: [];
+        // Strip product name prefix before splitting. WooCommerce variant names always start with
+        // the parent product name followed by a separator, e.g. "Onyx - All White Shirt - M, Black"
+        // → "M, Black" after stripping "Onyx - All White Shirt - ". Without this, product name
+        // fragments like "All White" get misclassified as color values, shadowing the real color.
+        $nameForSplit = $rawName;
+        if ($productName !== '') {
+            $escapedProductName = preg_quote(trim($productName), '/');
+            $stripped = preg_replace('/^'.$escapedProductName.'\s*[\-|\|,\/]\s*/i', '', $rawName);
+            if ($stripped !== null && $stripped !== $rawName) {
+                $nameForSplit = $stripped;
+            }
+        }
+
+        $parts = preg_split('/\s*[\|,\/-]\s*/', $nameForSplit) ?: [];
         $parts = array_values(array_filter(array_map(fn (string $part) => trim($part), $parts), fn (string $part) => $part !== ''));
+
+        $parts = $this->stripProductNameLeadingParts($parts, $productName);
 
         if ($parts === []) {
             return [];
@@ -252,6 +269,58 @@ class ShopController extends Controller
         }
 
         return $attributes;
+    }
+
+    /**
+     * @param  array<int, string>  $parts
+     * @return array<int, string>
+     */
+    private function stripProductNameLeadingParts(array $parts, string $productName): array
+    {
+        if ($productName === '' || count($parts) <= 1) {
+            return $parts;
+        }
+
+        $normalizedProductName = $this->normalizeComparisonValue($productName);
+        if ($normalizedProductName === '') {
+            return $parts;
+        }
+
+        $matchedPartCount = 0;
+        $combinedPrefix = '';
+
+        foreach ($parts as $index => $part) {
+            $normalizedPart = $this->normalizeComparisonValue($part);
+            if ($normalizedPart === '') {
+                break;
+            }
+
+            $combinedPrefix = trim($combinedPrefix.' '.$normalizedPart);
+
+            if ($combinedPrefix === $normalizedProductName) {
+                $matchedPartCount = $index + 1;
+                break;
+            }
+
+            if (! str_starts_with($normalizedProductName, $combinedPrefix.' ')) {
+                break;
+            }
+        }
+
+        if ($matchedPartCount > 0 && $matchedPartCount < count($parts)) {
+            return array_values(array_slice($parts, $matchedPartCount));
+        }
+
+        return $parts;
+    }
+
+    private function normalizeComparisonValue(string $value): string
+    {
+        return Str::of($value)
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/i', ' ')
+            ->squish()
+            ->toString();
     }
 
     private function normalizeAttributeKey(string $rawKey, string $value): string

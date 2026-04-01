@@ -10,6 +10,36 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProductVariant extends Model
 {
+    /**
+     * @var list<string>
+     */
+    private const DETECTABLE_COLOR_VALUES = [
+        'black',
+        'white',
+        'all white',
+        'off white',
+        'red',
+        'blue',
+        'green',
+        'yellow',
+        'navy',
+        'gray',
+        'grey',
+        'purple',
+        'orange',
+        'pink',
+        'brown',
+        'beige',
+        'tan',
+        'olive',
+        'maroon',
+        'teal',
+        'cyan',
+        'magenta',
+        'gold',
+        'silver',
+    ];
+
     /** @use HasFactory<ProductVariantFactory> */
     use HasFactory;
 
@@ -99,11 +129,13 @@ class ProductVariant extends Model
 
     public static function detectTypeFromName(string $name): string
     {
-        if (preg_match('/^(XXS|XS|S|M|L|XL|XXL|XXXL|2XL|3XL|4XL|5XL|\d+)$/i', trim($name))) {
+        $normalizedName = preg_replace('/\s+/', ' ', strtolower(trim($name))) ?? '';
+
+        if (preg_match('/^(xxs|xs|s|m|l|xl|xxl|xxxl|2xl|3xl|4xl|5xl|\d+)$/i', $normalizedName)) {
             return 'size';
         }
 
-        if (preg_match('/(black|white|red|blue|green|yellow|navy|gray|grey|purple|orange|pink|brown|beige|tan|olive|maroon|teal|cyan|magenta|gold|silver)/i', $name)) {
+        if (in_array($normalizedName, self::DETECTABLE_COLOR_VALUES, true)) {
             return 'color';
         }
 
