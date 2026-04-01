@@ -12,12 +12,12 @@ document.addEventListener('DOMContentLoaded', () => {
 			.map((value) => value.trim())
 			.filter((value) => value !== '');
 		const attributeButtons = Array.from(picker.querySelectorAll('button[data-variant-attribute]'));
-		const priceElement = picker.querySelector('span[data-variant-price]');
-		const skuElement = picker.querySelector('span[data-variant-sku]');
-		const statusElement = picker.querySelector('span[data-variant-status]');
-		const qtyElement = picker.querySelector('span[data-variant-qty]');
-		const availabilityElement = picker.querySelector('span[data-variant-availability]');
-		const availabilityLine = picker.querySelector('[data-variant-availability-line]');
+		const priceElement = picker.querySelector('[data-display-price]');
+		const skuElement = picker.querySelector('[data-display-sku]');
+		const statusElement = picker.querySelector('[data-display-status]');
+		const qtyElement = picker.querySelector('[data-display-qty]');
+		const availabilityElement = picker.querySelector('[data-display-availability]');
+		const availabilityLine = picker.querySelector('[data-display-availability-line]');
 		const cartVariantInput = picker.querySelector('[data-cart-variant-input]');
 		const quantityInput = picker.querySelector('[data-cart-quantity-input]');
 		const stockAlertForm = picker.querySelector('[data-stock-alert-form]');
@@ -302,6 +302,206 @@ document.addEventListener('DOMContentLoaded', () => {
 			clearVariantDetails();
 		} else {
 			syncVariantDetails();
+		}
+	});
+
+	// ── Catalog card variant pickers ──────────────────────────────────────
+	const catalogCards = document.querySelectorAll('[data-catalog-card]');
+
+	catalogCards.forEach((card) => {
+		const variantSelect = card.querySelector('[data-catalog-variant-select]');
+
+		// Single-variant card: just wire up AJAX add-to-cart
+		if (!variantSelect) {
+			const singleForm = card.querySelector('[data-catalog-cart-form]');
+			if (singleForm) {
+				singleForm.addEventListener('submit', (event) => {
+					event.preventDefault();
+					const formData = new FormData(singleForm);
+					const csrfToken = formData.get('_token');
+					const btn = singleForm.querySelector('[data-catalog-add-to-cart]');
+
+					fetch(singleForm.action, {
+						method: 'POST',
+						headers: {
+							'X-CSRF-TOKEN': csrfToken,
+							'X-Requested-With': 'XMLHttpRequest',
+							Accept: 'application/json',
+						},
+						body: formData,
+					})
+						.then((response) => {
+							if (response.ok && btn) {
+								const originalText = btn.textContent;
+								btn.textContent = '✓ Added!';
+								btn.classList.add('bg-green-700');
+								setTimeout(() => {
+									btn.textContent = originalText;
+									btn.classList.remove('bg-green-700');
+								}, 1500);
+							}
+						})
+						.catch(() => {});
+				});
+			}
+			return;
+		}
+
+		const attributeOrder = (card.dataset.catalogAttributeOrder || '')
+			.split(',')
+			.map((v) => v.trim())
+			.filter((v) => v !== '');
+		const attributeButtons = Array.from(card.querySelectorAll('[data-catalog-attribute]'));
+		const cartForm = card.querySelector('[data-catalog-cart-form]');
+		const cartVariantInput = card.querySelector('[data-catalog-cart-variant-input]');
+		const addToCartButton = card.querySelector('[data-catalog-add-to-cart]');
+		const primaryImage = card.querySelector('[data-catalog-primary-image]');
+		const originalImageSrc = primaryImage?.dataset.catalogOriginalSrc || '';
+
+		let variantMediaMap = {};
+		try {
+			variantMediaMap = JSON.parse(card.dataset.catalogVariantMedia || '{}');
+		} catch (_error) {
+			variantMediaMap = {};
+		}
+
+		const variantOptions = Array.from(variantSelect.options)
+			.filter((option) => option.value !== '')
+			.map((option) => {
+				let attributes = {};
+				try {
+					attributes = JSON.parse(option.dataset.variantAttributes || '{}');
+				} catch (_error) {
+					attributes = {};
+				}
+				return { option, attributes };
+			});
+
+		let selectedAttributes = {};
+
+		const resolveMatchingOption = () => {
+			if (variantOptions.length === 0) {
+				return null;
+			}
+
+			return variantOptions.find(({ attributes }) =>
+				Object.entries(selectedAttributes).every(
+					([key, value]) => attributes[key] === value,
+				),
+			)?.option || null;
+		};
+
+		const updateButtonStyles = () => {
+			attributeButtons.forEach((button) => {
+				const key = button.dataset.catalogAttribute;
+				const value = button.dataset.catalogAttributeValue;
+				const isSelected = selectedAttributes[key] === value;
+
+				button.classList.toggle('border-slate-900', isSelected);
+				button.classList.toggle('bg-slate-900', isSelected);
+				button.classList.toggle('text-white', isSelected);
+				button.classList.toggle('border-slate-300', !isSelected);
+				button.classList.toggle('bg-white', !isSelected);
+				button.classList.toggle('text-slate-700', !isSelected);
+			});
+		};
+
+		const updateImage = () => {
+			if (!primaryImage) {
+				return;
+			}
+
+			const matchedOption = resolveMatchingOption();
+			if (matchedOption && variantMediaMap[matchedOption.value]) {
+				primaryImage.src = variantMediaMap[matchedOption.value];
+			} else if (originalImageSrc) {
+				primaryImage.src = originalImageSrc;
+			}
+		};
+
+		const syncSelection = () => {
+			const matchedOption = resolveMatchingOption();
+			const allSelected = attributeOrder.every((key) => selectedAttributes[key]);
+
+			if (matchedOption && allSelected) {
+				variantSelect.value = matchedOption.value;
+				if (cartVariantInput) {
+					cartVariantInput.value = matchedOption.value;
+				}
+				if (addToCartButton) {
+					addToCartButton.textContent = `Add to cart — $${matchedOption.dataset.variantPrice}`;
+				}
+			} else {
+				variantSelect.selectedIndex = 0;
+				if (cartVariantInput) {
+					cartVariantInput.value = '';
+				}
+				if (addToCartButton) {
+					addToCartButton.textContent = 'Select options';
+				}
+			}
+
+			updateButtonStyles();
+			updateImage();
+		};
+
+		attributeButtons.forEach((button) => {
+			button.addEventListener('click', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+
+				const key = button.dataset.catalogAttribute;
+				const value = button.dataset.catalogAttributeValue;
+
+				selectedAttributes = { ...selectedAttributes, [key]: value };
+				syncSelection();
+			});
+		});
+
+		if (cartForm) {
+			cartForm.addEventListener('submit', (event) => {
+				event.preventDefault();
+
+				const variantId = cartVariantInput?.value;
+				if (!variantId) {
+					// Highlight unselected attribute groups
+					const optionsContainer = card.querySelector('[data-catalog-options]');
+					if (optionsContainer) {
+						optionsContainer.classList.add('ring-2', 'ring-red-400', 'rounded', 'p-1');
+						setTimeout(() => {
+							optionsContainer.classList.remove('ring-2', 'ring-red-400', 'rounded', 'p-1');
+						}, 1500);
+					}
+					return;
+				}
+
+				const formData = new FormData(cartForm);
+				const csrfToken = formData.get('_token');
+
+				fetch(cartForm.action, {
+					method: 'POST',
+					headers: {
+						'X-CSRF-TOKEN': csrfToken,
+						'X-Requested-With': 'XMLHttpRequest',
+						Accept: 'application/json',
+					},
+					body: formData,
+				})
+					.then((response) => {
+						if (response.ok) {
+							if (addToCartButton) {
+								const originalText = addToCartButton.textContent;
+								addToCartButton.textContent = '✓ Added!';
+								addToCartButton.classList.add('bg-green-700');
+								setTimeout(() => {
+									addToCartButton.textContent = originalText;
+									addToCartButton.classList.remove('bg-green-700');
+								}, 1500);
+							}
+						}
+					})
+					.catch(() => {});
+			});
 		}
 	});
 

@@ -147,20 +147,48 @@
                             $mediaUrl = $primaryMedia ? route('media.show', ['path' => $primaryMedia->catalog_path ?? $primaryMedia->path]) : null;
                             $secondaryMediaUrl = $secondaryMedia ? route('media.show', ['path' => $secondaryMedia->catalog_path ?? $secondaryMedia->path]) : null;
                             $startingPrice = $product->min_active_variant_price;
+
+                            $selectorData = $product->catalog_selector_data;
+                            $catalogVariants = $product->catalog_variants;
+                            $hasGroups = !empty($selectorData['groups']);
+                            $hasMultipleVariants = $catalogVariants->count() > 1;
+
+                            // Build a map of variant_id => media URL for image switching
+                            $variantMediaMap = [];
+                            if ($hasGroups && isset($selectorData['groups']['color'])) {
+                                foreach ($product->media as $media) {
+                                    if ($media->product_variant_id) {
+                                        $variantMediaMap[$media->product_variant_id] = route('media.show', ['path' => $media->catalog_path ?? $media->path]);
+                                    }
+                                }
+                            }
                         @endphp
 
-                        <article class="rounded border border-slate-200 bg-white p-4 shadow-sm">
+                        <article
+                            class="group/card relative rounded border border-slate-200 bg-white p-4 shadow-sm"
+                            data-catalog-card
+                            @if ($hasGroups)
+                                data-catalog-attribute-order="{{ implode(',', $selectorData['attributeOrder']) }}"
+                                data-catalog-variant-media='@json($variantMediaMap)'
+                            @endif
+                        >
                             <a href="{{ route('shop.show', $product) }}" class="group block">
                                 @if ($mediaUrl)
                                     <div class="relative mb-3 h-52 w-full overflow-hidden rounded">
-                                        <img src="{{ $mediaUrl }}" alt="{{ $primaryMedia?->alt_text ?: $product->name }}" class="h-52 w-full object-cover transition-opacity duration-200 {{ $secondaryMediaUrl ? 'group-hover:opacity-0' : '' }}">
+                                        <img
+                                            src="{{ $mediaUrl }}"
+                                            alt="{{ $primaryMedia?->alt_text ?: $product->name }}"
+                                            data-catalog-primary-image
+                                            data-catalog-original-src="{{ $mediaUrl }}"
+                                            class="h-52 w-full object-cover transition-opacity duration-200 {{ $secondaryMediaUrl ? 'group-hover:opacity-0' : '' }}"
+                                        >
                                         @if ($secondaryMediaUrl)
                                             <img src="{{ $secondaryMediaUrl }}" alt="{{ $secondaryMedia?->alt_text ?: $product->name }}" class="pointer-events-none absolute inset-0 h-52 w-full object-cover opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                                         @endif
                                     </div>
                                 @else
                                     <div class="mb-3 h-52 w-full overflow-hidden rounded">
-                                        <img src="{{ asset('images/placeholder-product.svg') }}" alt="No image available" class="h-52 w-full object-cover">
+                                        <img src="{{ asset('images/placeholder-product.svg') }}" alt="No image available" class="h-52 w-full object-cover" data-catalog-primary-image>
                                     </div>
                                 @endif
                                 <h2 class="text-lg font-semibold">{{ $product->name }}</h2>
@@ -179,6 +207,89 @@
                                     <p class="mt-2 text-sm text-slate-700">{{ $product->plainExcerpt() }}</p>
                                 @endif
                             </a>
+
+                            @if ($hasGroups && $hasMultipleVariants)
+                                {{-- Variant options + add to cart (visible on hover) --}}
+                                <div class="mt-3 hidden group-hover/card:block" data-catalog-hover-section>
+                                    <div class="space-y-2" data-catalog-options>
+                                        @foreach ($selectorData['groups'] as $attributeKey => $attributeGroup)
+                                            <div>
+                                                <p class="mb-1 text-xs font-medium text-slate-500">{{ $attributeGroup['label'] }}</p>
+                                                <div class="flex flex-wrap gap-1">
+                                                    @foreach ($attributeGroup['values'] as $attributeValue)
+                                                        @php
+                                                            // Check if this value has at least one available variant
+                                                            $isAvailable = $catalogVariants->contains(function ($v) use ($selectorData, $attributeKey, $attributeValue) {
+                                                                $attrs = $selectorData['variantAttributesById'][$v->id] ?? [];
+                                                                return isset($attrs[$attributeKey]) && $attrs[$attributeKey] === $attributeValue && !$v->is_out_of_stock;
+                                                            });
+                                                        @endphp
+                                                        @if ($isAvailable)
+                                                            <button
+                                                                type="button"
+                                                                data-catalog-attribute="{{ $attributeKey }}"
+                                                                data-catalog-attribute-value="{{ $attributeValue }}"
+                                                                class="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 transition hover:border-slate-500"
+                                                            >
+                                                                {{ $attributeValue }}
+                                                            </button>
+                                                        @endif
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+
+                                    {{-- Hidden variant data store --}}
+                                    <select data-catalog-variant-select class="hidden" aria-hidden="true" tabindex="-1">
+                                        <option value="" selected disabled>Select variant</option>
+                                        @foreach ($catalogVariants as $variant)
+                                            @if (!$variant->is_out_of_stock)
+                                                <option
+                                                    value="{{ $variant->id }}"
+                                                    data-variant-price="{{ number_format((float) $variant->price, 2) }}"
+                                                    data-variant-attributes='@json($selectorData['variantAttributesById'][$variant->id] ?? [])'
+                                                >
+                                                    {{ $variant->name }}
+                                                </option>
+                                            @endif
+                                        @endforeach
+                                    </select>
+
+                                    <form method="POST" action="{{ route('cart.items.store') }}" data-catalog-cart-form class="mt-2">
+                                        @csrf
+                                        <input type="hidden" name="variant_id" value="" data-catalog-cart-variant-input>
+                                        <input type="hidden" name="quantity" value="1">
+                                        <button
+                                            type="submit"
+                                            data-catalog-add-to-cart
+                                            class="w-full rounded bg-slate-800 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-900"
+                                        >
+                                            Select options
+                                        </button>
+                                    </form>
+                                </div>
+                            @elseif (!$hasMultipleVariants && $catalogVariants->count() === 1)
+                                @php $singleVariant = $catalogVariants->first(); @endphp
+                                @if (!$singleVariant->is_out_of_stock)
+                                    {{-- Single variant: direct add to cart on hover --}}
+                                    <div class="mt-3 hidden group-hover/card:block" data-catalog-hover-section>
+                                        <form method="POST" action="{{ route('cart.items.store') }}" data-catalog-cart-form>
+                                            @csrf
+                                            <input type="hidden" name="variant_id" value="{{ $singleVariant->id }}">
+                                            <input type="hidden" name="quantity" value="1">
+                                            <button
+                                                type="submit"
+                                                data-catalog-add-to-cart
+                                                data-catalog-single-variant
+                                                class="w-full rounded bg-slate-800 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-900"
+                                            >
+                                                Add to cart &mdash; ${{ number_format((float) $singleVariant->price, 2) }}
+                                            </button>
+                                        </form>
+                                    </div>
+                                @endif
+                            @endif
                         </article>
                     @endforeach
                 </div>

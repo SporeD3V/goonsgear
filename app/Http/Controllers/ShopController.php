@@ -635,7 +635,8 @@ class ShopController extends Controller
                     ->orderBy('id'),
                 'variants' => fn ($query) => $query
                     ->where('is_active', true)
-                    ->select(['id', 'product_id', 'price']),
+                    ->orderBy('position')
+                    ->orderBy('id'),
             ])
             ->when($sort === 'newest', fn ($query) => $query->latest('id'))
             ->when($sort === 'name_asc', fn ($query) => $query->orderBy('name'))
@@ -649,6 +650,20 @@ class ShopController extends Controller
 
                     return $media;
                 }));
+
+                $variantsWithStock = $product->variants->map(function ($variant) {
+                    $isOutOfStock = $variant->track_inventory
+                        && (int) $variant->stock_quantity <= 0
+                        && ! $variant->allow_backorder
+                        && ! $variant->is_preorder;
+
+                    $variant->setAttribute('is_out_of_stock', $isOutOfStock);
+
+                    return $variant;
+                });
+
+                $product->setAttribute('catalog_variants', $variantsWithStock);
+                $product->setAttribute('catalog_selector_data', $this->buildVariantSelectorData($variantsWithStock, $product->name));
 
                 return $product;
             })

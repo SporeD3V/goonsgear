@@ -230,7 +230,7 @@ class ShopProductPresentationTest extends TestCase
         $response = $this->get(route('shop.show', $product));
 
         $response->assertOk();
-        $response->assertSee('$<span data-variant-price>49.99</span>', false);
+        $response->assertSee('$<span data-display-price>49.99</span>', false);
     }
 
     public function test_shop_show_displays_price_range_before_selection_when_variant_prices_differ(): void
@@ -258,7 +258,7 @@ class ShopProductPresentationTest extends TestCase
         $response = $this->get(route('shop.show', $product));
 
         $response->assertOk();
-        $response->assertSee('$<span data-variant-price>39.99 - 59.99</span>', false);
+        $response->assertSee('$<span data-display-price>39.99 - 59.99</span>', false);
     }
 
     public function test_shop_show_extracts_color_from_prefixed_color_variant_names(): void

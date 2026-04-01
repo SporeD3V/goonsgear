@@ -322,13 +322,13 @@
                                     @if ($hasAttributeGroups)
                                         <p class="sm:col-span-2 text-xs text-slate-500">Select variant options to view details.</p>
                                     @endif
-                                    <p><span class="font-medium text-slate-700">Price:</span> $<span data-variant-price>{{ $hasAttributeGroups ? $unselectedPriceText : number_format((float) $defaultVariant->price, 2) }}</span></p>
-                                    <p><span class="font-medium text-slate-700">SKU:</span> <span data-variant-sku>{{ $hasAttributeGroups ? '--' : $defaultVariant->sku }}</span></p>
-                                    <p><span class="font-medium text-slate-700">Status:</span> <span data-variant-status>{{ $hasAttributeGroups ? 'Select options' : $defaultStockStatus }}</span></p>
-                                    <p><span class="font-medium text-slate-700">Qty:</span> <span data-variant-qty>{{ $hasAttributeGroups ? '--' : $defaultVariant->stock_quantity }}</span></p>
-                                    <p class="{{ !$hasAttributeGroups && $defaultStockStatus === 'Preorder' && $defaultAvailabilityDate ? '' : 'hidden' }} sm:col-span-2" data-variant-availability-line>
+                                    <p><span class="font-medium text-slate-700">Price:</span> $<span data-display-price>{{ $hasAttributeGroups ? $unselectedPriceText : number_format((float) $defaultVariant->price, 2) }}</span></p>
+                                    <p><span class="font-medium text-slate-700">SKU:</span> <span data-display-sku>{{ $hasAttributeGroups ? '--' : $defaultVariant->sku }}</span></p>
+                                    <p><span class="font-medium text-slate-700">Status:</span> <span data-display-status>{{ $hasAttributeGroups ? 'Select options' : $defaultStockStatus }}</span></p>
+                                    <p><span class="font-medium text-slate-700">Qty:</span> <span data-display-qty>{{ $hasAttributeGroups ? '--' : $defaultVariant->stock_quantity }}</span></p>
+                                    <p class="{{ !$hasAttributeGroups && $defaultStockStatus === 'Preorder' && $defaultAvailabilityDate ? '' : 'hidden' }} sm:col-span-2" data-display-availability-line>
                                         <span class="font-medium text-slate-700">Available on:</span>
-                                        <span data-variant-availability>{{ $hasAttributeGroups ? '' : $defaultAvailabilityDate }}</span>
+                                        <span data-display-availability>{{ $hasAttributeGroups ? '' : $defaultAvailabilityDate }}</span>
                                     </p>
                                 </div>
 
