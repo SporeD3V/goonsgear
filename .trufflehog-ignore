@@ -1,0 +1,11 @@
+# Paths excluded from TruffleHog secret scanning.
+# Only add paths here when they are either:
+#   (a) gitignored files that would never reach CI, or
+#   (b) test-fixture files that intentionally use fake credential-shaped values.
+
+# The staging env file is gitignored and never committed, but listed here as
+# documentation of intent.
+.env.staging
+
+# PHPUnit test fixtures may contain fake credential-shaped strings.
+tests/
