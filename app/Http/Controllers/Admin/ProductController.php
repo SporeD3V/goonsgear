@@ -7,10 +7,12 @@ use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductEditHistory;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\Tag;
 use App\Observers\ProductObserver;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -50,8 +52,11 @@ class ProductController extends Controller
         $preorder = (string) $request->query('preorder', '');
 
         $products = Product::query()
-            ->with(['primaryCategory:id,name'])
-            ->withCount(['variants', 'media', 'orderItems'])
+            ->with([
+                'primaryCategory:id,name',
+                'media' => fn ($q) => $q->where('is_primary', true)->limit(1),
+            ])
+            ->withCount(['variants', 'media', 'orderItems', 'editHistories'])
             ->withCount([
                 'stockAlertSubscriptions as active_stock_alert_subscriptions_count' => function ($query) {
                     $query->where('stock_alert_subscriptions.is_active', true);
@@ -97,8 +102,19 @@ class ProductController extends Controller
             ->paginate((int) config('pagination.admin_per_page', 20))
             ->withQueryString();
 
+        // Load per-field edit history flags for the current page products
+        $productIds = $products->pluck('id');
+        $fieldsWithHistory = ProductEditHistory::query()
+            ->whereIn('product_id', $productIds)
+            ->selectRaw('product_id, field')
+            ->groupBy('product_id', 'field')
+            ->get()
+            ->groupBy('product_id')
+            ->map(fn ($group) => $group->pluck('field')->toArray());
+
         return view('admin.products.index', [
             'products' => $products,
+            'fieldsWithHistory' => $fieldsWithHistory,
             'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
             'filters' => [
                 'q' => $search,
@@ -823,6 +839,125 @@ class ProductController extends Controller
         return view('admin.products.stock-alerts', [
             'product' => $product,
             'subscriptions' => $subscriptions,
+        ]);
+    }
+
+    /**
+     * Inline update a single field on a product.
+     */
+    public function inlineUpdate(Request $request, Product $product): JsonResponse
+    {
+        $allowedFields = ['name', 'slug', 'status', 'is_featured'];
+
+        $request->validate([
+            'field' => ['required', 'string', 'in:'.implode(',', $allowedFields)],
+            'value' => ['present'],
+        ]);
+
+        $field = $request->input('field');
+        $value = $request->input('value');
+
+        if ($field === 'is_featured') {
+            $value = filter_var($value, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        if ($field === 'status' && ! in_array($value, ['draft', 'active', 'archived'], true)) {
+            return response()->json(['error' => 'Invalid status value.'], 422);
+        }
+
+        if ($field === 'slug') {
+            $value = Str::slug($value);
+            $exists = Product::query()
+                ->where('slug', $value)
+                ->where('id', '!=', $product->id)
+                ->exists();
+
+            if ($exists) {
+                return response()->json(['error' => 'This slug is already in use.'], 422);
+            }
+        }
+
+        $oldValue = $product->getAttribute($field);
+
+        if ($field === 'is_featured') {
+            $oldValue = (bool) $oldValue;
+        }
+
+        // Skip if value hasn't changed
+        if ((string) $oldValue === (string) $value) {
+            return response()->json(['success' => true, 'unchanged' => true]);
+        }
+
+        $product->update([$field => $value]);
+
+        // Record edit history (keep last 10 per product+field)
+        ProductEditHistory::query()->create([
+            'product_id' => $product->id,
+            'user_id' => $request->user()->id,
+            'field' => $field,
+            'old_value' => is_bool($oldValue) ? ($oldValue ? '1' : '0') : (string) $oldValue,
+            'new_value' => is_bool($value) ? ($value ? '1' : '0') : (string) $value,
+        ]);
+
+        // Prune old entries: keep only the last 10 per product+field
+        $idsToKeep = ProductEditHistory::query()
+            ->where('product_id', $product->id)
+            ->where('field', $field)
+            ->latest('id')
+            ->take(10)
+            ->pluck('id');
+
+        ProductEditHistory::query()
+            ->where('product_id', $product->id)
+            ->where('field', $field)
+            ->whereNotIn('id', $idsToKeep)
+            ->delete();
+
+        return response()->json([
+            'success' => true,
+            'value' => $product->getAttribute($field),
+        ]);
+    }
+
+    /**
+     * Revert a product field to its previous value.
+     */
+    public function revertField(Request $request, Product $product): JsonResponse
+    {
+        $request->validate([
+            'field' => ['required', 'string', 'in:name,slug,status,is_featured'],
+        ]);
+
+        $field = $request->input('field');
+
+        $lastEdit = ProductEditHistory::query()
+            ->where('product_id', $product->id)
+            ->where('field', $field)
+            ->latest('id')
+            ->first();
+
+        if (! $lastEdit) {
+            return response()->json(['error' => 'No edit history found for this field.'], 404);
+        }
+
+        $revertValue = $lastEdit->old_value;
+
+        if ($field === 'is_featured') {
+            $revertValue = filter_var($revertValue, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        $product->update([$field => $revertValue]);
+
+        // Remove the consumed history entry
+        $lastEdit->delete();
+
+        return response()->json([
+            'success' => true,
+            'value' => $product->getAttribute($field),
+            'has_more_history' => ProductEditHistory::query()
+                ->where('product_id', $product->id)
+                ->where('field', $field)
+                ->exists(),
         ]);
     }
 }

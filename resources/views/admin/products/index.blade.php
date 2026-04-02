@@ -62,22 +62,208 @@
         <table class="min-w-full border border-slate-200 text-sm">
             <thead class="bg-slate-50">
                 <tr>
+                    <th class="border border-slate-200 px-3 py-2 text-left">Image</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Name</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Slug</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Status</th>
+                    <th class="border border-slate-200 px-3 py-2 text-center">Featured</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Primary Category</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Variants</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Media</th>
-                    <th class="border border-slate-200 px-3 py-2 text-center">Waiting</th>
+                    <th class="border border-slate-200 px-3 py-2 text-center" title="Stock alert subscriptions">
+                        <span class="cursor-help" title="Number of customers waiting for stock alerts on this product">Stock Alerts</span>
+                    </th>
                     <th class="border border-slate-200 px-3 py-2 text-right">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse ($products as $product)
-                    <tr>
-                        <td class="border border-slate-200 px-3 py-2">{{ $product->name }}</td>
-                        <td class="border border-slate-200 px-3 py-2">{{ $product->slug }}</td>
-                        <td class="border border-slate-200 px-3 py-2">{{ ucfirst($product->status) }}</td>
+                    @php
+                        $primaryMedia = $product->media->first();
+                        $productHistory = $fieldsWithHistory->get($product->id, []);
+                    @endphp
+                    <tr x-data="{
+                        id: {{ $product->id }},
+                        name: @js($product->name),
+                        slug: @js($product->slug),
+                        status: @js($product->status),
+                        isFeatured: {{ $product->is_featured ? 'true' : 'false' }},
+                        editingField: null,
+                        editValue: '',
+                        saving: false,
+                        error: '',
+                        history: @js($productHistory),
+                        async saveField(field, value) {
+                            this.saving = true;
+                            this.error = '';
+                            try {
+                                const res = await fetch(`{{ url('admin/products') }}/${this.id}/inline`, {
+                                    method: 'PATCH',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                        'Accept': 'application/json',
+                                    },
+                                    body: JSON.stringify({ field, value }),
+                                });
+                                const data = await res.json();
+                                if (!res.ok) {
+                                    this.error = data.error || 'Save failed';
+                                    return;
+                                }
+                                if (!data.unchanged) {
+                                    this[field === 'is_featured' ? 'isFeatured' : field] = data.value;
+                                    if (!this.history.includes(field)) {
+                                        this.history.push(field);
+                                    }
+                                }
+                                this.editingField = null;
+                            } catch (e) {
+                                this.error = 'Network error';
+                            } finally {
+                                this.saving = false;
+                            }
+                        },
+                        async revertField(field) {
+                            this.saving = true;
+                            this.error = '';
+                            try {
+                                const res = await fetch(`{{ url('admin/products') }}/${this.id}/revert`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                        'Accept': 'application/json',
+                                    },
+                                    body: JSON.stringify({ field }),
+                                });
+                                const data = await res.json();
+                                if (!res.ok) {
+                                    this.error = data.error || 'Revert failed';
+                                    return;
+                                }
+                                this[field === 'is_featured' ? 'isFeatured' : field] = data.value;
+                                if (!data.has_more_history) {
+                                    this.history = this.history.filter(f => f !== field);
+                                }
+                            } catch (e) {
+                                this.error = 'Network error';
+                            } finally {
+                                this.saving = false;
+                            }
+                        },
+                        startEdit(field) {
+                            this.editingField = field;
+                            this.editValue = this[field];
+                            this.error = '';
+                            this.$nextTick(() => {
+                                const input = this.$refs[field + 'Input'];
+                                if (input) { input.focus(); input.select(); }
+                            });
+                        }
+                    }">
+                        {{-- Image --}}
+                        <td class="border border-slate-200 px-2 py-2">
+                            @if ($primaryMedia)
+                                <img
+                                    src="{{ route('media.show', ['path' => $primaryMedia->getThumbnailPath()]) }}"
+                                    alt="{{ $product->name }}"
+                                    class="h-12 w-12 rounded object-contain bg-slate-50"
+                                    loading="lazy"
+                                >
+                            @else
+                                <div class="flex h-12 w-12 items-center justify-center rounded bg-slate-100">
+                                    <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"/></svg>
+                                </div>
+                            @endif
+                        </td>
+
+                        {{-- Name (inline editable) --}}
+                        <td class="border border-slate-200 px-3 py-2">
+                            <div x-show="editingField !== 'name'" class="group/cell flex items-center gap-1">
+                                <span x-text="name" class="cursor-pointer hover:underline" @click="startEdit('name')">{{ $product->name }}</span>
+                                <button @click="startEdit('name')" class="invisible text-slate-400 hover:text-slate-600 group-hover/cell:visible" title="Edit">
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
+                                </button>
+                                <button x-show="history.includes('name')" @click="revertField('name')" class="text-amber-500 hover:text-amber-700" title="Undo last change" x-cloak>
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
+                                </button>
+                            </div>
+                            <div x-show="editingField === 'name'" x-cloak class="flex items-center gap-1">
+                                <input x-ref="nameInput" x-model="editValue" @keydown.enter="saveField('name', editValue)" @keydown.escape="editingField = null" class="w-full rounded border border-slate-300 px-2 py-1 text-sm" :disabled="saving">
+                                <button @click="saveField('name', editValue)" class="text-emerald-600 hover:text-emerald-800" :disabled="saving">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                                </button>
+                                <button @click="editingField = null" class="text-slate-400 hover:text-slate-600">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                            <p x-show="error && editingField === 'name'" x-text="error" class="mt-1 text-xs text-red-600" x-cloak></p>
+                        </td>
+
+                        {{-- Slug (inline editable) --}}
+                        <td class="border border-slate-200 px-3 py-2">
+                            <div x-show="editingField !== 'slug'" class="group/cell flex items-center gap-1">
+                                <span x-text="slug" class="cursor-pointer font-mono text-xs hover:underline" @click="startEdit('slug')">{{ $product->slug }}</span>
+                                <button @click="startEdit('slug')" class="invisible text-slate-400 hover:text-slate-600 group-hover/cell:visible" title="Edit">
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
+                                </button>
+                                <button x-show="history.includes('slug')" @click="revertField('slug')" class="text-amber-500 hover:text-amber-700" title="Undo last change" x-cloak>
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
+                                </button>
+                            </div>
+                            <div x-show="editingField === 'slug'" x-cloak class="flex items-center gap-1">
+                                <input x-ref="slugInput" x-model="editValue" @keydown.enter="saveField('slug', editValue)" @keydown.escape="editingField = null" class="w-full rounded border border-slate-300 px-2 py-1 font-mono text-xs" :disabled="saving">
+                                <button @click="saveField('slug', editValue)" class="text-emerald-600 hover:text-emerald-800" :disabled="saving">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                                </button>
+                                <button @click="editingField = null" class="text-slate-400 hover:text-slate-600">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                            <p x-show="error && editingField === 'slug'" x-text="error" class="mt-1 text-xs text-red-600" x-cloak></p>
+                        </td>
+
+                        {{-- Status (inline editable) --}}
+                        <td class="border border-slate-200 px-3 py-2">
+                            <div x-show="editingField !== 'status'" class="group/cell flex items-center gap-1">
+                                <span @click="startEdit('status')" class="cursor-pointer rounded px-2 py-0.5 text-xs font-medium"
+                                    :class="{
+                                        'bg-emerald-100 text-emerald-800': status === 'active',
+                                        'bg-slate-100 text-slate-600': status === 'draft',
+                                        'bg-orange-100 text-orange-700': status === 'archived'
+                                    }"
+                                    x-text="status.charAt(0).toUpperCase() + status.slice(1)">{{ ucfirst($product->status) }}</span>
+                                <button @click="startEdit('status')" class="invisible text-slate-400 hover:text-slate-600 group-hover/cell:visible" title="Edit">
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
+                                </button>
+                                <button x-show="history.includes('status')" @click="revertField('status')" class="text-amber-500 hover:text-amber-700" title="Undo last change" x-cloak>
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
+                                </button>
+                            </div>
+                            <div x-show="editingField === 'status'" x-cloak class="flex items-center gap-1">
+                                <select x-ref="statusInput" x-model="editValue" @change="saveField('status', editValue)" class="rounded border border-slate-300 px-2 py-1 text-xs" :disabled="saving">
+                                    <option value="draft">Draft</option>
+                                    <option value="active">Active</option>
+                                    <option value="archived">Archived</option>
+                                </select>
+                                <button @click="editingField = null" class="text-slate-400 hover:text-slate-600">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                            <p x-show="error && editingField === 'status'" x-text="error" class="mt-1 text-xs text-red-600" x-cloak></p>
+                        </td>
+
+                        {{-- Featured (checkbox, live update) --}}
+                        <td class="border border-slate-200 px-3 py-2 text-center">
+                            <div class="flex items-center justify-center gap-1">
+                                <input type="checkbox" :checked="isFeatured" @change="saveField('is_featured', $event.target.checked)" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" :disabled="saving">
+                                <button x-show="history.includes('is_featured')" @click="revertField('is_featured')" class="text-amber-500 hover:text-amber-700" title="Undo last change" x-cloak>
+                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
+                                </button>
+                            </div>
+                        </td>
+
                         <td class="border border-slate-200 px-3 py-2">{{ $product->primaryCategory?->name ?? '-' }}</td>
                         <td class="border border-slate-200 px-3 py-2">{{ $product->variants_count }}</td>
                         <td class="border border-slate-200 px-3 py-2">{{ $product->media_count }}</td>
@@ -103,7 +289,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="border border-slate-200 px-3 py-6 text-center text-slate-500">No products yet.</td>
+                        <td colspan="10" class="border border-slate-200 px-3 py-6 text-center text-slate-500">No products yet.</td>
                     </tr>
                 @endforelse
             </tbody>
