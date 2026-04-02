@@ -4,11 +4,8 @@ import paramiko
 import sys
 import time
 
-HOST = '91.98.230.33'
-PORT = 1221
-USER = 'spored3v'
-PASSWORD = 'REDACTED_SET_GOONSGEAR_SSH_PASSWORD'
-BASE_PATH = '/home/macaw-goonsgear/htdocs/goonsgear.macaw.studio'
+from staging_env import SSH_HOST as HOST, SSH_PORT as PORT, SSH_USER as USER, SSH_PASSWORD as PASSWORD, BASE_PATH
+from staging_env import DB_DATABASE, DB_USERNAME, DB_PASSWORD
 
 def run_cmd(client, cmd, label=None, timeout=300):
     if label:
@@ -32,7 +29,7 @@ def main():
         
         # Backup database
         run_cmd(client,
-                f'mysqldump -u goonsgearUSER -pTPCFRLvc96ufAdYd5Quy goonsgearDB > '
+                f'mysqldump -u {DB_USERNAME} -p{DB_PASSWORD} {DB_DATABASE} > '
                 f'{BASE_PATH}/storage/backups/db_before_reimport_{timestamp}.sql',
                 'Backup Database',
                 timeout=600)

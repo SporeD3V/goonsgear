@@ -45,14 +45,11 @@
         @endif
     </head>
     <body class="bg-slate-100 text-slate-900">
+        @include('partials.header')
+
         <div class="mx-auto max-w-6xl p-6">
-            <header class="mb-6 flex items-center justify-between gap-3">
-                <h1 class="text-2xl font-semibold">{{ $product->name }}</h1>
-                <div class="flex items-center gap-4">
-                    <a href="{{ route('cart.index') }}" class="text-sm text-blue-700 hover:underline">Cart</a>
-                    <a href="{{ route('shop.index') }}" class="text-sm text-blue-700 hover:underline">Back to shop</a>
-                </div>
-            </header>
+
+            @include('partials.breadcrumb', ['breadcrumbs' => $breadcrumbs])
 
             @if (session('status'))
                 <div class="mb-4 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{{ session('status') }}</div>
@@ -322,7 +319,7 @@
                                     @if ($hasAttributeGroups)
                                         <p class="sm:col-span-2 text-xs text-slate-500">Select variant options to view details.</p>
                                     @endif
-                                    <p><span class="font-medium text-slate-700">Price:</span> $<span data-display-price>{{ $hasAttributeGroups ? $unselectedPriceText : number_format((float) $defaultVariant->price, 2) }}</span></p>
+                                    <p><span class="font-medium text-slate-700">Price:</span> &euro;<span data-display-price>{{ $hasAttributeGroups ? $unselectedPriceText : number_format((float) $defaultVariant->price, 2) }}</span></p>
                                     <p><span class="font-medium text-slate-700">SKU:</span> <span data-display-sku>{{ $hasAttributeGroups ? '--' : $defaultVariant->sku }}</span></p>
                                     <p><span class="font-medium text-slate-700">Status:</span> <span data-display-status>{{ $hasAttributeGroups ? 'Select options' : $defaultStockStatus }}</span></p>
                                     <p><span class="font-medium text-slate-700">Qty:</span> <span data-display-qty>{{ $hasAttributeGroups ? '--' : $defaultVariant->stock_quantity }}</span></p>
@@ -413,7 +410,7 @@
                                             <tr>
                                                 <td class="border border-slate-200 px-3 py-2">{{ $variant->name }}</td>
                                                 <td class="border border-slate-200 px-3 py-2">{{ $variant->sku }}</td>
-                                                <td class="border border-slate-200 px-3 py-2">${{ number_format((float) $variant->price, 2) }}</td>
+                                                <td class="border border-slate-200 px-3 py-2">&euro;{{ number_format((float) $variant->price, 2) }}</td>
                                                 <td class="border border-slate-200 px-3 py-2">
                                                     <span class="inline-flex rounded px-2 py-0.5 text-xs {{ $stockStatus === 'In stock' ? 'bg-emerald-100 text-emerald-700' : ($stockStatus === 'Preorder' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700') }}">
                                                         {{ $stockStatus }}
@@ -434,5 +431,7 @@
                 </section>
             </div>
         </div>
+
+        @include('partials.footer')
     </body>
 </html>

@@ -32,7 +32,13 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [ShopController::class, 'index'])->name('shop.index');
 Route::redirect('/shop', '/');
 Route::get('/shop/category/{category:slug}', [ShopController::class, 'category'])->name('shop.category');
+Route::get('/artist/{tag:slug}', [ShopController::class, 'artistTag'])->name('shop.artist');
+Route::get('/brand/{tag:slug}', [ShopController::class, 'brandTag'])->name('shop.brand');
+Route::get('/tag/{tag:slug}', [ShopController::class, 'customTag'])->name('shop.tag');
 Route::get('/shop/{product:slug}', [ShopController::class, 'show'])->name('shop.show');
+
+Route::post('/shop/filters', [ShopController::class, 'storeFilters'])->name('shop.filters.store');
+Route::post('/shop/filters/reset', [ShopController::class, 'resetFilters'])->name('shop.filters.reset');
 
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
@@ -131,6 +137,7 @@ Route::get('/media/{path}', [MediaController::class, 'show'])
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin', 'admin.noindex'])->group(function () {
     Route::resource('categories', CategoryController::class)->except('show');
+    Route::post('categories/reorder', [CategoryController::class, 'reorder'])->name('categories.reorder');
     Route::resource('coupons', CouponController::class)->except('show');
     Route::resource('bundle-discounts', BundleDiscountController::class)->except('show');
     Route::resource('orders', OrderController::class)->only(['index', 'show', 'update']);
@@ -138,6 +145,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin', 'admin.noin
     Route::resource('tags', TagController::class)->except('show');
     Route::get('products/{product}/stock-alerts', [ProductController::class, 'stockAlerts'])
         ->name('products.stock-alerts');
+    Route::patch('products/{product}/inline', [ProductController::class, 'inlineUpdate'])
+        ->name('products.inline-update');
+    Route::post('products/{product}/revert', [ProductController::class, 'revertField'])
+        ->name('products.revert-field');
     Route::resource('regional-discounts', RegionalDiscountController::class)->except('show');
     Route::resource('url-redirects', UrlRedirectController::class)->except('show');
     Route::resource('products.variants', ProductVariantController::class)

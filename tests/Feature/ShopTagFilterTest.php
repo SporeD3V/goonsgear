@@ -45,7 +45,7 @@ class ShopTagFilterTest extends TestCase
         $artistProduct->tags()->sync([$artistTag->id]);
         $brandProduct->tags()->sync([$brandTag->id]);
 
-        $response = $this->get(route('shop.index', ['tag' => 'underground-kings']));
+        $response = $this->get(route('shop.artist', $artistTag));
 
         $response->assertOk();
         $response->assertSee('Underground Vinyl Vol. 1');
@@ -53,10 +53,11 @@ class ShopTagFilterTest extends TestCase
         $response->assertSee('Artist: Underground Kings');
     }
 
-    public function test_inactive_tags_are_not_considered_for_filtering(): void
+    public function test_inactive_tags_return_not_found_on_dedicated_route(): void
     {
         $inactiveTag = Tag::factory()->create([
             'slug' => 'inactive-artist',
+            'type' => 'artist',
             'is_active' => false,
         ]);
 
@@ -67,9 +68,8 @@ class ShopTagFilterTest extends TestCase
 
         $product->tags()->sync([$inactiveTag->id]);
 
-        $response = $this->get(route('shop.index', ['tag' => 'inactive-artist']));
+        $response = $this->get(route('shop.artist', $inactiveTag));
 
-        $response->assertOk();
-        $response->assertDontSee('Ghost Drop');
+        $response->assertNotFound();
     }
 }

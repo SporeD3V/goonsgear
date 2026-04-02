@@ -10,6 +10,7 @@ use App\Models\StockAlertSubscription;
 use App\Models\Tag;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -30,12 +31,64 @@ class ShopController extends Controller
         return $this->renderIndex($request, $category);
     }
 
+    public function artistTag(Request $request, Tag $tag): View
+    {
+        abort_unless($tag->is_active && $tag->type === 'artist', 404);
+
+        return $this->renderIndex($request, forcedTag: $tag);
+    }
+
+    public function brandTag(Request $request, Tag $tag): View
+    {
+        abort_unless($tag->is_active && $tag->type === 'brand', 404);
+
+        return $this->renderIndex($request, forcedTag: $tag);
+    }
+
+    public function customTag(Request $request, Tag $tag): View
+    {
+        abort_unless($tag->is_active && $tag->type === 'custom', 404);
+
+        return $this->renderIndex($request, forcedTag: $tag);
+    }
+
+    public function storeFilters(Request $request): RedirectResponse
+    {
+        $filters = [
+            'q' => $request->string('q')->trim()->toString(),
+            'sort' => in_array($request->input('sort'), ['newest', 'name_asc', 'name_desc', 'price_asc', 'price_desc'], true)
+                ? $request->input('sort')
+                : 'newest',
+            'min_price' => is_numeric($request->input('min_price')) ? max(0, (float) $request->input('min_price')) : null,
+            'max_price' => is_numeric($request->input('max_price')) ? max(0, (float) $request->input('max_price')) : null,
+            'include_out_of_stock' => $request->boolean('include_out_of_stock'),
+            'size_profile' => $request->integer('size_profile'),
+        ];
+
+        $request->session()->put('shop_filters', $filters);
+
+        $redirect = $request->input('_redirect');
+
+        if ($redirect && str_starts_with($redirect, url('/'))) {
+            return redirect($redirect);
+        }
+
+        return redirect()->route('shop.index');
+    }
+
+    public function resetFilters(Request $request): RedirectResponse
+    {
+        $request->session()->forget('shop_filters');
+
+        return redirect()->route('shop.index');
+    }
+
     public function show(Product $product): View
     {
         abort_unless($product->status === 'active', 404);
 
         $product->load([
-            'primaryCategory:id,name',
+            'primaryCategory:id,name,slug,parent_id',
             'variants' => fn ($query) => $query
                 ->where('is_active', true)
                 ->orderBy('position')
@@ -89,11 +142,31 @@ class ShopController extends Controller
             'og_image' => $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null,
         ];
 
+        // Build breadcrumbs: Home > Category > Product
+        $breadcrumbs = [['name' => 'Home', 'url' => route('shop.index')]];
+
+        $primaryCategory = $product->primaryCategory;
+
+        if ($primaryCategory !== null) {
+            if ($primaryCategory->parent_id !== null) {
+                $parentCategory = $primaryCategory->parent ?? Category::find($primaryCategory->parent_id);
+
+                if ($parentCategory !== null) {
+                    $breadcrumbs[] = ['name' => $parentCategory->name, 'url' => route('shop.category', $parentCategory)];
+                }
+            }
+
+            $breadcrumbs[] = ['name' => $primaryCategory->name, 'url' => route('shop.category', $primaryCategory)];
+        }
+
+        $breadcrumbs[] = ['name' => $product->name, 'url' => null];
+
         return view('shop.show', [
             'product' => $product,
             'variantsWithStockState' => $variantsWithStockState,
             'variantSelectorData' => $variantSelectorData,
             'activeStockAlertVariantIds' => $activeStockAlertVariantIds,
+            'breadcrumbs' => $breadcrumbs,
             'seo' => $seo,
         ]);
     }
@@ -546,19 +619,62 @@ class ShopController extends Controller
         return response()->json(['results' => $results]);
     }
 
-    private function renderIndex(Request $request, ?Category $forcedCategory = null): View
+    /**
+     * Apply size-matching constraints to a variant query (active + in-stock + size match).
+     *
+     * @param  array<int, string>  $sizes
+     */
+    private function applySizeMatch($variantQuery, array $sizes): void
     {
-        $search = $request->string('q')->trim()->toString();
-        $requestedCategorySlug = $request->string('category')->trim()->toString();
-        $categorySlug = $forcedCategory?->slug ?? $requestedCategorySlug;
-        $tagSlug = $request->string('tag')->trim()->toString();
-        $minPrice = is_numeric($request->input('min_price')) ? max(0, (float) $request->input('min_price')) : null;
-        $maxPrice = is_numeric($request->input('max_price')) ? max(0, (float) $request->input('max_price')) : null;
-        $showOutOfStock = $request->boolean('include_out_of_stock');
-        $sort = $request->string('sort')->trim()->toString();
+        $variantQuery->where('is_active', true)
+            ->where(function ($stockQuery): void {
+                $stockQuery->where('track_inventory', false)
+                    ->orWhere('allow_backorder', true)
+                    ->orWhere('is_preorder', true)
+                    ->orWhere('stock_quantity', '>', 0);
+            })
+            ->where(function ($sizeQuery) use ($sizes): void {
+                // Match typed size variants by exact name
+                $sizeQuery->where(function ($q) use ($sizes): void {
+                    $q->where('variant_type', 'size')
+                        ->whereIn('name', $sizes);
+                });
+
+                // Match option_values JSON
+                foreach ($sizes as $size) {
+                    $sizeQuery->orWhere('option_values->size', $size);
+                }
+
+                // Match size embedded in variant name after delimiters
+                foreach ($sizes as $size) {
+                    $escapedSize = str_replace(['%', '_'], ['\\%', '\\_'], $size);
+
+                    $sizeQuery->orWhere('name', $size);
+
+                    foreach ([', ', '- ', '/ ', '| '] as $delimiter) {
+                        // Size at end of name (e.g. "Product - XXL")
+                        $sizeQuery->orWhere('name', 'LIKE', '%'.$delimiter.$escapedSize);
+                        // Size mid-name before color (e.g. "Product - XXL, White")
+                        $sizeQuery->orWhere('name', 'LIKE', '%'.$delimiter.$escapedSize.',%');
+                    }
+                }
+            });
+    }
+
+    private function renderIndex(Request $request, ?Category $forcedCategory = null, ?Tag $forcedTag = null): View
+    {
+        $sessionFilters = (array) $request->session()->get('shop_filters', []);
+
+        $search = trim((string) ($sessionFilters['q'] ?? ''));
+        $categorySlug = $forcedCategory?->slug ?? '';
+        $tagSlug = $forcedTag?->slug ?? '';
+        $minPrice = isset($sessionFilters['min_price']) && is_numeric($sessionFilters['min_price']) ? max(0, (float) $sessionFilters['min_price']) : null;
+        $maxPrice = isset($sessionFilters['max_price']) && is_numeric($sessionFilters['max_price']) ? max(0, (float) $sessionFilters['max_price']) : null;
+        $showOutOfStock = (bool) ($sessionFilters['include_out_of_stock'] ?? false);
+        $sort = (string) ($sessionFilters['sort'] ?? 'newest');
         $sort = in_array($sort, ['newest', 'name_asc', 'name_desc', 'price_asc', 'price_desc'], true) ? $sort : 'newest';
 
-        $sizeProfileId = $request->integer('size_profile');
+        $sizeProfileId = (int) ($sessionFilters['size_profile'] ?? 0);
         $activeSizeProfile = null;
         $sizeProfiles = collect();
         $user = $request->user();
@@ -578,8 +694,15 @@ class ShopController extends Controller
 
         $shopCategories = Category::query()
             ->where('is_active', true)
+            ->whereNull('parent_id')
+            ->where(function ($q) {
+                $q->whereHas('products')
+                    ->orWhereHas('children', fn ($cq) => $cq->where('is_active', true)->whereHas('products'));
+            })
+            ->with(['children' => fn ($q) => $q->where('is_active', true)->whereHas('products')->orderBy('name')])
+            ->orderBy('sort_order')
             ->orderBy('name')
-            ->get(['id', 'name', 'slug', 'meta_title', 'meta_description']);
+            ->get(['id', 'name', 'slug', 'meta_title', 'meta_description', 'size_type']);
 
         $shopTags = Tag::query()
             ->where('is_active', true)
@@ -590,7 +713,58 @@ class ShopController extends Controller
         $activeCategory = $forcedCategory;
 
         if ($activeCategory === null && $categorySlug !== '') {
-            $activeCategory = $shopCategories->firstWhere('slug', $categorySlug);
+            $activeCategory = $shopCategories->firstWhere('slug', $categorySlug)
+                ?? $shopCategories->flatMap->children->firstWhere('slug', $categorySlug);
+        }
+
+        // Build per-dimension size arrays for per-product filtering.
+        // Each product's own categories determine which sizes apply to it.
+        $topSizes = [];
+        $bottomSizes = [];
+        $shoeSizes = [];
+
+        if ($activeSizeProfile !== null) {
+            $topSizes = array_values(array_filter([$activeSizeProfile->top_size]));
+            $bottomSizes = array_values(array_filter([$activeSizeProfile->bottom_size]));
+
+            $rawShoeSize = $activeSizeProfile->shoe_size;
+            if ($rawShoeSize !== null && $rawShoeSize !== '') {
+                $shoeSizes = [$rawShoeSize];
+
+                // Map numeric shoe sizes to Biggie/Smalls sock sizes
+                $numericShoe = (float) $rawShoeSize;
+                if ($numericShoe >= 36 && $numericShoe <= 42) {
+                    $shoeSizes[] = 'Smalls';
+                } elseif ($numericShoe >= 43 && $numericShoe <= 46) {
+                    $shoeSizes[] = 'Biggie';
+                }
+            }
+        }
+
+        $hasSizeFilter = $activeSizeProfile !== null && $profileSizes !== [];
+
+        // Build expanded preselect array (includes mapped names like Biggie/Smalls)
+        $preselectSizes = $hasSizeFilter
+            ? array_values(array_unique(array_merge($topSizes, $bottomSizes, $shoeSizes)))
+            : [];
+
+        // Collect category IDs by size_type for the per-product query
+        $allCategories = $shopCategories->merge($shopCategories->flatMap->children);
+        $topCategoryIds = $allCategories->where('size_type', 'top')->pluck('id')->all();
+        $bottomCategoryIds = $allCategories->where('size_type', 'bottom')->pluck('id')->all();
+        $shoeCategoryIds = $allCategories->where('size_type', 'shoe')->pluck('id')->all();
+        $allSizedCategoryIds = array_merge($topCategoryIds, $bottomCategoryIds, $shoeCategoryIds);
+
+        // For parent categories, include products from all child categories
+        $filterCategoryIds = [];
+
+        if ($forcedCategory !== null) {
+            $filterCategoryIds[] = $forcedCategory->id;
+
+            if ($forcedCategory->parent_id === null) {
+                $childIds = $forcedCategory->children()->where('is_active', true)->pluck('id')->all();
+                $filterCategoryIds = array_merge($filterCategoryIds, $childIds);
+            }
         }
 
         $shouldFilterOutOfStock = $activeCategory !== null && ! $showOutOfStock;
@@ -610,8 +784,12 @@ class ShopController extends Controller
                 })
             )
             ->when(
-                $categorySlug !== '',
-                fn ($query) => $query->whereHas('primaryCategory', fn ($categoryQuery) => $categoryQuery->where('slug', $categorySlug))
+                $filterCategoryIds !== [],
+                fn ($query) => $query->whereHas('categories', fn ($categoryQuery) => $categoryQuery->whereIn('categories.id', $filterCategoryIds))
+            )
+            ->when(
+                $categorySlug === 'sale',
+                fn ($query) => $query->whereHas('variants', fn ($vq) => $vq->where('is_active', true)->whereNotNull('compare_at_price')->whereColumn('compare_at_price', '>', 'price'))
             )
             ->when(
                 $tagSlug !== '',
@@ -642,33 +820,52 @@ class ShopController extends Controller
                 })
             )
             ->when(
-                $profileSizes !== [],
-                fn ($query) => $query->whereHas('variants', function ($variantQuery) use ($profileSizes): void {
-                    $variantQuery->where('is_active', true)
-                        ->where(function ($sizeQuery) use ($profileSizes): void {
-                            // Match typed size variants by exact name
-                            $sizeQuery->where(function ($q) use ($profileSizes): void {
-                                $q->where('variant_type', 'size')
-                                    ->whereIn('name', $profileSizes);
-                            });
-
-                            // Match option_values JSON
-                            foreach ($profileSizes as $size) {
-                                $sizeQuery->orWhere('option_values->size', $size);
-                            }
-
-                            // Match size embedded in variant name after delimiters
-                            // e.g. "Product - Color, M" or "Product - M" or "Product / M"
-                            foreach ($profileSizes as $size) {
-                                $escapedSize = str_replace(['%', '_'], ['\\%', '\\_'], $size);
-
-                                $sizeQuery->orWhere('name', $size);
-
-                                foreach ([', ', '- ', '/ ', '| '] as $delimiter) {
-                                    $sizeQuery->orWhere('name', 'LIKE', '%'.$delimiter.$escapedSize);
-                                }
-                            }
+                $hasSizeFilter,
+                fn ($query) => $query->where(function ($outerQuery) use ($topSizes, $bottomSizes, $shoeSizes, $topCategoryIds, $bottomCategoryIds, $shoeCategoryIds, $allSizedCategoryIds): void {
+                    // Products in a "top" category → match top_size
+                    if ($topSizes !== [] && $topCategoryIds !== []) {
+                        $outerQuery->orWhere(function ($q) use ($topSizes, $topCategoryIds): void {
+                            $q->whereHas('categories', fn ($cq) => $cq->whereIn('categories.id', $topCategoryIds))
+                                ->whereHas('variants', fn ($vq) => $this->applySizeMatch($vq, $topSizes));
                         });
+                    }
+
+                    // Products in a "bottom" category → match bottom_size
+                    if ($bottomSizes !== [] && $bottomCategoryIds !== []) {
+                        $outerQuery->orWhere(function ($q) use ($bottomSizes, $bottomCategoryIds): void {
+                            $q->whereHas('categories', fn ($cq) => $cq->whereIn('categories.id', $bottomCategoryIds))
+                                ->whereHas('variants', fn ($vq) => $this->applySizeMatch($vq, $bottomSizes));
+                        });
+                    }
+
+                    // Products in a "shoe" category → match shoe_size (incl. Biggie/Smalls)
+                    if ($shoeSizes !== [] && $shoeCategoryIds !== []) {
+                        $outerQuery->orWhere(function ($q) use ($shoeSizes, $shoeCategoryIds): void {
+                            $q->whereHas('categories', fn ($cq) => $cq->whereIn('categories.id', $shoeCategoryIds))
+                                ->whereHas('variants', fn ($vq) => $this->applySizeMatch($vq, $shoeSizes));
+                        });
+                    }
+
+                    // Products in a sized dimension the user hasn't set → pass through
+                    if ($topSizes === [] && $topCategoryIds !== []) {
+                        $outerQuery->orWhereHas('categories', fn ($cq) => $cq->whereIn('categories.id', $topCategoryIds));
+                    }
+
+                    if ($bottomSizes === [] && $bottomCategoryIds !== []) {
+                        $outerQuery->orWhereHas('categories', fn ($cq) => $cq->whereIn('categories.id', $bottomCategoryIds));
+                    }
+
+                    if ($shoeSizes === [] && $shoeCategoryIds !== []) {
+                        $outerQuery->orWhereHas('categories', fn ($cq) => $cq->whereIn('categories.id', $shoeCategoryIds));
+                    }
+
+                    // Products NOT in any sized category → always show
+                    if ($allSizedCategoryIds !== []) {
+                        $outerQuery->orWhereDoesntHave('categories', fn ($cq) => $cq->whereIn('categories.id', $allSizedCategoryIds));
+                    } else {
+                        // No sized categories exist at all, show everything
+                        $outerQuery->orWhereRaw('1 = 1');
+                    }
                 })
             )
             ->with([
@@ -714,17 +911,62 @@ class ShopController extends Controller
             })
             ->withQueryString();
 
-        $pageTitle = $activeCategory?->meta_title ?: ($activeCategory ? $activeCategory->name.' | Shop | GoonsGear' : 'Shop | GoonsGear');
-        $pageDescription = $activeCategory?->meta_description ?: (strip_tags((string) $activeCategory?->description) ?: 'Browse active GoonsGear products by category, newest arrivals, and price.');
+        $activeTag = $forcedTag;
+
+        if ($activeTag === null && $tagSlug !== '') {
+            $activeTag = $shopTags->firstWhere('slug', $tagSlug);
+        }
+
+        $pageTitle = $activeCategory?->meta_title
+            ?: ($activeCategory ? $activeCategory->name.' | Shop | GoonsGear' : null);
+
+        if ($pageTitle === null && $activeTag !== null) {
+            $pageTitle = $activeTag->name.' | Shop | GoonsGear';
+        }
+
+        $pageTitle ??= 'Shop | GoonsGear';
+
+        $pageDescription = $activeCategory?->meta_description
+            ?: (strip_tags((string) $activeCategory?->description) ?: null);
+
+        if ($pageDescription === null && $activeTag !== null) {
+            $pageDescription = strip_tags((string) $activeTag->description)
+                ?: 'Browse '.$activeTag->name.' products on GoonsGear.';
+        }
+
+        $pageDescription ??= 'Browse active GoonsGear products by category, newest arrivals, and price.';
+
+        // Build breadcrumbs
+        $breadcrumbs = [['name' => 'Home', 'url' => route('shop.index')]];
+
+        if ($activeCategory !== null) {
+            if ($activeCategory->parent_id !== null) {
+                $parentCategory = $activeCategory->parent ?? Category::find($activeCategory->parent_id);
+
+                if ($parentCategory !== null) {
+                    $breadcrumbs[] = ['name' => $parentCategory->name, 'url' => route('shop.category', $parentCategory)];
+                }
+            }
+
+            $breadcrumbs[] = ['name' => $activeCategory->name, 'url' => null];
+        } elseif ($activeTag !== null) {
+            $typeLabel = match ($activeTag->type) {
+                'artist' => 'Artists',
+                'brand' => 'Brands',
+                'custom' => 'Tags',
+            };
+
+            $breadcrumbs[] = ['name' => $typeLabel, 'url' => null];
+            $breadcrumbs[] = ['name' => $activeTag->name, 'url' => null];
+        }
 
         return view('shop.index', [
             'products' => $products,
             'shopCategories' => $shopCategories,
             'activeCategory' => $activeCategory,
+            'activeTag' => $activeTag,
             'filters' => [
                 'q' => $search,
-                'category' => $categorySlug,
-                'tag' => $tagSlug,
                 'min_price' => $minPrice,
                 'max_price' => $maxPrice,
                 'include_out_of_stock' => $showOutOfStock,
@@ -734,6 +976,8 @@ class ShopController extends Controller
             'shopTags' => $shopTags,
             'sizeProfiles' => $sizeProfiles,
             'activeSizeProfile' => $activeSizeProfile,
+            'preselectSizes' => $preselectSizes,
+            'breadcrumbs' => $breadcrumbs,
             'seo' => [
                 'title' => $pageTitle,
                 'description' => $pageDescription,

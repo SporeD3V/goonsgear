@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -418,10 +419,16 @@ class SizeProfileTest extends TestCase
             'shoe_size' => null,
         ]);
 
+        $topCategory = Category::factory()->create([
+            'is_active' => true,
+            'size_type' => 'top',
+        ]);
+
         $matchingProduct = Product::factory()->create([
             'name' => 'Matching Shirt',
             'status' => 'active',
         ]);
+        $matchingProduct->categories()->attach($topCategory);
 
         ProductVariant::factory()->create([
             'product_id' => $matchingProduct->id,
@@ -430,12 +437,14 @@ class SizeProfileTest extends TestCase
             'option_values' => null,
             'price' => 29.99,
             'is_active' => true,
+            'stock_quantity' => 5,
         ]);
 
         $nonMatchingProduct = Product::factory()->create([
             'name' => 'Non Matching Shirt',
             'status' => 'active',
         ]);
+        $nonMatchingProduct->categories()->attach($topCategory);
 
         ProductVariant::factory()->create([
             'product_id' => $nonMatchingProduct->id,
@@ -444,9 +453,12 @@ class SizeProfileTest extends TestCase
             'option_values' => null,
             'price' => 29.99,
             'is_active' => true,
+            'stock_quantity' => 5,
         ]);
 
-        $response = $this->actingAs($user)->get(route('shop.index', ['size_profile' => $profile->id]));
+        $response = $this->actingAs($user)
+            ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
+            ->get(route('shop.index'));
 
         $response->assertOk();
         $response->assertSee('Matching Shirt');
@@ -464,10 +476,16 @@ class SizeProfileTest extends TestCase
             'shoe_size' => null,
         ]);
 
+        $topCategory = Category::factory()->create([
+            'is_active' => true,
+            'size_type' => 'top',
+        ]);
+
         $matchingProduct = Product::factory()->create([
             'name' => 'Option Values Shirt',
             'status' => 'active',
         ]);
+        $matchingProduct->categories()->attach($topCategory);
 
         ProductVariant::factory()->create([
             'product_id' => $matchingProduct->id,
@@ -476,12 +494,14 @@ class SizeProfileTest extends TestCase
             'option_values' => ['size' => 'L', 'color' => 'Red'],
             'price' => 29.99,
             'is_active' => true,
+            'stock_quantity' => 5,
         ]);
 
         $nonMatchingProduct = Product::factory()->create([
             'name' => 'Wrong Size Shirt',
             'status' => 'active',
         ]);
+        $nonMatchingProduct->categories()->attach($topCategory);
 
         ProductVariant::factory()->create([
             'product_id' => $nonMatchingProduct->id,
@@ -490,9 +510,12 @@ class SizeProfileTest extends TestCase
             'option_values' => ['size' => 'S', 'color' => 'Red'],
             'price' => 29.99,
             'is_active' => true,
+            'stock_quantity' => 5,
         ]);
 
-        $response = $this->actingAs($user)->get(route('shop.index', ['size_profile' => $profile->id]));
+        $response = $this->actingAs($user)
+            ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
+            ->get(route('shop.index'));
 
         $response->assertOk();
         $response->assertSee('Option Values Shirt');
@@ -554,10 +577,16 @@ class SizeProfileTest extends TestCase
             'shoe_size' => null,
         ]);
 
+        $topCategory = Category::factory()->create([
+            'is_active' => true,
+            'size_type' => 'top',
+        ]);
+
         $matchingProduct = Product::factory()->create([
             'name' => 'Soft Patch Hoodie',
             'status' => 'active',
         ]);
+        $matchingProduct->categories()->attach($topCategory);
 
         ProductVariant::factory()->create([
             'product_id' => $matchingProduct->id,
@@ -566,12 +595,14 @@ class SizeProfileTest extends TestCase
             'option_values' => null,
             'price' => 49.99,
             'is_active' => true,
+            'stock_quantity' => 5,
         ]);
 
         $nonMatchingProduct = Product::factory()->create([
             'name' => 'Other Hoodie',
             'status' => 'active',
         ]);
+        $nonMatchingProduct->categories()->attach($topCategory);
 
         ProductVariant::factory()->create([
             'product_id' => $nonMatchingProduct->id,
@@ -580,12 +611,642 @@ class SizeProfileTest extends TestCase
             'option_values' => null,
             'price' => 49.99,
             'is_active' => true,
+            'stock_quantity' => 5,
         ]);
 
-        $response = $this->actingAs($user)->get(route('shop.index', ['size_profile' => $profile->id]));
+        $response = $this->actingAs($user)
+            ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
+            ->get(route('shop.index'));
 
         $response->assertOk();
         $response->assertSee('Soft Patch Hoodie');
         $response->assertDontSee('Other Hoodie');
+    }
+
+    public function test_catalog_size_filter_excludes_out_of_stock_variants(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = SizeProfile::factory()->self()->create([
+            'user_id' => $user->id,
+            'top_size' => 'M',
+            'bottom_size' => null,
+            'shoe_size' => null,
+        ]);
+
+        $topCategory = Category::factory()->create([
+            'is_active' => true,
+            'slug' => 'shirts',
+            'size_type' => 'top',
+        ]);
+
+        $outOfStockProduct = Product::factory()->create([
+            'name' => 'Out Of Stock Size Shirt',
+            'status' => 'active',
+        ]);
+        $outOfStockProduct->categories()->attach($topCategory);
+
+        ProductVariant::factory()->create([
+            'product_id' => $outOfStockProduct->id,
+            'name' => 'Out Of Stock Size Shirt - M',
+            'variant_type' => 'size',
+            'option_values' => null,
+            'price' => 29.99,
+            'is_active' => true,
+            'track_inventory' => true,
+            'stock_quantity' => 0,
+            'allow_backorder' => false,
+            'is_preorder' => false,
+        ]);
+
+        // Out-of-stock products with matching size should be hidden
+        $response = $this->actingAs($user)
+            ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
+            ->get(route('shop.category', $topCategory));
+
+        $response->assertOk();
+        $response->assertDontSee('Out Of Stock Size Shirt');
+    }
+
+    public function test_size_match_handles_size_before_color_in_variant_name(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = SizeProfile::factory()->self()->create([
+            'user_id' => $user->id,
+            'top_size' => null,
+            'bottom_size' => 'XXL',
+            'shoe_size' => null,
+        ]);
+
+        $bottomCategory = Category::factory()->create([
+            'is_active' => true,
+            'slug' => 'pants',
+            'size_type' => 'bottom',
+        ]);
+
+        $product = Product::factory()->create([
+            'name' => 'Mesh Shorts',
+            'status' => 'active',
+        ]);
+        $product->categories()->attach($bottomCategory);
+
+        // Variant with size before color: "Product - XXL, White"
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Mesh Shorts - XXL, White',
+            'variant_type' => 'custom',
+            'option_values' => null,
+            'price' => 39.99,
+            'is_active' => true,
+            'track_inventory' => true,
+            'stock_quantity' => 2,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
+            ->get(route('shop.category', $bottomCategory));
+
+        $response->assertOk();
+        $response->assertSee('Mesh Shorts');
+    }
+
+    public function test_category_quick_filter_buttons_are_rendered(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = SizeProfile::factory()->self()->create([
+            'user_id' => $user->id,
+            'top_size' => 'L',
+        ]);
+
+        $category = Category::factory()->create([
+            'is_active' => true,
+            'slug' => 'test-category',
+            'name' => 'Test Category',
+        ]);
+
+        $product = Product::factory()->create(['status' => 'active']);
+        $product->categories()->attach($category);
+
+        $response = $this->actingAs($user)
+            ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
+            ->get(route('shop.index'));
+
+        $response->assertOk();
+        $response->assertSee(route('shop.category', $category), false);
+    }
+
+    public function test_size_filter_shows_non_sized_products(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = SizeProfile::factory()->self()->create([
+            'user_id' => $user->id,
+            'top_size' => 'M',
+        ]);
+
+        // Vinyl category without size_type
+        $vinylCategory = Category::factory()->create([
+            'is_active' => true,
+            'size_type' => null,
+        ]);
+
+        $vinyl = Product::factory()->create([
+            'name' => 'Classic Hip Hop Vinyl',
+            'status' => 'active',
+        ]);
+        $vinyl->categories()->attach($vinylCategory);
+
+        ProductVariant::factory()->create([
+            'product_id' => $vinyl->id,
+            'name' => 'Default',
+            'variant_type' => 'custom',
+            'option_values' => null,
+            'price' => 19.99,
+            'is_active' => true,
+            'stock_quantity' => 10,
+        ]);
+
+        // Shirt in a top category
+        $topCategory = Category::factory()->create([
+            'is_active' => true,
+            'size_type' => 'top',
+        ]);
+
+        $shirt = Product::factory()->create([
+            'name' => 'Sized Shirt Product',
+            'status' => 'active',
+        ]);
+        $shirt->categories()->attach($topCategory);
+
+        ProductVariant::factory()->create([
+            'product_id' => $shirt->id,
+            'name' => 'Sized Shirt Product - M',
+            'variant_type' => 'size',
+            'option_values' => null,
+            'price' => 29.99,
+            'is_active' => true,
+            'stock_quantity' => 5,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
+            ->get(route('shop.index'));
+
+        $response->assertOk();
+        $response->assertSee('Classic Hip Hop Vinyl');
+        $response->assertSee('Sized Shirt Product');
+    }
+
+    public function test_size_filter_narrows_to_top_size_for_top_category(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = SizeProfile::factory()->self()->create([
+            'user_id' => $user->id,
+            'top_size' => 'S',
+            'bottom_size' => 'M',
+        ]);
+
+        $tshirtCategory = Category::factory()->create([
+            'is_active' => true,
+            'slug' => 'tshirts',
+            'name' => 'T-Shirts',
+            'size_type' => 'top',
+        ]);
+
+        $smallShirt = Product::factory()->create([
+            'name' => 'Small Shirt',
+            'status' => 'active',
+        ]);
+        $smallShirt->categories()->attach($tshirtCategory);
+
+        ProductVariant::factory()->create([
+            'product_id' => $smallShirt->id,
+            'name' => 'Small Shirt - S',
+            'variant_type' => 'size',
+            'option_values' => null,
+            'price' => 25.00,
+            'is_active' => true,
+            'stock_quantity' => 5,
+        ]);
+
+        $mediumShirt = Product::factory()->create([
+            'name' => 'Medium Only Shirt',
+            'status' => 'active',
+        ]);
+        $mediumShirt->categories()->attach($tshirtCategory);
+
+        ProductVariant::factory()->create([
+            'product_id' => $mediumShirt->id,
+            'name' => 'Medium Only Shirt - M',
+            'variant_type' => 'size',
+            'option_values' => null,
+            'price' => 25.00,
+            'is_active' => true,
+            'stock_quantity' => 5,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
+            ->get(route('shop.category', $tshirtCategory));
+
+        $response->assertOk();
+        $response->assertSee('Small Shirt');
+        $response->assertDontSee('Medium Only Shirt');
+    }
+
+    public function test_size_filter_uses_all_sizes_for_category_without_size_type(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = SizeProfile::factory()->self()->create([
+            'user_id' => $user->id,
+            'top_size' => 'S',
+            'bottom_size' => 'M',
+        ]);
+
+        $saleCategory = Category::factory()->create([
+            'is_active' => true,
+            'slug' => 'sale',
+            'name' => 'SALE',
+            'size_type' => null,
+        ]);
+
+        $smallProduct = Product::factory()->create([
+            'name' => 'Sale Item Small',
+            'status' => 'active',
+        ]);
+        $smallProduct->categories()->attach($saleCategory);
+
+        ProductVariant::factory()->create([
+            'product_id' => $smallProduct->id,
+            'name' => 'Sale Item Small - S',
+            'variant_type' => 'size',
+            'option_values' => null,
+            'price' => 15.00,
+            'compare_at_price' => 25.00,
+            'is_active' => true,
+            'stock_quantity' => 3,
+        ]);
+
+        $mediumProduct = Product::factory()->create([
+            'name' => 'Sale Item Medium',
+            'status' => 'active',
+        ]);
+        $mediumProduct->categories()->attach($saleCategory);
+
+        ProductVariant::factory()->create([
+            'product_id' => $mediumProduct->id,
+            'name' => 'Sale Item Medium - M',
+            'variant_type' => 'size',
+            'option_values' => null,
+            'price' => 15.00,
+            'compare_at_price' => 25.00,
+            'is_active' => true,
+            'stock_quantity' => 3,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
+            ->get(route('shop.category', $saleCategory));
+
+        $response->assertOk();
+        // Both show because SALE has no size_type — products only in unsized categories pass through
+        $response->assertSee('Sale Item Small');
+        $response->assertSee('Sale Item Medium');
+    }
+
+    public function test_multi_category_product_uses_sized_category_for_filtering(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = SizeProfile::factory()->self()->create([
+            'user_id' => $user->id,
+            'top_size' => 'S',
+            'bottom_size' => 'M',
+        ]);
+
+        $topCategory = Category::factory()->create([
+            'is_active' => true,
+            'slug' => 'tshirts',
+            'size_type' => 'top',
+        ]);
+
+        // Artist category has no size_type
+        $artistCategory = Category::factory()->create([
+            'is_active' => true,
+            'slug' => 'sean-p',
+            'size_type' => null,
+        ]);
+
+        // Sean P! shirt in BOTH categories — should filter by top_size=S
+        $matchingShirt = Product::factory()->create([
+            'name' => 'Sean P Matching Shirt',
+            'status' => 'active',
+        ]);
+        $matchingShirt->categories()->attach([$topCategory->id, $artistCategory->id]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $matchingShirt->id,
+            'name' => 'Sean P Matching Shirt - S',
+            'variant_type' => 'size',
+            'option_values' => null,
+            'price' => 30.00,
+            'is_active' => true,
+            'stock_quantity' => 5,
+        ]);
+
+        $nonMatchingShirt = Product::factory()->create([
+            'name' => 'Sean P Wrong Size Shirt',
+            'status' => 'active',
+        ]);
+        $nonMatchingShirt->categories()->attach([$topCategory->id, $artistCategory->id]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $nonMatchingShirt->id,
+            'name' => 'Sean P Wrong Size Shirt - XL',
+            'variant_type' => 'size',
+            'option_values' => null,
+            'price' => 30.00,
+            'is_active' => true,
+            'stock_quantity' => 5,
+        ]);
+
+        // Browsing via artist category (no size_type) — still filters correctly
+        $response = $this->actingAs($user)
+            ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
+            ->get(route('shop.category', $artistCategory));
+
+        $response->assertOk();
+        $response->assertSee('Sean P Matching Shirt');
+        $response->assertDontSee('Sean P Wrong Size Shirt');
+    }
+
+    public function test_shoe_size_maps_to_biggie_smalls_sock_variants(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = SizeProfile::factory()->self()->create([
+            'user_id' => $user->id,
+            'top_size' => 'M',
+            'shoe_size' => '44',
+        ]);
+
+        $shoeCategory = Category::factory()->create([
+            'is_active' => true,
+            'slug' => 'socks',
+            'size_type' => 'shoe',
+        ]);
+
+        // Socks with "Biggie" variant (43-46 EU) — should match shoe_size=44
+        $biggieSocks = Product::factory()->create([
+            'name' => 'Hip Hop Biggie Socks',
+            'status' => 'active',
+        ]);
+        $biggieSocks->categories()->attach($shoeCategory);
+
+        ProductVariant::factory()->create([
+            'product_id' => $biggieSocks->id,
+            'name' => 'Hip Hop Biggie Socks - Biggie',
+            'variant_type' => 'size',
+            'option_values' => null,
+            'price' => 12.99,
+            'is_active' => true,
+            'stock_quantity' => 10,
+        ]);
+
+        // Socks with only "Smalls" variant (36-42 EU) — should NOT match shoe_size=44
+        $smallsOnlySocks = Product::factory()->create([
+            'name' => 'Smalls Only Socks',
+            'status' => 'active',
+        ]);
+        $smallsOnlySocks->categories()->attach($shoeCategory);
+
+        ProductVariant::factory()->create([
+            'product_id' => $smallsOnlySocks->id,
+            'name' => 'Smalls Only Socks - Smalls',
+            'variant_type' => 'size',
+            'option_values' => null,
+            'price' => 12.99,
+            'is_active' => true,
+            'stock_quantity' => 10,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
+            ->get(route('shop.index'));
+
+        $response->assertOk();
+        $response->assertSee('Hip Hop Biggie Socks');
+        $response->assertDontSee('Smalls Only Socks');
+    }
+
+    public function test_shoe_size_smalls_range_matches_correctly(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = SizeProfile::factory()->self()->create([
+            'user_id' => $user->id,
+            'shoe_size' => '39',
+        ]);
+
+        $shoeCategory = Category::factory()->create([
+            'is_active' => true,
+            'size_type' => 'shoe',
+        ]);
+
+        $smallsSocks = Product::factory()->create([
+            'name' => 'Smalls Range Socks',
+            'status' => 'active',
+        ]);
+        $smallsSocks->categories()->attach($shoeCategory);
+
+        ProductVariant::factory()->create([
+            'product_id' => $smallsSocks->id,
+            'name' => 'Smalls Range Socks - Smalls',
+            'variant_type' => 'size',
+            'option_values' => null,
+            'price' => 12.99,
+            'is_active' => true,
+            'stock_quantity' => 10,
+        ]);
+
+        $biggieSocks = Product::factory()->create([
+            'name' => 'Biggie Range Socks',
+            'status' => 'active',
+        ]);
+        $biggieSocks->categories()->attach($shoeCategory);
+
+        ProductVariant::factory()->create([
+            'product_id' => $biggieSocks->id,
+            'name' => 'Biggie Range Socks - Biggie',
+            'variant_type' => 'size',
+            'option_values' => null,
+            'price' => 12.99,
+            'is_active' => true,
+            'stock_quantity' => 10,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
+            ->get(route('shop.index'));
+
+        $response->assertOk();
+        $response->assertSee('Smalls Range Socks');
+        $response->assertDontSee('Biggie Range Socks');
+    }
+
+    public function test_products_in_unset_dimension_pass_through(): void
+    {
+        $user = User::factory()->create();
+
+        // User only has top_size set, no bottom_size
+        $profile = SizeProfile::factory()->self()->create([
+            'user_id' => $user->id,
+            'top_size' => 'M',
+            'bottom_size' => null,
+            'shoe_size' => null,
+        ]);
+
+        $bottomCategory = Category::factory()->create([
+            'is_active' => true,
+            'slug' => 'pants',
+            'size_type' => 'bottom',
+        ]);
+
+        $pants = Product::factory()->create([
+            'name' => 'Passthrough Pants',
+            'status' => 'active',
+        ]);
+        $pants->categories()->attach($bottomCategory);
+
+        ProductVariant::factory()->create([
+            'product_id' => $pants->id,
+            'name' => 'Passthrough Pants - XXL',
+            'variant_type' => 'size',
+            'option_values' => null,
+            'price' => 40.00,
+            'is_active' => true,
+            'stock_quantity' => 5,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
+            ->get(route('shop.index'));
+
+        $response->assertOk();
+        // Pants should still show even though user has no bottom_size set
+        $response->assertSee('Passthrough Pants');
+    }
+
+    public function test_preselect_sizes_include_biggie_smalls_mapping(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = SizeProfile::factory()->self()->create([
+            'user_id' => $user->id,
+            'top_size' => 'M',
+            'shoe_size' => '44',
+        ]);
+
+        $shoeCategory = Category::factory()->create([
+            'is_active' => true,
+            'size_type' => 'shoe',
+        ]);
+
+        $socks = Product::factory()->create([
+            'name' => 'Preselect Biggie Socks',
+            'status' => 'active',
+        ]);
+        $socks->categories()->attach($shoeCategory);
+
+        ProductVariant::factory()->create([
+            'product_id' => $socks->id,
+            'name' => 'Preselect Biggie Socks - Biggie',
+            'variant_type' => 'size',
+            'option_values' => null,
+            'price' => 12.99,
+            'is_active' => true,
+            'stock_quantity' => 10,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
+            ->get(route('shop.index'));
+
+        $response->assertOk();
+        // The preselect data should include "Biggie" (mapped from shoe_size=44)
+        $response->assertSee('"Biggie"', false);
+    }
+
+    public function test_catalog_cards_include_preselect_sizes_when_profile_active(): void
+    {
+        $user = User::factory()->create();
+
+        $profile = SizeProfile::factory()->self()->create([
+            'user_id' => $user->id,
+            'top_size' => 'M',
+            'bottom_size' => 'L',
+        ]);
+
+        $product = Product::factory()->create([
+            'name' => 'Preselect Test Shirt',
+            'status' => 'active',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Preselect Test Shirt - Red, M',
+            'variant_type' => 'custom',
+            'option_values' => null,
+            'price' => 35.00,
+            'is_active' => true,
+            'stock_quantity' => 5,
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Preselect Test Shirt - Red, L',
+            'variant_type' => 'custom',
+            'option_values' => null,
+            'price' => 35.00,
+            'is_active' => true,
+            'stock_quantity' => 5,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
+            ->get(route('shop.index'));
+
+        $response->assertOk();
+        $response->assertSee('data-catalog-preselect-sizes', false);
+        $response->assertSee('"M"', false);
+    }
+
+    public function test_catalog_cards_omit_preselect_sizes_when_no_profile(): void
+    {
+        $user = User::factory()->create();
+
+        $product = Product::factory()->create([
+            'name' => 'No Profile Test Shirt',
+            'status' => 'active',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'No Profile Test Shirt - M',
+            'variant_type' => 'size',
+            'option_values' => null,
+            'price' => 25.00,
+            'is_active' => true,
+            'stock_quantity' => 5,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('shop.index'));
+
+        $response->assertOk();
+        $response->assertDontSee('data-catalog-preselect-sizes', false);
     }
 }

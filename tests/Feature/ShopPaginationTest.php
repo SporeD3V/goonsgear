@@ -29,7 +29,7 @@ class ShopPaginationTest extends TestCase
             $product->categories()->sync([$category->id]);
         }
 
-        $response = $this->get(route('shop.index', ['category' => 'test-category', 'page' => 3]));
+        $response = $this->get(route('shop.category', $category).'?page=3');
 
         $response->assertOk();
         $response->assertDontSee('rel="next"', false);
@@ -54,7 +54,7 @@ class ShopPaginationTest extends TestCase
             $product->categories()->sync([$category->id]);
         }
 
-        $response = $this->get(route('shop.index', ['category' => 'test-category', 'page' => 1]));
+        $response = $this->get(route('shop.category', $category).'?page=1');
 
         $response->assertOk();
         $response->assertSee('rel="next"', false);

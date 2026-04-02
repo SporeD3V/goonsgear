@@ -153,7 +153,7 @@ class ShopBrowseTest extends TestCase
         $response->assertSee('data-media-zoom-url', false);
     }
 
-    public function test_shop_index_filters_by_primary_category_slug(): void
+    public function test_shop_index_filters_by_category_slug(): void
     {
         $featuredCategory = Category::factory()->create([
             'name' => 'Featured',
@@ -167,23 +167,21 @@ class ShopBrowseTest extends TestCase
             'is_active' => true,
         ]);
 
-        Product::factory()->create([
+        $featuredProduct = Product::factory()->create([
             'name' => 'Featured Hoodie',
             'slug' => 'featured-hoodie',
             'status' => 'active',
-            'primary_category_id' => $featuredCategory->id,
         ]);
+        $featuredProduct->categories()->attach($featuredCategory);
 
-        Product::factory()->create([
+        $otherProduct = Product::factory()->create([
             'name' => 'Other Hoodie',
             'slug' => 'other-hoodie',
             'status' => 'active',
-            'primary_category_id' => $otherCategory->id,
         ]);
+        $otherProduct->categories()->attach($otherCategory);
 
-        $response = $this->get(route('shop.index', [
-            'category' => 'featured',
-        ]));
+        $response = $this->get(route('shop.category', $featuredCategory));
 
         $response->assertOk();
         $response->assertSee('Featured Hoodie');
@@ -207,19 +205,19 @@ class ShopBrowseTest extends TestCase
             'is_active' => true,
         ]);
 
-        Product::factory()->create([
+        $featuredProduct = Product::factory()->create([
             'name' => 'Featured Hoodie',
             'slug' => 'featured-hoodie',
             'status' => 'active',
-            'primary_category_id' => $featuredCategory->id,
         ]);
+        $featuredProduct->categories()->attach($featuredCategory);
 
-        Product::factory()->create([
+        $otherProduct = Product::factory()->create([
             'name' => 'Other Hoodie',
             'slug' => 'other-hoodie',
             'status' => 'active',
-            'primary_category_id' => $otherCategory->id,
         ]);
+        $otherProduct->categories()->attach($otherCategory);
 
         $response = $this->get(route('shop.category', $featuredCategory));
 
@@ -242,15 +240,15 @@ class ShopBrowseTest extends TestCase
             'name' => 'In Stock Hoodie',
             'slug' => 'in-stock-hoodie',
             'status' => 'active',
-            'primary_category_id' => $category->id,
         ]);
+        $inStockProduct->categories()->attach($category);
 
         $outOfStockProduct = Product::factory()->create([
             'name' => 'Out Of Stock Hoodie',
             'slug' => 'out-of-stock-hoodie',
             'status' => 'active',
-            'primary_category_id' => $category->id,
         ]);
+        $outOfStockProduct->categories()->attach($category);
 
         ProductVariant::factory()->create([
             'product_id' => $inStockProduct->id,
@@ -290,8 +288,8 @@ class ShopBrowseTest extends TestCase
             'name' => 'Out Of Stock Tee',
             'slug' => 'out-of-stock-tee',
             'status' => 'active',
-            'primary_category_id' => $category->id,
         ]);
+        $outOfStockProduct->categories()->attach($category);
 
         ProductVariant::factory()->create([
             'product_id' => $outOfStockProduct->id,
@@ -302,7 +300,8 @@ class ShopBrowseTest extends TestCase
             'stock_quantity' => 0,
         ]);
 
-        $response = $this->get(route('shop.category', $category).'?include_out_of_stock=1');
+        $response = $this->withSession(['shop_filters' => ['include_out_of_stock' => true]])
+            ->get(route('shop.category', $category));
 
         $response->assertOk();
         $response->assertSee('Out Of Stock Tee');
@@ -334,9 +333,8 @@ class ShopBrowseTest extends TestCase
             'status' => 'active',
         ]);
 
-        $response = $this->get(route('shop.index', [
-            'q' => 'lightning',
-        ]));
+        $response = $this->withSession(['shop_filters' => ['q' => 'lightning']])
+            ->get(route('shop.index'));
 
         $response->assertOk();
         $response->assertSee('Lightning Jacket');
@@ -357,9 +355,8 @@ class ShopBrowseTest extends TestCase
             'status' => 'active',
         ]);
 
-        $response = $this->get(route('shop.index', [
-            'sort' => 'name_asc',
-        ]));
+        $response = $this->withSession(['shop_filters' => ['sort' => 'name_asc']])
+            ->get(route('shop.index'));
 
         $response->assertOk();
         $response->assertSeeInOrder(['Alpha Hoodie', 'Zulu Hoodie']);
@@ -391,16 +388,14 @@ class ShopBrowseTest extends TestCase
             'price' => 49.99,
         ]);
 
-        $ascendingResponse = $this->get(route('shop.index', [
-            'sort' => 'price_asc',
-        ]));
+        $ascendingResponse = $this->withSession(['shop_filters' => ['sort' => 'price_asc']])
+            ->get(route('shop.index'));
 
         $ascendingResponse->assertOk();
         $ascendingResponse->assertSeeInOrder(['Budget Hoodie', 'Expensive Hoodie']);
 
-        $descendingResponse = $this->get(route('shop.index', [
-            'sort' => 'price_desc',
-        ]));
+        $descendingResponse = $this->withSession(['shop_filters' => ['sort' => 'price_desc']])
+            ->get(route('shop.index'));
 
         $descendingResponse->assertOk();
         $descendingResponse->assertSeeInOrder(['Expensive Hoodie', 'Budget Hoodie']);
@@ -444,19 +439,19 @@ class ShopBrowseTest extends TestCase
             'price' => 140.00,
         ]);
 
-        $rangeResponse = $this->get(route('shop.index', [
+        $rangeResponse = $this->withSession(['shop_filters' => [
             'min_price' => 50,
             'max_price' => 100,
-        ]));
+        ]])->get(route('shop.index'));
 
         $rangeResponse->assertOk();
         $rangeResponse->assertSee('Mid Price Hoodie');
         $rangeResponse->assertDontSee('Low Price Tee');
         $rangeResponse->assertDontSee('High Price Jacket');
 
-        $minOnlyResponse = $this->get(route('shop.index', [
+        $minOnlyResponse = $this->withSession(['shop_filters' => [
             'min_price' => 100,
-        ]));
+        ]])->get(route('shop.index'));
 
         $minOnlyResponse->assertOk();
         $minOnlyResponse->assertSee('High Price Jacket');

@@ -83,6 +83,13 @@ document.addEventListener('DOMContentLoaded', () => {
 		const optionMatchesAttributes = (optionAttributes, attributes) => Object.entries(attributes)
 			.every(([attributeKey, attributeValue]) => optionAttributes[attributeKey] === attributeValue);
 
+		const isOptionInStock = (option) => {
+			if (option.dataset.variantOutOfStock === '1') {
+				return false;
+			}
+			return true;
+		};
+
 		const resolveMatchingOption = (attributes) => {
 			if (variantOptions.length === 0) {
 				return null;
@@ -134,17 +141,21 @@ document.addEventListener('DOMContentLoaded', () => {
 					[attributeKey]: attributeValue,
 				};
 
-				const hasMatchingVariant = variantOptions.some(({ attributes }) => optionMatchesAttributes(attributes, candidateSelection));
+				const matchingVariants = variantOptions.filter(({ attributes }) => optionMatchesAttributes(attributes, candidateSelection));
+				const hasMatchingVariant = matchingVariants.length > 0;
+				const hasInStockVariant = matchingVariants.some(({ option }) => isOptionInStock(option));
 				const isSelected = selectedAttributes[attributeKey] === attributeValue;
 
 				button.disabled = !hasMatchingVariant;
 				button.classList.toggle('border-slate-900', isSelected);
 				button.classList.toggle('bg-slate-900', isSelected);
 				button.classList.toggle('text-white', isSelected);
-				button.classList.toggle('border-slate-300', !isSelected);
+				button.classList.toggle('border-slate-300', !isSelected && hasMatchingVariant);
 				button.classList.toggle('bg-white', !isSelected);
-				button.classList.toggle('text-slate-700', !isSelected);
+				button.classList.toggle('text-slate-700', !isSelected && hasMatchingVariant);
 				button.classList.toggle('opacity-40', !hasMatchingVariant);
+				button.classList.toggle('line-through', hasMatchingVariant && !hasInStockVariant && !isSelected);
+				button.classList.toggle('text-slate-400', hasMatchingVariant && !hasInStockVariant && !isSelected);
 			});
 		};
 
@@ -275,10 +286,20 @@ document.addEventListener('DOMContentLoaded', () => {
 					return;
 				}
 
-				selectedAttributes = {
+				// Block selection when all matching variants are out of stock
+				const candidateSelection = {
 					...selectedAttributes,
 					[attributeKey]: attributeValue,
 				};
+				const matchingVariants = variantOptions.filter(({ attributes }) =>
+					optionMatchesAttributes(attributes, candidateSelection),
+				);
+				const hasInStock = matchingVariants.some(({ option }) => isOptionInStock(option));
+				if (matchingVariants.length > 0 && !hasInStock) {
+					return;
+				}
+
+				selectedAttributes = candidateSelection;
 
 				if (requiresAttributeSelection && attributeOrder.length > 1) {
 					const selectedCount = attributeOrder.filter((key) => selectedAttributes[key]).length;
@@ -381,6 +402,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		let selectedAttributes = {};
 
+		// Auto-select size from user's size profile
+		const preselectSizesRaw = card.dataset.catalogPreselectSizes || '';
+		if (preselectSizesRaw) {
+			try {
+				const preselectSizes = JSON.parse(preselectSizesRaw);
+				if (Array.isArray(preselectSizes) && preselectSizes.length > 0) {
+					for (const { attributes } of variantOptions) {
+						if (attributes.size && preselectSizes.includes(attributes.size)) {
+							selectedAttributes.size = attributes.size;
+							break;
+						}
+					}
+				}
+			} catch (_error) {
+				// ignore parse errors
+			}
+
+			// Auto-select remaining attributes when only one option exists for the chosen size
+			if (selectedAttributes.size) {
+				const matchingVariants = variantOptions.filter(
+					({ attributes }) => attributes.size === selectedAttributes.size,
+				);
+				for (const key of attributeOrder) {
+					if (key === 'size' || selectedAttributes[key]) {
+						continue;
+					}
+					const distinctValues = [...new Set(matchingVariants.map(({ attributes }) => attributes[key]).filter(Boolean))];
+					if (distinctValues.length === 1) {
+						selectedAttributes[key] = distinctValues[0];
+					}
+				}
+			}
+		}
+
 		const resolveMatchingOption = () => {
 			if (variantOptions.length === 0) {
 				return null;
@@ -397,14 +452,28 @@ document.addEventListener('DOMContentLoaded', () => {
 			attributeButtons.forEach((button) => {
 				const key = button.dataset.catalogAttribute;
 				const value = button.dataset.catalogAttributeValue;
+				const candidateSelection = {
+					...selectedAttributes,
+					[key]: value,
+				};
+
+				const hasMatchingVariant = variantOptions.some(({ attributes }) =>
+					Object.entries(candidateSelection).every(
+						([k, v]) => attributes[k] === v,
+					),
+				);
 				const isSelected = selectedAttributes[key] === value;
 
+				button.disabled = !hasMatchingVariant;
 				button.classList.toggle('border-slate-900', isSelected);
 				button.classList.toggle('bg-slate-900', isSelected);
 				button.classList.toggle('text-white', isSelected);
-				button.classList.toggle('border-slate-300', !isSelected);
+				button.classList.toggle('border-slate-300', !isSelected && hasMatchingVariant);
 				button.classList.toggle('bg-white', !isSelected);
-				button.classList.toggle('text-slate-700', !isSelected);
+				button.classList.toggle('text-slate-700', !isSelected && hasMatchingVariant);
+				button.classList.toggle('opacity-40', !hasMatchingVariant);
+				button.classList.toggle('line-through', !hasMatchingVariant && !isSelected);
+				button.classList.toggle('text-slate-400', !hasMatchingVariant && !isSelected);
 			});
 		};
 
@@ -431,10 +500,10 @@ document.addEventListener('DOMContentLoaded', () => {
 					cartVariantInput.value = matchedOption.value;
 				}
 				if (addToCartButton) {
-					addToCartButton.textContent = `Add to cart — $${matchedOption.dataset.variantPrice}`;
+					addToCartButton.textContent = `Add to cart — \u20AC${matchedOption.dataset.variantPrice}`;
 				}
 				if (priceElement) {
-					priceElement.textContent = `$${matchedOption.dataset.variantPrice}`;
+					priceElement.textContent = `\u20AC${matchedOption.dataset.variantPrice}`;
 				}
 			} else {
 				variantSelect.selectedIndex = 0;
@@ -510,6 +579,11 @@ document.addEventListener('DOMContentLoaded', () => {
 					})
 					.catch(() => {});
 			});
+		}
+
+		// Apply pre-selected attributes (e.g. from size profile)
+		if (Object.keys(selectedAttributes).length > 0) {
+			syncSelection();
 		}
 	});
 
@@ -1010,7 +1084,7 @@ document.addEventListener('DOMContentLoaded', () => {
 								const hasPrice = result.price !== null && result.price !== undefined;
 								const parsedPrice = hasPrice ? Number(result.price) : null;
 								const priceMarkup = hasPrice && Number.isFinite(parsedPrice)
-									? `<div class="text-xs font-medium text-slate-800">$${parsedPrice.toFixed(2)}</div>`
+									? `<div class="text-xs font-medium text-slate-800">\u20AC${parsedPrice.toFixed(2)}</div>`
 									: '';
 
 								return `

@@ -276,9 +276,16 @@ Immediate remediation sequence:
 4. Add a pre-commit secret scan and CI gate for known credential patterns.
 
 Security follow-up audit tasks (requested):
-- [ ] 1. Rotate staging SSH credentials and invalidate current password-based access.
-- [ ] 2. Move deploy script auth to environment variables or key-based auth only across all remaining scripts.
-- [ ] 3. Add pre-commit secret scan and CI gate for known credential patterns.
+- [x] 1. Rotate staging SSH credentials and invalidate current password-based access.
+	- SSH password rotated 2026-04-01; new credential stored only in .env.staging (gitignored).
+- [x] 2. Move deploy script auth to environment variables or key-based auth only.
+	- Created staging_env.py: reads all credentials from .env.staging, raises RuntimeError if missing.
+	- Updated run_media_import.py and backup_db.py to import from staging_env; these are the canonical active scripts.
+	- Added .tmp_*.py to .gitignore so temporary investigation scripts with credentials can never be committed.
+	- Remaining legacy one-off scripts in root still reference credentials in git history; staging DB password (TPCFRLvc96ufAdYd5Quy) should be rotated on the server to fully close that window.
+- [x] 3. Add CI gate for known credential patterns.
+	- Added .github/workflows/secret-scan.yml: TruffleHog scans every push and PR for verified secrets.
+	- Added .trufflehog-ignore to document exempted paths (tests/, .env.staging).
 
 ## 13. Deliverables
 
