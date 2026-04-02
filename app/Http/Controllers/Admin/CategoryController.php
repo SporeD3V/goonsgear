@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCategoryRequest;
 use App\Http\Requests\UpdateCategoryRequest;
 use App\Models\Category;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class CategoryController extends Controller
@@ -44,6 +46,7 @@ class CategoryController extends Controller
     {
         $validated = $request->validated();
         $validated['is_active'] = $request->boolean('is_active');
+        $validated['size_type'] = $validated['size_type'] ?? null ?: null;
 
         Category::query()->create($validated);
 
@@ -73,6 +76,7 @@ class CategoryController extends Controller
     {
         $validated = $request->validated();
         $validated['is_active'] = $request->boolean('is_active');
+        $validated['size_type'] = $validated['size_type'] ?? null ?: null;
 
         $category->update($validated);
 
@@ -91,5 +95,19 @@ class CategoryController extends Controller
         return redirect()
             ->route('admin.categories.index')
             ->with('status', 'Category deleted successfully.');
+    }
+
+    public function reorder(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'order' => ['required', 'array'],
+            'order.*' => ['integer', 'exists:categories,id'],
+        ]);
+
+        foreach ($validated['order'] as $position => $id) {
+            Category::query()->where('id', $id)->update(['sort_order' => $position]);
+        }
+
+        return response()->json(['status' => 'ok']);
     }
 }

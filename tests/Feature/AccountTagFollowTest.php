@@ -89,6 +89,7 @@ class AccountTagFollowTest extends TestCase
         $response = $this->actingAs($user)->get(route('account.index'));
 
         $response->assertOk();
-        $response->assertSee('Artist: Rhyme Syndicate');
+        $response->assertSee('Artists');
+        $response->assertSee('Rhyme Syndicate');
     }
 }

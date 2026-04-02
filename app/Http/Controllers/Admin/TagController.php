@@ -7,20 +7,27 @@ use App\Http\Requests\StoreTagRequest;
 use App\Http\Requests\UpdateTagRequest;
 use App\Models\Tag;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class TagController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $tags = Tag::query()
+        $query = Tag::query()
             ->withCount([
                 'followers as followers_count',
-                'products as active_products_count' => fn ($query) => $query->where('status', 'active'),
-            ])
-            ->orderBy('type')
+                'products as active_products_count' => fn ($q) => $q->where('status', 'active'),
+            ]);
+
+        if ($request->filled('type') && in_array($request->input('type'), ['artist', 'brand', 'custom'])) {
+            $query->where('type', $request->input('type'));
+        }
+
+        $tags = $query->orderBy('type')
             ->orderBy('name')
-            ->paginate((int) config('pagination.admin_tag_per_page', 30));
+            ->paginate((int) config('pagination.admin_tag_per_page', 30))
+            ->withQueryString();
 
         return view('admin.tags.index', [
             'tags' => $tags,

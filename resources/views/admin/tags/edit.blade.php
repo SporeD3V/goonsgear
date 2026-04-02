@@ -1,7 +1,7 @@
 @extends('admin.layout')
 
 @section('content')
-    <h2 class="mb-4 text-lg font-semibold">Edit Artist / Brand Tag: {{ $tag->name }}</h2>
+    <h2 class="mb-4 text-lg font-semibold">Edit Tag: {{ $tag->name }}</h2>
 
     <form method="POST" action="{{ route('admin.tags.update', $tag) }}" class="space-y-4" novalidate>
         @csrf
@@ -24,6 +24,7 @@
                 <select name="type" class="w-full rounded border border-slate-300 px-3 py-2" required>
                     <option value="artist" @selected(old('type', $tag->type) === 'artist')>Artist</option>
                     <option value="brand" @selected(old('type', $tag->type) === 'brand')>Brand</option>
+                    <option value="custom" @selected(old('type', $tag->type) === 'custom')>Custom</option>
                 </select>
             </div>
             <label class="inline-flex items-center gap-2 text-sm">

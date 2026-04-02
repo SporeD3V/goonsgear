@@ -19,7 +19,7 @@ class TagFactory extends Factory
     public function definition(): array
     {
         $name = fake()->unique()->words(2, true);
-        $type = fake()->randomElement(['artist', 'brand']);
+        $type = fake()->randomElement(['artist', 'brand', 'custom']);
 
         return [
             'name' => Str::title($name),

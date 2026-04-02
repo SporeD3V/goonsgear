@@ -45,6 +45,8 @@ class CategoryCrudTest extends TestCase
      */
     public function test_category_creation_requires_name_and_slug(): void
     {
+        $initialCount = Category::count();
+
         $response = $this->from(route('admin.categories.create'))
             ->post(route('admin.categories.store'), [
                 'name' => '',
@@ -54,7 +56,7 @@ class CategoryCrudTest extends TestCase
         $response->assertRedirect(route('admin.categories.create'));
         $response->assertSessionHasErrors(['name', 'slug']);
 
-        $this->assertDatabaseCount('categories', 0);
+        $this->assertDatabaseCount('categories', $initialCount);
     }
 
     /**
@@ -75,5 +77,88 @@ class CategoryCrudTest extends TestCase
 
         $response->assertRedirect(route('admin.categories.create'));
         $response->assertSessionHasErrors(['name', 'slug']);
+    }
+
+    /**
+     * Categories can be created with a size_type.
+     */
+    public function test_admin_can_create_category_with_size_type(): void
+    {
+        $response = $this->post(route('admin.categories.store'), [
+            'name' => 'Shirts',
+            'slug' => 'shirts',
+            'is_active' => '1',
+            'size_type' => 'top',
+        ]);
+
+        $response->assertRedirect(route('admin.categories.index'));
+
+        $this->assertDatabaseHas('categories', [
+            'name' => 'Shirts',
+            'slug' => 'shirts',
+            'size_type' => 'top',
+        ]);
+    }
+
+    /**
+     * Empty size_type is stored as null.
+     */
+    public function test_empty_size_type_is_stored_as_null(): void
+    {
+        $response = $this->post(route('admin.categories.store'), [
+            'name' => 'Accessories',
+            'slug' => 'accessories',
+            'is_active' => '1',
+            'size_type' => '',
+        ]);
+
+        $response->assertRedirect(route('admin.categories.index'));
+
+        $this->assertDatabaseHas('categories', [
+            'name' => 'Accessories',
+            'size_type' => null,
+        ]);
+    }
+
+    /**
+     * Size type can be updated on an existing category.
+     */
+    public function test_admin_can_update_category_size_type(): void
+    {
+        $category = Category::factory()->create([
+            'name' => 'Socks',
+            'slug' => 'socks',
+            'size_type' => 'bottom',
+        ]);
+
+        $response = $this->put(route('admin.categories.update', $category), [
+            'name' => 'Socks',
+            'slug' => 'socks',
+            'is_active' => '1',
+            'size_type' => 'shoe',
+        ]);
+
+        $response->assertRedirect(route('admin.categories.index'));
+
+        $this->assertDatabaseHas('categories', [
+            'id' => $category->id,
+            'size_type' => 'shoe',
+        ]);
+    }
+
+    /**
+     * Invalid size_type values are rejected.
+     */
+    public function test_invalid_size_type_is_rejected(): void
+    {
+        $response = $this->from(route('admin.categories.create'))
+            ->post(route('admin.categories.store'), [
+                'name' => 'Test',
+                'slug' => 'test',
+                'size_type' => 'invalid',
+            ]);
+
+        $response->assertRedirect(route('admin.categories.create'));
+        $response->assertSessionHasErrors(['size_type']);
     }
 }

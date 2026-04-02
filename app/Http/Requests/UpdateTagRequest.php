@@ -26,7 +26,7 @@ class UpdateTagRequest extends FormRequest
         $tagId = $this->route('tag')?->id;
 
         return [
-            'type' => ['required', 'string', Rule::in(['artist', 'brand'])],
+            'type' => ['required', 'string', Rule::in(['artist', 'brand', 'custom'])],
             'name' => ['required', 'string', 'max:255', Rule::unique('tags', 'name')->where('type', $this->input('type'))->ignore($tagId)],
             'slug' => ['required', 'string', 'max:255', Rule::unique('tags', 'slug')->where('type', $this->input('type'))->ignore($tagId)],
             'is_active' => ['sometimes', 'boolean'],

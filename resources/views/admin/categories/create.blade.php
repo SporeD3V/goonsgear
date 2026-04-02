@@ -47,6 +47,16 @@
             <textarea name="meta_description" rows="3" class="w-full rounded border border-slate-300 px-3 py-2">{{ old('meta_description') }}</textarea>
         </div>
 
+        <div>
+            <label class="mb-1 block text-sm font-medium">Size Type</label>
+            <select name="size_type" class="w-full rounded border border-slate-300 px-3 py-2">
+                <option value="">None (not sized)</option>
+                <option value="top" @selected(old('size_type') === 'top')>Top (shirts, hoodies)</option>
+                <option value="bottom" @selected(old('size_type') === 'bottom')>Bottom (pants, shorts)</option>
+                <option value="shoe" @selected(old('size_type') === 'shoe')>Shoe (socks, footwear)</option>
+            </select>
+        </div>
+
         <label class="inline-flex items-center gap-2 text-sm">
             <input type="checkbox" name="is_active" value="1" @checked(old('is_active', '1') === '1')>
             Active

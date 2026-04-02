@@ -25,6 +25,7 @@ class CategoryFactory extends Factory
             'meta_title' => fake()->sentence(4),
             'meta_description' => fake()->sentence(8),
             'is_active' => true,
+            'size_type' => null,
             'sort_order' => 0,
         ];
     }

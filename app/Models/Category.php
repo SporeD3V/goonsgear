@@ -25,6 +25,7 @@ class Category extends Model
         'meta_title',
         'meta_description',
         'is_active',
+        'size_type',
         'sort_order',
     ];
 

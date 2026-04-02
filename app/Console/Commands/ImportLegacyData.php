@@ -94,6 +94,30 @@ class ImportLegacyData extends Command
         $this->info('✓ Demo data cleaned up.');
     }
 
+    /**
+     * WooCommerce category slugs that are actually artists, not product categories.
+     *
+     * @var list<string>
+     */
+    private const ARTIST_CATEGORY_SLUGS = [
+        'snowgoons',
+        'onyx',
+        'sean-p',
+        'lords-of-the-underground',
+        'dod',
+    ];
+
+    /**
+     * WooCommerce category slugs that are actually genres, not product categories.
+     *
+     * @var list<string>
+     */
+    private const CUSTOM_TAG_CATEGORY_SLUGS = [
+        'germanhiphop',
+        'indie-hip-hop',
+        '90shiphop',
+    ];
+
     private function importCategories(): void
     {
         $this->info('Importing categories...');
@@ -107,8 +131,51 @@ class ImportLegacyData extends Command
             ->orderBy('wp_terms.term_id')
             ->get();
 
-        $count = 0;
+        $categoryCount = 0;
+        $artistCount = 0;
+        $genreCount = 0;
+
         foreach ($categories as $legacyCat) {
+            // Artist categories become tags instead of categories
+            if (in_array($legacyCat->slug, self::ARTIST_CATEGORY_SLUGS, true)) {
+                $tag = Tag::updateOrCreate(
+                    ['slug' => $legacyCat->slug, 'type' => 'artist'],
+                    [
+                        'name' => $legacyCat->name,
+                        'is_active' => true,
+                    ]
+                );
+
+                DB::table('import_legacy_tags')->updateOrInsert(
+                    ['legacy_term_id' => $legacyCat->term_id],
+                    ['tag_id' => $tag->id, 'synced_at' => now()]
+                );
+
+                $artistCount++;
+
+                continue;
+            }
+
+            // Custom tag categories become tags instead of categories
+            if (in_array($legacyCat->slug, self::CUSTOM_TAG_CATEGORY_SLUGS, true)) {
+                $tag = Tag::updateOrCreate(
+                    ['slug' => $legacyCat->slug, 'type' => 'custom'],
+                    [
+                        'name' => $legacyCat->name,
+                        'is_active' => true,
+                    ]
+                );
+
+                DB::table('import_legacy_tags')->updateOrInsert(
+                    ['legacy_term_id' => $legacyCat->term_id],
+                    ['tag_id' => $tag->id, 'synced_at' => now()]
+                );
+
+                $genreCount++;
+
+                continue;
+            }
+
             $parent = null;
             if ($legacyCat->parent > 0) {
                 $parentMapping = DB::table('import_legacy_categories')
@@ -133,10 +200,10 @@ class ImportLegacyData extends Command
                 ['category_id' => $category->id, 'synced_at' => now()]
             );
 
-            $count++;
+            $categoryCount++;
         }
 
-        $this->info("✓ Imported {$count} categories.");
+        $this->info("✓ Imported {$categoryCount} categories, {$artistCount} artist tags, {$genreCount} genre tags.");
     }
 
     private function importTags(): void

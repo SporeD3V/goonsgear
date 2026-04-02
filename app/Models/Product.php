@@ -83,6 +83,11 @@ class Product extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function editHistories(): HasMany
+    {
+        return $this->hasMany(ProductEditHistory::class);
+    }
+
     public function stockAlertSubscriptions()
     {
         return $this->hasManyThrough(
