@@ -9,6 +9,8 @@
         @endif
     </head>
     <body class="bg-slate-100 text-slate-900">
+        @include('partials.header')
+
         <main class="mx-auto max-w-md p-6">
             <div class="rounded border border-slate-200 bg-white p-6 shadow-sm">
                 <h1 class="text-2xl font-semibold">Forgot password</h1>
@@ -44,6 +46,8 @@
                 </p>
             </div>
         </main>
+
+        @include('partials.footer')
 
         @if ($recaptchaChallenge && $recaptchaSiteKey)
             <script src="https://www.google.com/recaptcha/api.js?render={{ $recaptchaSiteKey }}"></script>
