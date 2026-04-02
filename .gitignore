@@ -24,17 +24,39 @@ yarn-error.log
 /.zed
 /temporary_import
 
+# Temporary investigation scripts — may contain credentials
+.tmp_*.py
+/_*.py
+
 # Local operational helper scripts (not part of app source)
 /analyze_media_archive.py
 /analyze_media_patterns.py
 /check_import_status.py
 /check_server.py
+/check_staging_categories.py
+/check_staging_data.py
+/convert_logo.py
+/convert_logo_remote.php
+/deploy_admin_redesign.py
 /deploy_and_import.py
+/deploy_breadcrumbs_filters.py
+/deploy_cart_euro.py
 /deploy_catalog_and_backfill.py
+/deploy_category_restructure.py
+/deploy_filter_fixes.py
 /deploy_fixes.py
+/deploy_genre_tags.py
+/deploy_header.py
+/deploy_inline_edit.py
+/deploy_sitemap.py
+/deploy_size_type.py
 /fix_staging.py
 /query_legacy_remote.py
+/query_slugs.py
+/query_staging_categories.py
 /query_variant_samples_remote.py
 /reset_staging_db.py
 /run_import.py
+/staging_env.py
 /upload_media.py
+/verify_staging.py
