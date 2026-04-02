@@ -9,8 +9,8 @@ Hey {{ $user->name }},
 
 **Variant:** {{ $variant->name }}
 
-**Old price:** ${{ number_format($oldPrice, 2) }}  
-**New price:** ${{ number_format($newPrice, 2) }}
+**Old price:** €{{ number_format($oldPrice, 2) }}  
+**New price:** €{{ number_format($newPrice, 2) }}
 
 <x-mail::button :url="route('shop.show', $variant->product)">
 View Product

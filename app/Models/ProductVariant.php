@@ -131,7 +131,7 @@ class ProductVariant extends Model
     {
         $normalizedName = preg_replace('/\s+/', ' ', strtolower(trim($name))) ?? '';
 
-        if (preg_match('/^(xxs|xs|s|m|l|xl|xxl|xxxl|2xl|3xl|4xl|5xl|\d+)$/i', $normalizedName)) {
+        if (preg_match('/^(xxs|xs|s|m|l|xl|xxl|xxxl|2xl|3xl|4xl|5xl|\d+|biggie|smalls)$/i', $normalizedName)) {
             return 'size';
         }
 

@@ -10,11 +10,9 @@
         @endif
     </head>
     <body class="bg-slate-100 text-slate-900">
+        @include('partials.header')
+
         <div class="mx-auto max-w-6xl p-6">
-            <header class="mb-6 flex items-center justify-between gap-3">
-                <h1 class="text-2xl font-semibold">Checkout</h1>
-                <a href="{{ route('cart.index') }}" class="text-sm text-blue-700 hover:underline">Back to cart</a>
-            </header>
 
             @if ($errors->has('cart'))
                 <div class="mb-4 rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{{ $errors->first('cart') }}</div>
@@ -176,27 +174,27 @@
                                         <p class="text-xs text-slate-600">{{ $item['variant_name'] }} x {{ $item['quantity'] }}</p>
                                     </div>
                                 </div>
-                                <p class="text-sm font-medium">${{ number_format((float) $item['price'] * (int) $item['quantity'], 2) }}</p>
+                                <p class="text-sm font-medium">&euro;{{ number_format((float) $item['price'] * (int) $item['quantity'], 2) }}</p>
                             </div>
                         @endforeach
                     </div>
 
                     <div class="mt-4 flex items-center justify-between border-t border-slate-200 pt-3">
                         <p class="text-sm text-slate-600">Subtotal</p>
-                        <p class="text-lg font-semibold">${{ number_format((float) $subtotal, 2) }}</p>
+                        <p class="text-lg font-semibold">&euro;{{ number_format((float) $subtotal, 2) }}</p>
                     </div>
 
                     @if ($discountTotal > 0)
                         <div class="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
                             <p class="text-sm text-emerald-700">Discount @if ($appliedCoupons->isNotEmpty())( {{ $appliedCoupons->pluck('code')->implode(', ') }} )@endif</p>
-                            <p class="text-lg font-semibold text-emerald-700">- ${{ number_format((float) $discountTotal, 2) }}</p>
+                            <p class="text-lg font-semibold text-emerald-700">- &euro;{{ number_format((float) $discountTotal, 2) }}</p>
                         </div>
                     @endif
 
                     @if ($bundleDiscountTotal > 0)
                         <div class="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
                             <p class="text-sm text-emerald-700">Bundle discount @if ($appliedBundle)( {{ $appliedBundle->name }} )@endif</p>
-                            <p class="text-lg font-semibold text-emerald-700">- ${{ number_format((float) $bundleDiscountTotal, 2) }}</p>
+                            <p class="text-lg font-semibold text-emerald-700">- &euro;{{ number_format((float) $bundleDiscountTotal, 2) }}</p>
                         </div>
                     @endif
 
@@ -207,7 +205,7 @@
 
                     <div class="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
                         <p class="text-sm text-slate-600">Grand total</p>
-                        <p id="grand-total" class="text-lg font-semibold">${{ number_format((float) $total, 2) }}</p>
+                        <p id="grand-total" class="text-lg font-semibold">&euro;{{ number_format((float) $total, 2) }}</p>
                     </div>
                 </aside>
             </div>
@@ -238,7 +236,7 @@
                 const apiUrl = summary.dataset.regionalDiscountUrl;
 
                 function fmt(n) {
-                    return '$' + n.toFixed(2);
+                    return '\u20AC' + n.toFixed(2);
                 }
 
                 function updateRegionalDiscount(countryCode) {
@@ -280,5 +278,7 @@
                 }
             })();
         </script>
+
+        @include('partials.footer')
     </body>
 </html>

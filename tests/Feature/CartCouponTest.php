@@ -155,7 +155,7 @@ class CartCouponTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Best coupon applied: EXCLUSIVE20.');
-        $response->assertSee('- $40.00');
+        $response->assertSee('- &euro;40.00', false);
     }
 
     public function test_cart_uses_best_coupon_even_when_more_than_fourteen_codes_are_selected(): void
@@ -215,6 +215,6 @@ class CartCouponTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Best coupon applied: STACK50.');
-        $response->assertSee('- $50.00');
+        $response->assertSee('- &euro;50.00', false);
     }
 }

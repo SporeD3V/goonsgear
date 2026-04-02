@@ -206,6 +206,6 @@ class CartFlowTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Cart Hoodie');
-        $response->assertSee('$179.80');
+        $response->assertSee('&euro;179.80', false);
     }
 }

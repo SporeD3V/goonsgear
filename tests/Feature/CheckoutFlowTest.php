@@ -96,7 +96,7 @@ class CheckoutFlowTest extends TestCase
         $response->assertOk();
         $response->assertSee('Checkout Hoodie');
         $response->assertSee('/media/products/checkout-hoodie/main.webp');
-        $response->assertSee('$240.00');
+        $response->assertSee('&euro;240.00', false);
     }
 
     public function test_checkout_prefills_saved_delivery_address_for_authenticated_user(): void
