@@ -1,5 +1,304 @@
 import './bootstrap';
 
+// Alpine.js search autocomplete component (used by Livewire shop-catalog)
+window.searchAutocomplete = () => ({
+	open: false,
+	results: [],
+	noResults: false,
+
+	async performSearch(query) {
+		if (query.length < 2) {
+			this.open = false;
+			this.results = [];
+			this.noResults = false;
+			return;
+		}
+
+		const endpoint = this.$el.querySelector('[data-search-endpoint]')?.dataset.searchEndpoint;
+		if (!endpoint) return;
+
+		try {
+			const response = await fetch(`${endpoint}?q=${encodeURIComponent(query)}`);
+			const data = await response.json();
+
+			this.results = data.results || [];
+			this.noResults = this.results.length === 0;
+			this.open = true;
+		} catch (error) {
+			console.error('Search error:', error);
+			this.open = false;
+		}
+	},
+
+	showResults() {
+		if (this.results.length > 0) {
+			this.open = true;
+		}
+	},
+});
+
+// Catalog card variant pickers — callable by Livewire after DOM updates
+window.initCatalogCards = () => {
+	document.querySelectorAll('[data-catalog-card]:not([data-initialized])').forEach((card) => {
+		card.setAttribute('data-initialized', '1');
+		const variantSelect = card.querySelector('[data-catalog-variant-select]');
+
+		// Single-variant card: just wire up AJAX add-to-cart
+		if (!variantSelect) {
+			const singleForm = card.querySelector('[data-catalog-cart-form]');
+			if (singleForm) {
+				singleForm.addEventListener('submit', (event) => {
+					event.preventDefault();
+					const formData = new FormData(singleForm);
+					const csrfToken = formData.get('_token');
+					const btn = singleForm.querySelector('[data-catalog-add-to-cart]');
+
+					fetch(singleForm.action, {
+						method: 'POST',
+						headers: {
+							'X-CSRF-TOKEN': csrfToken,
+							'X-Requested-With': 'XMLHttpRequest',
+							Accept: 'application/json',
+						},
+						body: formData,
+					})
+						.then((response) => {
+							if (response.ok && btn) {
+								const originalText = btn.textContent;
+								btn.textContent = '✓ Added!';
+								btn.classList.add('bg-green-700');
+								setTimeout(() => {
+									btn.textContent = originalText;
+									btn.classList.remove('bg-green-700');
+								}, 1500);
+							}
+						})
+						.catch(() => {});
+				});
+			}
+			return;
+		}
+
+		const attributeOrder = (card.dataset.catalogAttributeOrder || '')
+			.split(',')
+			.map((v) => v.trim())
+			.filter((v) => v !== '');
+		const attributeButtons = Array.from(card.querySelectorAll('[data-catalog-attribute]'));
+		const cartForm = card.querySelector('[data-catalog-cart-form]');
+		const cartVariantInput = card.querySelector('[data-catalog-cart-variant-input]');
+		const addToCartButton = card.querySelector('[data-catalog-add-to-cart]');
+		const primaryImage = card.querySelector('[data-catalog-primary-image]');
+		const originalImageSrc = primaryImage?.dataset.catalogOriginalSrc || '';
+		const priceElement = card.querySelector('[data-catalog-price]');
+		const originalPriceHtml = priceElement?.innerHTML.trim() || '';
+
+		let variantMediaMap = {};
+		try {
+			variantMediaMap = JSON.parse(card.dataset.catalogVariantMedia || '{}');
+		} catch (_error) {
+			variantMediaMap = {};
+		}
+
+		const variantOptions = Array.from(variantSelect.options)
+			.filter((option) => option.value !== '')
+			.map((option) => {
+				let attributes = {};
+				try {
+					attributes = JSON.parse(option.dataset.variantAttributes || '{}');
+				} catch (_error) {
+					attributes = {};
+				}
+				return { option, attributes };
+			});
+
+		let selectedAttributes = {};
+
+		// Auto-select size from user's size profile
+		const preselectSizesRaw = card.dataset.catalogPreselectSizes || '';
+		if (preselectSizesRaw) {
+			try {
+				const preselectSizes = JSON.parse(preselectSizesRaw);
+				if (Array.isArray(preselectSizes) && preselectSizes.length > 0) {
+					for (const { attributes } of variantOptions) {
+						if (attributes.size && preselectSizes.includes(attributes.size)) {
+							selectedAttributes.size = attributes.size;
+							break;
+						}
+					}
+				}
+			} catch (_error) {
+				// ignore parse errors
+			}
+
+			// Auto-select remaining attributes when only one option exists for the chosen size
+			if (selectedAttributes.size) {
+				const matchingVariants = variantOptions.filter(
+					({ attributes }) => attributes.size === selectedAttributes.size,
+				);
+				for (const key of attributeOrder) {
+					if (key === 'size' || selectedAttributes[key]) {
+						continue;
+					}
+					const distinctValues = [...new Set(matchingVariants.map(({ attributes }) => attributes[key]).filter(Boolean))];
+					if (distinctValues.length === 1) {
+						selectedAttributes[key] = distinctValues[0];
+					}
+				}
+			}
+		}
+
+		const resolveMatchingOption = () => {
+			if (variantOptions.length === 0) {
+				return null;
+			}
+
+			return variantOptions.find(({ attributes }) =>
+				Object.entries(selectedAttributes).every(
+					([key, value]) => attributes[key] === value,
+				),
+			)?.option || null;
+		};
+
+		const updateButtonStyles = () => {
+			attributeButtons.forEach((button) => {
+				const key = button.dataset.catalogAttribute;
+				const value = button.dataset.catalogAttributeValue;
+				const candidateSelection = {
+					...selectedAttributes,
+					[key]: value,
+				};
+
+				const hasMatchingVariant = variantOptions.some(({ attributes }) =>
+					Object.entries(candidateSelection).every(
+						([k, v]) => attributes[k] === v,
+					),
+				);
+				const isSelected = selectedAttributes[key] === value;
+
+				button.disabled = !hasMatchingVariant;
+				button.classList.toggle('border-slate-900', isSelected);
+				button.classList.toggle('bg-slate-900', isSelected);
+				button.classList.toggle('text-white', isSelected);
+				button.classList.toggle('border-slate-300', !isSelected && hasMatchingVariant);
+				button.classList.toggle('bg-white', !isSelected);
+				button.classList.toggle('text-slate-700', !isSelected && hasMatchingVariant);
+				button.classList.toggle('opacity-40', !hasMatchingVariant);
+				button.classList.toggle('line-through', !hasMatchingVariant && !isSelected);
+				button.classList.toggle('text-slate-400', !hasMatchingVariant && !isSelected);
+			});
+		};
+
+		const updateImage = () => {
+			if (!primaryImage) {
+				return;
+			}
+
+			const matchedOption = resolveMatchingOption();
+			if (matchedOption && variantMediaMap[matchedOption.value]) {
+				primaryImage.src = variantMediaMap[matchedOption.value];
+			} else if (originalImageSrc) {
+				primaryImage.src = originalImageSrc;
+			}
+		};
+
+		const syncSelection = () => {
+			const matchedOption = resolveMatchingOption();
+			const allSelected = attributeOrder.every((key) => selectedAttributes[key]);
+
+			if (matchedOption && allSelected) {
+				variantSelect.value = matchedOption.value;
+				if (cartVariantInput) {
+					cartVariantInput.value = matchedOption.value;
+				}
+				if (addToCartButton) {
+					addToCartButton.textContent = `Add to cart — \u20AC${matchedOption.dataset.variantPrice}`;
+				}
+				if (priceElement) {
+					priceElement.textContent = `\u20AC${matchedOption.dataset.variantPrice}`;
+				}
+			} else {
+				variantSelect.selectedIndex = 0;
+				if (cartVariantInput) {
+					cartVariantInput.value = '';
+				}
+				if (addToCartButton) {
+					addToCartButton.textContent = 'Select options';
+				}
+				if (priceElement) {
+					priceElement.innerHTML = originalPriceHtml;
+				}
+			}
+
+			updateButtonStyles();
+			updateImage();
+		};
+
+		attributeButtons.forEach((button) => {
+			button.addEventListener('click', (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+
+				const key = button.dataset.catalogAttribute;
+				const value = button.dataset.catalogAttributeValue;
+
+				selectedAttributes = { ...selectedAttributes, [key]: value };
+				syncSelection();
+			});
+		});
+
+		if (cartForm) {
+			cartForm.addEventListener('submit', (event) => {
+				event.preventDefault();
+
+				const variantId = cartVariantInput?.value;
+				if (!variantId) {
+					// Highlight unselected attribute groups
+					const optionsContainer = card.querySelector('[data-catalog-options]');
+					if (optionsContainer) {
+						optionsContainer.classList.add('ring-2', 'ring-red-400', 'rounded', 'p-1');
+						setTimeout(() => {
+							optionsContainer.classList.remove('ring-2', 'ring-red-400', 'rounded', 'p-1');
+						}, 1500);
+					}
+					return;
+				}
+
+				const formData = new FormData(cartForm);
+				const csrfToken = formData.get('_token');
+
+				fetch(cartForm.action, {
+					method: 'POST',
+					headers: {
+						'X-CSRF-TOKEN': csrfToken,
+						'X-Requested-With': 'XMLHttpRequest',
+						Accept: 'application/json',
+					},
+					body: formData,
+				})
+					.then((response) => {
+						if (response.ok) {
+							if (addToCartButton) {
+								const originalText = addToCartButton.textContent;
+								addToCartButton.textContent = '✓ Added!';
+								addToCartButton.classList.add('bg-green-700');
+								setTimeout(() => {
+									addToCartButton.textContent = originalText;
+									addToCartButton.classList.remove('bg-green-700');
+								}, 1500);
+							}
+						}
+					})
+					.catch(() => {});
+			});
+		}
+
+		// Apply pre-selected attributes (e.g. from size profile)
+		if (Object.keys(selectedAttributes).length > 0) {
+			syncSelection();
+		}
+	});
+};
+
 document.addEventListener('DOMContentLoaded', () => {
 	const variantPickers = document.querySelectorAll('[data-product-variant-picker]');
 
@@ -327,265 +626,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	});
 
 	// ── Catalog card variant pickers ──────────────────────────────────────
-	const catalogCards = document.querySelectorAll('[data-catalog-card]');
-
-	catalogCards.forEach((card) => {
-		const variantSelect = card.querySelector('[data-catalog-variant-select]');
-
-		// Single-variant card: just wire up AJAX add-to-cart
-		if (!variantSelect) {
-			const singleForm = card.querySelector('[data-catalog-cart-form]');
-			if (singleForm) {
-				singleForm.addEventListener('submit', (event) => {
-					event.preventDefault();
-					const formData = new FormData(singleForm);
-					const csrfToken = formData.get('_token');
-					const btn = singleForm.querySelector('[data-catalog-add-to-cart]');
-
-					fetch(singleForm.action, {
-						method: 'POST',
-						headers: {
-							'X-CSRF-TOKEN': csrfToken,
-							'X-Requested-With': 'XMLHttpRequest',
-							Accept: 'application/json',
-						},
-						body: formData,
-					})
-						.then((response) => {
-							if (response.ok && btn) {
-								const originalText = btn.textContent;
-								btn.textContent = '✓ Added!';
-								btn.classList.add('bg-green-700');
-								setTimeout(() => {
-									btn.textContent = originalText;
-									btn.classList.remove('bg-green-700');
-								}, 1500);
-							}
-						})
-						.catch(() => {});
-				});
-			}
-			return;
-		}
-
-		const attributeOrder = (card.dataset.catalogAttributeOrder || '')
-			.split(',')
-			.map((v) => v.trim())
-			.filter((v) => v !== '');
-		const attributeButtons = Array.from(card.querySelectorAll('[data-catalog-attribute]'));
-		const cartForm = card.querySelector('[data-catalog-cart-form]');
-		const cartVariantInput = card.querySelector('[data-catalog-cart-variant-input]');
-		const addToCartButton = card.querySelector('[data-catalog-add-to-cart]');
-		const primaryImage = card.querySelector('[data-catalog-primary-image]');
-		const originalImageSrc = primaryImage?.dataset.catalogOriginalSrc || '';
-		const priceElement = card.querySelector('[data-catalog-price]');
-		const originalPriceHtml = priceElement?.innerHTML.trim() || '';
-
-		let variantMediaMap = {};
-		try {
-			variantMediaMap = JSON.parse(card.dataset.catalogVariantMedia || '{}');
-		} catch (_error) {
-			variantMediaMap = {};
-		}
-
-		const variantOptions = Array.from(variantSelect.options)
-			.filter((option) => option.value !== '')
-			.map((option) => {
-				let attributes = {};
-				try {
-					attributes = JSON.parse(option.dataset.variantAttributes || '{}');
-				} catch (_error) {
-					attributes = {};
-				}
-				return { option, attributes };
-			});
-
-		let selectedAttributes = {};
-
-		// Auto-select size from user's size profile
-		const preselectSizesRaw = card.dataset.catalogPreselectSizes || '';
-		if (preselectSizesRaw) {
-			try {
-				const preselectSizes = JSON.parse(preselectSizesRaw);
-				if (Array.isArray(preselectSizes) && preselectSizes.length > 0) {
-					for (const { attributes } of variantOptions) {
-						if (attributes.size && preselectSizes.includes(attributes.size)) {
-							selectedAttributes.size = attributes.size;
-							break;
-						}
-					}
-				}
-			} catch (_error) {
-				// ignore parse errors
-			}
-
-			// Auto-select remaining attributes when only one option exists for the chosen size
-			if (selectedAttributes.size) {
-				const matchingVariants = variantOptions.filter(
-					({ attributes }) => attributes.size === selectedAttributes.size,
-				);
-				for (const key of attributeOrder) {
-					if (key === 'size' || selectedAttributes[key]) {
-						continue;
-					}
-					const distinctValues = [...new Set(matchingVariants.map(({ attributes }) => attributes[key]).filter(Boolean))];
-					if (distinctValues.length === 1) {
-						selectedAttributes[key] = distinctValues[0];
-					}
-				}
-			}
-		}
-
-		const resolveMatchingOption = () => {
-			if (variantOptions.length === 0) {
-				return null;
-			}
-
-			return variantOptions.find(({ attributes }) =>
-				Object.entries(selectedAttributes).every(
-					([key, value]) => attributes[key] === value,
-				),
-			)?.option || null;
-		};
-
-		const updateButtonStyles = () => {
-			attributeButtons.forEach((button) => {
-				const key = button.dataset.catalogAttribute;
-				const value = button.dataset.catalogAttributeValue;
-				const candidateSelection = {
-					...selectedAttributes,
-					[key]: value,
-				};
-
-				const hasMatchingVariant = variantOptions.some(({ attributes }) =>
-					Object.entries(candidateSelection).every(
-						([k, v]) => attributes[k] === v,
-					),
-				);
-				const isSelected = selectedAttributes[key] === value;
-
-				button.disabled = !hasMatchingVariant;
-				button.classList.toggle('border-slate-900', isSelected);
-				button.classList.toggle('bg-slate-900', isSelected);
-				button.classList.toggle('text-white', isSelected);
-				button.classList.toggle('border-slate-300', !isSelected && hasMatchingVariant);
-				button.classList.toggle('bg-white', !isSelected);
-				button.classList.toggle('text-slate-700', !isSelected && hasMatchingVariant);
-				button.classList.toggle('opacity-40', !hasMatchingVariant);
-				button.classList.toggle('line-through', !hasMatchingVariant && !isSelected);
-				button.classList.toggle('text-slate-400', !hasMatchingVariant && !isSelected);
-			});
-		};
-
-		const updateImage = () => {
-			if (!primaryImage) {
-				return;
-			}
-
-			const matchedOption = resolveMatchingOption();
-			if (matchedOption && variantMediaMap[matchedOption.value]) {
-				primaryImage.src = variantMediaMap[matchedOption.value];
-			} else if (originalImageSrc) {
-				primaryImage.src = originalImageSrc;
-			}
-		};
-
-		const syncSelection = () => {
-			const matchedOption = resolveMatchingOption();
-			const allSelected = attributeOrder.every((key) => selectedAttributes[key]);
-
-			if (matchedOption && allSelected) {
-				variantSelect.value = matchedOption.value;
-				if (cartVariantInput) {
-					cartVariantInput.value = matchedOption.value;
-				}
-				if (addToCartButton) {
-					addToCartButton.textContent = `Add to cart — \u20AC${matchedOption.dataset.variantPrice}`;
-				}
-				if (priceElement) {
-					priceElement.textContent = `\u20AC${matchedOption.dataset.variantPrice}`;
-				}
-			} else {
-				variantSelect.selectedIndex = 0;
-				if (cartVariantInput) {
-					cartVariantInput.value = '';
-				}
-				if (addToCartButton) {
-					addToCartButton.textContent = 'Select options';
-				}
-				if (priceElement) {
-					priceElement.innerHTML = originalPriceHtml;
-				}
-			}
-
-			updateButtonStyles();
-			updateImage();
-		};
-
-		attributeButtons.forEach((button) => {
-			button.addEventListener('click', (event) => {
-				event.preventDefault();
-				event.stopPropagation();
-
-				const key = button.dataset.catalogAttribute;
-				const value = button.dataset.catalogAttributeValue;
-
-				selectedAttributes = { ...selectedAttributes, [key]: value };
-				syncSelection();
-			});
-		});
-
-		if (cartForm) {
-			cartForm.addEventListener('submit', (event) => {
-				event.preventDefault();
-
-				const variantId = cartVariantInput?.value;
-				if (!variantId) {
-					// Highlight unselected attribute groups
-					const optionsContainer = card.querySelector('[data-catalog-options]');
-					if (optionsContainer) {
-						optionsContainer.classList.add('ring-2', 'ring-red-400', 'rounded', 'p-1');
-						setTimeout(() => {
-							optionsContainer.classList.remove('ring-2', 'ring-red-400', 'rounded', 'p-1');
-						}, 1500);
-					}
-					return;
-				}
-
-				const formData = new FormData(cartForm);
-				const csrfToken = formData.get('_token');
-
-				fetch(cartForm.action, {
-					method: 'POST',
-					headers: {
-						'X-CSRF-TOKEN': csrfToken,
-						'X-Requested-With': 'XMLHttpRequest',
-						Accept: 'application/json',
-					},
-					body: formData,
-				})
-					.then((response) => {
-						if (response.ok) {
-							if (addToCartButton) {
-								const originalText = addToCartButton.textContent;
-								addToCartButton.textContent = '✓ Added!';
-								addToCartButton.classList.add('bg-green-700');
-								setTimeout(() => {
-									addToCartButton.textContent = originalText;
-									addToCartButton.classList.remove('bg-green-700');
-								}, 1500);
-							}
-						}
-					})
-					.catch(() => {});
-			});
-		}
-
-		// Apply pre-selected attributes (e.g. from size profile)
-		if (Object.keys(selectedAttributes).length > 0) {
-			syncSelection();
-		}
-	});
+	window.initCatalogCards();
 
 	const galleries = document.querySelectorAll('[data-media-gallery]');
 
@@ -1047,98 +1088,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		applyColorFilter('');
 	});
-
-	// Live search functionality
-	const searchInput = document.getElementById('search-input');
-	const searchResults = document.getElementById('search-results');
-
-	if (searchInput && searchResults) {
-		const searchEndpoint = searchInput.dataset.searchEndpoint;
-		let searchTimeout;
-
-		const escapeHtml = (text) => {
-			const map = {
-				'&': '&amp;',
-				'<': '&lt;',
-				'>': '&gt;',
-				'"': '&quot;',
-				"'": '&#039;',
-			};
-			return text.replace(/[&<>"']/g, (m) => map[m]);
-		};
-
-		const performSearch = async (query) => {
-			if (query.length < 2) {
-				searchResults.classList.add('hidden');
-				return;
-			}
-
-			try {
-				const response = await fetch(`${searchEndpoint}?q=${encodeURIComponent(query)}`);
-				const data = await response.json();
-
-				if (data.results && data.results.length > 0) {
-					searchResults.innerHTML = data.results
-						.map(
-							(result) => {
-								const hasPrice = result.price !== null && result.price !== undefined;
-								const parsedPrice = hasPrice ? Number(result.price) : null;
-								const priceMarkup = hasPrice && Number.isFinite(parsedPrice)
-									? `<div class="text-xs font-medium text-slate-800">\u20AC${parsedPrice.toFixed(2)}</div>`
-									: '';
-
-								return `
-							<a href="${result.url}" class="group flex gap-3 border-b border-slate-100 p-2 text-sm hover:bg-slate-50">
-								${result.image ? `
-									<div class="relative h-10 w-10 overflow-hidden rounded">
-										<img src="${result.image}" alt="${escapeHtml(result.name)}" class="h-10 w-10 object-cover transition-opacity duration-200 ${result.secondary_image ? 'group-hover:opacity-0' : ''}">
-										${result.secondary_image ? `<img src="${result.secondary_image}" alt="${escapeHtml(result.name)}" class="pointer-events-none absolute inset-0 h-10 w-10 object-cover opacity-0 transition-opacity duration-200 group-hover:opacity-100">` : ''}
-									</div>
-								` : '<div class="h-10 w-10 rounded bg-slate-100"></div>'}
-							<div class="flex-1">
-								<div class="font-medium text-slate-900">${escapeHtml(result.name)}</div>
-								<div class="text-xs text-slate-600">${result.category ? escapeHtml(result.category) : 'Uncategorized'}</div>
-								${priceMarkup}
-							</div>
-						</a>
-					`;
-							}
-						)
-						.join('');
-					searchResults.classList.remove('hidden');
-				} else {
-					searchResults.innerHTML = '<div class="p-3 text-center text-xs text-slate-600">No products found</div>';
-					searchResults.classList.remove('hidden');
-				}
-			} catch (error) {
-				console.error('Search error:', error);
-				searchResults.classList.add('hidden');
-			}
-		};
-
-		searchInput.addEventListener('input', (e) => {
-			clearTimeout(searchTimeout);
-			const query = e.target.value.trim();
-
-			searchTimeout = setTimeout(() => {
-				performSearch(query);
-			}, 300);
-		});
-
-		// Hide search results when clicking outside
-		document.addEventListener('click', (e) => {
-			if (!e.target.closest('#search-input') && !e.target.closest('#search-results')) {
-				searchResults.classList.add('hidden');
-			}
-		});
-
-		// Show results when focusing search input if there's a value
-		searchInput.addEventListener('focus', () => {
-			if (searchInput.value.trim().length >= 2 && !searchResults.classList.contains('hidden')) {
-				searchResults.classList.remove('hidden');
-			}
-		});
-	}
 
 	const recaptchaProtectedForms = document.querySelectorAll('form[data-recaptcha-protected="1"]');
 

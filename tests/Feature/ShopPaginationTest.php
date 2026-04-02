@@ -32,8 +32,7 @@ class ShopPaginationTest extends TestCase
         $response = $this->get(route('shop.category', $category).'?page=3');
 
         $response->assertOk();
-        $response->assertDontSee('rel="next"', false);
-        $response->assertSee('cursor-not-allowed', false);
+        $response->assertDontSee('wire:click="nextPage', false);
     }
 
     public function test_middle_page_shows_next_button(): void
@@ -57,6 +56,6 @@ class ShopPaginationTest extends TestCase
         $response = $this->get(route('shop.category', $category).'?page=1');
 
         $response->assertOk();
-        $response->assertSee('rel="next"', false);
+        $response->assertSee('wire:click="nextPage', false);
     }
 }

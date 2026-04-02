@@ -37,9 +37,6 @@ Route::get('/brand/{tag:slug}', [ShopController::class, 'brandTag'])->name('shop
 Route::get('/tag/{tag:slug}', [ShopController::class, 'customTag'])->name('shop.tag');
 Route::get('/shop/{product:slug}', [ShopController::class, 'show'])->name('shop.show');
 
-Route::post('/shop/filters', [ShopController::class, 'storeFilters'])->name('shop.filters.store');
-Route::post('/shop/filters/reset', [ShopController::class, 'resetFilters'])->name('shop.filters.reset');
-
 Route::middleware('guest')->group(function () {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [RegisteredUserController::class, 'store'])
