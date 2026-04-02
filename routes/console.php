@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('app:send-abandoned-cart-reminders')->hourly();
+Schedule::command('app:generate-sitemap')->daily();
