@@ -383,32 +383,84 @@ new class extends Component
             });
         }
 
-        $variantQuery->where(function ($q): void {
-            $q->where('variant_type', 'size')
-                ->orWhereNotNull('option_values');
-        });
-
         $variants = $variantQuery->get(['name', 'variant_type', 'option_values']);
 
         $sizes = collect();
 
         foreach ($variants as $variant) {
-            if ($variant->variant_type === 'size') {
-                $name = trim((string) $variant->name);
-                if ($name !== '' && strcasecmp($name, 'Default') !== 0) {
-                    $sizes->push($name);
-                }
-            }
-
+            // 1. Prefer explicit option_values JSON size
             $ov = $variant->option_values;
             if (is_array($ov) && isset($ov['size']) && $ov['size'] !== '') {
                 $sizes->push($ov['size']);
+
+                continue;
+            }
+
+            // 2. Extract size from end of variant name after known delimiters
+            $name = trim((string) $variant->name);
+            if ($name === '' || strcasecmp($name, 'Default') === 0) {
+                continue;
+            }
+
+            $extracted = $this->extractSizeFromName($name);
+            if ($extracted !== null) {
+                $sizes->push($extracted);
             }
         }
 
         $uniqueSizes = $sizes->unique()->filter()->values()->all();
 
         return $uniqueSizes !== [] ? $this->sortSizes($uniqueSizes) : [];
+    }
+
+    /**
+     * Extract a size value from the trailing segment of a variant name.
+     *
+     * Looks for the last occurrence of known delimiters (", ", "- ", "/ ", "| ")
+     * and returns the trailing segment only if it looks like a recognized size.
+     */
+    private function extractSizeFromName(string $name): ?string
+    {
+        $knownSizes = [
+            'xxs', 'xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl',
+            '2xl', '3xl', '4xl', '5xl',
+            'smalls', 'biggie', 'single', 'double',
+        ];
+
+        // Also recognize numeric shoe sizes (36–50)
+        $delimiters = [', ', ' - ', ' / ', ' | '];
+
+        foreach (array_reverse($delimiters) as $delimiter) {
+            $lastPos = strrpos($name, $delimiter);
+            if ($lastPos !== false) {
+                $candidate = trim(substr($name, $lastPos + strlen($delimiter)));
+                if ($candidate !== '' && $this->looksLikeSize($candidate, $knownSizes)) {
+                    return $candidate;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if a string looks like a garment/shoe size.
+     *
+     * @param  array<int, string>  $knownSizes
+     */
+    private function looksLikeSize(string $candidate, array $knownSizes): bool
+    {
+        // Exact match against known size labels
+        if (in_array(strtolower($candidate), $knownSizes, true)) {
+            return true;
+        }
+
+        // Numeric shoe sizes (e.g. "42", "44.5")
+        if (preg_match('/^\d{2}(\.\d)?$/', $candidate)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
