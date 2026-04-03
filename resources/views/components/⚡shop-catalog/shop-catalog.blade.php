@@ -4,7 +4,7 @@
 
     {{-- Filter bar --}}
     <div class="mb-5 space-y-3 rounded border border-slate-200 bg-white p-4">
-        {{-- Row 1: Search, Sort, Reset --}}
+        {{-- Row 1: Search + Sort --}}
         <div class="flex flex-wrap items-end gap-3">
             {{-- Search --}}
             <div class="relative min-w-0 flex-1" x-data="searchAutocomplete()" x-on:click.outside="open = false">
@@ -19,7 +19,7 @@
                     autocomplete="off"
                     data-search-endpoint="{{ route('api.shop.search') }}"
                 >
-                <div x-show="open" x-cloak class="absolute left-0 right-0 top-full z-10 mt-1 max-h-64 overflow-y-auto rounded border border-slate-300 bg-white shadow-lg">
+                <div wire:ignore x-show="open" x-cloak class="absolute left-0 right-0 top-full z-10 mt-1 max-h-64 overflow-y-auto rounded border border-slate-300 bg-white shadow-lg">
                     <template x-for="result in results" :key="result.id">
                         <a :href="result.url" class="group flex gap-3 border-b border-slate-100 p-2 text-sm hover:bg-slate-50">
                             <template x-if="result.image">
@@ -56,6 +56,47 @@
                     <option value="price_desc">Price high–low</option>
                 </select>
             </div>
+        </div>
+
+        {{-- Row 2: Tag filter + Size profile + Reset --}}
+        <div class="flex flex-wrap items-end gap-3">
+            @if ($shopTags->isNotEmpty())
+                {{-- Tag search combobox --}}
+                <div
+                    class="relative min-w-[200px] flex-1"
+                    x-data="tagCombobox()"
+                    x-on:click.outside="open = false"
+                    wire:ignore
+                >
+                    <label class="mb-1 block text-xs font-medium text-slate-700">Artist / Brand</label>
+                    <input
+                        type="text"
+                        x-model="query"
+                        x-on:input="filter()"
+                        x-on:focus="showAll()"
+                        placeholder="Search artists & brands…"
+                        class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                        autocomplete="off"
+                    >
+                    <div x-show="open" x-cloak class="absolute left-0 right-0 top-full z-10 mt-1 max-h-64 overflow-y-auto rounded border border-slate-300 bg-white shadow-lg">
+                        <template x-for="group in filtered" :key="group.type">
+                            <div>
+                                <div class="sticky top-0 border-b border-slate-100 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500" x-text="group.type"></div>
+                                <template x-for="tag in group.tags" :key="tag.slug">
+                                    <a
+                                        :href="tag.url"
+                                        class="block px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                        x-text="tag.name"
+                                    ></a>
+                                </template>
+                            </div>
+                        </template>
+                        <template x-if="filtered.length === 0">
+                            <div class="p-3 text-center text-xs text-slate-600">No matches found</div>
+                        </template>
+                    </div>
+                </div>
+            @endif
 
             @if ($sizeProfiles->isNotEmpty())
                 {{-- Shop for (size profiles) --}}
@@ -337,6 +378,48 @@
                 setTimeout(() => window.initCatalogCards(), 50);
             }
         });
+
+        // Searchable tag combobox
+        Alpine.data('tagCombobox', () => ({
+            query: '',
+            open: false,
+            allTags: @js($shopTags->groupBy('type')->map(fn ($tags, $type) => [
+                'type' => ucfirst($type),
+                'tags' => $tags->map(fn ($tag) => [
+                    'name' => $tag->name,
+                    'slug' => $tag->slug,
+                    'url' => route('shop.tag', $tag->slug),
+                ])->values(),
+            ])->values()),
+            filtered: [],
+
+            init() {
+                this.filtered = this.allTags;
+            },
+
+            showAll() {
+                this.filtered = this.allTags;
+                this.open = true;
+            },
+
+            filter() {
+                const q = this.query.toLowerCase().trim();
+                if (q === '') {
+                    this.filtered = this.allTags;
+                    this.open = true;
+                    return;
+                }
+
+                this.filtered = this.allTags
+                    .map(group => ({
+                        type: group.type,
+                        tags: group.tags.filter(tag => tag.name.toLowerCase().includes(q)),
+                    }))
+                    .filter(group => group.tags.length > 0);
+
+                this.open = true;
+            },
+        }));
 
         // Dual-thumb price range slider
         Alpine.data('priceRangeSlider', (config) => ({

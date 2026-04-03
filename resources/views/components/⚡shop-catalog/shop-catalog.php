@@ -132,7 +132,11 @@ new class extends Component
             ->orderBy('name')
             ->get(['id', 'name', 'slug', 'meta_title', 'meta_description', 'size_type']);
 
-        $shopTags = collect();
+        $shopTags = Tag::query()
+            ->where('is_active', true)
+            ->orderBy('type')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug', 'type']);
 
         $activeCategory = $forcedCategory;
         $activeTag = $forcedTag;
@@ -287,7 +291,7 @@ new class extends Component
                 )
                 ->when(
                     ! $excludeSizeFilter && $this->selectedSizes !== [],
-                    fn ($query) => $query->whereHas('variants', fn ($vq) => $this->applySizeMatch($vq, $this->selectedSizes, ! $this->includeOutOfStock))
+                    fn ($query) => $query->whereHas('variants', fn ($vq) => $this->applySizeMatch($vq, $this->expandSizeLabels($this->selectedSizes), ! $this->includeOutOfStock))
                 )
                 ->when($sort === 'newest', fn ($query) => $query->latest('id'))
                 ->when($sort === 'name_asc', fn ($query) => $query->orderBy('name'))
@@ -296,8 +300,28 @@ new class extends Component
                 ->when($sort === 'price_desc', fn ($query) => $query->orderByDesc('min_active_variant_price')->orderByRaw('min_active_variant_price IS NULL'));
         };
 
+        // Determine size context from active category for filter labels
+        $activeSizeType = null;
+        if ($activeCategory !== null) {
+            $activeSizeType = $activeCategory->size_type;
+
+            // If viewing a parent category without size_type, check if all children share the same type
+            if ($activeSizeType === null && $activeCategory->parent_id === null) {
+                $childSizeTypes = $shopCategories
+                    ->firstWhere('id', $activeCategory->id)
+                    ?->children
+                    ?->pluck('size_type')
+                    ->filter()
+                    ->unique();
+
+                if ($childSizeTypes !== null && $childSizeTypes->count() === 1) {
+                    $activeSizeType = $childSizeTypes->first();
+                }
+            }
+        }
+
         // Compute available sizes from products matching all filters EXCEPT size
-        $availableSizes = $this->computeAvailableSizes($buildQuery(excludeSizeFilter: true), $shouldFilterOutOfStock);
+        $availableSizes = $this->computeAvailableSizes($buildQuery(excludeSizeFilter: true), $shouldFilterOutOfStock, $activeSizeType);
 
         // Compute price floor and ceiling from products matching all filters EXCEPT price
         $priceRange = $this->computePriceRange($buildQuery(excludeSizeFilter: false, excludePriceFilter: true));
@@ -348,6 +372,7 @@ new class extends Component
             'products' => $products,
             'activeCategory' => $activeCategory,
             'activeTag' => $activeTag,
+            'shopTags' => $shopTags,
             'sizeProfiles' => $sizeProfiles,
             'activeSizeProfile' => $activeSizeProfile,
             'preselectSizes' => $preselectSizes,
@@ -360,9 +385,11 @@ new class extends Component
     /**
      * Compute available sizes from products matching the given base query.
      *
+     * When $sizeType is 'shoe', numeric shoe sizes are grouped into Biggie (43–46) and Smalls (36–42).
+     *
      * @return array<int, string>
      */
-    private function computeAvailableSizes($baseQuery, bool $filterStock): array
+    private function computeAvailableSizes($baseQuery, bool $filterStock, ?string $sizeType = null): array
     {
         $productIds = (clone $baseQuery)->reorder()->select('products.id')->pluck('id');
 
@@ -406,6 +433,23 @@ new class extends Component
             if ($extracted !== null) {
                 $sizes->push($extracted);
             }
+        }
+
+        // When viewing a shoe category, map numeric shoe sizes to Biggie/Smalls labels
+        if ($sizeType === 'shoe') {
+            $sizes = $sizes->map(function (string $size): string {
+                if (preg_match('/^\d{2}(\.\d)?$/', $size)) {
+                    $numeric = (float) $size;
+                    if ($numeric >= 36 && $numeric <= 42) {
+                        return 'Smalls';
+                    }
+                    if ($numeric >= 43 && $numeric <= 46) {
+                        return 'Biggie';
+                    }
+                }
+
+                return $size;
+            });
         }
 
         $uniqueSizes = $sizes->unique()->filter()->values()->all();
@@ -499,5 +543,26 @@ new class extends Component
             'size_profile' => $this->sizeProfileId,
             'sizes' => $this->selectedSizes,
         ]);
+    }
+
+    /**
+     * Expand Biggie/Smalls labels to include the numeric shoe sizes they represent.
+     *
+     * @param  array<int, string>  $sizes
+     * @return array<int, string>
+     */
+    private function expandSizeLabels(array $sizes): array
+    {
+        $expanded = $sizes;
+
+        if (in_array('Smalls', $sizes, true)) {
+            $expanded = array_merge($expanded, array_map('strval', range(36, 42)));
+        }
+
+        if (in_array('Biggie', $sizes, true)) {
+            $expanded = array_merge($expanded, array_map('strval', range(43, 46)));
+        }
+
+        return array_values(array_unique($expanded));
     }
 };
