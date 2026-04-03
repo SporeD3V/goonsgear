@@ -46,15 +46,15 @@
                         </svg>
                     </a>
                 @elseif ($cat->children->isNotEmpty())
-                    {{-- Dropdown for parent categories (Music, Wear) --}}
+                    {{-- Dropdown for parent categories (Music, Wear) — link goes to parent, hover shows children --}}
                     <div class="group relative">
-                        <button type="button"
-                                class="flex items-center gap-1 rounded px-2 py-1 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900">
+                        <a href="{{ route('shop.category', $cat->slug) }}"
+                           class="flex items-center gap-1 rounded px-2 py-1 text-sm font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900">
                             {{ $cat->name }}
                             <svg class="h-3 w-3 transition group-hover:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
                             </svg>
-                        </button>
+                        </a>
                         <div class="invisible absolute left-0 top-full z-50 min-w-40 rounded-md border border-slate-200 bg-white py-1 shadow-lg transition-all group-hover:visible">
                             @foreach ($cat->children as $child)
                                 <a href="{{ route('shop.category', $child->slug) }}"
@@ -198,7 +198,8 @@
                     </a>
                 @elseif ($cat->children->isNotEmpty())
                     <div class="rounded px-3 py-2">
-                        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">{{ $cat->name }}</span>
+                        <a href="{{ route('shop.category', $cat->slug) }}"
+                           class="text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-900">{{ $cat->name }}</a>
                         <div class="mt-1 flex flex-col gap-1">
                             @foreach ($cat->children as $child)
                                 <a href="{{ route('shop.category', $child->slug) }}"

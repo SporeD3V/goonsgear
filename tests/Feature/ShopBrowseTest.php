@@ -273,7 +273,7 @@ class ShopBrowseTest extends TestCase
         $response->assertOk();
         $response->assertSee('In Stock Hoodie');
         $response->assertDontSee('Out Of Stock Hoodie');
-        $response->assertSee('Show out-of-stock items in this category');
+        $response->assertSee('Show out-of-stock');
     }
 
     public function test_category_page_can_show_out_of_stock_products_when_toggled(): void

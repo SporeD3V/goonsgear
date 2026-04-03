@@ -2,189 +2,159 @@
     {{-- Loading overlay --}}
     <div wire:loading.delay class="pointer-events-none fixed inset-x-0 top-0 z-50 h-1 animate-pulse bg-slate-700"></div>
 
-    <div class="mb-5 grid gap-3 rounded border border-slate-200 bg-white p-3 md:grid-cols-8">
-        {{-- Category navigation (not a filter — triggers full page navigation) --}}
-        <div>
-            <label class="mb-1 block text-xs font-medium text-slate-700">Category</label>
-            <select onchange="if(this.value) window.location.href = this.value" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
-                <option value="{{ route('shop.index') }}" @selected(!$activeCategory)>All categories</option>
-                @foreach ($shopCategories as $shopCategory)
-                    @if ($shopCategory->children->isNotEmpty())
-                        <optgroup label="{{ $shopCategory->name }}">
-                            @foreach ($shopCategory->children as $child)
-                                <option value="{{ route('shop.category', $child) }}" @selected($activeCategory?->slug === $child->slug)>{{ $child->name }}</option>
-                            @endforeach
-                        </optgroup>
-                    @else
-                        <option value="{{ route('shop.category', $shopCategory) }}" @selected($activeCategory?->slug === $shopCategory->slug)>{{ $shopCategory->name }}</option>
-                    @endif
-                @endforeach
-            </select>
-        </div>
-
-        {{-- Tag navigation (not a filter — triggers full page navigation) --}}
-        <div>
-            <label class="mb-1 block text-xs font-medium text-slate-700">Artist / Brand</label>
-            <select onchange="if(this.value) window.location.href = this.value" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
-                <option value="{{ route('shop.index') }}" @selected(!$activeTag)>All artists & brands</option>
-                @foreach ($shopTags as $shopTag)
-                    @php
-                        $tagRoute = match($shopTag->type) {
-                            'artist' => route('shop.artist', $shopTag),
-                            'brand' => route('shop.brand', $shopTag),
-                            'custom' => route('shop.tag', $shopTag),
-                        };
-                    @endphp
-                    <option value="{{ $tagRoute }}" @selected($activeTag?->slug === $shopTag->slug)>
-                        {{ ucfirst($shopTag->type) }}: {{ $shopTag->name }}
-                    </option>
-                @endforeach
-            </select>
-        </div>
-
-        {{-- Search --}}
-        <div class="relative md:col-span-2" x-data="searchAutocomplete()" x-on:click.outside="open = false">
-            <label class="mb-1 block text-xs font-medium text-slate-700">Search</label>
-            <input
-                type="text"
-                wire:model.live.debounce.300ms="search"
-                x-on:input.debounce.300ms="performSearch($event.target.value)"
-                x-on:focus="showResults()"
-                placeholder="Search name or excerpt"
-                class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                autocomplete="off"
-                data-search-endpoint="{{ route('api.shop.search') }}"
-            >
-            <div x-show="open" x-cloak class="absolute left-0 right-0 top-full z-10 mt-1 max-h-64 overflow-y-auto rounded border border-slate-300 bg-white shadow-lg">
-                <template x-for="result in results" :key="result.id">
-                    <a :href="result.url" class="group flex gap-3 border-b border-slate-100 p-2 text-sm hover:bg-slate-50">
-                        <template x-if="result.image">
-                            <div class="relative h-10 w-10 overflow-hidden rounded">
-                                <img :src="result.image" :alt="result.name" class="h-10 w-10 object-cover">
-                            </div>
-                        </template>
-                        <template x-if="!result.image">
-                            <div class="h-10 w-10 rounded bg-slate-100"></div>
-                        </template>
-                        <div class="flex-1">
-                            <div class="font-medium text-slate-900" x-text="result.name"></div>
-                            <div class="text-xs text-slate-600" x-text="result.category || 'Uncategorized'"></div>
-                            <template x-if="result.price !== null">
-                                <div class="text-xs font-medium text-slate-800" x-text="'€' + Number(result.price).toFixed(2)"></div>
+    {{-- Filter bar --}}
+    <div class="mb-5 space-y-3 rounded border border-slate-200 bg-white p-4">
+        {{-- Row 1: Search, Sort, Reset --}}
+        <div class="flex flex-wrap items-end gap-3">
+            {{-- Search --}}
+            <div class="relative min-w-0 flex-1" x-data="searchAutocomplete()" x-on:click.outside="open = false">
+                <label class="mb-1 block text-xs font-medium text-slate-700">Search</label>
+                <input
+                    type="text"
+                    wire:model.live.debounce.300ms="search"
+                    x-on:input.debounce.300ms="performSearch($event.target.value)"
+                    x-on:focus="showResults()"
+                    placeholder="Search products…"
+                    class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                    autocomplete="off"
+                    data-search-endpoint="{{ route('api.shop.search') }}"
+                >
+                <div x-show="open" x-cloak class="absolute left-0 right-0 top-full z-10 mt-1 max-h-64 overflow-y-auto rounded border border-slate-300 bg-white shadow-lg">
+                    <template x-for="result in results" :key="result.id">
+                        <a :href="result.url" class="group flex gap-3 border-b border-slate-100 p-2 text-sm hover:bg-slate-50">
+                            <template x-if="result.image">
+                                <div class="relative h-10 w-10 overflow-hidden rounded">
+                                    <img :src="result.image" :alt="result.name" class="h-10 w-10 object-cover">
+                                </div>
                             </template>
-                        </div>
-                    </a>
-                </template>
-                <template x-if="results.length === 0 && noResults">
-                    <div class="p-3 text-center text-xs text-slate-600">No products found</div>
-                </template>
+                            <template x-if="!result.image">
+                                <div class="h-10 w-10 rounded bg-slate-100"></div>
+                            </template>
+                            <div class="flex-1">
+                                <div class="font-medium text-slate-900" x-text="result.name"></div>
+                                <div class="text-xs text-slate-600" x-text="result.category || 'Uncategorized'"></div>
+                                <template x-if="result.price !== null">
+                                    <div class="text-xs font-medium text-slate-800" x-text="'€' + Number(result.price).toFixed(2)"></div>
+                                </template>
+                            </div>
+                        </a>
+                    </template>
+                    <template x-if="results.length === 0 && noResults">
+                        <div class="p-3 text-center text-xs text-slate-600">No products found</div>
+                    </template>
+                </div>
             </div>
-        </div>
 
-        {{-- Sort --}}
-        <div>
-            <label class="mb-1 block text-xs font-medium text-slate-700">Sort</label>
-            <select wire:model.live="sort" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
-                <option value="newest">Newest</option>
-                <option value="name_asc">Name A-Z</option>
-                <option value="name_desc">Name Z-A</option>
-                <option value="price_asc">Price low-high</option>
-                <option value="price_desc">Price high-low</option>
-            </select>
-        </div>
-
-        @if ($sizeProfiles->isNotEmpty())
-            <div>
-                <label class="mb-1 block text-xs font-medium text-slate-700">Shop for</label>
-                <select wire:model.live="sizeProfileId" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
-                    <option value="0">All sizes</option>
-                    @foreach ($sizeProfiles as $profile)
-                        <option value="{{ $profile->id }}">
-                            {{ $profile->is_self ? 'My sizes' : $profile->name }}
-                            ({{ implode(', ', $profile->allSizes()) }})
-                        </option>
-                    @endforeach
+            {{-- Sort --}}
+            <div class="w-40 shrink-0">
+                <label class="mb-1 block text-xs font-medium text-slate-700">Sort by</label>
+                <select wire:model.live="sort" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                    <option value="newest">Newest</option>
+                    <option value="name_asc">Name A–Z</option>
+                    <option value="name_desc">Name Z–A</option>
+                    <option value="price_asc">Price low–high</option>
+                    <option value="price_desc">Price high–low</option>
                 </select>
+            </div>
+
+            @if ($sizeProfiles->isNotEmpty())
+                {{-- Shop for (size profiles) --}}
+                <div class="w-40 shrink-0">
+                    <label class="mb-1 block text-xs font-medium text-slate-700">Shop for</label>
+                    <select wire:model.live="sizeProfileId" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                        <option value="0">All sizes</option>
+                        @foreach ($sizeProfiles as $profile)
+                            <option value="{{ $profile->id }}">
+                                {{ $profile->is_self ? 'My sizes' : $profile->name }}
+                                ({{ implode(', ', $profile->allSizes()) }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
+
+            {{-- Reset --}}
+            <button wire:click="resetFilters" type="button" class="shrink-0 rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Reset</button>
+        </div>
+
+        {{-- Row 2: Price range slider + Out-of-stock toggle --}}
+        @if ($priceCeiling > 0 && $priceFloor < $priceCeiling)
+            <div
+                x-data="priceRangeSlider({
+                    floor: {{ (int) $priceFloor }},
+                    ceiling: {{ (int) $priceCeiling }},
+                    initialMin: {{ $minPrice !== null && $minPrice !== '' ? (int) $minPrice : (int) $priceFloor }},
+                    initialMax: {{ $maxPrice !== null && $maxPrice !== '' ? (int) $maxPrice : (int) $priceCeiling }},
+                })"
+                class="flex flex-wrap items-center gap-4"
+            >
+                <label class="text-xs font-medium text-slate-700">Price</label>
+                <span class="text-xs tabular-nums text-slate-600" x-text="'€' + rangeMin"></span>
+
+                <div class="relative h-6 min-w-[200px] flex-1">
+                    {{-- Track background --}}
+                    <div class="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded bg-slate-200"></div>
+                    {{-- Active range highlight --}}
+                    <div
+                        class="absolute top-1/2 h-1 -translate-y-1/2 rounded bg-slate-700"
+                        :style="'left:' + minPercent + '%;right:' + (100 - maxPercent) + '%'"
+                    ></div>
+                    {{-- Min thumb --}}
+                    <input
+                        type="range"
+                        :min="floor"
+                        :max="ceiling"
+                        x-model.number="rangeMin"
+                        x-on:change="commitMin()"
+                        class="pointer-events-none absolute inset-0 z-20 h-full w-full cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-slate-700 [&::-moz-range-thumb]:bg-white [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-slate-700 [&::-webkit-slider-thumb]:bg-white"
+                    >
+                    {{-- Max thumb --}}
+                    <input
+                        type="range"
+                        :min="floor"
+                        :max="ceiling"
+                        x-model.number="rangeMax"
+                        x-on:change="commitMax()"
+                        class="pointer-events-none absolute inset-0 z-30 h-full w-full cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-slate-700 [&::-moz-range-thumb]:bg-white [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-slate-700 [&::-webkit-slider-thumb]:bg-white"
+                    >
+                </div>
+
+                <span class="text-xs tabular-nums text-slate-600" x-text="'€' + rangeMax"></span>
             </div>
         @endif
 
-        {{-- Min Price --}}
-        <div>
-            <label class="mb-1 block text-xs font-medium text-slate-700">Min Price</label>
-            <input
-                type="number"
-                wire:model.live.debounce.500ms="minPrice"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-            >
-        </div>
+        {{-- Row 3: Size filter + Out-of-stock --}}
+        <div class="flex flex-wrap items-start gap-4">
+            @if ($availableSizes !== [])
+                <div>
+                    <p class="mb-1 text-xs font-medium text-slate-700">Filter by size</p>
+                    <div class="flex flex-wrap gap-1">
+                        @foreach ($availableSizes as $size)
+                            <button
+                                type="button"
+                                wire:click="toggleSize('{{ $size }}')"
+                                wire:key="size-{{ $size }}"
+                                class="rounded border px-2 py-1 text-xs transition {{ in_array($size, $selectedSizes, true) ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500' }}"
+                            >
+                                {{ $size }}
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
 
-        {{-- Max Price --}}
-        <div>
-            <label class="mb-1 block text-xs font-medium text-slate-700">Max Price</label>
-            <input
-                type="number"
-                wire:model.live.debounce.500ms="maxPrice"
-                min="0"
-                step="0.01"
-                placeholder="999.99"
-                class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-            >
-        </div>
-
-        {{-- Reset button --}}
-        <div class="flex items-end">
-            <button wire:click="resetFilters" type="button" class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Reset</button>
-        </div>
-
-        @if ($activeCategory)
-            <div class="md:col-span-8">
-                <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+            @if ($activeCategory)
+                <label class="inline-flex items-center gap-2 pt-5 text-sm text-slate-700">
                     <input
                         type="checkbox"
                         wire:model.live="includeOutOfStock"
                         class="rounded border-slate-300"
                     >
-                    Show out-of-stock items in this category
+                    Show out-of-stock
                 </label>
-            </div>
-        @endif
-
-        {{-- Size filter (shown when sizes are available) --}}
-        @if ($availableSizes !== [])
-            <div class="md:col-span-8">
-                <p class="mb-1 text-xs font-medium text-slate-700">Filter by size</p>
-                <div class="flex flex-wrap gap-1">
-                    @foreach ($availableSizes as $size)
-                        <button
-                            type="button"
-                            wire:click="toggleSize('{{ $size }}')"
-                            wire:key="size-{{ $size }}"
-                            class="rounded border px-2 py-1 text-xs transition {{ in_array($size, $selectedSizes, true) ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500' }}"
-                        >
-                            {{ $size }}
-                        </button>
-                    @endforeach
-                </div>
-            </div>
-        @endif
-    </div>
-
-    @if ($shopCategories->isNotEmpty())
-        <div class="mb-5 flex flex-wrap items-center gap-2 text-xs">
-            <span class="text-slate-500">Browse:</span>
-            @foreach ($shopCategories as $shopCategory)
-                <a
-                    href="{{ route('shop.category', $shopCategory) }}"
-                    class="rounded border px-2 py-1 transition hover:bg-slate-50 {{ $activeCategory?->slug === $shopCategory->slug ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700' }}"
-                >
-                    {{ $shopCategory->name }}
-                </a>
-            @endforeach
+            @endif
         </div>
-    @endif
+    </div>
 
     <p class="mb-4 text-sm text-slate-600" wire:loading.remove>Showing {{ $products->total() }} product(s).</p>
     <p class="mb-4 text-sm text-slate-400" wire:loading>Updating results…</p>
@@ -367,6 +337,40 @@
                 setTimeout(() => window.initCatalogCards(), 50);
             }
         });
+
+        // Dual-thumb price range slider
+        Alpine.data('priceRangeSlider', (config) => ({
+            floor: config.floor,
+            ceiling: config.ceiling,
+            rangeMin: config.initialMin,
+            rangeMax: config.initialMax,
+
+            get minPercent() {
+                if (this.ceiling === this.floor) return 0;
+                return ((this.rangeMin - this.floor) / (this.ceiling - this.floor)) * 100;
+            },
+
+            get maxPercent() {
+                if (this.ceiling === this.floor) return 100;
+                return ((this.rangeMax - this.floor) / (this.ceiling - this.floor)) * 100;
+            },
+
+            commitMin() {
+                if (this.rangeMin > this.rangeMax) {
+                    this.rangeMin = this.rangeMax;
+                }
+                let value = this.rangeMin <= this.floor ? null : String(this.rangeMin);
+                $wire.set('minPrice', value);
+            },
+
+            commitMax() {
+                if (this.rangeMax < this.rangeMin) {
+                    this.rangeMax = this.rangeMin;
+                }
+                let value = this.rangeMax >= this.ceiling ? null : String(this.rangeMax);
+                $wire.set('maxPrice', value);
+            },
+        }));
     </script>
     @endscript
 </div>

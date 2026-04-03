@@ -132,11 +132,7 @@ new class extends Component
             ->orderBy('name')
             ->get(['id', 'name', 'slug', 'meta_title', 'meta_description', 'size_type']);
 
-        $shopTags = Tag::query()
-            ->where('is_active', true)
-            ->orderBy('type')
-            ->orderBy('name')
-            ->get(['id', 'name', 'slug', 'type']);
+        $shopTags = collect();
 
         $activeCategory = $forcedCategory;
         $activeTag = $forcedTag;
@@ -190,7 +186,7 @@ new class extends Component
         $shouldFilterOutOfStock = $activeCategory !== null && ! $this->includeOutOfStock;
 
         // Build the base product query (used for both results and available sizes)
-        $buildQuery = function (bool $excludeSizeFilter = false) use (
+        $buildQuery = function (bool $excludeSizeFilter = false, bool $excludePriceFilter = false) use (
             $search, $filterCategoryIds, $categorySlug, $tagSlug,
             $shouldFilterOutOfStock, $minPrice, $maxPrice,
             $hasSizeProfileFilter, $topSizes, $bottomSizes, $shoeSizes,
@@ -239,7 +235,7 @@ new class extends Component
                     })
                 )
                 ->when(
-                    $minPrice !== null || $maxPrice !== null,
+                    ! $excludePriceFilter && ($minPrice !== null || $maxPrice !== null),
                     fn ($query) => $query->whereHas('variants', function ($vq) use ($minPrice, $maxPrice): void {
                         $vq->where('is_active', true)
                             ->when($minPrice !== null, fn ($pq) => $pq->where('price', '>=', $minPrice))
@@ -303,6 +299,11 @@ new class extends Component
         // Compute available sizes from products matching all filters EXCEPT size
         $availableSizes = $this->computeAvailableSizes($buildQuery(excludeSizeFilter: true), $shouldFilterOutOfStock);
 
+        // Compute price floor and ceiling from products matching all filters EXCEPT price
+        $priceRange = $this->computePriceRange($buildQuery(excludeSizeFilter: false, excludePriceFilter: true));
+        $priceFloor = $priceRange['min'];
+        $priceCeiling = $priceRange['max'];
+
         /** @var LengthAwarePaginator<int, Product> $products */
         $products = $buildQuery()
             ->with([
@@ -345,14 +346,14 @@ new class extends Component
 
         return view('components.⚡shop-catalog.shop-catalog', [
             'products' => $products,
-            'shopCategories' => $shopCategories,
             'activeCategory' => $activeCategory,
             'activeTag' => $activeTag,
-            'shopTags' => $shopTags,
             'sizeProfiles' => $sizeProfiles,
             'activeSizeProfile' => $activeSizeProfile,
             'preselectSizes' => $preselectSizes,
             'availableSizes' => $availableSizes,
+            'priceFloor' => $priceFloor,
+            'priceCeiling' => $priceCeiling,
         ]);
     }
 
@@ -408,6 +409,31 @@ new class extends Component
         $uniqueSizes = $sizes->unique()->filter()->values()->all();
 
         return $uniqueSizes !== [] ? $this->sortSizes($uniqueSizes) : [];
+    }
+
+    /**
+     * Compute the min and max active variant prices for the given query.
+     *
+     * @return array{min: float, max: float}
+     */
+    private function computePriceRange($baseQuery): array
+    {
+        $productIds = (clone $baseQuery)->reorder()->select('products.id')->pluck('id');
+
+        if ($productIds->isEmpty()) {
+            return ['min' => 0, 'max' => 0];
+        }
+
+        $stats = ProductVariant::query()
+            ->whereIn('product_id', $productIds)
+            ->where('is_active', true)
+            ->selectRaw('MIN(price) as min_price, MAX(price) as max_price')
+            ->first();
+
+        return [
+            'min' => floor((float) ($stats->min_price ?? 0)),
+            'max' => ceil((float) ($stats->max_price ?? 0)),
+        ];
     }
 
     private function syncToSession(): void
