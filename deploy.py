@@ -94,14 +94,26 @@ def main():
     ssh.connect(REMOTE_HOST, REMOTE_PORT, REMOTE_USER, password)
 
     sftp = ssh.open_sftp()
+
+    def sftp_makedirs(sftp_client, remote_dir):
+        """Recursively create remote directory tree via SFTP."""
+        parts = remote_dir.split('/')
+        current = ''
+        for part in parts:
+            if not part:
+                current = '/'
+                continue
+            current = (current.rstrip('/') + '/' + part) if current else part
+            try:
+                sftp_client.stat(current)
+            except FileNotFoundError:
+                sftp_client.mkdir(current)
+
     for filepath in files:
         remote_file = f'{REMOTE_PATH}/{filepath}'
         # Ensure remote directory exists
         remote_dir = '/'.join(remote_file.split('/')[:-1])
-        try:
-            sftp.stat(remote_dir)
-        except FileNotFoundError:
-            ssh.exec_command(f'mkdir -p {remote_dir}')
+        sftp_makedirs(sftp, remote_dir)
         sftp.put(filepath, remote_file)
         print(f'  ✓ {filepath}')
     sftp.close()
