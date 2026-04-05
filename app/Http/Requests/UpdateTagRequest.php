@@ -31,6 +31,12 @@ class UpdateTagRequest extends FormRequest
             'slug' => ['required', 'string', 'max:255', Rule::unique('tags', 'slug')->where('type', $this->input('type'))->ignore($tagId)],
             'is_active' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string'],
+            'logo' => ['nullable', 'image', 'max:5120', Rule::when(
+                $this->input('logo') !== null,
+                [Rule::when(! in_array($this->input('type'), ['artist', 'brand'], true), ['prohibited'])]
+            )],
+            'remove_logo' => ['sometimes', 'boolean'],
+            'show_on_homepage' => ['sometimes', 'boolean'],
         ];
     }
 }

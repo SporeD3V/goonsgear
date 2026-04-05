@@ -22,6 +22,8 @@ class Tag extends Model
         'type',
         'is_active',
         'description',
+        'logo_path',
+        'show_on_homepage',
     ];
 
     /**
@@ -31,6 +33,7 @@ class Tag extends Model
     {
         return [
             'is_active' => 'boolean',
+            'show_on_homepage' => 'boolean',
         ];
     }
 

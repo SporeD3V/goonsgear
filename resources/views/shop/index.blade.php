@@ -49,6 +49,10 @@
 
         @endif
 
+        @if ($activeCategory === null && $activeTag === null)
+            <livewire:shop-by-artist />
+        @endif
+
         <div class="mx-auto max-w-6xl p-6">
 
             @include('partials.breadcrumb', ['breadcrumbs' => $breadcrumbs])
