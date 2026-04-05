@@ -35,6 +35,8 @@ new class extends Component
     /** @var array<int, string> */
     public array $selectedSizes = [];
 
+    public string $selectedShoeSize = '';
+
     public function mount(?int $forcedCategoryId = null, ?int $forcedTagId = null): void
     {
         $this->forcedCategoryId = $forcedCategoryId;
@@ -59,6 +61,7 @@ new class extends Component
         $this->includeOutOfStock = (bool) ($filters['include_out_of_stock'] ?? false);
         $this->sizeProfileId = (int) ($filters['size_profile'] ?? 0);
         $this->selectedSizes = (array) ($filters['sizes'] ?? []);
+        $this->selectedShoeSize = (string) ($filters['shoe_size'] ?? '');
     }
 
     public function updated(string $property): void
@@ -69,7 +72,7 @@ new class extends Component
 
     public function resetFilters(): void
     {
-        $this->reset(['search', 'sort', 'minPrice', 'maxPrice', 'includeOutOfStock', 'sizeProfileId', 'selectedSizes']);
+        $this->reset(['search', 'sort', 'minPrice', 'maxPrice', 'includeOutOfStock', 'sizeProfileId', 'selectedSizes', 'selectedShoeSize']);
         session()->forget('shop_filters');
         $this->resetPage();
     }
@@ -290,8 +293,29 @@ new class extends Component
                     })
                 )
                 ->when(
-                    ! $excludeSizeFilter && $this->selectedSizes !== [],
-                    fn ($query) => $query->whereHas('variants', fn ($vq) => $this->applySizeMatch($vq, $this->expandSizeLabels($this->selectedSizes), ! $this->includeOutOfStock))
+                    ! $excludeSizeFilter && ($this->selectedSizes !== [] || $this->selectedShoeSize !== ''),
+                    function ($query) {
+                        $checkStock = ! $this->includeOutOfStock;
+                        $hasClothing = $this->selectedSizes !== [];
+                        $hasShoe = $this->selectedShoeSize !== '';
+
+                        $query->where(function ($outerQ) use ($hasClothing, $hasShoe, $checkStock): void {
+                            if ($hasClothing) {
+                                $outerQ->orWhereHas('variants', fn ($vq) => $this->applySizeMatch($vq, $this->selectedSizes, $checkStock));
+                            }
+
+                            if ($hasShoe) {
+                                $shoeNum = (int) $this->selectedShoeSize;
+                                $label = ($shoeNum >= 36 && $shoeNum <= 42) ? 'Smalls' : (($shoeNum >= 43 && $shoeNum <= 46) ? 'Biggie' : null);
+
+                                if ($label !== null) {
+                                    $matchSizes = [$label, $this->selectedShoeSize];
+                                    $outerQ->orWhereHas('variants', fn ($vq) => $this->applySizeMatch($vq, $matchSizes, $checkStock));
+                                    $outerQ->orWhereHas('variants', fn ($vq) => $this->applyUniversalMatch($vq, $checkStock));
+                                }
+                            }
+                        });
+                    }
                 )
                 ->when($sort === 'newest', fn ($query) => $query->latest('id'))
                 ->when($sort === 'name_asc', fn ($query) => $query->orderBy('name'))
@@ -300,28 +324,21 @@ new class extends Component
                 ->when($sort === 'price_desc', fn ($query) => $query->orderByDesc('min_active_variant_price')->orderByRaw('min_active_variant_price IS NULL'));
         };
 
-        // Determine size context from active category for filter labels
-        $activeSizeType = null;
-        if ($activeCategory !== null) {
-            $activeSizeType = $activeCategory->size_type;
+        // Compute available sizes split by clothing vs shoe categories
+        $sizeBaseQuery = $buildQuery(excludeSizeFilter: true);
 
-            // If viewing a parent category without size_type, check if all children share the same type
-            if ($activeSizeType === null && $activeCategory->parent_id === null) {
-                $childSizeTypes = $shopCategories
-                    ->firstWhere('id', $activeCategory->id)
-                    ?->children
-                    ?->pluck('size_type')
-                    ->filter()
-                    ->unique();
+        // Clothing sizes: from products NOT in shoe categories
+        $clothingSizeQuery = $shoeCategoryIds !== []
+            ? (clone $sizeBaseQuery)->whereDoesntHave('categories', fn ($cq) => $cq->whereIn('categories.id', $shoeCategoryIds))
+            : clone $sizeBaseQuery;
+        $availableSizes = $this->computeAvailableSizes($clothingSizeQuery, $shouldFilterOutOfStock);
 
-                if ($childSizeTypes !== null && $childSizeTypes->count() === 1) {
-                    $activeSizeType = $childSizeTypes->first();
-                }
-            }
+        // Shoe sizes: from products IN shoe categories (EU numbers derived from Biggie/Smalls)
+        $availableShoeSizes = [];
+        if ($shoeCategoryIds !== []) {
+            $shoeSizeQuery = (clone $sizeBaseQuery)->whereHas('categories', fn ($cq) => $cq->whereIn('categories.id', $shoeCategoryIds));
+            $availableShoeSizes = $this->computeAvailableSizes($shoeSizeQuery, $shouldFilterOutOfStock, 'shoe');
         }
-
-        // Compute available sizes from products matching all filters EXCEPT size
-        $availableSizes = $this->computeAvailableSizes($buildQuery(excludeSizeFilter: true), $shouldFilterOutOfStock, $activeSizeType);
 
         // Compute price floor and ceiling from products matching all filters EXCEPT price
         $priceRange = $this->computePriceRange($buildQuery(excludeSizeFilter: false, excludePriceFilter: true));
@@ -377,6 +394,7 @@ new class extends Component
             'activeSizeProfile' => $activeSizeProfile,
             'preselectSizes' => $preselectSizes,
             'availableSizes' => $availableSizes,
+            'availableShoeSizes' => $availableShoeSizes,
             'priceFloor' => $priceFloor,
             'priceCeiling' => $priceCeiling,
         ]);
@@ -413,6 +431,7 @@ new class extends Component
         $variants = $variantQuery->get(['name', 'variant_type', 'option_values']);
 
         $sizes = collect();
+        $hasUnsizedVariants = false;
 
         foreach ($variants as $variant) {
             // 1. Prefer explicit option_values JSON size
@@ -426,18 +445,27 @@ new class extends Component
             // 2. Extract size from end of variant name after known delimiters
             $name = trim((string) $variant->name);
             if ($name === '' || strcasecmp($name, 'Default') === 0) {
+                $hasUnsizedVariants = true;
+
                 continue;
             }
 
             $extracted = $this->extractSizeFromName($name);
             if ($extracted !== null) {
                 $sizes->push($extracted);
+            } else {
+                $hasUnsizedVariants = true;
             }
         }
 
-        // When viewing a shoe category, map numeric shoe sizes to Biggie/Smalls labels
+        // When viewing a shoe category, determine which EU shoe sizes are available
+        // based on Biggie (43–46) and Smalls (36–42) variant labels
         if ($sizeType === 'shoe') {
-            $sizes = $sizes->map(function (string $size): string {
+            $shoeLabels = $sizes->map(function (string $size): ?string {
+                $lower = strtolower($size);
+                if ($lower === 'smalls' || $lower === 'biggie') {
+                    return $lower === 'smalls' ? 'Smalls' : 'Biggie';
+                }
                 if (preg_match('/^\d{2}(\.\d)?$/', $size)) {
                     $numeric = (float) $size;
                     if ($numeric >= 36 && $numeric <= 42) {
@@ -448,8 +476,18 @@ new class extends Component
                     }
                 }
 
-                return $size;
-            });
+                return null;
+            })->filter()->unique()->values();
+
+            $euSizes = [];
+            if ($shoeLabels->contains('Smalls')) {
+                $euSizes = array_merge($euSizes, range(36, 42));
+            }
+            if ($shoeLabels->contains('Biggie')) {
+                $euSizes = array_merge($euSizes, range(43, 46));
+            }
+
+            return array_map('strval', $euSizes);
         }
 
         $uniqueSizes = $sizes->unique()->filter()->values()->all();
@@ -468,7 +506,7 @@ new class extends Component
         $knownSizes = [
             'xxs', 'xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl',
             '2xl', '3xl', '4xl', '5xl',
-            'smalls', 'biggie', 'single', 'double',
+            'smalls', 'biggie',
         ];
 
         // Also recognize numeric shoe sizes (36–50)
@@ -542,6 +580,7 @@ new class extends Component
             'include_out_of_stock' => $this->includeOutOfStock,
             'size_profile' => $this->sizeProfileId,
             'sizes' => $this->selectedSizes,
+            'shoe_size' => $this->selectedShoeSize,
         ]);
     }
 
@@ -564,5 +603,48 @@ new class extends Component
         }
 
         return array_values(array_unique($expanded));
+    }
+
+    /**
+     * Match variants that have no recognizable size (universal/one-size-fits-all).
+     *
+     * Excludes variants whose name ends with a known size after a delimiter,
+     * have a size in option_values, or are named after a recognized size.
+     */
+    private function applyUniversalMatch($variantQuery, bool $checkStock = true): void
+    {
+        $variantQuery->where('is_active', true);
+
+        if ($checkStock) {
+            $variantQuery->where(function ($stockQuery): void {
+                $stockQuery->where('track_inventory', false)
+                    ->orWhere('allow_backorder', true)
+                    ->orWhere('is_preorder', true)
+                    ->orWhere('stock_quantity', '>', 0);
+            });
+        }
+
+        // Exclude variants that have a recognizable size
+        $variantQuery->where(function ($q): void {
+            $q->whereNull('option_values->size')
+                ->orWhere('option_values->size', '');
+        });
+
+        $knownSizes = [
+            'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL', 'XXXXXL',
+            '2XL', '3XL', '4XL', '5XL',
+            'Smalls', 'Biggie',
+        ];
+
+        foreach ($knownSizes as $size) {
+            $escaped = str_replace(['%', '_'], ['\\%', '\\_'], $size);
+            $variantQuery->where('name', 'NOT LIKE', '%- '.$escaped)
+                ->where('name', 'NOT LIKE', '%, '.$escaped)
+                ->where('name', 'NOT LIKE', '%/ '.$escaped)
+                ->where('name', 'NOT LIKE', '%| '.$escaped);
+        }
+
+        // Exclude numeric shoe sizes (36–50) at end of name
+        $variantQuery->whereRaw("name NOT REGEXP '(- |, |/ |\\\\| )[0-9]{2}(\\\\.[0-9])?$'");
     }
 };

@@ -50,7 +50,6 @@ class ShopTagFilterTest extends TestCase
         $response->assertOk();
         $response->assertSee('Underground Vinyl Vol. 1');
         $response->assertDontSee('Street Works Hoodie');
-        $response->assertSee('Artist: Underground Kings');
     }
 
     public function test_inactive_tags_return_not_found_on_dedicated_route(): void

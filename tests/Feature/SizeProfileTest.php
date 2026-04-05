@@ -389,9 +389,11 @@ class SizeProfileTest extends TestCase
             'top_size' => 'M',
         ]);
 
-        Product::factory()->create(['status' => 'active']);
+        $category = Category::factory()->create(['is_active' => true]);
+        $product = Product::factory()->create(['status' => 'active']);
+        $product->categories()->attach($category);
 
-        $response = $this->actingAs($user)->get(route('shop.index'));
+        $response = $this->actingAs($user)->get(route('shop.category', $category->slug));
 
         $response->assertOk();
         $response->assertSee('Shop for');
@@ -400,9 +402,11 @@ class SizeProfileTest extends TestCase
 
     public function test_catalog_hides_shop_for_dropdown_for_guest(): void
     {
-        Product::factory()->create(['status' => 'active']);
+        $category = Category::factory()->create(['is_active' => true]);
+        $product = Product::factory()->create(['status' => 'active']);
+        $product->categories()->attach($category);
 
-        $response = $this->get(route('shop.index'));
+        $response = $this->get(route('shop.category', $category->slug));
 
         $response->assertOk();
         $response->assertDontSee('Shop for');
