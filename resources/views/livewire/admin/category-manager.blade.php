@@ -154,14 +154,23 @@ new class extends Component
         session()->flash('status', 'Category deleted.');
     }
 
-    /**
-     * @param array<int, int> $order
-     */
-    public function reorder(array $order): void
+    public function handleSort(int|string $id, int $position): void
     {
-        foreach ($order as $position => $id) {
-            Category::query()->where('id', (int) $id)->update(['sort_order' => $position]);
+        $allIds = Category::orderBy('sort_order')->orderBy('name')->pluck('id')->toArray();
+
+        $currentIdx = array_search((int) $id, $allIds);
+        if ($currentIdx === false) {
+            return;
         }
+
+        array_splice($allIds, $currentIdx, 1);
+        array_splice($allIds, $position, 0, [(int) $id]);
+
+        foreach ($allIds as $index => $catId) {
+            Category::where('id', $catId)->update(['sort_order' => $index]);
+        }
+
+        $this->dispatch('reorder-saved');
     }
 
     public function closeModal(): void
@@ -242,59 +251,41 @@ new class extends Component
     <div wire:loading.delay class="mb-2 text-xs text-slate-500">Loading…</div>
 
     {{-- Sortable list --}}
-    <div
-        x-data="{
-            init() {
-                if (typeof Sortable === 'undefined') return;
-                Sortable.create(this.$refs.list, {
-                    handle: '.drag-handle',
-                    animation: 150,
-                    ghostClass: 'opacity-30',
-                    onEnd: () => {
-                        const items = this.$refs.list.querySelectorAll('[data-id]');
-                        const order = Array.from(items).map(el => parseInt(el.dataset.id));
-                        $wire.reorder(order);
-                    }
-                });
-            }
-        }"
-    >
-        <div x-ref="list" class="space-y-1">
-            @forelse ($this->categories as $category)
-                <div
-                    wire:key="category-{{ $category->id }}"
-                    data-id="{{ $category->id }}"
-                    class="flex items-center gap-3 rounded-md border border-slate-200 bg-white px-4 py-3 {{ $category->parent_id ? 'ml-8' : '' }}"
-                >
-                    <span class="drag-handle cursor-grab text-slate-400 hover:text-slate-600 active:cursor-grabbing">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
-                    </span>
-                    <div class="flex-1">
-                        <span class="font-medium">{{ $category->name }}</span>
-                        <span class="ml-2 text-xs text-slate-400">/{{ $category->slug }}</span>
-                        @if ($category->parent)
-                            <span class="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">{{ $category->parent->name }}</span>
-                        @endif
-                        @if ($category->size_type)
-                            <span class="ml-2 rounded bg-indigo-50 px-1.5 py-0.5 text-xs text-indigo-600">{{ $category->size_type }}</span>
-                        @endif
-                    </div>
-                    <button wire:click="toggleActive({{ $category->id }})" class="text-xs font-medium">
-                        @if ($category->is_active)
-                            <span class="rounded bg-emerald-100 px-2 py-0.5 text-emerald-800">Active</span>
-                        @else
-                            <span class="rounded bg-slate-100 px-2 py-0.5 text-slate-500">Inactive</span>
-                        @endif
-                    </button>
-                    <button wire:click="openEdit({{ $category->id }})" class="text-sm text-blue-600 hover:underline">Edit</button>
-                    <button wire:click="delete({{ $category->id }})" wire:confirm="Delete this category?" class="text-sm text-red-600 hover:underline">Delete</button>
+    <div wire:sort="handleSort" class="space-y-1">
+        @forelse ($this->categories as $category)
+            <div
+                wire:key="category-{{ $category->id }}"
+                wire:sort:item="{{ $category->id }}"
+                class="flex items-center gap-3 rounded-md border border-slate-200 bg-white px-4 py-3 {{ $category->parent_id ? 'ml-8' : '' }}"
+            >
+                <span wire:sort:handle class="cursor-grab text-slate-400 hover:text-slate-600 active:cursor-grabbing">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+                </span>
+                <div class="flex-1">
+                    <span class="font-medium">{{ $category->name }}</span>
+                    <span class="ml-2 text-xs text-slate-400">/{{ $category->slug }}</span>
+                    @if ($category->parent)
+                        <span class="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">{{ $category->parent->name }}</span>
+                    @endif
+                    @if ($category->size_type)
+                        <span class="ml-2 rounded bg-indigo-50 px-1.5 py-0.5 text-xs text-indigo-600">{{ $category->size_type }}</span>
+                    @endif
                 </div>
-            @empty
-                <p class="py-8 text-center text-slate-500">
-                    {{ $search ? 'No categories match your search.' : 'No categories yet.' }}
-                </p>
-            @endforelse
-        </div>
+                <button wire:click="toggleActive({{ $category->id }})" class="text-xs font-medium">
+                    @if ($category->is_active)
+                        <span class="rounded bg-emerald-100 px-2 py-0.5 text-emerald-800">Active</span>
+                    @else
+                        <span class="rounded bg-slate-100 px-2 py-0.5 text-slate-500">Inactive</span>
+                    @endif
+                </button>
+                <button wire:click="openEdit({{ $category->id }})" class="text-sm text-blue-600 hover:underline">Edit</button>
+                <button wire:click="delete({{ $category->id }})" wire:confirm="Delete this category?" class="text-sm text-red-600 hover:underline">Delete</button>
+            </div>
+        @empty
+            <p class="py-8 text-center text-slate-500">
+                {{ $search ? 'No categories match your search.' : 'No categories yet.' }}
+            </p>
+        @endforelse
     </div>
 
     {{-- Pagination --}}
@@ -399,5 +390,4 @@ new class extends Component
         </div>
     @endif
 
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 </div>
