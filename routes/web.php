@@ -124,10 +124,18 @@ Route::post('/checkout/paypal/capture-order', [CheckoutController::class, 'captu
     ->name('checkout.paypal.capture-order');
 Route::get('/checkout/success/{order}', [CheckoutController::class, 'success'])->name('checkout.success');
 
-Route::get('/api/shop/search', [ShopController::class, 'search'])->name('api.shop.search');
-Route::get('/api/locations/states', [LocationController::class, 'states'])->name('api.locations.states');
-Route::get('/api/locations/cities', [LocationController::class, 'cities'])->name('api.locations.cities');
-Route::get('/api/regional-discount', [ApiRegionalDiscountController::class, 'show'])->name('api.regional-discount');
+Route::get('/api/shop/search', [ShopController::class, 'search'])
+    ->middleware('throttle:60,1')
+    ->name('api.shop.search');
+Route::get('/api/locations/states', [LocationController::class, 'states'])
+    ->middleware('throttle:30,1')
+    ->name('api.locations.states');
+Route::get('/api/locations/cities', [LocationController::class, 'cities'])
+    ->middleware('throttle:30,1')
+    ->name('api.locations.cities');
+Route::get('/api/regional-discount', [ApiRegionalDiscountController::class, 'show'])
+    ->middleware('throttle:30,1')
+    ->name('api.regional-discount');
 
 Route::get('/media/{path}', [MediaController::class, 'show'])
     ->where('path', '.*')

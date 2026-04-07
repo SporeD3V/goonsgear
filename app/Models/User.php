@@ -24,7 +24,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'is_admin',
         'notify_cart_discounts',
         'notify_cart_low_stock',
         'delivery_phone',

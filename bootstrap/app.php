@@ -3,6 +3,7 @@
 use App\Http\Middleware\AddAdminNoIndexHeaders;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleLegacyRedirects;
+use App\Http\Middleware\SetSecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -19,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.noindex' => AddAdminNoIndexHeaders::class,
         ]);
         $middleware->append(HandleLegacyRedirects::class);
+        $middleware->append(SetSecurityHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

@@ -51,9 +51,7 @@ class SizeProfileController extends Controller
 
     public function update(Request $request, SizeProfile $sizeProfile): RedirectResponse
     {
-        if ($sizeProfile->user_id !== $request->user()->id) {
-            abort(403);
-        }
+        $this->authorize('update', $sizeProfile);
 
         $validated = $request->validate(self::VALIDATION_RULES);
 
@@ -77,9 +75,7 @@ class SizeProfileController extends Controller
 
     public function destroy(Request $request, SizeProfile $sizeProfile): RedirectResponse
     {
-        if ($sizeProfile->user_id !== $request->user()->id) {
-            abort(403);
-        }
+        $this->authorize('delete', $sizeProfile);
 
         $sizeProfile->delete();
 
