@@ -148,16 +148,16 @@ class TagController extends Controller
                 mkdir(storage_path('app/public/'.$directory), 0755, true);
             }
 
-            // Try AVIF first, then WebP
-            $avifRelativePath = $directory.'/'.$baseFilename.'-thumbnail-200x200.avif';
-            $webpRelativePath = $directory.'/'.$baseFilename.'-thumbnail-200x200.webp';
+            // Try AVIF first, then WebP — fit within bounding box, no cropping
+            $avifRelativePath = $directory.'/'.$baseFilename.'.avif';
+            $webpRelativePath = $directory.'/'.$baseFilename.'.webp';
 
-            $avifCreated = $this->convertTagLogoTo($absoluteFallbackPath, $avifRelativePath, 'avif', 200, 200);
+            $avifCreated = $this->convertTagLogoTo($absoluteFallbackPath, $avifRelativePath, 'avif', 400, 400);
             if ($avifCreated) {
                 return $avifRelativePath;
             }
 
-            $webpCreated = $this->convertTagLogoTo($absoluteFallbackPath, $webpRelativePath, 'webp', 200, 200);
+            $webpCreated = $this->convertTagLogoTo($absoluteFallbackPath, $webpRelativePath, 'webp', 400, 400);
             if ($webpCreated) {
                 return $webpRelativePath;
             }
@@ -177,7 +177,11 @@ class TagController extends Controller
         }
     }
 
-    private function convertTagLogoTo(string $absoluteSourcePath, string $relativeTargetPath, string $format, int $width, int $height): bool
+    /**
+     * Resize the logo to fit within bounds while preserving aspect ratio (no cropping).
+     * The output has a transparent background with the logo centered.
+     */
+    private function convertTagLogoTo(string $absoluteSourcePath, string $relativeTargetPath, string $format, int $maxWidth, int $maxHeight): bool
     {
         try {
             $absoluteTargetPath = storage_path('app/public/'.$relativeTargetPath);
@@ -189,7 +193,9 @@ class TagController extends Controller
 
             if (class_exists('Imagick')) {
                 $imagick = new \Imagick($absoluteSourcePath);
-                $imagick->cropThumbnailImage($width, $height);
+
+                // Fit within bounding box, preserving aspect ratio (no cropping)
+                $imagick->thumbnailImage($maxWidth, $maxHeight, true);
                 $imagick->setImageFormat($format);
                 $imagick->setImageCompressionQuality($format === 'avif' ? 62 : 82);
                 $imagick->stripImage();
@@ -232,25 +238,24 @@ class TagController extends Controller
 
             $srcW = $imageInfo[0];
             $srcH = $imageInfo[1];
-            $ratio = max($width / $srcW, $height / $srcH);
-            $newW = (int) ($srcW * $ratio);
-            $newH = (int) ($srcH * $ratio);
-            $cropX = (int) (($newW - $width) / 2);
-            $cropY = (int) (($newH - $height) / 2);
 
-            $destImage = @imagecreatetruecolor($width, $height);
+            // Scale to fit within bounding box (no crop)
+            $ratio = min($maxWidth / $srcW, $maxHeight / $srcH);
+            $newW = (int) round($srcW * $ratio);
+            $newH = (int) round($srcH * $ratio);
+
+            $destImage = @imagecreatetruecolor($newW, $newH);
             if ($destImage === false) {
                 return false;
             }
 
             @imagealphablending($destImage, false);
             @imagesavealpha($destImage, true);
+            $transparent = @imagecolorallocatealpha($destImage, 0, 0, 0, 127);
+            @imagefill($destImage, 0, 0, $transparent);
+            @imagealphablending($destImage, true);
 
-            $tempImage = @imagecreatetruecolor($newW, $newH);
-            if ($tempImage !== false) {
-                @imagecopyresampled($tempImage, $srcImage, 0, 0, 0, 0, $newW, $newH, $srcW, $srcH);
-                @imagecopy($destImage, $tempImage, 0, 0, $cropX, $cropY, $width, $height);
-            }
+            @imagecopyresampled($destImage, $srcImage, 0, 0, 0, 0, $newW, $newH, $srcW, $srcH);
 
             $saved = match ($format) {
                 'avif' => @imageavif($destImage, $absoluteTargetPath, 62),

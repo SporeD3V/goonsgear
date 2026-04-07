@@ -81,7 +81,7 @@
         {{-- Logo carousel --}}
         @if ($carouselTags->isNotEmpty())
             <div
-                class="relative"
+                class="relative px-12"
                 x-data="{
                     isDragging: false,
                     startX: 0,
@@ -116,6 +116,17 @@
                 }"
                 x-init="$nextTick(() => updateArrows())"
             >
+                {{-- Left arrow --}}
+                <button
+                    x-show="canScrollLeft"
+                    x-on:click="scrollBy(-1)"
+                    type="button"
+                    aria-label="Scroll left"
+                    class="absolute left-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-slate-300 bg-white shadow-lg transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                >
+                    <svg class="h-5 w-5 text-slate-800" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+                </button>
+
                 <div
                     x-ref="track"
                     x-on:scroll.debounce.50ms="updateArrows()"
@@ -149,22 +160,15 @@
                     @endforeach
                 </div>
 
-                {{-- Navigation arrows --}}
-                <button
-                    x-show="canScrollLeft"
-                    x-on:click="scrollBy(-1)"
-                    type="button"
-                    class="absolute left-0 top-1/2 z-10 -translate-x-3 -translate-y-1/2 rounded-full border border-slate-200 bg-white p-2 shadow-md transition hover:bg-slate-50"
-                >
-                    <svg class="h-4 w-4 text-slate-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
-                </button>
+                {{-- Right arrow --}}
                 <button
                     x-show="canScrollRight"
                     x-on:click="scrollBy(1)"
                     type="button"
-                    class="absolute right-0 top-1/2 z-10 translate-x-3 -translate-y-1/2 rounded-full border border-slate-200 bg-white p-2 shadow-md transition hover:bg-slate-50"
+                    aria-label="Scroll right"
+                    class="absolute right-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-slate-300 bg-white shadow-lg transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
                 >
-                    <svg class="h-4 w-4 text-slate-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                    <svg class="h-5 w-5 text-slate-800" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
                 </button>
             </div>
         @else

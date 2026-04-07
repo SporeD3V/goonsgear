@@ -26,7 +26,7 @@ class ShopByArtistTest extends TestCase
             'slug' => 'featured-artist',
             'type' => 'artist',
             'is_active' => true,
-            'logo_path' => 'tags/featured-artist/logo/featured-artist-logo-thumbnail-200x200.avif',
+            'logo_path' => 'tags/featured-artist/logo/featured-artist-logo.avif',
             'show_on_homepage' => true,
         ]);
 
@@ -44,7 +44,7 @@ class ShopByArtistTest extends TestCase
             'slug' => 'featured-brand',
             'type' => 'brand',
             'is_active' => true,
-            'logo_path' => 'tags/featured-brand/logo/featured-brand-logo-thumbnail-200x200.avif',
+            'logo_path' => 'tags/featured-brand/logo/featured-brand-logo.avif',
             'show_on_homepage' => true,
         ]);
 
@@ -61,7 +61,7 @@ class ShopByArtistTest extends TestCase
             'slug' => 'top-artist',
             'type' => 'artist',
             'is_active' => true,
-            'logo_path' => 'tags/top-artist/logo/top-artist-logo-thumbnail-200x200.avif',
+            'logo_path' => 'tags/top-artist/logo/top-artist-logo.avif',
             'show_on_homepage' => true,
         ]);
 
@@ -70,7 +70,7 @@ class ShopByArtistTest extends TestCase
             'slug' => 'cool-brand',
             'type' => 'brand',
             'is_active' => true,
-            'logo_path' => 'tags/cool-brand/logo/cool-brand-logo-thumbnail-200x200.avif',
+            'logo_path' => 'tags/cool-brand/logo/cool-brand-logo.avif',
             'show_on_homepage' => true,
         ]);
 
