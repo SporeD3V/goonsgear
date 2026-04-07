@@ -81,56 +81,91 @@
         {{-- Logo carousel --}}
         @if ($carouselTags->isNotEmpty())
             <div
+                class="relative"
                 x-data="{
                     isDragging: false,
                     startX: 0,
                     scrollLeft: 0,
+                    canScrollLeft: false,
+                    canScrollRight: true,
                     start(e) {
                         this.isDragging = true;
-                        this.startX = (e.touches ? e.touches[0].pageX : e.pageX) - this.$el.offsetLeft;
-                        this.scrollLeft = this.$el.scrollLeft;
-                        this.$el.style.cursor = 'grabbing';
+                        this.startX = (e.touches ? e.touches[0].pageX : e.pageX) - this.$refs.track.offsetLeft;
+                        this.scrollLeft = this.$refs.track.scrollLeft;
+                        this.$refs.track.style.cursor = 'grabbing';
                     },
                     move(e) {
                         if (!this.isDragging) return;
                         e.preventDefault();
-                        const x = (e.touches ? e.touches[0].pageX : e.pageX) - this.$el.offsetLeft;
+                        const x = (e.touches ? e.touches[0].pageX : e.pageX) - this.$refs.track.offsetLeft;
                         const walk = (x - this.startX) * 1.5;
-                        this.$el.scrollLeft = this.scrollLeft - walk;
+                        this.$refs.track.scrollLeft = this.scrollLeft - walk;
                     },
                     stop() {
                         this.isDragging = false;
-                        this.$el.style.cursor = 'grab';
+                        this.$refs.track.style.cursor = 'grab';
+                    },
+                    scrollBy(direction) {
+                        this.$refs.track.scrollBy({ left: direction * 300, behavior: 'smooth' });
+                    },
+                    updateArrows() {
+                        const el = this.$refs.track;
+                        this.canScrollLeft = el.scrollLeft > 0;
+                        this.canScrollRight = el.scrollLeft < el.scrollWidth - el.clientWidth - 1;
                     }
                 }"
-                x-on:mousedown="start($event)"
-                x-on:mousemove="move($event)"
-                x-on:mouseup="stop()"
-                x-on:mouseleave="stop()"
-                x-on:touchstart.passive="start($event)"
-                x-on:touchmove="move($event)"
-                x-on:touchend="stop()"
-                class="flex gap-4 overflow-x-auto pb-2 select-none scrollbar-hide"
-                style="cursor: grab; -webkit-overflow-scrolling: touch; scroll-behavior: smooth;"
+                x-init="$nextTick(() => updateArrows())"
             >
-                @foreach ($carouselTags as $tag)
-                    <a
-                        href="{{ $tag->type === 'artist' ? route('shop.artist', $tag->slug) : route('shop.brand', $tag->slug) }}"
-                        wire:key="carousel-tag-{{ $tag->id }}"
-                        class="group flex shrink-0 flex-col items-center gap-2"
-                        draggable="false"
-                    >
-                        <div class="h-20 w-20 overflow-hidden rounded-full border-2 border-slate-200 bg-white transition group-hover:border-slate-500 sm:h-24 sm:w-24">
-                            <img
-                                src="{{ route('media.show', ['path' => $tag->logo_path]) }}"
-                                alt="{{ $tag->name }}"
-                                class="h-full w-full object-cover"
-                                draggable="false"
-                            >
-                        </div>
-                        <span class="max-w-[6rem] text-center text-xs font-medium text-slate-700 group-hover:text-slate-900">{{ $tag->name }}</span>
-                    </a>
-                @endforeach
+                <div
+                    x-ref="track"
+                    x-on:scroll.debounce.50ms="updateArrows()"
+                    x-on:mousedown="start($event)"
+                    x-on:mousemove="move($event)"
+                    x-on:mouseup="stop()"
+                    x-on:mouseleave="stop()"
+                    x-on:touchstart.passive="start($event)"
+                    x-on:touchmove="move($event)"
+                    x-on:touchend="stop()"
+                    class="no-scrollbar flex gap-4 overflow-x-auto select-none"
+                    style="cursor: grab; -webkit-overflow-scrolling: touch; scroll-behavior: smooth;"
+                >
+                    @foreach ($carouselTags as $tag)
+                        <a
+                            href="{{ $tag->type === 'artist' ? route('shop.artist', $tag->slug) : route('shop.brand', $tag->slug) }}"
+                            wire:key="carousel-tag-{{ $tag->id }}"
+                            class="group flex shrink-0 flex-col items-center gap-2"
+                            draggable="false"
+                        >
+                            <div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white p-2 transition group-hover:border-slate-500 sm:h-24 sm:w-24">
+                                <img
+                                    src="{{ route('media.show', ['path' => $tag->logo_path]) }}"
+                                    alt="{{ $tag->name }}"
+                                    class="max-h-full max-w-full object-contain"
+                                    draggable="false"
+                                >
+                            </div>
+                            <span class="max-w-[6rem] text-center text-xs font-medium text-slate-700 group-hover:text-slate-900">{{ $tag->name }}</span>
+                        </a>
+                    @endforeach
+                </div>
+
+                {{-- Navigation arrows --}}
+                <button
+                    x-show="canScrollLeft"
+                    x-on:click="scrollBy(-1)"
+                    type="button"
+                    class="absolute left-0 top-1/2 z-10 -translate-x-3 -translate-y-1/2 rounded-full border border-slate-200 bg-white p-2 shadow-md transition hover:bg-slate-50"
+                >
+                    <svg class="h-4 w-4 text-slate-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+                </button>
+                <button
+                    x-show="canScrollRight"
+                    x-on:click="scrollBy(1)"
+                    type="button"
+                    class="absolute right-0 top-1/2 z-10 translate-x-3 -translate-y-1/2 rounded-full border border-slate-200 bg-white p-2 shadow-md transition hover:bg-slate-50"
+                >
+                    <svg class="h-4 w-4 text-slate-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                </button>
             </div>
         @else
             <p class="text-sm text-slate-400">No {{ $type === 'artist' ? 'artists' : 'brands' }} have been featured yet.</p>

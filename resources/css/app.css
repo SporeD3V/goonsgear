@@ -40,3 +40,13 @@
 .lightbox-media-animate {
     animation: lightbox-media-fade 150ms ease-out;
 }
+
+/* Hide scrollbar but keep scroll functionality */
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}

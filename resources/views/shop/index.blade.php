@@ -15,16 +15,13 @@
         @if (! $showCatalog)
             {{-- Hero section --}}
             <section class="relative flex min-h-screen items-center overflow-hidden bg-slate-900">
-                <picture>
-                    <source srcset="{{ asset('images/hero-goonsgear.avif') }}" type="image/avif">
-                    <img
-                        src="{{ asset('images/hero-goonsgear.jpg') }}"
-                        alt="SnowGoons Gear"
-                        class="absolute inset-0 h-full w-full object-cover"
-                        width="1920"
-                        height="1080"
-                    >
-                </picture>
+                <img
+                    src="{{ asset('images/hero-goonsgear.jpg') }}"
+                    alt="SnowGoons Gear"
+                    class="absolute inset-0 h-full w-full object-cover"
+                    width="1920"
+                    height="1080"
+                >
                 <div class="absolute inset-0 bg-black/50"></div>
                 <div class="relative z-10 mx-auto w-full max-w-6xl px-6 py-16 lg:py-24">
                     <div class="max-w-xl">
