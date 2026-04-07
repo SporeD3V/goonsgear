@@ -137,7 +137,7 @@
                     x-on:touchstart.passive="start($event)"
                     x-on:touchmove="move($event)"
                     x-on:touchend="stop()"
-                    class="no-scrollbar flex gap-4 overflow-x-auto select-none"
+                    class="no-scrollbar flex gap-6 overflow-x-auto select-none"
                     style="cursor: grab; -webkit-overflow-scrolling: touch; scroll-behavior: smooth;"
                 >
                     @foreach ($carouselTags as $tag)
@@ -147,15 +147,15 @@
                             class="group flex shrink-0 flex-col items-center gap-2"
                             draggable="false"
                         >
-                            <div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white p-2 transition group-hover:border-slate-500 sm:h-24 sm:w-24">
+                            <div class="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white p-3 transition group-hover:border-slate-500 sm:h-32 sm:w-32">
                                 <img
                                     src="{{ route('media.show', ['path' => $tag->logo_path]) }}"
                                     alt="{{ $tag->name }}"
-                                    class="max-h-full max-w-full object-contain"
+                                    class="max-h-full max-w-full object-contain grayscale transition duration-300 group-hover:grayscale-0"
                                     draggable="false"
                                 >
                             </div>
-                            <span class="max-w-[6rem] text-center text-xs font-medium text-slate-700 group-hover:text-slate-900">{{ $tag->name }}</span>
+                            <span class="max-w-[8rem] text-center text-xs font-medium text-slate-700 group-hover:text-slate-900">{{ $tag->name }}</span>
                         </a>
                     @endforeach
                 </div>
