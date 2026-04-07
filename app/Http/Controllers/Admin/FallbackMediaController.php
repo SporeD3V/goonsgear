@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -180,6 +181,8 @@ class FallbackMediaController extends Controller
 
         Storage::disk('public')->delete($fallbackPath);
 
+        Cache::forget('admin:fallback-media:files');
+
         Log::warning('Fallback media deleted from admin maintenance page.', [
             'fallback_path' => $fallbackPath,
         ]);
@@ -285,6 +288,8 @@ class FallbackMediaController extends Controller
             'preferred_format' => $preferredFormat,
         ]);
 
+        Cache::forget('admin:fallback-media:files');
+
         return redirect()
             ->back()
             ->with('status', 'Fallback image reconverted and applied successfully.');
@@ -295,32 +300,33 @@ class FallbackMediaController extends Controller
      */
     private function collectFallbackFiles(): Collection
     {
-        $files = collect(Storage::disk('public')->allFiles('products'));
+        return Cache::remember('admin:fallback-media:files', 300, function (): Collection {
+            $allFiles = collect(Storage::disk('public')->allFiles('products'));
+            $allPathsSet = $allFiles->flip();
 
-        return $files
-            ->filter(fn (string $path): bool => str_contains($path, '/fallback/'))
-            ->map(function (string $path): array {
-                $pathWithoutExtension = pathinfo($path, PATHINFO_DIRNAME).'/'.pathinfo($path, PATHINFO_FILENAME);
-                $galleryPathWithoutExtension = str_replace('/fallback/', '/gallery/', $pathWithoutExtension);
-                $optimizedVariants = [];
+            return $allFiles
+                ->filter(fn (string $path): bool => str_contains($path, '/fallback/'))
+                ->map(function (string $path) use ($allPathsSet): array {
+                    $pathWithoutExtension = pathinfo($path, PATHINFO_DIRNAME).'/'.pathinfo($path, PATHINFO_FILENAME);
+                    $galleryPathWithoutExtension = str_replace('/fallback/', '/gallery/', $pathWithoutExtension);
+                    $optimizedVariants = [];
 
-                foreach (['webp', 'avif'] as $optimizedExtension) {
-                    $optimizedRelativePath = $galleryPathWithoutExtension.'.'.$optimizedExtension;
-
-                    if (Storage::disk('public')->exists($optimizedRelativePath)) {
-                        $optimizedVariants[] = $optimizedExtension;
+                    foreach (['webp', 'avif'] as $ext) {
+                        if ($allPathsSet->has($galleryPathWithoutExtension.'.'.$ext)) {
+                            $optimizedVariants[] = $ext;
+                        }
                     }
-                }
 
-                return [
-                    'relative_path' => $path,
-                    'product_slug' => (string) ($this->extractProductSlug($path) ?? ''),
-                    'filename' => basename($path),
-                    'path_without_extension' => $pathWithoutExtension,
-                    'optimized_variants' => $optimizedVariants,
-                ];
-            })
-            ->values();
+                    return [
+                        'relative_path' => $path,
+                        'product_slug' => (string) ($this->extractProductSlug($path) ?? ''),
+                        'filename' => basename($path),
+                        'path_without_extension' => $pathWithoutExtension,
+                        'optimized_variants' => $optimizedVariants,
+                    ];
+                })
+                ->values();
+        });
     }
 
     private function isValidFallbackPath(string $path): bool
