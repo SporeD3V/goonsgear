@@ -240,8 +240,6 @@ class TagController extends Controller
 
             $destImage = @imagecreatetruecolor($width, $height);
             if ($destImage === false) {
-                @imagedestroy($srcImage);
-
                 return false;
             }
 
@@ -252,7 +250,6 @@ class TagController extends Controller
             if ($tempImage !== false) {
                 @imagecopyresampled($tempImage, $srcImage, 0, 0, 0, 0, $newW, $newH, $srcW, $srcH);
                 @imagecopy($destImage, $tempImage, 0, 0, $cropX, $cropY, $width, $height);
-                @imagedestroy($tempImage);
             }
 
             $saved = match ($format) {
@@ -260,9 +257,6 @@ class TagController extends Controller
                 'webp' => @imagewebp($destImage, $absoluteTargetPath, 82),
                 default => false,
             };
-
-            @imagedestroy($srcImage);
-            @imagedestroy($destImage);
 
             return $saved && is_file($absoluteTargetPath);
         } catch (Throwable $exception) {

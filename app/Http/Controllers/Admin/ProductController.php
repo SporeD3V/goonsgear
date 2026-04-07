@@ -627,8 +627,6 @@ class ProductController extends Controller
                 default => false,
             };
 
-            @imagedestroy($imageResource);
-
             return $saved && is_file($absoluteTargetPath);
         } catch (Throwable $exception) {
             Log::warning('Media conversion failed, using fallback/original media.', [
@@ -795,7 +793,6 @@ class ProductController extends Controller
             if ($tempImage !== false) {
                 @imagecopyresampled($tempImage, $sourceImage, 0, 0, 0, 0, $newWidth, $newHeight, $srcWidth, $srcHeight);
                 @imagecopy($destImage, $tempImage, 0, 0, $cropX, $cropY, $variantWidth, $variantHeight);
-                @imagedestroy($tempImage);
             }
 
             if (function_exists('imageavif')) {
@@ -807,10 +804,7 @@ class ProductController extends Controller
                 $absoluteVariantPath = storage_path('app/public/'.$mediaDirectory.'/'.$variantFilename);
                 @imagewebp($destImage, $absoluteVariantPath, 82);
             }
-            @imagedestroy($destImage);
         }
-
-        @imagedestroy($sourceImage);
     }
 
     /**
