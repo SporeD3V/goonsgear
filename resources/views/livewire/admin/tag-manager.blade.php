@@ -407,9 +407,9 @@ new class extends Component
                 <tr>
                     <th class="border border-slate-200 px-3 py-2 text-left">Name</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Type</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Slug</th>
-                    <th class="border border-slate-200 px-3 py-2 text-center">Followers</th>
-                    <th class="border border-slate-200 px-3 py-2 text-center">Active Products</th>
+                    <th class="hidden border border-slate-200 px-3 py-2 text-left lg:table-cell">Slug</th>
+                    <th class="hidden border border-slate-200 px-3 py-2 text-center lg:table-cell">Followers</th>
+                    <th class="hidden border border-slate-200 px-3 py-2 text-center lg:table-cell">Active Products</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Status</th>
                     <th class="border border-slate-200 px-3 py-2 text-right">Actions</th>
                 </tr>
@@ -419,9 +419,9 @@ new class extends Component
                     <tr wire:key="tag-{{ $tag->id }}" class="hover:bg-slate-50">
                         <td class="border border-slate-200 px-3 py-2">{{ $tag->name }}</td>
                         <td class="border border-slate-200 px-3 py-2">{{ ucfirst($tag->type) }}</td>
-                        <td class="border border-slate-200 px-3 py-2">{{ $tag->slug }}</td>
-                        <td class="border border-slate-200 px-3 py-2 text-center">{{ $tag->followers_count }}</td>
-                        <td class="border border-slate-200 px-3 py-2 text-center">{{ $tag->active_products_count }}</td>
+                        <td class="hidden border border-slate-200 px-3 py-2 lg:table-cell">{{ $tag->slug }}</td>
+                        <td class="hidden border border-slate-200 px-3 py-2 text-center lg:table-cell">{{ $tag->followers_count }}</td>
+                        <td class="hidden border border-slate-200 px-3 py-2 text-center lg:table-cell">{{ $tag->active_products_count }}</td>
                         <td class="border border-slate-200 px-3 py-2">
                             <button wire:click="toggleActive({{ $tag->id }})" class="text-xs font-medium">
                                 @if ($tag->is_active)

@@ -110,8 +110,8 @@ new class extends Component
                 <tr>
                     <th class="border border-slate-200 px-3 py-2 text-left">Order</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Customer</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Payment</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Items</th>
+                    <th class="hidden border border-slate-200 px-3 py-2 text-left lg:table-cell">Payment</th>
+                    <th class="hidden border border-slate-200 px-3 py-2 text-left lg:table-cell">Items</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Total</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Placed</th>
                     <th class="border border-slate-200 px-3 py-2 text-right">Actions</th>
@@ -128,11 +128,11 @@ new class extends Component
                             <div>{{ $order->first_name }} {{ $order->last_name }}</div>
                             <div class="text-xs text-slate-500">{{ $order->email }}</div>
                         </td>
-                        <td class="border border-slate-200 px-3 py-2">
+                        <td class="hidden border border-slate-200 px-3 py-2 lg:table-cell">
                             <div>{{ ucfirst($order->payment_method) }}</div>
                             <div class="text-xs text-slate-500">{{ ucfirst($order->payment_status) }}</div>
                         </td>
-                        <td class="border border-slate-200 px-3 py-2">{{ $order->items_count }}</td>
+                        <td class="hidden border border-slate-200 px-3 py-2 lg:table-cell">{{ $order->items_count }}</td>
                         <td class="border border-slate-200 px-3 py-2">${{ number_format((float) $order->total, 2) }}</td>
                         <td class="border border-slate-200 px-3 py-2">{{ optional($order->placed_at)->format('Y-m-d H:i') ?? '-' }}</td>
                         <td class="border border-slate-200 px-3 py-2 text-right">

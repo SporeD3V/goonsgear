@@ -32,6 +32,8 @@ new class extends Component
     /** @var array<int, int> */
     public array $quantities = [];
 
+    public string $variantSearch = '';
+
     public function updatedSearch(): void
     {
         $this->resetPage();
@@ -174,6 +176,7 @@ new class extends Component
         $this->is_active = true;
         $this->selectedVariants = [];
         $this->quantities = [];
+        $this->variantSearch = '';
         $this->resetValidation();
     }
 
@@ -194,17 +197,55 @@ new class extends Component
     #[Computed]
     public function variantOptions(): array
     {
-        return ProductVariant::query()
+        $selectedIds = collect($this->selectedVariants)
+            ->filter(fn (bool $selected): bool => $selected)
+            ->keys()
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->values()
+            ->all();
+
+        $query = ProductVariant::query()
             ->with('product:id,name')
             ->where('is_active', true)
             ->orderBy('product_id')
             ->orderBy('position')
-            ->orderBy('id')
-            ->get(['id', 'product_id', 'name', 'sku'])
+            ->orderBy('id');
+
+        if ($this->variantSearch !== '') {
+            $search = $this->variantSearch;
+            $query->where(function ($q) use ($search): void {
+                $q->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('sku', 'like', '%' . $search . '%')
+                    ->orWhereHas('product', fn ($pq) => $pq->where('name', 'like', '%' . $search . '%'));
+            });
+        }
+
+        $searchResults = $query->limit(50)
+            ->get(['id', 'product_id', 'name', 'sku']);
+
+        if ($selectedIds !== []) {
+            $alreadyFoundIds = $searchResults->pluck('id')->all();
+            $missingSelectedIds = array_diff($selectedIds, $alreadyFoundIds);
+
+            if ($missingSelectedIds !== []) {
+                $selectedVariants = ProductVariant::query()
+                    ->with('product:id,name')
+                    ->whereIn('id', $missingSelectedIds)
+                    ->get(['id', 'product_id', 'name', 'sku']);
+
+                $searchResults = $selectedVariants->merge($searchResults);
+            }
+        }
+
+        return $searchResults
             ->map(fn (ProductVariant $variant): array => [
                 'id' => (int) $variant->id,
                 'label' => trim((string) $variant->product?->name) . ' - ' . $variant->name . ' (' . $variant->sku . ')',
+                'selected' => in_array((int) $variant->id, $selectedIds, true),
             ])
+            ->sortByDesc('selected')
+            ->values()
             ->all();
     }
 }; ?>
@@ -354,9 +395,16 @@ new class extends Component
                     {{-- Variant requirements --}}
                     <div class="rounded border border-slate-200 p-4">
                         <p class="mb-2 text-sm font-medium text-slate-900">Variant requirements</p>
-                        <p class="mb-3 text-xs text-slate-500">Select one or more variants and set minimum quantities required for this bundle.</p>
+                        <p class="mb-3 text-xs text-slate-500">Search and select variants required for this bundle. Set minimum quantities per variant.</p>
 
                         @error('selectedVariants') <p class="mb-2 text-xs text-red-600">{{ $message }}</p> @enderror
+
+                        <input
+                            wire:model.live.debounce.300ms="variantSearch"
+                            type="text"
+                            placeholder="Search by product name, variant, or SKU…"
+                            class="mb-3 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                        >
 
                         <div class="max-h-72 overflow-auto border border-slate-200">
                             <table class="min-w-full text-sm">

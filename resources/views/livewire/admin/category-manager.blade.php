@@ -34,6 +34,18 @@ new class extends Component
         $this->resetPage();
     }
 
+    public function updatedName(string $value): void
+    {
+        if (! $this->editingId) {
+            $this->slug = str($value)->slug()->toString();
+        }
+    }
+
+    public function updatedParentId(mixed $value): void
+    {
+        $this->parent_id = $value !== '' && $value !== null ? (int) $value : null;
+    }
+
     public function sortBy(string $field): void
     {
         if ($this->sortField === $field) {
@@ -312,7 +324,7 @@ new class extends Component
                     <div class="grid gap-4 md:grid-cols-2">
                         <div>
                             <label class="mb-1 block text-sm font-medium">Name</label>
-                            <input type="text" wire:model="name" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" maxlength="255">
+                            <input type="text" wire:model.live.debounce.300ms="name" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" maxlength="255">
                             @error('name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                         <div>

@@ -368,8 +368,8 @@ new class extends Component
                     <th class="border border-slate-200 px-3 py-2 text-left">Code</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Type</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Value</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Rules</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Usage</th>
+                    <th class="hidden border border-slate-200 px-3 py-2 text-left lg:table-cell">Rules</th>
+                    <th class="hidden border border-slate-200 px-3 py-2 text-left lg:table-cell">Usage</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Status</th>
                     <th class="border border-slate-200 px-3 py-2 text-right">Actions</th>
                 </tr>
@@ -391,7 +391,7 @@ new class extends Component
                                 ${{ number_format((float) $coupon->value, 2) }}
                             @endif
                         </td>
-                        <td class="border border-slate-200 px-3 py-2 text-xs text-slate-600">
+                        <td class="hidden border border-slate-200 px-3 py-2 text-xs text-slate-600 lg:table-cell">
                             @if ($coupon->is_stackable)
                                 <span class="rounded bg-blue-100 px-1.5 py-0.5 text-blue-700">Stackable</span>
                             @endif
@@ -405,7 +405,7 @@ new class extends Component
                                 <span class="rounded bg-purple-100 px-1.5 py-0.5 text-purple-700">Personal</span>
                             @endif
                         </td>
-                        <td class="border border-slate-200 px-3 py-2">{{ $coupon->used_count }} / {{ $coupon->usage_limit ?? '∞' }}</td>
+                        <td class="hidden border border-slate-200 px-3 py-2 lg:table-cell">{{ $coupon->used_count }} / {{ $coupon->usage_limit ?? '∞' }}</td>
                         <td class="border border-slate-200 px-3 py-2">
                             <span class="rounded px-1.5 py-0.5 text-xs {{ $coupon->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700' }}">
                                 {{ $coupon->is_active ? 'Active' : 'Inactive' }}

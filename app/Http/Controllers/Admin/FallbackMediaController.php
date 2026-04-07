@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductMedia;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -76,7 +77,7 @@ class FallbackMediaController extends Controller
                 'filename' => $fallbackFile['filename'],
                 'product' => $product,
                 'product_slug' => $fallbackFile['product_slug'],
-                'fallback_url' => route('media.show', ['path' => $fallbackFile['relative_path']]),
+                'fallback_url' => Storage::disk('public')->url($fallbackFile['relative_path']),
                 'optimized_variants' => $fallbackFile['optimized_variants'],
                 'has_optimized' => $fallbackFile['optimized_variants'] !== [],
                 'uses_webp' => $matchingMedia->contains(fn (ProductMedia $media): bool => str_ends_with($media->path, '.webp')),
@@ -139,8 +140,19 @@ class FallbackMediaController extends Controller
             fn (array $entry): string => $entry['filename'],
         ])->values();
 
+        $page = $request->integer('page', 1);
+        $perPage = 25;
+
+        $paginated = new LengthAwarePaginator(
+            $entries->forPage($page, $perPage)->values(),
+            $entries->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->except('page')]
+        );
+
         return view('admin.maintenance.fallback-media', [
-            'entries' => $entries,
+            'entries' => $paginated,
             'filters' => [
                 'search' => $search,
                 'optimization' => in_array($optimization, ['all', 'missing', 'present'], true) ? $optimization : 'all',

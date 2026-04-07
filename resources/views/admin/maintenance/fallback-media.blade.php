@@ -50,7 +50,7 @@
         <div class="md:col-span-5 flex items-center gap-2">
             <button type="submit" class="rounded bg-slate-700 px-3 py-2 text-xs text-white hover:bg-slate-800">Apply Filters</button>
             <a href="{{ route('admin.maintenance.fallback-media.index') }}" class="rounded border border-slate-300 px-3 py-2 text-xs text-slate-700 hover:bg-white">Reset</a>
-            <span class="text-xs text-slate-500">Showing {{ $entries->count() }} result(s)</span>
+            <span class="text-xs text-slate-500">Showing {{ $entries->firstItem() ?? 0 }}–{{ $entries->lastItem() ?? 0 }} of {{ $entries->total() }} result(s)</span>
         </div>
     </form>
 
@@ -73,7 +73,7 @@
                         <tr>
                             <td class="border border-slate-200 px-3 py-2 align-top">
                                 <div class="flex items-start gap-3">
-                                    <img src="{{ $entry['fallback_url'] }}" alt="{{ $entry['filename'] }}" class="h-14 w-14 rounded border border-slate-200 object-cover">
+                                    <img src="{{ $entry['fallback_url'] }}" alt="{{ $entry['filename'] }}" loading="lazy" class="h-14 w-14 rounded border border-slate-200 object-cover" onerror="this.onerror=null;this.src='';this.classList.add('bg-slate-100');this.alt='Image not found';this.title='Could not load: '+this.alt;">
                                     <div>
                                         <p class="font-medium text-slate-800">{{ $entry['filename'] }}</p>
                                         <p class="text-xs text-slate-500">{{ $entry['fallback_path'] }}</p>
@@ -127,6 +127,10 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>
+
+        <div class="mt-4">
+            {{ $entries->links() }}
         </div>
     @endif
 @endsection

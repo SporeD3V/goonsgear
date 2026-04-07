@@ -311,13 +311,13 @@ new class extends Component
                 <tr>
                     <th class="border border-slate-200 px-3 py-2 text-left">Image</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Name</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Slug</th>
+                    <th class="hidden border border-slate-200 px-3 py-2 text-left lg:table-cell">Slug</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Status</th>
-                    <th class="border border-slate-200 px-3 py-2 text-center">Featured</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Primary Category</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Variants</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Media</th>
-                    <th class="border border-slate-200 px-3 py-2 text-center" title="Stock alert subscriptions">Stock Alerts</th>
+                    <th class="hidden border border-slate-200 px-3 py-2 text-center lg:table-cell">Featured</th>
+                    <th class="hidden border border-slate-200 px-3 py-2 text-left lg:table-cell">Primary Category</th>
+                    <th class="hidden border border-slate-200 px-3 py-2 text-left xl:table-cell">Variants</th>
+                    <th class="hidden border border-slate-200 px-3 py-2 text-left xl:table-cell">Media</th>
+                    <th class="hidden border border-slate-200 px-3 py-2 text-center xl:table-cell" title="Stock alert subscriptions">Stock Alerts</th>
                     <th class="border border-slate-200 px-3 py-2 text-right">Actions</th>
                 </tr>
             </thead>
@@ -414,7 +414,7 @@ new class extends Component
                         </td>
 
                         {{-- Slug (inline editable) --}}
-                        <td class="border border-slate-200 px-3 py-2">
+                        <td class="hidden border border-slate-200 px-3 py-2 lg:table-cell">
                             <div x-show="editingField !== 'slug'" class="group/cell flex items-center gap-1">
                                 <span x-text="slug" class="cursor-pointer font-mono text-xs hover:underline" @click="startEdit('slug')">{{ $product->slug }}</span>
                                 <button @click="startEdit('slug')" class="invisible text-slate-400 hover:text-slate-600 group-hover/cell:visible" title="Edit">
@@ -467,7 +467,7 @@ new class extends Component
                         </td>
 
                         {{-- Featured (checkbox, live update) --}}
-                        <td class="border border-slate-200 px-3 py-2 text-center">
+                        <td class="hidden border border-slate-200 px-3 py-2 text-center lg:table-cell">
                             <div class="flex items-center justify-center gap-1">
                                 <input type="checkbox" :checked="isFeatured" @change="saveField('is_featured', $event.target.checked)" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" :disabled="saving">
                                 <button x-show="history.includes('is_featured')" @click="revertField('is_featured')" class="text-amber-500 hover:text-amber-700" title="Undo last change" x-cloak>
@@ -476,10 +476,10 @@ new class extends Component
                             </div>
                         </td>
 
-                        <td class="border border-slate-200 px-3 py-2">{{ $product->primaryCategory?->name ?? '-' }}</td>
-                        <td class="border border-slate-200 px-3 py-2">{{ $product->variants_count }}</td>
-                        <td class="border border-slate-200 px-3 py-2">{{ $product->media_count }}</td>
-                        <td class="border border-slate-200 px-3 py-2 text-center">
+                        <td class="hidden border border-slate-200 px-3 py-2 lg:table-cell">{{ $product->primaryCategory?->name ?? '-' }}</td>
+                        <td class="hidden border border-slate-200 px-3 py-2 xl:table-cell">{{ $product->variants_count }}</td>
+                        <td class="hidden border border-slate-200 px-3 py-2 xl:table-cell">{{ $product->media_count }}</td>
+                        <td class="hidden border border-slate-200 px-3 py-2 text-center xl:table-cell">
                             @if ($product->active_stock_alert_subscriptions_count > 0)
                                 <a href="{{ route('admin.products.stock-alerts', $product) }}" class="inline-block rounded bg-amber-100 px-2 py-1 text-amber-700 hover:bg-amber-200">
                                     {{ $product->active_stock_alert_subscriptions_count }}
