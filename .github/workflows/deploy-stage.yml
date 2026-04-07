@@ -138,15 +138,16 @@ jobs:
         run: |
           set -euo pipefail
 
-          sshpass -e ssh -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" "
-            set -eu
-            test -d '${{ secrets.REMOTE_PATH }}'
-            touch '${{ secrets.REMOTE_PATH }}/.deploy-write-test'
-            rm -f '${{ secrets.REMOTE_PATH }}/.deploy-write-test'
-            mkdir -p '${{ secrets.REMOTE_PATH }}/bootstrap/cache' '${{ secrets.REMOTE_PATH }}/storage'
-            find '${{ secrets.REMOTE_PATH }}/bootstrap/cache' -maxdepth 1 -type f -name '*.php' -delete || true
-            chmod -R ug+rwX '${{ secrets.REMOTE_PATH }}/storage' '${{ secrets.REMOTE_PATH }}/bootstrap/cache' || true
-          "
+          sshpass -e ssh -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" bash -s -- '${{ secrets.REMOTE_PATH }}' <<'REMOTE_SCRIPT'
+          set -eu
+          REMOTE_PATH="$1"
+          test -d "$REMOTE_PATH"
+          touch "$REMOTE_PATH/.deploy-write-test"
+          rm -f "$REMOTE_PATH/.deploy-write-test"
+          mkdir -p "$REMOTE_PATH/bootstrap/cache" "$REMOTE_PATH/storage"
+          find "$REMOTE_PATH/bootstrap/cache" -maxdepth 1 -type f -name '*.php' -delete || true
+          chmod -R ug+rwX "$REMOTE_PATH/storage" "$REMOTE_PATH/bootstrap/cache" || true
+          REMOTE_SCRIPT
 
       - name: Deploy to staging via rsync
         env:
@@ -155,7 +156,7 @@ jobs:
           set -euo pipefail
 
           export RSYNC_RSH="sshpass -e ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=yes"
-          rsync -az --delete --delete-delay --stats \
+          rsync -rltz --delete --force --omit-dir-times --stats \
             --exclude='.env' \
             --exclude='storage/' \
             --exclude='bootstrap/cache/' \
@@ -167,70 +168,71 @@ jobs:
         run: |
           set -euo pipefail
 
-          sshpass -e ssh -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" "
-            set -eu
-            cd '${{ secrets.REMOTE_PATH }}'
+          sshpass -e ssh -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" bash -s -- '${{ secrets.REMOTE_PATH }}' <<'REMOTE_SCRIPT'
+          set -eu
+          REMOTE_PATH="$1"
+          cd "$REMOTE_PATH"
 
-            echo '=== Post-deploy checks ==='
+          echo '=== Post-deploy checks ==='
 
-            echo '--- Fixing permissions ---'
-            find storage bootstrap/cache -type d -exec chmod 770 {} + 2>/dev/null || true
-            find storage bootstrap/cache -type f -exec chmod 660 {} + 2>/dev/null || true
+          echo '--- Fixing permissions ---'
+          find storage bootstrap/cache -type d -exec chmod 770 {} + 2>/dev/null || true
+          find storage bootstrap/cache -type f -exec chmod 660 {} + 2>/dev/null || true
 
-            echo '--- PHP version ---'
-            php -v | head -n 1
+          echo '--- PHP version ---'
+          php -v | head -n 1
 
-            if [ ! -f artisan ]; then
-              echo 'FAIL: artisan not found after deploy'
-              exit 1
-            fi
+          if [ ! -f artisan ]; then
+            echo 'FAIL: artisan not found after deploy'
+            exit 1
+          fi
 
-            echo '--- Laravel version ---'
-            php artisan --version
+          echo '--- Laravel version ---'
+          php artisan --version
 
-            echo '--- Release marker ---'
-            if [ ! -f public/release.json ]; then
-              echo 'FAIL: public/release.json not found after deploy'
-              exit 1
-            fi
-            cat public/release.json
+          echo '--- Release marker ---'
+          if [ ! -f public/release.json ]; then
+            echo 'FAIL: public/release.json not found after deploy'
+            exit 1
+          fi
+          cat public/release.json
 
-            echo '--- Environment ---'
-            ABOUT_OUTPUT=\$(php artisan about --only=environment 2>/dev/null || php artisan about 2>/dev/null)
-            echo "\$ABOUT_OUTPUT"
-            if echo "\$ABOUT_OUTPUT" | grep -Eq 'Debug Mode[ .]*ENABLED'; then
-              echo 'FAIL: APP_DEBUG must be disabled on staging.'
-              exit 1
-            fi
+          echo '--- Environment ---'
+          ABOUT_OUTPUT=$(php artisan about --only=environment 2>/dev/null || php artisan about 2>/dev/null)
+          echo "$ABOUT_OUTPUT"
+          if echo "$ABOUT_OUTPUT" | grep -Eq 'Debug Mode[ .]*ENABLED'; then
+            echo 'FAIL: APP_DEBUG must be disabled on staging.'
+            exit 1
+          fi
 
-            echo '--- Pending migrations ---'
-            PENDING=\$(php artisan migrate:status --no-interaction 2>&1 | grep -c 'Pending' || true)
-            echo "Pending migrations: \${PENDING}"
+          echo '--- Pending migrations ---'
+          PENDING=$(php artisan migrate:status --no-interaction 2>&1 | grep -c 'Pending' || true)
+          echo "Pending migrations: ${PENDING}"
 
-            echo '--- Running migrations ---'
-            php artisan migrate --force --no-interaction
+          echo '--- Running migrations ---'
+          php artisan migrate --force --no-interaction
 
-            echo '--- Verifying no pending migrations ---'
-            REMAINING=\$(php artisan migrate:status --no-interaction 2>&1 | grep -c 'Pending' || true)
-            if [ "\$REMAINING" -gt 0 ]; then
-              echo "FAIL: \${REMAINING} migration(s) still pending after migrate. Aborting deploy."
-              php artisan migrate:status --no-interaction
-              exit 1
-            fi
-            echo 'All migrations applied successfully.'
+          echo '--- Verifying no pending migrations ---'
+          REMAINING=$(php artisan migrate:status --no-interaction 2>&1 | grep -c 'Pending' || true)
+          if [ "$REMAINING" -gt 0 ]; then
+            echo "FAIL: ${REMAINING} migration(s) still pending after migrate. Aborting deploy."
+            php artisan migrate:status --no-interaction
+            exit 1
+          fi
+          echo 'All migrations applied successfully.'
 
-            echo '--- Clearing caches ---'
-            php artisan optimize:clear --no-interaction
+          echo '--- Clearing caches ---'
+          php artisan optimize:clear --no-interaction
 
-            echo '--- Storage link ---'
-            php artisan storage:link --force --no-interaction 2>/dev/null || true
+          echo '--- Storage link ---'
+          php artisan storage:link --force --no-interaction 2>/dev/null || true
 
-            echo '--- Rebuilding caches ---'
-            php artisan optimize --no-interaction
+          echo '--- Rebuilding caches ---'
+          php artisan optimize --no-interaction
 
-            echo
-            echo '=== Deploy OK ==='
-          "
+          echo
+          echo '=== Deploy OK ==='
+          REMOTE_SCRIPT
 
       - name: Smoke test staging
         run: |
@@ -252,21 +254,13 @@ jobs:
             exit 1
           }
 
-          python - <<'PY'
-          import json
-          import os
-          import urllib.request
-
-          with urllib.request.urlopen(os.environ['STAGING_URL'] + '/release.json') as response:
-              release = json.load(response)
-
-          if release.get('commit') != os.environ['GITHUB_SHA']:
-              raise SystemExit(
-                  f"release marker commit {release.get('commit')} does not match {os.environ['GITHUB_SHA']}"
-              )
-
-          print(release)
-          PY
+          RELEASE_JSON=$(curl -fsS "${STAGING_URL}/release.json")
+          echo "$RELEASE_JSON"
+          RELEASE_COMMIT=$(echo "$RELEASE_JSON" | grep -o '"commit" *: *"[^"]*"' | cut -d'"' -f4)
+          if [ "$RELEASE_COMMIT" != "$GITHUB_SHA" ]; then
+            echo "FAIL: release marker commit ${RELEASE_COMMIT} does not match ${GITHUB_SHA}"
+            exit 1
+          fi
 
       - name: Deployment summary
         run: |
