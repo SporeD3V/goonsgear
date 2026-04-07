@@ -13,36 +13,6 @@ parameters:
 			path: app/Console/Commands/SendAbandonedCartReminders.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$min_quantity\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/BundleDiscountController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/BundleDiscountController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$product_variant_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Admin/BundleDiscountController.php
-
-		-
-			message: '#^Offset int\<1, max\> on array\<string, mixed\> on left side of \?\? does not exist\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Http/Controllers/Admin/BundleDiscountController.php
-
-		-
-			message: '#^Strict comparison using \!\=\= between mixed and null will always evaluate to true\.$#'
-			identifier: notIdentical.alwaysTrue
-			count: 1
-			path: app/Http/Controllers/Admin/CouponController.php
-
-		-
 			message: '#^Instanceof between App\\Models\\ProductMedia and App\\Models\\ProductMedia will always evaluate to true\.$#'
 			identifier: instanceof.alwaysTrue
 			count: 1
