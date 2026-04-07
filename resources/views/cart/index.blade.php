@@ -134,7 +134,7 @@
                                 <tr>
                                     <td class="border-b border-slate-200 px-3 py-3 align-top">
                                         <div class="flex gap-3">
-                                            @if ($item['image'])
+                                            @if ($item['image'] ?? null)
                                                 <img src="{{ $item['image'] }}" alt="{{ $item['product_name'] }}" class="h-16 w-16 rounded object-cover">
                                             @else
                                                 <img src="{{ asset('images/placeholder-product.svg') }}" alt="No image available" class="h-16 w-16 rounded object-cover">

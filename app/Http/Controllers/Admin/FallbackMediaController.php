@@ -38,63 +38,15 @@ class FallbackMediaController extends Controller
         $usage = $request->string('usage')->trim()->toString();
         $productState = $request->string('product_state')->trim()->toString();
 
-        $fallbackFiles = $this->collectFallbackFiles();
-        $productSlugs = $fallbackFiles->pluck('product_slug')->filter()->unique()->values();
+        $entries = $this->collectEnrichedEntries();
 
-        /** @var Collection<string, Product> $productsBySlug */
-        $productsBySlug = Product::query()
-            ->whereIn('slug', $productSlugs)
-            ->get(['id', 'name', 'slug'])
-            ->keyBy('slug');
-
-        /** @var Collection<int, ProductMedia> $allMedia */
-        $mediaColumns = ['id', 'product_id', 'path', 'mime_type', 'is_primary'];
-
-        if ($this->productMediaSupportsConversionMetadata()) {
-            $mediaColumns[] = 'is_converted';
-            $mediaColumns[] = 'converted_to';
-        }
-
-        $allMedia = ProductMedia::query()
-            ->whereIn('product_id', $productsBySlug->pluck('id')->values())
-            ->get($mediaColumns);
-
-        $entries = $fallbackFiles->map(function (array $fallbackFile) use ($productsBySlug, $allMedia): array {
-            $product = $productsBySlug->get($fallbackFile['product_slug']);
-            $baseGalleryPath = str_replace('/fallback/', '/gallery/', $fallbackFile['path_without_extension']);
-            $matchingMedia = collect();
-
-            if ($product instanceof Product) {
-                $matchingMedia = $allMedia->where('product_id', $product->id)
-                    ->filter(function (ProductMedia $media) use ($fallbackFile, $baseGalleryPath): bool {
-                        return $media->path === $fallbackFile['relative_path']
-                            || Str::startsWith($media->path, $baseGalleryPath.'.');
-                    })
-                    ->values();
-            }
-
-            return [
-                'fallback_path' => $fallbackFile['relative_path'],
-                'filename' => $fallbackFile['filename'],
-                'product' => $product,
-                'product_slug' => $fallbackFile['product_slug'],
-                'fallback_url' => Storage::disk('public')->url($fallbackFile['relative_path']),
-                'optimized_variants' => $fallbackFile['optimized_variants'],
-                'has_optimized' => $fallbackFile['optimized_variants'] !== [],
-                'uses_webp' => $matchingMedia->contains(fn (ProductMedia $media): bool => str_ends_with($media->path, '.webp')),
-                'uses_avif' => $matchingMedia->contains(fn (ProductMedia $media): bool => str_ends_with($media->path, '.avif')),
-                'uses_fallback' => $matchingMedia->contains(fn (ProductMedia $media): bool => $media->path === $fallbackFile['relative_path']),
-                'matching_media_count' => $matchingMedia->count(),
-                'base_gallery_path' => $baseGalleryPath,
-            ];
-        })->filter(function (array $entry) use ($search, $optimization, $usage, $productState): bool {
+        $filtered = $entries->filter(function (array $entry) use ($search, $optimization, $usage, $productState): bool {
             if ($search !== '') {
-                $productName = $entry['product'] instanceof Product ? $entry['product']->name : '';
                 $searchHaystack = strtolower(implode(' ', [
                     $entry['filename'],
                     $entry['fallback_path'],
                     $entry['product_slug'],
-                    $productName,
+                    $entry['product_name'],
                 ]));
 
                 if (! str_contains($searchHaystack, strtolower($search))) {
@@ -126,27 +78,23 @@ class FallbackMediaController extends Controller
                 return false;
             }
 
-            if ($productState === 'unknown' && $entry['product'] instanceof Product) {
+            if ($productState === 'unknown' && $entry['has_product']) {
                 return false;
             }
 
-            if ($productState === 'known' && ! ($entry['product'] instanceof Product)) {
+            if ($productState === 'known' && ! $entry['has_product']) {
                 return false;
             }
 
             return true;
-        })->sortBy([
-            fn (array $entry): int => $entry['product'] instanceof Product ? 0 : 1,
-            fn (array $entry): string => $entry['product_slug'],
-            fn (array $entry): string => $entry['filename'],
-        ])->values();
+        })->values();
 
         $page = $request->integer('page', 1);
         $perPage = 25;
 
         $paginated = new LengthAwarePaginator(
-            $entries->forPage($page, $perPage)->values(),
-            $entries->count(),
+            $filtered->forPage($page, $perPage)->values(),
+            $filtered->count(),
             $perPage,
             $page,
             ['path' => $request->url(), 'query' => $request->except('page')]
@@ -181,7 +129,7 @@ class FallbackMediaController extends Controller
 
         Storage::disk('public')->delete($fallbackPath);
 
-        Cache::forget('admin:fallback-media:files');
+        Cache::forget('admin:fallback-media:entries');
 
         Log::warning('Fallback media deleted from admin maintenance page.', [
             'fallback_path' => $fallbackPath,
@@ -288,7 +236,7 @@ class FallbackMediaController extends Controller
             'preferred_format' => $preferredFormat,
         ]);
 
-        Cache::forget('admin:fallback-media:files');
+        Cache::forget('admin:fallback-media:entries');
 
         return redirect()
             ->back()
@@ -296,15 +244,15 @@ class FallbackMediaController extends Controller
     }
 
     /**
-     * @return Collection<int, array{relative_path: string, product_slug: string, filename: string, path_without_extension: string, optimized_variants: array<int, string>}>
+     * @return Collection<int, array{fallback_path: string, filename: string, product_name: string, product_slug: string, has_product: bool, fallback_url: string, optimized_variants: array<int, string>, has_optimized: bool, uses_webp: bool, uses_avif: bool, uses_fallback: bool, matching_media_count: int, base_gallery_path: string}>
      */
-    private function collectFallbackFiles(): Collection
+    private function collectEnrichedEntries(): Collection
     {
-        return Cache::remember('admin:fallback-media:files', 300, function (): Collection {
+        return Cache::remember('admin:fallback-media:entries', 300, function (): Collection {
             $allFiles = collect(Storage::disk('public')->allFiles('products'));
             $allPathsSet = $allFiles->flip();
 
-            return $allFiles
+            $fallbackFiles = $allFiles
                 ->filter(fn (string $path): bool => str_contains($path, '/fallback/'))
                 ->map(function (string $path) use ($allPathsSet): array {
                     $pathWithoutExtension = pathinfo($path, PATHINFO_DIRNAME).'/'.pathinfo($path, PATHINFO_FILENAME);
@@ -326,6 +274,59 @@ class FallbackMediaController extends Controller
                     ];
                 })
                 ->values();
+
+            $productSlugs = $fallbackFiles->pluck('product_slug')->filter()->unique()->values();
+
+            $productsBySlug = Product::query()
+                ->whereIn('slug', $productSlugs)
+                ->get(['id', 'name', 'slug'])
+                ->keyBy('slug');
+
+            $mediaColumns = ['id', 'product_id', 'path', 'mime_type', 'is_primary'];
+
+            if ($this->productMediaSupportsConversionMetadata()) {
+                $mediaColumns[] = 'is_converted';
+                $mediaColumns[] = 'converted_to';
+            }
+
+            $allMedia = ProductMedia::query()
+                ->whereIn('product_id', $productsBySlug->pluck('id')->values())
+                ->get($mediaColumns);
+
+            return $fallbackFiles->map(function (array $fallbackFile) use ($productsBySlug, $allMedia): array {
+                $product = $productsBySlug->get($fallbackFile['product_slug']);
+                $baseGalleryPath = str_replace('/fallback/', '/gallery/', $fallbackFile['path_without_extension']);
+                $matchingMedia = collect();
+
+                if ($product instanceof Product) {
+                    $matchingMedia = $allMedia->where('product_id', $product->id)
+                        ->filter(function (ProductMedia $media) use ($fallbackFile, $baseGalleryPath): bool {
+                            return $media->path === $fallbackFile['relative_path']
+                                || Str::startsWith($media->path, $baseGalleryPath.'.');
+                        })
+                        ->values();
+                }
+
+                return [
+                    'fallback_path' => $fallbackFile['relative_path'],
+                    'filename' => $fallbackFile['filename'],
+                    'product_name' => $product instanceof Product ? $product->name : '',
+                    'product_slug' => $fallbackFile['product_slug'],
+                    'has_product' => $product instanceof Product,
+                    'fallback_url' => Storage::disk('public')->url($fallbackFile['relative_path']),
+                    'optimized_variants' => $fallbackFile['optimized_variants'],
+                    'has_optimized' => $fallbackFile['optimized_variants'] !== [],
+                    'uses_webp' => $matchingMedia->contains(fn (ProductMedia $media): bool => str_ends_with($media->path, '.webp')),
+                    'uses_avif' => $matchingMedia->contains(fn (ProductMedia $media): bool => str_ends_with($media->path, '.avif')),
+                    'uses_fallback' => $matchingMedia->contains(fn (ProductMedia $media): bool => $media->path === $fallbackFile['relative_path']),
+                    'matching_media_count' => $matchingMedia->count(),
+                    'base_gallery_path' => $baseGalleryPath,
+                ];
+            })->sortBy([
+                fn (array $entry): int => $entry['has_product'] ? 0 : 1,
+                fn (array $entry): string => $entry['product_slug'],
+                fn (array $entry): string => $entry['filename'],
+            ])->values();
         });
     }
 

@@ -81,10 +81,9 @@
                                 </div>
                             </td>
                             <td class="border border-slate-200 px-3 py-2 align-top">
-                                @if ($entry['product'])
-                                    <p class="font-medium text-slate-800">{{ $entry['product']->name }}</p>
-                                    <p class="text-xs text-slate-500">{{ $entry['product']->slug }}</p>
-                                    <a href="{{ route('admin.products.edit', $entry['product']) }}" class="text-xs text-blue-700 hover:underline">Open product</a>
+                                @if ($entry['has_product'])
+                                    <p class="font-medium text-slate-800">{{ $entry['product_name'] }}</p>
+                                    <p class="text-xs text-slate-500">{{ $entry['product_slug'] }}</p>
                                 @else
                                     <p class="font-medium text-amber-700">Unknown product</p>
                                     <p class="text-xs text-slate-500">Slug: {{ $entry['product_slug'] ?: 'n/a' }}</p>
@@ -109,7 +108,7 @@
                                     <form method="POST" action="{{ route('admin.maintenance.fallback-media.reconvert') }}">
                                         @csrf
                                         <input type="hidden" name="fallback_path" value="{{ $entry['fallback_path'] }}">
-                                        <button type="submit" class="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700" {{ $entry['product'] ? '' : 'disabled' }}>
+                                        <button type="submit" class="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700" {{ $entry['has_product'] ? '' : 'disabled' }}>
                                             Reconvert &amp; Use
                                         </button>
                                     </form>
