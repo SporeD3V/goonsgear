@@ -40,7 +40,7 @@ class ImportFullPipeline extends Command
             $total = count(self::STEPS);
             $this->info("[{$stepNumber}/{$total}] {$step['label']}...");
 
-            $arguments = [];
+            $arguments = ['--no-interaction' => true];
             if ($dryRun && in_array('--dry-run', $step['passthrough'], true)) {
                 $arguments['--dry-run'] = true;
             }

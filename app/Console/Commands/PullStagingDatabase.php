@@ -19,8 +19,8 @@ class PullStagingDatabase extends Command
 
     public function handle(): int
     {
-        if (app()->isProduction()) {
-            $this->error('This command cannot be run in production.');
+        if (! app()->environment('local')) {
+            $this->error('This command can only be run in the local environment.');
 
             return 1;
         }
@@ -29,6 +29,12 @@ class PullStagingDatabase extends Command
         $port = $this->option('port') ?: config('services.staging.ssh_port');
         $user = $this->option('user') ?: config('services.staging.ssh_user');
         $remotePath = $this->option('remote-path') ?: config('services.staging.ssh_path');
+
+        if (! $host || ! $port || ! $user || ! $remotePath) {
+            $this->error('Staging SSH credentials are not configured. Set STAGING_SSH_* in your .env file.');
+
+            return 1;
+        }
         $dumpFile = storage_path('app/staging-dump.sql.gz');
 
         $localDb = config('database.connections.mysql.database');
@@ -138,13 +144,17 @@ class PullStagingDatabase extends Command
     {
         DB::statement('SET FOREIGN_KEY_CHECKS = 0');
 
-        $tables = DB::select('SHOW TABLES');
-        $key = "Tables_in_{$database}";
+        try {
+            $tables = DB::select(
+                'SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?',
+                [$database],
+            );
 
-        foreach ($tables as $table) {
-            DB::statement("DROP TABLE IF EXISTS `{$table->{$key}}`");
+            foreach ($tables as $table) {
+                DB::statement("DROP TABLE IF EXISTS `{$table->TABLE_NAME}`");
+            }
+        } finally {
+            DB::statement('SET FOREIGN_KEY_CHECKS = 1');
         }
-
-        DB::statement('SET FOREIGN_KEY_CHECKS = 1');
     }
 }

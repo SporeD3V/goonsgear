@@ -58,10 +58,10 @@ return [
     ],
 
     'staging' => [
-        'ssh_host' => env('STAGING_SSH_HOST', '91.98.230.33'),
-        'ssh_port' => env('STAGING_SSH_PORT', '1221'),
-        'ssh_user' => env('STAGING_SSH_USER', 'spored3v'),
-        'ssh_path' => env('STAGING_SSH_PATH', '/home/macaw-goonsgear/htdocs/goonsgear.macaw.studio'),
+        'ssh_host' => env('STAGING_SSH_HOST'),
+        'ssh_port' => env('STAGING_SSH_PORT'),
+        'ssh_user' => env('STAGING_SSH_USER'),
+        'ssh_path' => env('STAGING_SSH_PATH'),
     ],
 
 ];
