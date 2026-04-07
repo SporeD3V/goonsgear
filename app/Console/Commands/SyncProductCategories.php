@@ -48,7 +48,7 @@ class SyncProductCategories extends Command
             }
 
             if (! empty($categoryIds)) {
-                $product->categories()->sync($categoryIds);
+                $product->categories()->syncWithoutDetaching($categoryIds);
                 $count++;
             }
 

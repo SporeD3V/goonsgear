@@ -52,7 +52,7 @@ class LegacyImportCommandTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_simple_product_default_variant_is_reconciled_when_mapping_is_missing(): void
+    public function test_simple_product_default_variant_is_mapped_without_updating_when_mapping_is_missing(): void
     {
         DB::connection('legacy')->table('wp_posts')->insert([
             'ID' => 101,
@@ -99,7 +99,7 @@ class LegacyImportCommandTest extends TestCase
             'track_inventory' => false,
         ]);
 
-        $this->artisan('import:legacy-data', ['--skip-cleanup' => true])->assertSuccessful();
+        $this->artisan('import:legacy-data')->assertSuccessful();
 
         $this->assertDatabaseCount('product_variants', 1);
         $this->assertDatabaseHas('import_legacy_variants', [
@@ -109,11 +109,11 @@ class LegacyImportCommandTest extends TestCase
 
         $variant->refresh();
 
-        $this->assertSame('14.95', $variant->price);
-        $this->assertSame('19.95', $variant->compare_at_price);
-        $this->assertSame(3, $variant->stock_quantity);
-        $this->assertTrue($variant->track_inventory);
-        $this->assertNull($variant->option_values);
+        // Additive import: existing variant is mapped but NOT updated
+        $this->assertSame('1.00', $variant->price);
+        $this->assertNull($variant->compare_at_price);
+        $this->assertSame(0, $variant->stock_quantity);
+        $this->assertFalse($variant->track_inventory);
     }
 
     public function test_future_legacy_preorder_date_is_imported_to_product_and_default_variant(): void
@@ -141,7 +141,7 @@ class LegacyImportCommandTest extends TestCase
             ['post_id' => 202, 'meta_key' => '_pre_order_stock_status', 'meta_value' => 'global'],
         ]);
 
-        $this->artisan('import:legacy-data', ['--skip-cleanup' => true])->assertSuccessful();
+        $this->artisan('import:legacy-data')->assertSuccessful();
 
         $product = Product::query()->where('slug', 'future-vinyl')->first();
         $this->assertNotNull($product);
@@ -202,7 +202,7 @@ class LegacyImportCommandTest extends TestCase
             ['order_item_id' => 9001, 'meta_key' => '_line_total', 'meta_value' => '39.90'],
         ]);
 
-        $this->artisan('import:legacy-data', ['--skip-cleanup' => true])->assertSuccessful();
+        $this->artisan('import:legacy-data')->assertSuccessful();
 
         $product = Product::query()->where('slug', 'recovered-price-tee')->first();
         $this->assertNotNull($product);
@@ -245,7 +245,7 @@ class LegacyImportCommandTest extends TestCase
             'email' => 'legacy@example.com',
         ]);
 
-        $this->artisan('import:legacy-data', ['--skip-cleanup' => true])->assertSuccessful();
+        $this->artisan('import:legacy-data')->assertSuccessful();
 
         $this->assertDatabaseCount('orders', 1);
         $this->assertDatabaseHas('import_legacy_orders', [
@@ -292,7 +292,7 @@ class LegacyImportCommandTest extends TestCase
             ['post_id' => 303, 'meta_key' => '_regular_price', 'meta_value' => '24.95'],
         ]);
 
-        $this->artisan('import:legacy-data', ['--skip-cleanup' => true])->assertSuccessful();
+        $this->artisan('import:legacy-data')->assertSuccessful();
 
         $mappedProduct->refresh();
         $existingNameOwner->refresh();
@@ -351,7 +351,7 @@ class LegacyImportCommandTest extends TestCase
             ['term_taxonomy_id' => 902, 'term_id' => 802, 'taxonomy' => 'pa_size', 'parent' => 0],
         ]);
 
-        $this->artisan('import:legacy-data', ['--skip-cleanup' => true])->assertSuccessful();
+        $this->artisan('import:legacy-data')->assertSuccessful();
 
         $variant = ProductVariant::query()
             ->where('sku', 'SNOW-RED-M')
@@ -452,7 +452,7 @@ class LegacyImportCommandTest extends TestCase
             ['order_item_id' => 9201, 'meta_key' => '_line_total', 'meta_value' => '59.95'],
         ]);
 
-        $this->artisan('import:legacy-data', ['--skip-cleanup' => true])->assertSuccessful();
+        $this->artisan('import:legacy-data')->assertSuccessful();
 
         $variant = ProductVariant::query()->where('sku', 'MAP-BLK-M')->first();
         $this->assertNotNull($variant);
