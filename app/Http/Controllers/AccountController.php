@@ -56,7 +56,7 @@ class AccountController extends Controller
                 $query->whereNull('coupons.ends_at')->orWhere('coupons.ends_at', '>=', now());
             })
             ->orderBy('coupons.code')
-            ->get();
+            ->get(['coupons.id', 'coupons.code', 'coupons.type', 'coupons.value', 'coupons.is_stackable', 'coupons.stack_group', 'coupons.scope_type']);
 
         $sizeProfiles = $user->sizeProfiles()
             ->orderByDesc('is_self')

@@ -10,6 +10,7 @@ use App\Observers\ProductObserver;
 use App\Observers\ProductVariantObserver;
 use App\Policies\StockAlertSubscriptionPolicy;
 use App\Policies\TagFollowPolicy;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -28,6 +29,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Model::preventLazyLoading(! app()->isProduction());
+
         Gate::policy(TagFollow::class, TagFollowPolicy::class);
         Gate::policy(StockAlertSubscription::class, StockAlertSubscriptionPolicy::class);
 
