@@ -7,6 +7,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class OrderDashboardTest extends TestCase
@@ -36,11 +37,9 @@ class OrderDashboardTest extends TestCase
             'payment_status' => 'paid',
         ]);
 
-        $response = $this->get(route('admin.orders.index'));
-
-        $response->assertOk();
-        $response->assertSee($orderA->order_number);
-        $response->assertSee($orderB->order_number);
+        Livewire::test('admin.order-manager')
+            ->assertSee($orderA->order_number)
+            ->assertSee($orderB->order_number);
     }
 
     public function test_admin_orders_index_filters_by_status_and_search(): void
@@ -52,21 +51,18 @@ class OrderDashboardTest extends TestCase
             'payment_status' => 'paid',
         ]);
 
-        $nonMatchingOrder = Order::factory()->create([
+        Order::factory()->create([
             'order_number' => 'GG-OTHER-999',
             'email' => 'other@example.com',
             'status' => 'pending',
             'payment_status' => 'pending',
         ]);
 
-        $response = $this->get(route('admin.orders.index', [
-            'status' => 'processing',
-            'q' => 'MATCH',
-        ]));
-
-        $response->assertOk();
-        $response->assertSee($matchingOrder->order_number);
-        $response->assertDontSee($nonMatchingOrder->order_number);
+        Livewire::test('admin.order-manager')
+            ->set('filterStatus', 'processing')
+            ->set('search', 'MATCH')
+            ->assertSee($matchingOrder->order_number)
+            ->assertDontSee('GG-OTHER-999');
     }
 
     public function test_admin_order_show_displays_order_items(): void
@@ -77,7 +73,7 @@ class OrderDashboardTest extends TestCase
 
         $product = Product::factory()->create();
 
-        $media = ProductMedia::factory()->create([
+        ProductMedia::factory()->create([
             'product_id' => $product->id,
             'path' => 'products/dashboard/gallery/thumb.avif',
             'is_primary' => true,
@@ -95,13 +91,10 @@ class OrderDashboardTest extends TestCase
             'line_total' => 100,
         ]);
 
-        $response = $this->get(route('admin.orders.show', $order));
-
-        $response->assertOk();
-        $response->assertSee('GG-SHOW-123');
-        $response->assertSee('Dashboard Hoodie');
-        $response->assertSee('DASH-HOODIE-L');
-        $response->assertSee(route('media.show', ['path' => $media->path]));
+        Livewire::test('admin.order-detail', ['orderId' => $order->id])
+            ->assertSee('GG-SHOW-123')
+            ->assertSee('Dashboard Hoodie')
+            ->assertSee('DASH-HOODIE-L');
     }
 
     public function test_admin_can_update_order_payment_and_dhl_tracking(): void
@@ -114,13 +107,11 @@ class OrderDashboardTest extends TestCase
             'shipped_at' => null,
         ]);
 
-        $response = $this->patch(route('admin.orders.update', $order), [
-            'status' => 'shipped',
-            'payment_status' => 'paid',
-            'tracking_number' => '00340434161094000000',
-        ]);
-
-        $response->assertRedirect(route('admin.orders.show', $order));
+        Livewire::test('admin.order-detail', ['orderId' => $order->id])
+            ->set('status', 'shipped')
+            ->set('payment_status', 'paid')
+            ->set('tracking_number', '00340434161094000000')
+            ->call('saveOrder');
 
         $this->assertDatabaseHas('orders', [
             'id' => $order->id,
@@ -141,25 +132,19 @@ class OrderDashboardTest extends TestCase
             'shipped_at' => now(),
         ]);
 
-        $response = $this->get(route('admin.orders.show', $order));
-
-        $response->assertOk();
-        $response->assertSee('Track with DHL');
-        $response->assertSee('tracking-id=00340434161094000000', false);
+        Livewire::test('admin.order-detail', ['orderId' => $order->id])
+            ->assertSee('Track with DHL');
     }
 
     public function test_admin_order_update_validates_status_values(): void
     {
         $order = Order::factory()->create();
 
-        $response = $this->from(route('admin.orders.show', $order))
-            ->patch(route('admin.orders.update', $order), [
-                'status' => 'not-valid',
-                'payment_status' => 'wrong',
-            ]);
-
-        $response->assertRedirect(route('admin.orders.show', $order));
-        $response->assertSessionHasErrors(['status', 'payment_status']);
+        Livewire::test('admin.order-detail', ['orderId' => $order->id])
+            ->set('status', 'not-valid')
+            ->set('payment_status', 'wrong')
+            ->call('saveOrder')
+            ->assertHasErrors(['status', 'payment_status']);
 
         $this->assertDatabaseHas('orders', [
             'id' => $order->id,

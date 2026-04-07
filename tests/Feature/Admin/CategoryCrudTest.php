@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Category;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class CategoryCrudTest extends TestCase
@@ -17,20 +18,17 @@ class CategoryCrudTest extends TestCase
         $this->actingAsAdmin();
     }
 
-    /**
-     * Categories can be created from the admin flow.
-     */
     public function test_admin_can_create_a_category(): void
     {
-        $response = $this->post(route('admin.categories.store'), [
-            'name' => 'Headwear',
-            'slug' => 'headwear',
-            'description' => 'Beanies and caps.',
-            'is_active' => '1',
-            'sort_order' => 1,
-        ]);
-
-        $response->assertRedirect(route('admin.categories.index'));
+        Livewire::test('admin.category-manager')
+            ->call('openCreate')
+            ->set('name', 'Headwear')
+            ->set('slug', 'headwear')
+            ->set('description', 'Beanies and caps.')
+            ->set('is_active', true)
+            ->set('sort_order', 1)
+            ->call('save')
+            ->assertSet('showModal', false);
 
         $this->assertDatabaseHas('categories', [
             'name' => 'Headwear',
@@ -40,28 +38,20 @@ class CategoryCrudTest extends TestCase
         ]);
     }
 
-    /**
-     * The form request validates required category fields.
-     */
     public function test_category_creation_requires_name_and_slug(): void
     {
         $initialCount = Category::count();
 
-        $response = $this->from(route('admin.categories.create'))
-            ->post(route('admin.categories.store'), [
-                'name' => '',
-                'slug' => '',
-            ]);
-
-        $response->assertRedirect(route('admin.categories.create'));
-        $response->assertSessionHasErrors(['name', 'slug']);
+        Livewire::test('admin.category-manager')
+            ->call('openCreate')
+            ->set('name', '')
+            ->set('slug', '')
+            ->call('save')
+            ->assertHasErrors(['name', 'slug']);
 
         $this->assertDatabaseCount('categories', $initialCount);
     }
 
-    /**
-     * Duplicate category names and slugs are rejected.
-     */
     public function test_category_creation_rejects_duplicate_name_and_slug(): void
     {
         Category::factory()->create([
@@ -69,29 +59,24 @@ class CategoryCrudTest extends TestCase
             'slug' => 'headwear',
         ]);
 
-        $response = $this->from(route('admin.categories.create'))
-            ->post(route('admin.categories.store'), [
-                'name' => 'Headwear',
-                'slug' => 'headwear',
-            ]);
-
-        $response->assertRedirect(route('admin.categories.create'));
-        $response->assertSessionHasErrors(['name', 'slug']);
+        Livewire::test('admin.category-manager')
+            ->call('openCreate')
+            ->set('name', 'Headwear')
+            ->set('slug', 'headwear')
+            ->call('save')
+            ->assertHasErrors(['name', 'slug']);
     }
 
-    /**
-     * Categories can be created with a size_type.
-     */
     public function test_admin_can_create_category_with_size_type(): void
     {
-        $response = $this->post(route('admin.categories.store'), [
-            'name' => 'Shirts',
-            'slug' => 'shirts',
-            'is_active' => '1',
-            'size_type' => 'top',
-        ]);
-
-        $response->assertRedirect(route('admin.categories.index'));
+        Livewire::test('admin.category-manager')
+            ->call('openCreate')
+            ->set('name', 'Shirts')
+            ->set('slug', 'shirts')
+            ->set('is_active', true)
+            ->set('size_type', 'top')
+            ->call('save')
+            ->assertSet('showModal', false);
 
         $this->assertDatabaseHas('categories', [
             'name' => 'Shirts',
@@ -100,19 +85,16 @@ class CategoryCrudTest extends TestCase
         ]);
     }
 
-    /**
-     * Empty size_type is stored as null.
-     */
     public function test_empty_size_type_is_stored_as_null(): void
     {
-        $response = $this->post(route('admin.categories.store'), [
-            'name' => 'Accessories',
-            'slug' => 'accessories',
-            'is_active' => '1',
-            'size_type' => '',
-        ]);
-
-        $response->assertRedirect(route('admin.categories.index'));
+        Livewire::test('admin.category-manager')
+            ->call('openCreate')
+            ->set('name', 'Accessories')
+            ->set('slug', 'accessories')
+            ->set('is_active', true)
+            ->set('size_type', '')
+            ->call('save')
+            ->assertSet('showModal', false);
 
         $this->assertDatabaseHas('categories', [
             'name' => 'Accessories',
@@ -120,9 +102,6 @@ class CategoryCrudTest extends TestCase
         ]);
     }
 
-    /**
-     * Size type can be updated on an existing category.
-     */
     public function test_admin_can_update_category_size_type(): void
     {
         $category = Category::factory()->create([
@@ -131,14 +110,11 @@ class CategoryCrudTest extends TestCase
             'size_type' => 'bottom',
         ]);
 
-        $response = $this->put(route('admin.categories.update', $category), [
-            'name' => 'Socks',
-            'slug' => 'socks',
-            'is_active' => '1',
-            'size_type' => 'shoe',
-        ]);
-
-        $response->assertRedirect(route('admin.categories.index'));
+        Livewire::test('admin.category-manager')
+            ->call('openEdit', $category->id)
+            ->set('size_type', 'shoe')
+            ->call('save')
+            ->assertSet('showModal', false);
 
         $this->assertDatabaseHas('categories', [
             'id' => $category->id,
@@ -146,19 +122,14 @@ class CategoryCrudTest extends TestCase
         ]);
     }
 
-    /**
-     * Invalid size_type values are rejected.
-     */
     public function test_invalid_size_type_is_rejected(): void
     {
-        $response = $this->from(route('admin.categories.create'))
-            ->post(route('admin.categories.store'), [
-                'name' => 'Test',
-                'slug' => 'test',
-                'size_type' => 'invalid',
-            ]);
-
-        $response->assertRedirect(route('admin.categories.create'));
-        $response->assertSessionHasErrors(['size_type']);
+        Livewire::test('admin.category-manager')
+            ->call('openCreate')
+            ->set('name', 'Test')
+            ->set('slug', 'test')
+            ->set('size_type', 'invalid')
+            ->call('save')
+            ->assertHasErrors(['size_type']);
     }
 }

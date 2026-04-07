@@ -284,4 +284,6 @@
             </tbody>
         </table>
     </div>
+
+    @include('admin.partials.edit-history', ['histories' => $editHistories])
 @endsection

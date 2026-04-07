@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Support\CartPricing;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class BundleDiscountTest extends TestCase
@@ -24,21 +25,19 @@ class BundleDiscountTest extends TestCase
 
     public function test_admin_can_create_bundle_discount(): void
     {
-        $variant = ProductVariant::factory()->create();
+        $variant = ProductVariant::factory()->create(['is_active' => true]);
 
-        $response = $this->post(route('admin.bundle-discounts.store'), [
-            'name' => 'Hoodie + Tee Set',
-            'description' => 'Discount for matching outfit set',
-            'discount_type' => BundleDiscount::TYPE_FIXED,
-            'discount_value' => 12.5,
-            'variant_ids' => [(string) $variant->id],
-            'quantities' => [
-                (string) $variant->id => 2,
-            ],
-            'is_active' => '1',
-        ]);
-
-        $response->assertRedirect(route('admin.bundle-discounts.index'));
+        Livewire::test('admin.bundle-discount-manager')
+            ->call('openCreate')
+            ->set('name', 'Hoodie + Tee Set')
+            ->set('description', 'Discount for matching outfit set')
+            ->set('discount_type', BundleDiscount::TYPE_FIXED)
+            ->set('discount_value', '12.5')
+            ->set('is_active', true)
+            ->set('selectedVariants.'.$variant->id, true)
+            ->set('quantities.'.$variant->id, 2)
+            ->call('save')
+            ->assertSet('showModal', false);
 
         $bundle = BundleDiscount::query()->where('name', 'Hoodie + Tee Set')->first();
         $this->assertNotNull($bundle);

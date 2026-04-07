@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasEditHistory;
 use Database\Factories\BundleDiscountFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,8 @@ class BundleDiscount extends Model
     public const TYPE_FIXED = 'fixed';
 
     public const TYPE_PERCENT = 'percent';
+
+    use HasEditHistory;
 
     /** @use HasFactory<BundleDiscountFactory> */
     use HasFactory;

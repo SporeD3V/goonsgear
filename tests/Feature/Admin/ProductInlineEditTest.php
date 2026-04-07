@@ -2,9 +2,10 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\EditHistory;
 use App\Models\Product;
-use App\Models\ProductEditHistory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class ProductInlineEditTest extends TestCase
@@ -22,13 +23,9 @@ class ProductInlineEditTest extends TestCase
     {
         $product = Product::factory()->create(['name' => 'Old Name']);
 
-        $response = $this->patchJson(route('admin.products.inline-update', $product), [
-            'field' => 'name',
-            'value' => 'New Name',
-        ]);
+        Livewire::test('admin.product-manager')
+            ->call('inlineUpdate', $product->id, 'name', 'New Name');
 
-        $response->assertOk();
-        $response->assertJson(['success' => true, 'value' => 'New Name']);
         $this->assertDatabaseHas('products', ['id' => $product->id, 'name' => 'New Name']);
     }
 
@@ -36,13 +33,10 @@ class ProductInlineEditTest extends TestCase
     {
         $product = Product::factory()->create(['slug' => 'old-slug']);
 
-        $response = $this->patchJson(route('admin.products.inline-update', $product), [
-            'field' => 'slug',
-            'value' => 'New Slug Value',
-        ]);
+        Livewire::test('admin.product-manager')
+            ->call('inlineUpdate', $product->id, 'slug', 'New Slug Value');
 
-        $response->assertOk();
-        $response->assertJson(['success' => true, 'value' => 'new-slug-value']);
+        $this->assertDatabaseHas('products', ['id' => $product->id, 'slug' => 'new-slug-value']);
     }
 
     public function test_inline_update_rejects_duplicate_slug(): void
@@ -50,76 +44,62 @@ class ProductInlineEditTest extends TestCase
         Product::factory()->create(['slug' => 'taken-slug']);
         $product = Product::factory()->create(['slug' => 'my-slug']);
 
-        $response = $this->patchJson(route('admin.products.inline-update', $product), [
-            'field' => 'slug',
-            'value' => 'taken-slug',
-        ]);
+        Livewire::test('admin.product-manager')
+            ->call('inlineUpdate', $product->id, 'slug', 'taken-slug');
 
-        $response->assertStatus(422);
-        $response->assertJson(['error' => 'This slug is already in use.']);
+        $this->assertDatabaseHas('products', ['id' => $product->id, 'slug' => 'my-slug']);
     }
 
     public function test_inline_update_changes_status(): void
     {
         $product = Product::factory()->create(['status' => 'draft']);
 
-        $response = $this->patchJson(route('admin.products.inline-update', $product), [
-            'field' => 'status',
-            'value' => 'active',
-        ]);
+        Livewire::test('admin.product-manager')
+            ->call('inlineUpdate', $product->id, 'status', 'active');
 
-        $response->assertOk();
         $this->assertDatabaseHas('products', ['id' => $product->id, 'status' => 'active']);
     }
 
     public function test_inline_update_rejects_invalid_status(): void
     {
-        $product = Product::factory()->create();
+        $product = Product::factory()->create(['status' => 'draft']);
 
-        $response = $this->patchJson(route('admin.products.inline-update', $product), [
-            'field' => 'status',
-            'value' => 'invalid',
-        ]);
+        Livewire::test('admin.product-manager')
+            ->call('inlineUpdate', $product->id, 'status', 'invalid');
 
-        $response->assertStatus(422);
+        $this->assertDatabaseHas('products', ['id' => $product->id, 'status' => 'draft']);
     }
 
     public function test_inline_update_toggles_featured(): void
     {
         $product = Product::factory()->create(['is_featured' => false]);
 
-        $response = $this->patchJson(route('admin.products.inline-update', $product), [
-            'field' => 'is_featured',
-            'value' => true,
-        ]);
+        Livewire::test('admin.product-manager')
+            ->call('inlineUpdate', $product->id, 'is_featured', true);
 
-        $response->assertOk();
         $this->assertTrue($product->fresh()->is_featured);
     }
 
     public function test_inline_update_rejects_disallowed_field(): void
     {
-        $product = Product::factory()->create();
+        $product = Product::factory()->create(['description' => 'original']);
 
-        $response = $this->patchJson(route('admin.products.inline-update', $product), [
-            'field' => 'description',
-            'value' => 'hacked',
-        ]);
+        Livewire::test('admin.product-manager')
+            ->call('inlineUpdate', $product->id, 'description', 'hacked');
 
-        $response->assertStatus(422);
+        $this->assertDatabaseHas('products', ['id' => $product->id, 'description' => 'original']);
     }
 
     public function test_inline_update_creates_edit_history(): void
     {
         $product = Product::factory()->create(['name' => 'Original']);
 
-        $this->patchJson(route('admin.products.inline-update', $product), [
-            'field' => 'name',
-            'value' => 'Changed',
-        ]);
+        Livewire::test('admin.product-manager')
+            ->call('inlineUpdate', $product->id, 'name', 'Changed');
 
-        $this->assertDatabaseHas('product_edit_histories', [
-            'product_id' => $product->id,
+        $this->assertDatabaseHas('edit_histories', [
+            'editable_type' => Product::class,
+            'editable_id' => $product->id,
             'field' => 'name',
             'old_value' => 'Original',
             'new_value' => 'Changed',
@@ -130,31 +110,20 @@ class ProductInlineEditTest extends TestCase
     {
         $product = Product::factory()->create(['name' => 'Same']);
 
-        $response = $this->patchJson(route('admin.products.inline-update', $product), [
-            'field' => 'name',
-            'value' => 'Same',
-        ]);
+        Livewire::test('admin.product-manager')
+            ->call('inlineUpdate', $product->id, 'name', 'Same');
 
-        $response->assertOk();
-        $response->assertJson(['success' => true, 'unchanged' => true]);
-        $this->assertDatabaseMissing('product_edit_histories', ['product_id' => $product->id]);
+        $this->assertDatabaseMissing('edit_histories', ['editable_type' => Product::class, 'editable_id' => $product->id]);
     }
 
     public function test_revert_restores_previous_value(): void
     {
         $product = Product::factory()->create(['name' => 'Original']);
 
-        $this->patchJson(route('admin.products.inline-update', $product), [
-            'field' => 'name',
-            'value' => 'Changed',
-        ]);
+        Livewire::test('admin.product-manager')
+            ->call('inlineUpdate', $product->id, 'name', 'Changed')
+            ->call('revertField', $product->id, 'name');
 
-        $response = $this->postJson(route('admin.products.revert-field', $product), [
-            'field' => 'name',
-        ]);
-
-        $response->assertOk();
-        $response->assertJson(['success' => true, 'value' => 'Original']);
         $this->assertDatabaseHas('products', ['id' => $product->id, 'name' => 'Original']);
     }
 
@@ -162,17 +131,13 @@ class ProductInlineEditTest extends TestCase
     {
         $product = Product::factory()->create(['name' => 'V1']);
 
-        $this->patchJson(route('admin.products.inline-update', $product), [
-            'field' => 'name',
-            'value' => 'V2',
-        ]);
+        Livewire::test('admin.product-manager')
+            ->call('inlineUpdate', $product->id, 'name', 'V2')
+            ->call('revertField', $product->id, 'name');
 
-        $this->postJson(route('admin.products.revert-field', $product), [
-            'field' => 'name',
-        ]);
-
-        $this->assertDatabaseMissing('product_edit_histories', [
-            'product_id' => $product->id,
+        $this->assertDatabaseMissing('edit_histories', [
+            'editable_type' => Product::class,
+            'editable_id' => $product->id,
             'field' => 'name',
         ]);
     }
@@ -181,57 +146,46 @@ class ProductInlineEditTest extends TestCase
     {
         $product = Product::factory()->create(['name' => 'V1']);
 
-        $this->patchJson(route('admin.products.inline-update', $product), [
-            'field' => 'name',
-            'value' => 'V2',
-        ]);
-
-        $this->patchJson(route('admin.products.inline-update', $product), [
-            'field' => 'name',
-            'value' => 'V3',
-        ]);
+        $component = Livewire::test('admin.product-manager')
+            ->call('inlineUpdate', $product->id, 'name', 'V2')
+            ->call('inlineUpdate', $product->id, 'name', 'V3');
 
         // First revert: V3 -> V2
-        $response = $this->postJson(route('admin.products.revert-field', $product), [
-            'field' => 'name',
-        ]);
-
-        $response->assertJson(['success' => true, 'value' => 'V2', 'has_more_history' => true]);
+        $component->call('revertField', $product->id, 'name');
+        $this->assertDatabaseHas('products', ['id' => $product->id, 'name' => 'V2']);
+        $this->assertTrue(EditHistory::hasHistory($product->fresh(), 'name'));
 
         // Second revert: V2 -> V1
-        $response = $this->postJson(route('admin.products.revert-field', $product), [
-            'field' => 'name',
-        ]);
-
-        $response->assertJson(['success' => true, 'value' => 'V1', 'has_more_history' => false]);
+        $component->call('revertField', $product->id, 'name');
+        $this->assertDatabaseHas('products', ['id' => $product->id, 'name' => 'V1']);
+        $this->assertFalse(EditHistory::hasHistory($product->fresh(), 'name'));
     }
 
-    public function test_revert_returns_404_when_no_history(): void
+    public function test_revert_does_nothing_when_no_history(): void
     {
-        $product = Product::factory()->create();
+        $product = Product::factory()->create(['name' => 'Original']);
 
-        $response = $this->postJson(route('admin.products.revert-field', $product), [
-            'field' => 'name',
-        ]);
+        Livewire::test('admin.product-manager')
+            ->call('revertField', $product->id, 'name');
 
-        $response->assertStatus(404);
+        $this->assertDatabaseHas('products', ['id' => $product->id, 'name' => 'Original']);
     }
 
     public function test_edit_history_is_pruned_to_ten_entries(): void
     {
         $product = Product::factory()->create(['name' => 'Start']);
 
+        $component = Livewire::test('admin.product-manager');
+
         foreach (range(1, 12) as $i) {
-            $this->patchJson(route('admin.products.inline-update', $product), [
-                'field' => 'name',
-                'value' => "Version {$i}",
-            ]);
+            $component->call('inlineUpdate', $product->id, 'name', "Version {$i}");
         }
 
         $this->assertSame(
             10,
-            ProductEditHistory::query()
-                ->where('product_id', $product->id)
+            EditHistory::query()
+                ->where('editable_type', Product::class)
+                ->where('editable_id', $product->id)
                 ->where('field', 'name')
                 ->count()
         );
@@ -239,28 +193,19 @@ class ProductInlineEditTest extends TestCase
 
     public function test_admin_products_index_shows_image_column(): void
     {
-        $product = Product::factory()->create(['status' => 'active']);
+        Product::factory()->create(['status' => 'active']);
 
-        $response = $this->get(route('admin.products.index'));
-
-        $response->assertOk();
-        $response->assertSee('Image', false);
-        $response->assertSee('Featured', false);
-        $response->assertSee('Stock Alerts', false);
+        Livewire::test('admin.product-manager')
+            ->assertSee('Image', false)
+            ->assertSee('Featured', false)
+            ->assertSee('Stock Alerts', false);
     }
 
-    public function test_guest_cannot_inline_update(): void
+    public function test_guest_cannot_access_product_manager(): void
     {
-        $product = Product::factory()->create();
-
-        // Reset to guest
         auth()->logout();
 
-        $response = $this->patchJson(route('admin.products.inline-update', $product), [
-            'field' => 'name',
-            'value' => 'Hacked',
-        ]);
-
-        $response->assertStatus(401);
+        $this->get(route('admin.products.index'))
+            ->assertRedirect(route('login'));
     }
 }

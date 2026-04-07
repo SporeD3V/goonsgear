@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasEditHistory;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,8 @@ use Illuminate\Support\Str;
 
 class Product extends Model
 {
+    use HasEditHistory;
+
     /** @use HasFactory<ProductFactory> */
     use HasFactory;
 
@@ -81,11 +84,6 @@ class Product extends Model
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
-    }
-
-    public function editHistories(): HasMany
-    {
-        return $this->hasMany(ProductEditHistory::class);
     }
 
     public function stockAlertSubscriptions()

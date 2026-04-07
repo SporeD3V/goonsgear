@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\UrlRedirect;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class UrlRedirectTest extends TestCase
@@ -19,14 +20,15 @@ class UrlRedirectTest extends TestCase
 
     public function test_admin_can_create_url_redirect(): void
     {
-        $response = $this->post(route('admin.url-redirects.store'), [
-            'from_path' => 'old-page',
-            'to_url' => '/shop',
-            'status_code' => 301,
-            'is_active' => '1',
-        ]);
+        Livewire::test('admin.url-redirect-manager')
+            ->call('openCreate')
+            ->set('from_path', 'old-page')
+            ->set('to_url', '/shop')
+            ->set('status_code', 301)
+            ->set('is_active', true)
+            ->call('save')
+            ->assertSet('showModal', false);
 
-        $response->assertRedirect(route('admin.url-redirects.index'));
         $this->assertDatabaseHas('url_redirects', [
             'from_path' => '/old-page',
             'to_url' => '/shop',
@@ -43,14 +45,14 @@ class UrlRedirectTest extends TestCase
             'status_code' => 301,
         ]);
 
-        $response = $this->put(route('admin.url-redirects.update', $redirect), [
-            'from_path' => '/legacy-product',
-            'to_url' => '/shop',
-            'status_code' => 302,
-            'is_active' => '0',
-        ]);
+        Livewire::test('admin.url-redirect-manager')
+            ->call('openEdit', $redirect->id)
+            ->set('from_path', '/legacy-product')
+            ->set('status_code', 302)
+            ->set('is_active', false)
+            ->call('save')
+            ->assertSet('showModal', false);
 
-        $response->assertRedirect(route('admin.url-redirects.index'));
         $this->assertDatabaseHas('url_redirects', [
             'id' => $redirect->id,
             'from_path' => '/legacy-product',

@@ -94,5 +94,7 @@
             }
         });
     </script>
+
+    @include('admin.partials.edit-history', ['histories' => $editHistories])
 @endsection
 

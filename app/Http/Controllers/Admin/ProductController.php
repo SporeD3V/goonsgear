@@ -2,19 +2,18 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Concerns\TracksAdminChanges;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
+use App\Models\AdminActivityLog;
 use App\Models\Category;
 use App\Models\Product;
-use App\Models\ProductEditHistory;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\Tag;
 use App\Observers\ProductObserver;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -26,6 +25,8 @@ use Throwable;
 
 class ProductController extends Controller
 {
+    use TracksAdminChanges;
+
     private static ?bool $productMediaHasConversionColumns = null;
 
     /**
@@ -42,89 +43,9 @@ class ProductController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request): View
+    public function index(): View
     {
-        $search = (string) $request->query('q', '');
-        $status = (string) $request->query('status', '');
-        $categoryId = (string) $request->query('category', '');
-        $sales = (string) $request->query('sales', '');
-        $stock = (string) $request->query('stock', '');
-        $preorder = (string) $request->query('preorder', '');
-
-        $products = Product::query()
-            ->with([
-                'primaryCategory:id,name',
-                'media' => fn ($q) => $q->where('is_primary', true)->limit(1),
-            ])
-            ->withCount(['variants', 'media', 'orderItems', 'editHistories'])
-            ->withCount([
-                'stockAlertSubscriptions as active_stock_alert_subscriptions_count' => function ($query) {
-                    $query->where('stock_alert_subscriptions.is_active', true);
-                },
-                'variants as active_preorder_variants_count' => function ($query) {
-                    $query->where('product_variants.is_active', true)
-                        ->where('product_variants.is_preorder', true);
-                },
-            ])
-            ->when($search !== '', function ($query) use ($search) {
-                $query->where(function ($q) use ($search): void {
-                    $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('slug', 'like', "%{$search}%")
-                        ->orWhere('excerpt', 'like', "%{$search}%");
-                });
-            })
-            ->when($status !== '', fn ($query) => $query->where('status', $status))
-            ->when($categoryId !== '', fn ($query) => $query->where('primary_category_id', $categoryId))
-            ->when($sales === 'never_sold', fn ($query) => $query->whereDoesntHave('orderItems'))
-            ->when($sales === 'sold', fn ($query) => $query->whereHas('orderItems'))
-            ->when(
-                $stock === 'zero_stock',
-                fn ($query) => $query->whereDoesntHave('variants', fn ($variantQuery) => $variantQuery
-                    ->where('is_active', true)
-                    ->where('stock_quantity', '>', 0))
-            )
-            ->when(
-                $stock === 'in_stock',
-                fn ($query) => $query->whereHas('variants', fn ($variantQuery) => $variantQuery
-                    ->where('is_active', true)
-                    ->where('stock_quantity', '>', 0))
-            )
-            ->when(
-                $preorder === 'only_preorder',
-                fn ($query) => $query->where(function ($preorderQuery): void {
-                    $preorderQuery->where('is_preorder', true)
-                        ->orWhereHas('variants', fn ($variantQuery) => $variantQuery
-                            ->where('is_active', true)
-                            ->where('is_preorder', true));
-                })
-            )
-            ->latest('id')
-            ->paginate((int) config('pagination.admin_per_page', 20))
-            ->withQueryString();
-
-        // Load per-field edit history flags for the current page products
-        $productIds = $products->pluck('id');
-        $fieldsWithHistory = ProductEditHistory::query()
-            ->whereIn('product_id', $productIds)
-            ->selectRaw('product_id, field')
-            ->groupBy('product_id', 'field')
-            ->get()
-            ->groupBy('product_id')
-            ->map(fn ($group) => $group->pluck('field')->toArray());
-
-        return view('admin.products.index', [
-            'products' => $products,
-            'fieldsWithHistory' => $fieldsWithHistory,
-            'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
-            'filters' => [
-                'q' => $search,
-                'status' => $status,
-                'category' => $categoryId,
-                'sales' => $sales,
-                'stock' => $stock,
-                'preorder' => $preorder,
-            ],
-        ]);
+        return view('admin.products.index');
     }
 
     /**
@@ -157,6 +78,8 @@ class ProductController extends Controller
         $product = Product::query()->create($validated);
         $product->categories()->sync($categoryIds);
         $product->tags()->sync($tagIds);
+
+        $this->logActivity(AdminActivityLog::ACTION_CREATED, $product, "Created product \"{$product->name}\"");
 
         if ($product->status === 'active') {
             app(ProductObserver::class)->notifyFollowersForDrop($product->fresh(['tags']));
@@ -253,6 +176,7 @@ class ProductController extends Controller
             'product' => $product,
             'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
             'tags' => Tag::query()->where('is_active', true)->orderBy('type')->orderBy('name')->get(['id', 'name', 'type']),
+            'editHistories' => $product->editHistories()->with('user:id,name,email')->latest('id')->limit(20)->get(),
         ]);
     }
 
@@ -272,9 +196,14 @@ class ProductController extends Controller
         unset($validated['media_files']);
         unset($validated['media_alt_text']);
 
+        $trackedFields = ['name', 'slug', 'status', 'excerpt', 'description', 'meta_title', 'meta_description', 'is_featured', 'is_preorder', 'primary_category_id'];
+        $this->recordFieldChanges($product, $validated, $trackedFields);
+
         $product->update($validated);
         $product->categories()->sync($categoryIds);
         $product->tags()->sync($tagIds);
+
+        $this->logActivity(AdminActivityLog::ACTION_UPDATED, $product, "Updated product \"{$product->name}\"");
 
         if ($product->status === 'active') {
             app(ProductObserver::class)->notifyFollowersForDrop($product->fresh(['tags']));
@@ -811,18 +740,6 @@ class ProductController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Product $product): RedirectResponse
-    {
-        $product->delete();
-
-        return redirect()
-            ->route('admin.products.index')
-            ->with('status', 'Product deleted successfully.');
-    }
-
-    /**
      * Show customers with active stock alerts for the product.
      */
     public function stockAlerts(Product $product): View
@@ -836,125 +753,6 @@ class ProductController extends Controller
         return view('admin.products.stock-alerts', [
             'product' => $product,
             'subscriptions' => $subscriptions,
-        ]);
-    }
-
-    /**
-     * Inline update a single field on a product.
-     */
-    public function inlineUpdate(Request $request, Product $product): JsonResponse
-    {
-        $allowedFields = ['name', 'slug', 'status', 'is_featured'];
-
-        $request->validate([
-            'field' => ['required', 'string', 'in:'.implode(',', $allowedFields)],
-            'value' => ['present'],
-        ]);
-
-        $field = $request->input('field');
-        $value = $request->input('value');
-
-        if ($field === 'is_featured') {
-            $value = filter_var($value, FILTER_VALIDATE_BOOLEAN);
-        }
-
-        if ($field === 'status' && ! in_array($value, ['draft', 'active', 'archived'], true)) {
-            return response()->json(['error' => 'Invalid status value.'], 422);
-        }
-
-        if ($field === 'slug') {
-            $value = Str::slug($value);
-            $exists = Product::query()
-                ->where('slug', $value)
-                ->where('id', '!=', $product->id)
-                ->exists();
-
-            if ($exists) {
-                return response()->json(['error' => 'This slug is already in use.'], 422);
-            }
-        }
-
-        $oldValue = $product->getAttribute($field);
-
-        if ($field === 'is_featured') {
-            $oldValue = (bool) $oldValue;
-        }
-
-        // Skip if value hasn't changed
-        if ((string) $oldValue === (string) $value) {
-            return response()->json(['success' => true, 'unchanged' => true]);
-        }
-
-        $product->update([$field => $value]);
-
-        // Record edit history (keep last 10 per product+field)
-        ProductEditHistory::query()->create([
-            'product_id' => $product->id,
-            'user_id' => $request->user()->id,
-            'field' => $field,
-            'old_value' => is_bool($oldValue) ? ($oldValue ? '1' : '0') : (string) $oldValue,
-            'new_value' => is_bool($value) ? ($value ? '1' : '0') : (string) $value,
-        ]);
-
-        // Prune old entries: keep only the last 10 per product+field
-        $idsToKeep = ProductEditHistory::query()
-            ->where('product_id', $product->id)
-            ->where('field', $field)
-            ->latest('id')
-            ->take(10)
-            ->pluck('id');
-
-        ProductEditHistory::query()
-            ->where('product_id', $product->id)
-            ->where('field', $field)
-            ->whereNotIn('id', $idsToKeep)
-            ->delete();
-
-        return response()->json([
-            'success' => true,
-            'value' => $product->getAttribute($field),
-        ]);
-    }
-
-    /**
-     * Revert a product field to its previous value.
-     */
-    public function revertField(Request $request, Product $product): JsonResponse
-    {
-        $request->validate([
-            'field' => ['required', 'string', 'in:name,slug,status,is_featured'],
-        ]);
-
-        $field = $request->input('field');
-
-        $lastEdit = ProductEditHistory::query()
-            ->where('product_id', $product->id)
-            ->where('field', $field)
-            ->latest('id')
-            ->first();
-
-        if (! $lastEdit) {
-            return response()->json(['error' => 'No edit history found for this field.'], 404);
-        }
-
-        $revertValue = $lastEdit->old_value;
-
-        if ($field === 'is_featured') {
-            $revertValue = filter_var($revertValue, FILTER_VALIDATE_BOOLEAN);
-        }
-
-        $product->update([$field => $revertValue]);
-
-        // Remove the consumed history entry
-        $lastEdit->delete();
-
-        return response()->json([
-            'success' => true,
-            'value' => $product->getAttribute($field),
-            'has_more_history' => ProductEditHistory::query()
-                ->where('product_id', $product->id)
-                ->where('field', $field)
-                ->exists(),
         ]);
     }
 }

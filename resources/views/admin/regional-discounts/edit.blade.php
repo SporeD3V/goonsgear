@@ -14,4 +14,6 @@
             <button type="submit" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Save Changes</button>
         </div>
     </form>
+
+    @include('admin.partials.edit-history', ['histories' => $editHistories])
 @endsection

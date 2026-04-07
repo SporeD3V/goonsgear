@@ -14,4 +14,6 @@
             <a href="{{ route('admin.coupons.index') }}" class="text-sm text-slate-600 hover:underline">Cancel</a>
         </div>
     </form>
+
+    @include('admin.partials.edit-history', ['histories' => $editHistories])
 @endsection

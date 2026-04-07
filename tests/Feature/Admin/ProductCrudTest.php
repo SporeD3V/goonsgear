@@ -11,6 +11,7 @@ use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class ProductCrudTest extends TestCase
@@ -328,21 +329,17 @@ class ProductCrudTest extends TestCase
             'preorder_available_from' => now()->addWeek(),
         ]);
 
-        $response = $this->get(route('admin.products.index', [
-            'sales' => 'never_sold',
-            'stock' => 'zero_stock',
-        ]));
+        $response = Livewire::test('admin.product-manager')
+            ->set('filterSales', 'never_sold')
+            ->set('filterStock', 'zero_stock');
 
-        $response->assertOk();
         $response->assertSeeText('Unsold Empty Inventory');
         $response->assertDontSeeText('Purchased Empty Inventory');
         $response->assertDontSeeText('Future Release Product');
 
-        $preorderResponse = $this->get(route('admin.products.index', [
-            'preorder' => 'only_preorder',
-        ]));
+        $preorderResponse = Livewire::test('admin.product-manager')
+            ->set('filterPreorder', 'only_preorder');
 
-        $preorderResponse->assertOk();
         $preorderResponse->assertSeeText('Future Release Product');
         $preorderResponse->assertDontSeeText('Unsold Empty Inventory');
     }

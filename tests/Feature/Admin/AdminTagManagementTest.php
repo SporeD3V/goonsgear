@@ -6,27 +6,25 @@ use App\Models\Tag;
 use App\Models\TagFollow;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class AdminTagManagementTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * Admin can create artist/brand tags.
-     */
     public function test_admin_can_create_tag(): void
     {
         $this->actingAsAdmin();
 
-        $response = $this->post(route('admin.tags.store'), [
-            'name' => 'Boom Bap Collective',
-            'slug' => 'boom-bap-collective',
-            'type' => 'artist',
-            'is_active' => '1',
-        ]);
-
-        $response->assertRedirect(route('admin.tags.index'));
+        Livewire::test('admin.tag-manager')
+            ->call('openCreate')
+            ->set('name', 'Boom Bap Collective')
+            ->set('slug', 'boom-bap-collective')
+            ->set('type', 'artist')
+            ->set('is_active', true)
+            ->call('save')
+            ->assertSet('showModal', false);
 
         $this->assertDatabaseHas('tags', [
             'name' => 'Boom Bap Collective',
@@ -36,7 +34,7 @@ class AdminTagManagementTest extends TestCase
         ]);
     }
 
-    public function test_admin_index_shows_follower_counts_per_tag(): void
+    public function test_admin_index_shows_tags(): void
     {
         $this->actingAsAdmin();
 
@@ -49,11 +47,9 @@ class AdminTagManagementTest extends TestCase
             'tag_id' => $tag->id,
         ]);
 
-        $response = $this->get(route('admin.tags.index'));
-
-        $response->assertOk();
-        $response->assertSee('Vinyl Syndicate');
-        $response->assertSee('2');
+        Livewire::test('admin.tag-manager')
+            ->assertSee('Vinyl Syndicate')
+            ->assertSee('2');
     }
 
     public function test_non_admin_cannot_access_admin_tags(): void

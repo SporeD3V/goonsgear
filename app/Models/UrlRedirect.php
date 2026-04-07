@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Concerns\HasEditHistory;
 use Database\Factories\UrlRedirectFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class UrlRedirect extends Model
 {
+    use HasEditHistory;
+
     /** @use HasFactory<UrlRedirectFactory> */
     use HasFactory;
 

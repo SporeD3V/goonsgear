@@ -9,6 +9,7 @@ use App\Models\ProductVariant;
 use App\Models\RegionalDiscount;
 use App\Support\CartPricing;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class RegionalDiscountTest extends TestCase
@@ -28,24 +29,23 @@ class RegionalDiscountTest extends TestCase
     {
         RegionalDiscount::factory()->create(['country_code' => 'AU', 'reason' => 'High shipping cost']);
 
-        $response = $this->get(route('admin.regional-discounts.index'));
-
-        $response->assertOk();
-        $response->assertSee('AU');
-        $response->assertSee('High shipping cost');
+        Livewire::test('admin.regional-discount-manager')
+            ->assertSee('AU')
+            ->assertSee('High shipping cost');
     }
 
     public function test_admin_can_create_regional_discount(): void
     {
-        $response = $this->post(route('admin.regional-discounts.store'), [
-            'country_code' => 'AU',
-            'discount_type' => 'fixed',
-            'discount_value' => 10.00,
-            'reason' => 'High shipping to Australia',
-            'is_active' => '1',
-        ]);
+        Livewire::test('admin.regional-discount-manager')
+            ->call('openCreate')
+            ->set('country_code', 'AU')
+            ->set('discount_type', 'fixed')
+            ->set('discount_value', '10.00')
+            ->set('reason', 'High shipping to Australia')
+            ->set('is_active', true)
+            ->call('save')
+            ->assertSet('showModal', false);
 
-        $response->assertRedirect(route('admin.regional-discounts.index'));
         $this->assertDatabaseHas('regional_discounts', [
             'country_code' => 'AU',
             'discount_type' => 'fixed',
@@ -57,27 +57,29 @@ class RegionalDiscountTest extends TestCase
 
     public function test_admin_store_normalises_country_code_to_uppercase(): void
     {
-        $this->post(route('admin.regional-discounts.store'), [
-            'country_code' => 'au',
-            'discount_type' => 'fixed',
-            'discount_value' => 5.00,
-            'reason' => 'Test',
-            'is_active' => '1',
-        ]);
+        Livewire::test('admin.regional-discount-manager')
+            ->call('openCreate')
+            ->set('country_code', 'au')
+            ->set('discount_type', 'fixed')
+            ->set('discount_value', '5.00')
+            ->set('reason', 'Test')
+            ->set('is_active', true)
+            ->call('save');
 
         $this->assertDatabaseHas('regional_discounts', ['country_code' => 'AU']);
     }
 
     public function test_admin_store_rejects_invalid_data(): void
     {
-        $response = $this->post(route('admin.regional-discounts.store'), [
-            'country_code' => '',
-            'discount_type' => 'invalid',
-            'discount_value' => -1,
-            'reason' => '',
-        ]);
+        Livewire::test('admin.regional-discount-manager')
+            ->call('openCreate')
+            ->set('country_code', '')
+            ->set('discount_type', 'invalid')
+            ->set('discount_value', '-1')
+            ->set('reason', '')
+            ->call('save')
+            ->assertHasErrors(['country_code', 'discount_type', 'discount_value', 'reason']);
 
-        $response->assertSessionHasErrors(['country_code', 'discount_type', 'discount_value', 'reason']);
         $this->assertSame(0, RegionalDiscount::query()->count());
     }
 
@@ -85,15 +87,16 @@ class RegionalDiscountTest extends TestCase
     {
         RegionalDiscount::factory()->create(['country_code' => 'AU']);
 
-        $response = $this->post(route('admin.regional-discounts.store'), [
-            'country_code' => 'AU',
-            'discount_type' => 'fixed',
-            'discount_value' => 5.00,
-            'reason' => 'Dupe',
-            'is_active' => '1',
-        ]);
+        Livewire::test('admin.regional-discount-manager')
+            ->call('openCreate')
+            ->set('country_code', 'AU')
+            ->set('discount_type', 'fixed')
+            ->set('discount_value', '5.00')
+            ->set('reason', 'Dupe')
+            ->set('is_active', true)
+            ->call('save')
+            ->assertHasErrors('country_code');
 
-        $response->assertSessionHasErrors('country_code');
         $this->assertSame(1, RegionalDiscount::query()->count());
     }
 
@@ -101,13 +104,14 @@ class RegionalDiscountTest extends TestCase
     {
         $discount = RegionalDiscount::factory()->create(['country_code' => 'AU', 'discount_value' => 5.00]);
 
-        $this->put(route('admin.regional-discounts.update', $discount), [
-            'country_code' => 'AU',
-            'discount_type' => 'percent',
-            'discount_value' => 15.00,
-            'reason' => 'Updated reason',
-            'is_active' => '1',
-        ]);
+        Livewire::test('admin.regional-discount-manager')
+            ->call('openEdit', $discount->id)
+            ->set('discount_type', 'percent')
+            ->set('discount_value', '15.00')
+            ->set('reason', 'Updated reason')
+            ->set('is_active', true)
+            ->call('save')
+            ->assertSet('showModal', false);
 
         $discount->refresh();
         $this->assertSame('percent', $discount->discount_type);
@@ -119,7 +123,8 @@ class RegionalDiscountTest extends TestCase
     {
         $discount = RegionalDiscount::factory()->create(['country_code' => 'AU']);
 
-        $this->delete(route('admin.regional-discounts.destroy', $discount));
+        Livewire::test('admin.regional-discount-manager')
+            ->call('delete', $discount->id);
 
         $this->assertDatabaseMissing('regional_discounts', ['id' => $discount->id]);
     }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasEditHistory;
 use Database\Factories\RegionalDiscountFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,8 @@ class RegionalDiscount extends Model
     public const TYPE_FIXED = 'fixed';
 
     public const TYPE_PERCENT = 'percent';
+
+    use HasEditHistory;
 
     /** @use HasFactory<RegionalDiscountFactory> */
     use HasFactory;

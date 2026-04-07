@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AccountTagFollowController;
+use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\BundleDiscountController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\CouponController;
@@ -142,21 +143,16 @@ Route::get('/media/{path}', [MediaController::class, 'show'])
     ->name('media.show');
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin', 'admin.noindex'])->group(function () {
-    Route::resource('categories', CategoryController::class)->except('show');
-    Route::post('categories/reorder', [CategoryController::class, 'reorder'])->name('categories.reorder');
-    Route::resource('coupons', CouponController::class)->except('show');
-    Route::resource('bundle-discounts', BundleDiscountController::class)->except('show');
-    Route::resource('orders', OrderController::class)->only(['index', 'show', 'update']);
-    Route::resource('products', ProductController::class)->except('show');
-    Route::resource('tags', TagController::class)->except('show');
+    Route::get('categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::get('coupons', [CouponController::class, 'index'])->name('coupons.index');
+    Route::get('bundle-discounts', [BundleDiscountController::class, 'index'])->name('bundle-discounts.index');
+    Route::resource('orders', OrderController::class)->only(['index', 'show']);
+    Route::resource('products', ProductController::class)->only(['index', 'create', 'store', 'edit', 'update']);
+    Route::get('tags', [TagController::class, 'index'])->name('tags.index');
     Route::get('products/{product}/stock-alerts', [ProductController::class, 'stockAlerts'])
         ->name('products.stock-alerts');
-    Route::patch('products/{product}/inline', [ProductController::class, 'inlineUpdate'])
-        ->name('products.inline-update');
-    Route::post('products/{product}/revert', [ProductController::class, 'revertField'])
-        ->name('products.revert-field');
-    Route::resource('regional-discounts', RegionalDiscountController::class)->except('show');
-    Route::resource('url-redirects', UrlRedirectController::class)->except('show');
+    Route::get('regional-discounts', [RegionalDiscountController::class, 'index'])->name('regional-discounts.index');
+    Route::get('url-redirects', [UrlRedirectController::class, 'index'])->name('url-redirects.index');
     Route::resource('products.variants', ProductVariantController::class)
         ->except(['index', 'show'])
         ->scoped();
@@ -184,4 +180,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin', 'admin.noin
         ->name('products.media.primary');
     Route::match(['post', 'delete'], 'products/{product}/media/{media}', [ProductMediaController::class, 'destroy'])
         ->name('products.media.destroy');
+
+    Route::get('activity-log', [ActivityLogController::class, 'index'])
+        ->name('activity-log.index');
 });

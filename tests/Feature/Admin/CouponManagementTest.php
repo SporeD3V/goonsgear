@@ -6,6 +6,7 @@ use App\Models\Coupon;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class CouponManagementTest extends TestCase
@@ -25,26 +26,25 @@ class CouponManagementTest extends TestCase
             'code' => 'WELCOME10',
         ]);
 
-        $response = $this->get(route('admin.coupons.index'));
-
-        $response->assertOk();
-        $response->assertSee($coupon->code);
+        Livewire::test('admin.coupon-manager')
+            ->assertSee($coupon->code);
     }
 
     public function test_admin_can_create_coupon(): void
     {
-        $response = $this->post(route('admin.coupons.store'), [
-            'code' => 'save20',
-            'description' => 'Spring promotion',
-            'type' => Coupon::TYPE_FIXED,
-            'value' => 20,
-            'minimum_subtotal' => 100,
-            'usage_limit' => 50,
-            'used_count' => 0,
-            'is_active' => '1',
-        ]);
+        Livewire::test('admin.coupon-manager')
+            ->call('openCreate')
+            ->set('code', 'save20')
+            ->set('description', 'Spring promotion')
+            ->set('type', Coupon::TYPE_FIXED)
+            ->set('value', '20')
+            ->set('minimum_subtotal', '100')
+            ->set('usage_limit', '50')
+            ->set('used_count', 0)
+            ->set('is_active', true)
+            ->call('save')
+            ->assertSet('showModal', false);
 
-        $response->assertRedirect(route('admin.coupons.index'));
         $this->assertDatabaseHas('coupons', [
             'code' => 'SAVE20',
             'type' => Coupon::TYPE_FIXED,
@@ -60,18 +60,19 @@ class CouponManagementTest extends TestCase
             'value' => 10,
         ]);
 
-        $response = $this->patch(route('admin.coupons.update', $coupon), [
-            'code' => 'save15',
-            'description' => 'Updated promotion',
-            'type' => Coupon::TYPE_PERCENT,
-            'value' => 15,
-            'minimum_subtotal' => 75,
-            'usage_limit' => 25,
-            'used_count' => 3,
-            'is_active' => '1',
-        ]);
+        Livewire::test('admin.coupon-manager')
+            ->call('openEdit', $coupon->id)
+            ->set('code', 'save15')
+            ->set('description', 'Updated promotion')
+            ->set('type', Coupon::TYPE_PERCENT)
+            ->set('value', '15')
+            ->set('minimum_subtotal', '75')
+            ->set('usage_limit', '25')
+            ->set('used_count', 3)
+            ->set('is_active', true)
+            ->call('save')
+            ->assertSet('showModal', false);
 
-        $response->assertRedirect(route('admin.coupons.index'));
         $this->assertDatabaseHas('coupons', [
             'id' => $coupon->id,
             'code' => 'SAVE15',
@@ -83,17 +84,16 @@ class CouponManagementTest extends TestCase
 
     public function test_personal_coupon_requires_assigned_users(): void
     {
-        $response = $this->from(route('admin.coupons.create'))->post(route('admin.coupons.store'), [
-            'code' => 'PERSONAL10',
-            'description' => 'Personal campaign',
-            'type' => Coupon::TYPE_FIXED,
-            'value' => 10,
-            'is_active' => '1',
-            'is_personal' => '1',
-        ]);
-
-        $response->assertRedirect(route('admin.coupons.create'));
-        $response->assertSessionHasErrors('assigned_user_ids');
+        Livewire::test('admin.coupon-manager')
+            ->call('openCreate')
+            ->set('code', 'PERSONAL10')
+            ->set('description', 'Personal campaign')
+            ->set('type', Coupon::TYPE_FIXED)
+            ->set('value', '10')
+            ->set('is_active', true)
+            ->set('is_personal', true)
+            ->call('save')
+            ->assertHasErrors('assigned_user_ids');
     }
 
     public function test_product_scope_requires_product_target(): void
@@ -101,16 +101,15 @@ class CouponManagementTest extends TestCase
         User::factory()->create();
         Product::factory()->create(['status' => 'active']);
 
-        $response = $this->from(route('admin.coupons.create'))->post(route('admin.coupons.store'), [
-            'code' => 'SCOPE10',
-            'description' => 'Scoped campaign',
-            'type' => Coupon::TYPE_FIXED,
-            'value' => 10,
-            'is_active' => '1',
-            'scope_type' => Coupon::SCOPE_PRODUCT,
-        ]);
-
-        $response->assertRedirect(route('admin.coupons.create'));
-        $response->assertSessionHasErrors('scope_product_id');
+        Livewire::test('admin.coupon-manager')
+            ->call('openCreate')
+            ->set('code', 'SCOPE10')
+            ->set('description', 'Scoped campaign')
+            ->set('type', Coupon::TYPE_FIXED)
+            ->set('value', '10')
+            ->set('is_active', true)
+            ->set('scope_type', Coupon::SCOPE_PRODUCT)
+            ->call('save')
+            ->assertHasErrors('scope_product_id');
     }
 }
