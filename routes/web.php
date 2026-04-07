@@ -30,6 +30,7 @@ use App\Http\Controllers\StockAlertSubscriptionController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [ShopController::class, 'index'])->name('shop.index');
+Route::get('/catalog', [ShopController::class, 'catalog'])->name('shop.catalog');
 Route::redirect('/shop', '/');
 Route::get('/shop/category/{category:slug}', [ShopController::class, 'category'])->name('shop.category');
 Route::get('/artist/{tag:slug}', [ShopController::class, 'artistTag'])->name('shop.artist');

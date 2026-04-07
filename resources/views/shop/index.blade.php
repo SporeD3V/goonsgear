@@ -12,9 +12,9 @@
     <body class="bg-white text-slate-900">
         @include('partials.header')
 
-        @if ($activeCategory === null && $activeTag === null)
+        @if (! $showCatalog)
             {{-- Hero section --}}
-            <section class="relative flex min-h-[480px] items-center overflow-hidden bg-slate-900 lg:min-h-[540px]">
+            <section class="relative flex min-h-screen items-center overflow-hidden bg-slate-900">
                 <picture>
                     <source srcset="{{ asset('images/hero-goonsgear.avif') }}" type="image/avif">
                     <img
@@ -34,13 +34,10 @@
                         <p class="mt-6 text-lg leading-relaxed text-slate-200 md:text-xl">
                             Exclusive merchandise, limited edition vinyl, and official drops from the legendary hip-hop production group. Worldwide shipping available.
                         </p>
-                        <div class="mt-8 flex flex-wrap gap-4">
-                            <a href="{{ route('shop.category', 'wear') }}" class="inline-flex items-center gap-2 rounded border-2 border-white bg-white px-6 py-3 text-sm font-bold uppercase tracking-wider text-slate-900 transition hover:bg-slate-100">
+                        <div class="mt-8">
+                            <a href="{{ route('shop.catalog') }}" class="inline-flex items-center gap-2 rounded border-2 border-white bg-white px-6 py-3 text-sm font-bold uppercase tracking-wider text-slate-900 transition hover:bg-slate-100">
                                 Shop Now
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
-                            </a>
-                            <a href="{{ route('shop.index') }}" class="inline-flex items-center gap-2 rounded border-2 border-white/80 px-6 py-3 text-sm font-bold uppercase tracking-wider text-white transition hover:border-white hover:bg-white/10">
-                                New Arrivals
                             </a>
                         </div>
                     </div>
@@ -49,16 +46,19 @@
 
         @endif
 
-        @if ($activeCategory === null && $activeTag === null)
+        @if (! $showCatalog)
             <livewire:shop-by-artist />
+            <livewire:new-arrivals />
         @endif
 
-        <div class="mx-auto max-w-6xl p-6">
+        @if ($showCatalog)
+            <div class="mx-auto max-w-6xl p-6">
 
-            @include('partials.breadcrumb', ['breadcrumbs' => $breadcrumbs])
+                @include('partials.breadcrumb', ['breadcrumbs' => $breadcrumbs])
 
-            <livewire:shop-catalog :forcedCategoryId="$activeCategory?->id" :forcedTagId="$activeTag?->id" />
-        </div>
+                <livewire:shop-catalog :forcedCategoryId="$activeCategory?->id" :forcedTagId="$activeTag?->id" />
+            </div>
+        @endif
 
         @include('partials.footer')
     </body>

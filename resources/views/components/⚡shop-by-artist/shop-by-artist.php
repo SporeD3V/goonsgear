@@ -25,7 +25,7 @@ new class extends Component
             ->where('show_on_homepage', true)
             ->whereNotNull('logo_path')
             ->orderBy('name')
-            ->get(['id', 'name', 'slug', 'logo_path']);
+            ->get(['id', 'name', 'slug', 'logo_path', 'type']);
 
         $search = trim($this->search);
 
@@ -37,7 +37,7 @@ new class extends Component
                 ->where('name', 'like', '%'.$search.'%')
                 ->orderBy('name')
                 ->limit(10)
-                ->get(['id', 'name', 'slug'])
+                ->get(['id', 'name', 'slug', 'type'])
             : collect();
 
         return view('components.⚡shop-by-artist.shop-by-artist', [

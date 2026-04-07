@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class ShopBrowseTest extends TestCase
@@ -333,12 +334,12 @@ class ShopBrowseTest extends TestCase
             'status' => 'active',
         ]);
 
-        $response = $this->withSession(['shop_filters' => ['q' => 'lightning']])
-            ->get(route('shop.index'));
+        $this->get(route('shop.index'))->assertOk();
 
-        $response->assertOk();
-        $response->assertSee('Lightning Jacket');
-        $response->assertDontSee('Shadow Pants');
+        Livewire::test('shop-catalog')
+            ->set('search', 'lightning')
+            ->assertSee('Lightning Jacket')
+            ->assertDontSee('Shadow Pants');
     }
 
     public function test_shop_index_sorts_by_name_when_requested(): void
@@ -388,17 +389,15 @@ class ShopBrowseTest extends TestCase
             'price' => 49.99,
         ]);
 
-        $ascendingResponse = $this->withSession(['shop_filters' => ['sort' => 'price_asc']])
-            ->get(route('shop.index'));
+        $this->withSession(['shop_filters' => ['sort' => 'price_asc']])->get(route('shop.index'))->assertOk();
 
-        $ascendingResponse->assertOk();
-        $ascendingResponse->assertSeeInOrder(['Budget Hoodie', 'Expensive Hoodie']);
+        Livewire::test('shop-catalog')
+            ->set('sort', 'price_asc')
+            ->assertSeeInOrder(['Budget Hoodie', 'Expensive Hoodie']);
 
-        $descendingResponse = $this->withSession(['shop_filters' => ['sort' => 'price_desc']])
-            ->get(route('shop.index'));
-
-        $descendingResponse->assertOk();
-        $descendingResponse->assertSeeInOrder(['Expensive Hoodie', 'Budget Hoodie']);
+        Livewire::test('shop-catalog')
+            ->set('sort', 'price_desc')
+            ->assertSeeInOrder(['Expensive Hoodie', 'Budget Hoodie']);
     }
 
     public function test_shop_index_filters_by_variant_price_range(): void
@@ -439,24 +438,24 @@ class ShopBrowseTest extends TestCase
             'price' => 140.00,
         ]);
 
-        $rangeResponse = $this->withSession(['shop_filters' => [
+        $this->withSession(['shop_filters' => [
             'min_price' => 50,
             'max_price' => 100,
-        ]])->get(route('shop.index'));
+        ]])->get(route('shop.index'))->assertOk();
 
-        $rangeResponse->assertOk();
-        $rangeResponse->assertSee('Mid Price Hoodie');
-        $rangeResponse->assertDontSee('Low Price Tee');
-        $rangeResponse->assertDontSee('High Price Jacket');
+        Livewire::test('shop-catalog')
+            ->set('minPrice', '50')
+            ->set('maxPrice', '100')
+            ->assertSee('Mid Price Hoodie')
+            ->assertDontSee('Low Price Tee')
+            ->assertDontSee('High Price Jacket');
 
-        $minOnlyResponse = $this->withSession(['shop_filters' => [
-            'min_price' => 100,
-        ]])->get(route('shop.index'));
-
-        $minOnlyResponse->assertOk();
-        $minOnlyResponse->assertSee('High Price Jacket');
-        $minOnlyResponse->assertDontSee('Low Price Tee');
-        $minOnlyResponse->assertDontSee('Mid Price Hoodie');
+        Livewire::test('shop-catalog')
+            ->set('minPrice', '100')
+            ->set('maxPrice', null)
+            ->assertSee('High Price Jacket')
+            ->assertDontSee('Low Price Tee')
+            ->assertDontSee('Mid Price Hoodie');
     }
 
     public function test_api_shop_search_returns_matching_products(): void

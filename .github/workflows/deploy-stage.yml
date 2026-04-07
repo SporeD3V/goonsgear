@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: staging-deploy
   cancel-in-progress: true
@@ -13,12 +16,23 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     env:
       STAGING_URL: https://goonsgear.macaw.studio
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Enforce single deploy path
+        run: |
+          set -euo pipefail
+
+          if find . -maxdepth 1 -type f \( -name 'deploy*.py' -o -name 'final_*.py' -o -name 'fix_staging*.py' \) | grep -q .; then
+            echo "Ad hoc deploy scripts are not allowed. Use this workflow only."
+            find . -maxdepth 1 -type f \( -name 'deploy*.py' -o -name 'final_*.py' -o -name 'fix_staging*.py' \) -print
+            exit 1
+          fi
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -33,14 +47,45 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Validate Composer manifest
+        run: composer validate --strict --no-check-publish
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
       - name: Install Node dependencies
         run: npm ci --no-audit --no-fund
+
+      - name: Run release gate tests
+        run: |
+          php artisan test --compact \
+            tests/Feature/ShopBrowseTest.php \
+            tests/Feature/ShopProductPresentationTest.php \
+            tests/Feature/CartFlowTest.php \
+            tests/Feature/CheckoutFlowTest.php \
+            tests/Feature/LegacyImportCommandTest.php \
+            tests/Feature/ShopPaginationTest.php
 
       - name: Build frontend assets
         run: npm run build
 
-      - name: Install Composer dependencies (no dev)
+      - name: Optimize Composer dependencies for deploy
         run: composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
+
+      - name: Generate release marker
+        run: |
+          RELEASED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          cat > public/release.json <<EOF
+          {
+            "source": "github-actions",
+            "commit": "${GITHUB_SHA}",
+            "ref": "${GITHUB_REF_NAME}",
+            "run_id": "${GITHUB_RUN_ID}",
+            "run_number": "${GITHUB_RUN_NUMBER}",
+            "released_at": "${RELEASED_AT}"
+          }
+          EOF
+          sed -i 's/^[[:space:]]*//' public/release.json
 
       - name: Build deploy folder
         run: |
@@ -58,31 +103,42 @@ jobs:
             --exclude="storage/framework/cache/data/*" \
             --exclude="storage/framework/views/*" \
             ./ ./deploy
-          # Remove vendor test files to reduce payload size
           find deploy/vendor -type d \( -name "tests" -o -name "Tests" \) -exec rm -rf {} + 2>/dev/null || true
           find deploy/vendor -type f \( -name "*.md" -o -name "*.txt" -o -name "LICENSE" -o -name "CHANGELOG*" \) -delete
 
       - name: Verify deploy payload
         run: |
+          set -euo pipefail
+
           FILE_COUNT=$(find deploy -type f | wc -l)
           DIR_COUNT=$(find deploy -type d | wc -l)
           echo "Deploy payload has ${FILE_COUNT} files and ${DIR_COUNT} folders"
+
           if [ "$FILE_COUNT" -eq 0 ]; then
             echo "No files found in deploy payload. Aborting."
             exit 1
           fi
 
-      # Deploy via SCP over SSH. The SSH user (spored3v) writes to the
-      # site owner's directory (macaw-goonsgear) via REMOTE_PATH.
+          test -f deploy/public/release.json
+
+      - name: Install SSH deploy tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sshpass
+
+      - name: Trust staging host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
       - name: Prepare staging cache directories
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          port: ${{ secrets.SSH_PORT }}
-          password: ${{ secrets.SSH_PASSPHRASE }}
-          script_stop: true
-          script: |
+        env:
+          SSHPASS: ${{ secrets.SSH_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+
+          sshpass -e ssh -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" "
             set -eu
             test -d '${{ secrets.REMOTE_PATH }}'
             touch '${{ secrets.REMOTE_PATH }}/.deploy-write-test'
@@ -90,85 +146,130 @@ jobs:
             mkdir -p '${{ secrets.REMOTE_PATH }}/bootstrap/cache' '${{ secrets.REMOTE_PATH }}/storage'
             find '${{ secrets.REMOTE_PATH }}/bootstrap/cache' -maxdepth 1 -type f -name '*.php' -delete || true
             chmod -R ug+rwX '${{ secrets.REMOTE_PATH }}/storage' '${{ secrets.REMOTE_PATH }}/bootstrap/cache' || true
+          "
 
-      - name: Deploy to staging via SCP
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          port: ${{ secrets.SSH_PORT }}
-          password: ${{ secrets.SSH_PASSPHRASE }}
-          source: "deploy/*"
-          target: ${{ secrets.REMOTE_PATH }}
-          strip_components: 1
-          overwrite: true
-          timeout: 600s
+      - name: Deploy to staging via rsync
+        env:
+          SSHPASS: ${{ secrets.SSH_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+
+          export RSYNC_RSH="sshpass -e ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=yes"
+          rsync -az --delete --delete-delay --stats \
+            --exclude='.env' \
+            --exclude='storage/' \
+            --exclude='bootstrap/cache/' \
+            deploy/ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.REMOTE_PATH }}/"
 
       - name: Post-deploy setup
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          port: ${{ secrets.SSH_PORT }}
-          password: ${{ secrets.SSH_PASSPHRASE }}
-          script_stop: true
-          script: |
+        env:
+          SSHPASS: ${{ secrets.SSH_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+
+          sshpass -e ssh -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" "
             set -eu
             cd '${{ secrets.REMOTE_PATH }}'
 
-            echo "=== Post-deploy checks ==="
+            echo '=== Post-deploy checks ==='
 
-            echo "--- Fixing permissions ---"
+            echo '--- Fixing permissions ---'
             find storage bootstrap/cache -type d -exec chmod 770 {} + 2>/dev/null || true
             find storage bootstrap/cache -type f -exec chmod 660 {} + 2>/dev/null || true
 
-            echo "--- PHP version ---"
+            echo '--- PHP version ---'
             php -v | head -n 1
 
             if [ ! -f artisan ]; then
-              echo "FAIL: artisan not found after deploy"
+              echo 'FAIL: artisan not found after deploy'
               exit 1
             fi
 
-            echo "--- Laravel version ---"
+            echo '--- Laravel version ---'
             php artisan --version
 
-            echo "--- Pending migrations ---"
-            PENDING=$(php artisan migrate:status --no-interaction 2>&1 | grep -c 'Pending' || true)
-            echo "Pending migrations: ${PENDING}"
+            echo '--- Release marker ---'
+            if [ ! -f public/release.json ]; then
+              echo 'FAIL: public/release.json not found after deploy'
+              exit 1
+            fi
+            cat public/release.json
 
-            echo "--- Running migrations ---"
+            echo '--- Environment ---'
+            ABOUT_OUTPUT=\$(php artisan about --only=environment 2>/dev/null || php artisan about 2>/dev/null)
+            echo "\$ABOUT_OUTPUT"
+            if echo "\$ABOUT_OUTPUT" | grep -Eq 'Debug Mode[ .]*ENABLED'; then
+              echo 'FAIL: APP_DEBUG must be disabled on staging.'
+              exit 1
+            fi
+
+            echo '--- Pending migrations ---'
+            PENDING=\$(php artisan migrate:status --no-interaction 2>&1 | grep -c 'Pending' || true)
+            echo "Pending migrations: \${PENDING}"
+
+            echo '--- Running migrations ---'
             php artisan migrate --force --no-interaction
 
-            echo "--- Verifying no pending migrations ---"
-            REMAINING=$(php artisan migrate:status --no-interaction 2>&1 | grep -c 'Pending' || true)
-            if [ "$REMAINING" -gt 0 ]; then
-              echo "FAIL: ${REMAINING} migration(s) still pending after migrate. Aborting deploy."
+            echo '--- Verifying no pending migrations ---'
+            REMAINING=\$(php artisan migrate:status --no-interaction 2>&1 | grep -c 'Pending' || true)
+            if [ "\$REMAINING" -gt 0 ]; then
+              echo "FAIL: \${REMAINING} migration(s) still pending after migrate. Aborting deploy."
               php artisan migrate:status --no-interaction
               exit 1
             fi
-            echo "All migrations applied successfully."
+            echo 'All migrations applied successfully.'
 
-            echo "--- Clearing caches ---"
+            echo '--- Clearing caches ---'
             php artisan optimize:clear --no-interaction
 
-            echo "--- Storage link ---"
+            echo '--- Storage link ---'
             php artisan storage:link --force --no-interaction 2>/dev/null || true
 
-            echo "--- Rebuilding caches ---"
+            echo '--- Rebuilding caches ---'
             php artisan optimize --no-interaction
 
-            echo ""
-            echo "=== Deploy OK ==="
+            echo
+            echo '=== Deploy OK ==='
+          "
+
+      - name: Smoke test staging
+        run: |
+          set -euo pipefail
+
+          for path in / /catalog /cart /release.json; do
+            code=$(curl -fsS -o /tmp/response -w '%{http_code}' "${STAGING_URL}${path}")
+            echo "${path} -> ${code}"
+            if [ "$code" -ne 200 ]; then
+              echo "FAIL: ${path} returned ${code}"
+              exit 1
+            fi
+          done
+
+          SEARCH_RESPONSE=$(curl -fsS "${STAGING_URL}/api/shop/search?q=sh")
+          echo "$SEARCH_RESPONSE"
+          echo "$SEARCH_RESPONSE" | grep -F '"results"' >/dev/null || {
+            echo 'FAIL: search endpoint smoke test failed'
+            exit 1
+          }
+
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          with urllib.request.urlopen(os.environ['STAGING_URL'] + '/release.json') as response:
+              release = json.load(response)
+
+          if release.get('commit') != os.environ['GITHUB_SHA']:
+              raise SystemExit(
+                  f"release marker commit {release.get('commit')} does not match {os.environ['GITHUB_SHA']}"
+              )
+
+          print(release)
+          PY
 
       - name: Deployment summary
         run: |
           echo "=== Staging deployment completed ==="
           echo "Domain: ${STAGING_URL}"
           echo "Remote path: ${{ secrets.REMOTE_PATH }}"
-          echo ""
-          echo "Next steps if this is a fresh deploy:"
-          echo "  1. Create .env on the server (SSH or file manager)"
-          echo "  2. Create the database and update DB_* in .env"
-          echo "  3. Run: php artisan migrate --force"
-          echo "  4. Run: php artisan storage:link"

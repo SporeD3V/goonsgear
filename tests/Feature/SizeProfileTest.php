@@ -10,6 +10,7 @@ use App\Models\ProductVariant;
 use App\Models\SizeProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class SizeProfileTest extends TestCase
@@ -460,13 +461,16 @@ class SizeProfileTest extends TestCase
             'stock_quantity' => 5,
         ]);
 
-        $response = $this->actingAs($user)
+        $this->actingAs($user)
             ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
-            ->get(route('shop.index'));
+            ->get(route('shop.index'))
+            ->assertOk();
 
-        $response->assertOk();
-        $response->assertSee('Matching Shirt');
-        $response->assertDontSee('Non Matching Shirt');
+        $this->actingAs($user);
+        Livewire::test('shop-catalog')
+            ->set('sizeProfileId', $profile->id)
+            ->assertSee('Matching Shirt')
+            ->assertDontSee('Non Matching Shirt');
     }
 
     public function test_catalog_filters_products_by_size_profile_option_values(): void
@@ -517,13 +521,16 @@ class SizeProfileTest extends TestCase
             'stock_quantity' => 5,
         ]);
 
-        $response = $this->actingAs($user)
+        $this->actingAs($user)
             ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
-            ->get(route('shop.index'));
+            ->get(route('shop.index'))
+            ->assertOk();
 
-        $response->assertOk();
-        $response->assertSee('Option Values Shirt');
-        $response->assertDontSee('Wrong Size Shirt');
+        $this->actingAs($user);
+        Livewire::test('shop-catalog')
+            ->set('sizeProfileId', $profile->id)
+            ->assertSee('Option Values Shirt')
+            ->assertDontSee('Wrong Size Shirt');
     }
 
     public function test_catalog_shows_all_products_without_size_profile_filter(): void
@@ -618,13 +625,16 @@ class SizeProfileTest extends TestCase
             'stock_quantity' => 5,
         ]);
 
-        $response = $this->actingAs($user)
+        $this->actingAs($user)
             ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
-            ->get(route('shop.index'));
+            ->get(route('shop.index'))
+            ->assertOk();
 
-        $response->assertOk();
-        $response->assertSee('Soft Patch Hoodie');
-        $response->assertDontSee('Other Hoodie');
+        $this->actingAs($user);
+        Livewire::test('shop-catalog')
+            ->set('sizeProfileId', $profile->id)
+            ->assertSee('Soft Patch Hoodie')
+            ->assertDontSee('Other Hoodie');
     }
 
     public function test_catalog_size_filter_excludes_out_of_stock_variants(): void
@@ -1038,13 +1048,16 @@ class SizeProfileTest extends TestCase
             'stock_quantity' => 10,
         ]);
 
-        $response = $this->actingAs($user)
+        $this->actingAs($user)
             ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
-            ->get(route('shop.index'));
+            ->get(route('shop.index'))
+            ->assertOk();
 
-        $response->assertOk();
-        $response->assertSee('Hip Hop Biggie Socks');
-        $response->assertDontSee('Smalls Only Socks');
+        $this->actingAs($user);
+        Livewire::test('shop-catalog')
+            ->set('sizeProfileId', $profile->id)
+            ->assertSee('Hip Hop Biggie Socks')
+            ->assertDontSee('Smalls Only Socks');
     }
 
     public function test_shoe_size_smalls_range_matches_correctly(): void
@@ -1093,13 +1106,16 @@ class SizeProfileTest extends TestCase
             'stock_quantity' => 10,
         ]);
 
-        $response = $this->actingAs($user)
+        $this->actingAs($user)
             ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
-            ->get(route('shop.index'));
+            ->get(route('shop.index'))
+            ->assertOk();
 
-        $response->assertOk();
-        $response->assertSee('Smalls Range Socks');
-        $response->assertDontSee('Biggie Range Socks');
+        $this->actingAs($user);
+        Livewire::test('shop-catalog')
+            ->set('sizeProfileId', $profile->id)
+            ->assertSee('Smalls Range Socks')
+            ->assertDontSee('Biggie Range Socks');
     }
 
     public function test_products_in_unset_dimension_pass_through(): void
@@ -1176,13 +1192,15 @@ class SizeProfileTest extends TestCase
             'stock_quantity' => 10,
         ]);
 
-        $response = $this->actingAs($user)
+        $this->actingAs($user)
             ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
-            ->get(route('shop.index'));
+            ->get(route('shop.index'))
+            ->assertOk();
 
-        $response->assertOk();
-        // The preselect data should include "Biggie" (mapped from shoe_size=44)
-        $response->assertSee('"Biggie"', false);
+        $this->actingAs($user);
+        Livewire::test('shop-catalog')
+            ->set('sizeProfileId', $profile->id)
+            ->assertSee('"Biggie"', false);
     }
 
     public function test_catalog_cards_include_preselect_sizes_when_profile_active(): void
@@ -1220,13 +1238,16 @@ class SizeProfileTest extends TestCase
             'stock_quantity' => 5,
         ]);
 
-        $response = $this->actingAs($user)
+        $this->actingAs($user)
             ->withSession(['shop_filters' => ['size_profile' => $profile->id]])
-            ->get(route('shop.index'));
+            ->get(route('shop.index'))
+            ->assertOk();
 
-        $response->assertOk();
-        $response->assertSee('data-catalog-preselect-sizes', false);
-        $response->assertSee('"M"', false);
+        $this->actingAs($user);
+        Livewire::test('shop-catalog')
+            ->set('sizeProfileId', $profile->id)
+            ->assertSee('data-catalog-preselect-sizes', false)
+            ->assertSee('"M"', false);
     }
 
     public function test_catalog_cards_omit_preselect_sizes_when_no_profile(): void

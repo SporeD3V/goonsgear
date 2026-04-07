@@ -58,7 +58,7 @@
                     >
                         @foreach ($searchResults as $result)
                             <a
-                                href="{{ route('shop.tag', $result->slug) }}"
+                                href="{{ $result->type === 'artist' ? route('shop.artist', $result->slug) : ($result->type === 'brand' ? route('shop.brand', $result->slug) : route('shop.tag', $result->slug)) }}"
                                 class="flex items-center gap-3 border-b border-slate-100 px-4 py-2.5 text-sm text-slate-800 last:border-b-0 hover:bg-slate-50"
                             >
                                 <svg class="h-3.5 w-3.5 shrink-0 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z"/></svg>
@@ -115,7 +115,7 @@
             >
                 @foreach ($carouselTags as $tag)
                     <a
-                        href="{{ route('shop.tag', $tag->slug) }}"
+                        href="{{ $tag->type === 'artist' ? route('shop.artist', $tag->slug) : route('shop.brand', $tag->slug) }}"
                         wire:key="carousel-tag-{{ $tag->id }}"
                         class="group flex shrink-0 flex-col items-center gap-2"
                         draggable="false"

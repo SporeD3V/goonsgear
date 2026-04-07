@@ -21,6 +21,11 @@ class ShopController extends Controller
         return $this->renderIndex($request);
     }
 
+    public function catalog(Request $request): View
+    {
+        return $this->renderIndex($request, showCatalog: true);
+    }
+
     public function category(Request $request, Category $category): View
     {
         abort_unless($category->is_active, 404);
@@ -189,7 +194,7 @@ class ShopController extends Controller
         return response()->json(['results' => $results]);
     }
 
-    private function renderIndex(Request $request, ?Category $forcedCategory = null, ?Tag $forcedTag = null): View
+    private function renderIndex(Request $request, ?Category $forcedCategory = null, ?Tag $forcedTag = null, bool $showCatalog = false): View
     {
         $activeCategory = $forcedCategory;
         $activeTag = $forcedTag;
@@ -240,6 +245,7 @@ class ShopController extends Controller
         return view('shop.index', [
             'activeCategory' => $activeCategory,
             'activeTag' => $activeTag,
+            'showCatalog' => $showCatalog || $activeCategory !== null || $activeTag !== null,
             'breadcrumbs' => $breadcrumbs,
             'seo' => [
                 'title' => $pageTitle,

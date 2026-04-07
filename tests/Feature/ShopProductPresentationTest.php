@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class ShopProductPresentationTest extends TestCase
@@ -47,11 +48,11 @@ class ShopProductPresentationTest extends TestCase
             'price' => 24.99,
         ]);
 
-        $response = $this->get(route('shop.index'));
+        $response = $this->get(route('shop.index'))->assertOk();
 
-        $response->assertOk();
-        $response->assertSeeText('Bold release from the archive');
-        $response->assertSee('&euro;24.99', false);
+        Livewire::test('shop-catalog')
+            ->assertSeeText('Bold release from the archive')
+            ->assertSee('&euro;24.99', false);
     }
 
     public function test_shop_show_prioritizes_preorder_status_and_displays_availability_date(): void
