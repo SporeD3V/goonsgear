@@ -63,8 +63,8 @@
                     <tr>
                         <th class="border border-slate-200 px-3 py-2 text-left">Fallback Image</th>
                         <th class="border border-slate-200 px-3 py-2 text-left">Product</th>
-                        <th class="border border-slate-200 px-3 py-2 text-left">Optimization Status</th>
-                        <th class="border border-slate-200 px-3 py-2 text-left">Current Usage</th>
+                        <th class="hidden border border-slate-200 px-3 py-2 text-left lg:table-cell">Optimization Status</th>
+                        <th class="hidden border border-slate-200 px-3 py-2 text-left lg:table-cell">Current Usage</th>
                         <th class="border border-slate-200 px-3 py-2 text-right">Actions</th>
                     </tr>
                 </thead>
@@ -90,7 +90,7 @@
                                     <p class="text-xs text-slate-500">Slug: {{ $entry['product_slug'] ?: 'n/a' }}</p>
                                 @endif
                             </td>
-                            <td class="border border-slate-200 px-3 py-2 align-top">
+                            <td class="hidden border border-slate-200 px-3 py-2 align-top lg:table-cell">
                                 @if ($entry['has_optimized'])
                                     <p class="text-emerald-700">Optimized files exist</p>
                                     <p class="text-xs text-slate-500">{{ implode(', ', $entry['optimized_variants']) }}</p>
@@ -98,7 +98,7 @@
                                     <p class="text-amber-700">No optimized file yet</p>
                                 @endif
                             </td>
-                            <td class="border border-slate-200 px-3 py-2 align-top">
+                            <td class="hidden border border-slate-200 px-3 py-2 align-top lg:table-cell">
                                 <p class="text-xs text-slate-700">Uses WEBP: {{ $entry['uses_webp'] ? 'yes' : 'no' }}</p>
                                 <p class="text-xs text-slate-700">Uses AVIF: {{ $entry['uses_avif'] ? 'yes' : 'no' }}</p>
                                 <p class="text-xs text-slate-700">Uses fallback: {{ $entry['uses_fallback'] ? 'yes' : 'no' }}</p>
