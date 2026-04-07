@@ -472,34 +472,37 @@ class ProductController extends Controller
         $avifPath = $mediaDirectory.'/'.$baseFilename.'.avif';
 
         $avifCreated = $this->convertImageToFormat($absoluteFallbackPath, $avifPath, 'avif');
-        $webpCreated = $this->convertImageToFormat($absoluteFallbackPath, $webpPath, 'webp');
 
         if ($avifCreated) {
             $storedPath = $avifPath;
             $convertedTo = 'avif';
-        } elseif ($webpCreated) {
-            $storedPath = $webpPath;
-            $convertedTo = 'webp';
         } else {
-            $galleryFallbackPath = $mediaDirectory.'/'.$fallbackFilename;
-            $copiedToGallery = Storage::disk('public')->copy($fallbackPath, $galleryFallbackPath);
+            $webpCreated = $this->convertImageToFormat($absoluteFallbackPath, $webpPath, 'webp');
 
-            if (! $copiedToGallery) {
-                Log::warning('Fallback copy to gallery failed, using fallback path directly.', [
-                    'trace_id' => $uploadTraceId,
-                    'product_id' => $product->id,
-                    'index' => $index,
-                    'fallback_path' => $fallbackPath,
-                    'gallery_path' => $galleryFallbackPath,
-                ]);
+            if ($webpCreated) {
+                $storedPath = $webpPath;
+                $convertedTo = 'webp';
+            } else {
+                $galleryFallbackPath = $mediaDirectory.'/'.$fallbackFilename;
+                $copiedToGallery = Storage::disk('public')->copy($fallbackPath, $galleryFallbackPath);
+
+                if (! $copiedToGallery) {
+                    Log::warning('Fallback copy to gallery failed, using fallback path directly.', [
+                        'trace_id' => $uploadTraceId,
+                        'product_id' => $product->id,
+                        'index' => $index,
+                        'fallback_path' => $fallbackPath,
+                        'gallery_path' => $galleryFallbackPath,
+                    ]);
+                }
+
+                return [
+                    'path' => $copiedToGallery ? $galleryFallbackPath : $fallbackPath,
+                    'mime_type' => self::IMAGE_MIME_BY_EXTENSION[$extension] ?? 'application/octet-stream',
+                    'is_converted' => false,
+                    'converted_to' => null,
+                ];
             }
-
-            return [
-                'path' => $copiedToGallery ? $galleryFallbackPath : $fallbackPath,
-                'mime_type' => self::IMAGE_MIME_BY_EXTENSION[$extension] ?? 'application/octet-stream',
-                'is_converted' => false,
-                'converted_to' => null,
-            ];
         }
 
         // Create responsive size variants from the best converted image
