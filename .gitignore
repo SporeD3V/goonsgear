@@ -24,6 +24,15 @@ yarn-error.log
 /.zed
 /temporary_import
 
+# IDE helper (auto-generated)
+_ide_helper.php
+_ide_helper_models.php
+.phpstorm.meta.php
+
+# Root-level ad hoc scripts (use artisan commands or tests instead)
+/*.py
+/*.sql
+
 # Temporary investigation scripts — may contain credentials
 .tmp_*.py
 /_*.py
