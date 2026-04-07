@@ -17,7 +17,10 @@ use Illuminate\Support\Str;
 
 class ImportLegacyData extends Command
 {
-    protected $signature = 'import:legacy-data {--skip-cleanup : Skip demo data cleanup}';
+    protected $signature = 'import:legacy-data
+        {--skip-cleanup : Skip demo data cleanup}
+        {--dry-run : Preview import without saving changes}
+        {--only= : Import only specific entities (categories,tags,products,variants,customers,orders)}';
 
     protected $description = 'Import categories, products, variants, customers, and orders from legacy WooCommerce database';
 
@@ -26,40 +29,101 @@ class ImportLegacyData extends Command
      */
     private array $legacyAttributeTermNameCache = [];
 
+    /**
+     * @var array<string, int>
+     */
+    private array $stats = [
+        'categories' => 0,
+        'artist_tags' => 0,
+        'genre_tags' => 0,
+        'tags' => 0,
+        'products' => 0,
+        'simple_variants' => 0,
+        'variants' => 0,
+        'customers' => 0,
+        'orders' => 0,
+        'order_items' => 0,
+        'products_skipped' => 0,
+        'variants_skipped' => 0,
+        'orders_skipped' => 0,
+        'products_errors' => 0,
+        'variants_errors' => 0,
+        'customers_errors' => 0,
+        'orders_errors' => 0,
+    ];
+
     public function handle(): int
     {
         $this->info('=== WooCommerce Legacy Import ===');
 
-        if (! $this->option('skip-cleanup')) {
-            $this->cleanupDemoData();
+        $dryRun = (bool) $this->option('dry-run');
+        $only = $this->parseOnlyOption();
+
+        if ($only === false) {
+            return self::FAILURE;
         }
 
+        if ($dryRun) {
+            $this->warn('DRY RUN MODE - Changes will be previewed but not saved');
+            $this->newLine();
+        }
+
+        if (! $this->option('skip-cleanup') && ! $dryRun && ! $this->option('no-interaction')) {
+            $this->warn('⚠ This will DELETE all existing catalog data (products, categories, tags, orders, media).');
+
+            if (! $this->confirm('Are you sure you want to continue?')) {
+                $this->info('Import cancelled.');
+
+                return self::SUCCESS;
+            }
+        }
+
+        DB::beginTransaction();
+
         try {
-            // Import categories (must be first for foreign key constraints)
-            $this->importCategories();
+            if (! $this->option('skip-cleanup') && ! $dryRun) {
+                $this->cleanupDemoData();
+            }
 
-            // Import tags
-            $this->importTags();
+            if ($this->shouldImport('categories', $only)) {
+                $this->importCategories();
+            }
 
-            // Import products (simple only, no variants yet)
-            $this->importProducts();
+            if ($this->shouldImport('tags', $only)) {
+                $this->importTags();
+            }
 
-            // Create purchasable default variants for simple products
-            $this->importSimpleProductVariants();
+            if ($this->shouldImport('products', $only)) {
+                $this->importProducts();
+            }
 
-            // Import product variants
-            $this->importVariants();
+            if ($this->shouldImport('variants', $only)) {
+                $this->importSimpleProductVariants();
+                $this->importVariants();
+            }
 
-            // Import customers/users
-            $this->importCustomers();
+            if ($this->shouldImport('customers', $only)) {
+                $this->importCustomers();
+            }
 
-            // Import orders and order items
-            $this->importOrders();
+            if ($this->shouldImport('orders', $only)) {
+                $this->importOrders();
+            }
 
-            $this->info('✓ Import complete.');
+            $this->printSummary();
+
+            if ($dryRun) {
+                DB::rollBack();
+                $this->newLine();
+                $this->warn('DRY RUN - All changes have been rolled back.');
+            } else {
+                DB::commit();
+                $this->info('✓ Import complete.');
+            }
 
             return self::SUCCESS;
         } catch (\Exception $e) {
+            DB::rollBack();
             $this->error("Import failed: {$e->getMessage()}");
 
             return self::FAILURE;
@@ -72,22 +136,15 @@ class ImportLegacyData extends Command
 
         DB::statement('SET FOREIGN_KEY_CHECKS = 0');
 
-        DB::table('category_product')->truncate();
-        DB::table('product_tag')->truncate();
-        DB::table('order_items')->truncate();
-        DB::table('orders')->truncate();
-        DB::table('product_media')->truncate();
-        DB::table('product_variants')->truncate();
-        DB::table('products')->truncate();
-        DB::table('tags')->truncate();
-        DB::table('categories')->truncate();
-
-        // Reset auto-increment
-        DB::statement('ALTER TABLE categories AUTO_INCREMENT = 1');
-        DB::statement('ALTER TABLE products AUTO_INCREMENT = 1');
-        DB::statement('ALTER TABLE product_variants AUTO_INCREMENT = 1');
-        DB::statement('ALTER TABLE orders AUTO_INCREMENT = 1');
-        DB::statement('ALTER TABLE tags AUTO_INCREMENT = 1');
+        DB::table('category_product')->delete();
+        DB::table('product_tag')->delete();
+        DB::table('order_items')->delete();
+        DB::table('orders')->delete();
+        DB::table('product_media')->delete();
+        DB::table('product_variants')->delete();
+        DB::table('products')->delete();
+        DB::table('tags')->delete();
+        DB::table('categories')->delete();
 
         DB::statement('SET FOREIGN_KEY_CHECKS = 1');
 
@@ -112,7 +169,7 @@ class ImportLegacyData extends Command
      *
      * @var list<string>
      */
-    private const CUSTOM_TAG_CATEGORY_SLUGS = [
+    private const GENRE_CATEGORY_SLUGS = [
         'germanhiphop',
         'indie-hip-hop',
         '90shiphop',
@@ -139,9 +196,10 @@ class ImportLegacyData extends Command
             // Artist categories become tags instead of categories
             if (in_array($legacyCat->slug, self::ARTIST_CATEGORY_SLUGS, true)) {
                 $tag = Tag::updateOrCreate(
-                    ['slug' => $legacyCat->slug, 'type' => 'artist'],
+                    ['slug' => $legacyCat->slug],
                     [
                         'name' => $legacyCat->name,
+                        'type' => 'artist',
                         'is_active' => true,
                     ]
                 );
@@ -156,12 +214,13 @@ class ImportLegacyData extends Command
                 continue;
             }
 
-            // Custom tag categories become tags instead of categories
-            if (in_array($legacyCat->slug, self::CUSTOM_TAG_CATEGORY_SLUGS, true)) {
+            // Custom tag categories become genre tags instead of categories
+            if (in_array($legacyCat->slug, self::GENRE_CATEGORY_SLUGS, true)) {
                 $tag = Tag::updateOrCreate(
-                    ['slug' => $legacyCat->slug, 'type' => 'custom'],
+                    ['slug' => $legacyCat->slug],
                     [
                         'name' => $legacyCat->name,
+                        'type' => 'genre',
                         'is_active' => true,
                     ]
                 );
@@ -204,6 +263,9 @@ class ImportLegacyData extends Command
         }
 
         $this->info("✓ Imported {$categoryCount} categories, {$artistCount} artist tags, {$genreCount} genre tags.");
+        $this->stats['categories'] = $categoryCount;
+        $this->stats['artist_tags'] = $artistCount;
+        $this->stats['genre_tags'] = $genreCount;
     }
 
     private function importTags(): void
@@ -219,10 +281,19 @@ class ImportLegacyData extends Command
 
         $count = 0;
         foreach ($tags as $legacyTag) {
-            $tag = Tag::updateOrCreate(
-                ['slug' => $legacyTag->slug],
-                ['name' => $legacyTag->name, 'type' => 'standard']
-            );
+            $existingTag = Tag::where('slug', $legacyTag->slug)->first();
+
+            if ($existingTag) {
+                // Preserve existing type (artist/genre) but update name
+                $existingTag->update(['name' => $legacyTag->name]);
+                $tag = $existingTag;
+            } else {
+                $tag = Tag::create([
+                    'name' => $legacyTag->name,
+                    'slug' => $legacyTag->slug,
+                    'type' => 'standard',
+                ]);
+            }
 
             DB::table('import_legacy_tags')->updateOrInsert(
                 ['legacy_term_id' => $legacyTag->term_id],
@@ -233,6 +304,7 @@ class ImportLegacyData extends Command
         }
 
         $this->info("✓ Imported {$count} tags.");
+        $this->stats['tags'] = $count;
     }
 
     private function importProducts(): void
@@ -332,6 +404,7 @@ class ImportLegacyData extends Command
                 $count++;
             } catch (\Exception $e) {
                 $this->line("  ⚠ Skipped product {$legacyProd->ID} ({$legacyProd->post_title}): {$e->getMessage()}");
+                $this->stats['products_errors']++;
             }
 
             if ($count % 100 === 0) {
@@ -340,6 +413,7 @@ class ImportLegacyData extends Command
         }
 
         $this->info("✓ Imported {$count} products.");
+        $this->stats['products'] = $count;
     }
 
     private function importSimpleProductVariants(): void
@@ -454,10 +528,12 @@ class ImportLegacyData extends Command
                 $count++;
             } catch (\Exception $e) {
                 $this->line("  ⚠ Skipped simple product {$legacyProd->ID} ({$legacyProd->post_title}): {$e->getMessage()}");
+                $this->stats['variants_errors']++;
             }
         }
 
         $this->info("✓ Imported {$count} simple product default variants.");
+        $this->stats['simple_variants'] = $count;
     }
 
     private function importVariants(): void
@@ -490,7 +566,10 @@ class ImportLegacyData extends Command
             );
 
             if ($productId === null) {
-                continue; // Skip orphan variants
+                $this->line("  ⚠ Orphan variant {$legacyVar->ID} (parent: {$legacyVar->post_parent}): parent product not found");
+                $this->stats['variants_skipped']++;
+
+                continue;
             }
 
             try {
@@ -560,6 +639,7 @@ class ImportLegacyData extends Command
                 $count++;
             } catch (\Exception $e) {
                 $this->line("  ⚠ Skipped variant {$legacyVar->ID}: {$e->getMessage()}");
+                $this->stats['variants_errors']++;
             }
 
             if ($count % 250 === 0) {
@@ -568,6 +648,7 @@ class ImportLegacyData extends Command
         }
 
         $this->info("✓ Imported {$count} variants.");
+        $this->stats['variants'] = $count;
     }
 
     private function importCustomers(): void
@@ -610,10 +691,12 @@ class ImportLegacyData extends Command
                 $count++;
             } catch (\Exception $e) {
                 $this->line("  ⚠ Skipped user {$legacyCust->ID} ({$legacyCust->user_email}): {$e->getMessage()}");
+                $this->stats['customers_errors']++;
             }
         }
 
         $this->info("✓ Imported {$count} customers.");
+        $this->stats['customers'] = $count;
     }
 
     private function importOrders(): void
@@ -719,68 +802,66 @@ class ImportLegacyData extends Command
                 ]);
                 $order->save();
 
-                // Import order items
-                if (! $order->wasRecentlyCreated && DB::table('import_legacy_orders')->where('legacy_wc_order_id', $legacyOrder->ID)->exists()) {
-                    $count++;
-
-                    continue;
+                // Import order items — clear existing items first to prevent duplicates on re-import
+                if (! $order->wasRecentlyCreated) {
+                    OrderItem::where('order_id', $order->id)->delete();
                 }
 
-                if ($order->wasRecentlyCreated) {
-                    $items = $legacy->table('wp_woocommerce_order_items')
-                        ->where('order_id', $legacyOrder->ID)
-                        ->where('order_item_type', 'line_item')
-                        ->select('order_item_id', 'order_item_name')
-                        ->get();
+                $items = $legacy->table('wp_woocommerce_order_items')
+                    ->where('order_id', $legacyOrder->ID)
+                    ->where('order_item_type', 'line_item')
+                    ->select('order_item_id', 'order_item_name')
+                    ->get();
 
-                    foreach ($items as $item) {
-                        $itemMeta = $legacy->table('wp_woocommerce_order_itemmeta')
-                            ->where('order_item_id', $item->order_item_id)
-                            ->pluck('meta_value', 'meta_key')
-                            ->toArray();
+                foreach ($items as $item) {
+                    $itemMeta = $legacy->table('wp_woocommerce_order_itemmeta')
+                        ->where('order_item_id', $item->order_item_id)
+                        ->pluck('meta_value', 'meta_key')
+                        ->toArray();
 
-                        $productId = $itemMeta['_product_id'] ?? null;
-                        $variantId = $itemMeta['_variation_id'] ?? null;
+                    $productId = $itemMeta['_product_id'] ?? null;
+                    $variantId = $itemMeta['_variation_id'] ?? null;
 
-                        $newProductId = null;
-                        $newVariantId = null;
+                    $newProductId = null;
+                    $newVariantId = null;
 
-                        if ($variantId) {
-                            $mappedVariantId = $this->resolveMappedModelId(
-                                'import_legacy_variants',
-                                'legacy_wp_post_id',
-                                (int) $variantId,
-                                'product_variant_id',
-                                ProductVariant::class,
-                            );
+                    if ($variantId) {
+                        $mappedVariantId = $this->resolveMappedModelId(
+                            'import_legacy_variants',
+                            'legacy_wp_post_id',
+                            (int) $variantId,
+                            'product_variant_id',
+                            ProductVariant::class,
+                        );
 
-                            if ($mappedVariantId !== null) {
-                                $newVariantId = $mappedVariantId;
-                                $variant = ProductVariant::find($mappedVariantId);
-                                $newProductId = $variant?->product_id;
-                            }
-                        } elseif ($productId) {
-                            $newProductId = $this->resolveMappedModelId(
-                                'import_legacy_products',
-                                'legacy_wp_post_id',
-                                (int) $productId,
-                                'product_id',
-                                Product::class,
-                            );
+                        if ($mappedVariantId !== null) {
+                            $newVariantId = $mappedVariantId;
+                            $variant = ProductVariant::find($mappedVariantId);
+                            $newProductId = $variant?->product_id;
                         }
-
-                        OrderItem::create([
-                            'order_id' => $order->id,
-                            'product_id' => $newProductId,
-                            'product_variant_id' => $newVariantId,
-                            'product_name' => $item->order_item_name,
-                            'variant_name' => $itemMeta['_variation_title'] ?? null,
-                            'sku' => $itemMeta['_sku'] ?? 'LEGACY-ITEM',
-                            'unit_price' => (float) ($itemMeta['_line_subtotal'] ?? 0),
-                            'quantity' => (int) ($itemMeta['_qty'] ?? 1),
-                            'line_total' => (float) ($itemMeta['_line_total'] ?? 0),
-                        ]);
+                    } elseif ($productId) {
+                        $newProductId = $this->resolveMappedModelId(
+                            'import_legacy_products',
+                            'legacy_wp_post_id',
+                            (int) $productId,
+                            'product_id',
+                            Product::class,
+                        );
                     }
+
+                    OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => $newProductId,
+                        'product_variant_id' => $newVariantId,
+                        'product_name' => $item->order_item_name,
+                        'variant_name' => $itemMeta['_variation_title'] ?? null,
+                        'sku' => $itemMeta['_sku'] ?? 'LEGACY-ITEM',
+                        'unit_price' => (float) ($itemMeta['_line_subtotal'] ?? 0),
+                        'quantity' => (int) ($itemMeta['_qty'] ?? 1),
+                        'line_total' => (float) ($itemMeta['_line_total'] ?? 0),
+                    ]);
+
+                    $this->stats['order_items']++;
                 }
 
                 $this->syncLegacyOrderMapping($legacyOrder->ID, $order->id);
@@ -791,12 +872,14 @@ class ImportLegacyData extends Command
                 }
             } catch (\Exception $e) {
                 $this->warn("  ⚠ Failed to import order {$legacyOrder->ID}: {$e->getMessage()}");
+                $this->stats['orders_errors']++;
 
                 continue;
             }
         }
 
         $this->info("✓ Imported {$count} orders.");
+        $this->stats['orders'] = $count;
     }
 
     /**
@@ -1085,5 +1168,59 @@ class ImportLegacyData extends Command
         }
 
         return ProductVariant::detectTypeFromName($variantName);
+    }
+
+    /**
+     * @param  list<string>|null  $only
+     */
+    private function shouldImport(string $entity, ?array $only): bool
+    {
+        return $only === null || in_array($entity, $only, true);
+    }
+
+    /**
+     * @return list<string>|null|false False if invalid values provided
+     */
+    private function parseOnlyOption(): array|null|false
+    {
+        $only = $this->option('only');
+
+        if (! is_string($only) || trim($only) === '') {
+            return null;
+        }
+
+        $valid = ['categories', 'tags', 'products', 'variants', 'customers', 'orders'];
+        $selected = array_map('trim', explode(',', $only));
+        $invalid = array_diff($selected, $valid);
+
+        if ($invalid !== []) {
+            $this->error('Invalid --only values: '.implode(', ', $invalid));
+            $this->info('Valid values: '.implode(', ', $valid));
+
+            return false;
+        }
+
+        return $selected;
+    }
+
+    private function printSummary(): void
+    {
+        $this->newLine();
+        $this->info('=== Import Summary ===');
+        $this->table(
+            ['Entity', 'Imported', 'Skipped', 'Errors'],
+            [
+                ['Categories', $this->stats['categories'], '-', '-'],
+                ['Artist Tags', $this->stats['artist_tags'], '-', '-'],
+                ['Genre Tags', $this->stats['genre_tags'], '-', '-'],
+                ['Standard Tags', $this->stats['tags'], '-', '-'],
+                ['Products', $this->stats['products'], $this->stats['products_skipped'], $this->stats['products_errors']],
+                ['Simple Variants', $this->stats['simple_variants'], '-', '-'],
+                ['Variants', $this->stats['variants'], $this->stats['variants_skipped'], $this->stats['variants_errors']],
+                ['Customers', $this->stats['customers'], '-', $this->stats['customers_errors']],
+                ['Orders', $this->stats['orders'], $this->stats['orders_skipped'], $this->stats['orders_errors']],
+                ['Order Items', $this->stats['order_items'], '-', '-'],
+            ]
+        );
     }
 }
