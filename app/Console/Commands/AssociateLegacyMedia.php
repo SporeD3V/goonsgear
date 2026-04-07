@@ -313,8 +313,8 @@ class AssociateLegacyMedia extends Command
         $candidatePaths = [$absolutePath];
 
         $pathInfo = pathinfo($absolutePath);
-        $directory = $pathInfo['dirname'] ?? $legacyRoot;
-        $filename = $pathInfo['filename'] ?? '';
+        $directory = $pathInfo['dirname'] === '.' ? $legacyRoot : $pathInfo['dirname'];
+        $filename = $pathInfo['filename'];
         $extension = strtolower((string) ($pathInfo['extension'] ?? ''));
 
         if ($filename !== '') {
@@ -424,20 +424,20 @@ class AssociateLegacyMedia extends Command
         $webpPath = $mediaDirectory.'/'.$baseFilename.'.webp';
         $avifPath = $mediaDirectory.'/'.$baseFilename.'.avif';
 
-        $avifCreated = Storage::disk('public')->exists($avifPath) 
+        $avifCreated = Storage::disk('public')->exists($avifPath)
             ? (Storage::disk('public')->size($avifPath) > 0)
             : $this->convertImageToFormat($sourceAbsolutePath, storage_path('app/public/'.$avifPath), 'avif');
-        
+
         if ($avifCreated && Storage::disk('public')->size($avifPath) === 0) {
             Storage::disk('public')->delete($avifPath);
             $avifCreated = false;
             $this->warn("AVIF conversion resulted in 0-byte file, skipping: {$avifPath}");
         }
-        
+
         $webpCreated = Storage::disk('public')->exists($webpPath)
             ? (Storage::disk('public')->size($webpPath) > 0)
             : $this->convertImageToFormat($sourceAbsolutePath, storage_path('app/public/'.$webpPath), 'webp');
-        
+
         if ($webpCreated && Storage::disk('public')->size($webpPath) === 0) {
             Storage::disk('public')->delete($webpPath);
             $webpCreated = false;
@@ -509,7 +509,7 @@ class AssociateLegacyMedia extends Command
             }
 
             $imageInfo = @getimagesize($sourceAbsolutePath);
-            if ($imageInfo === false || ! isset($imageInfo['mime'])) {
+            if ($imageInfo === false) {
                 return false;
             }
 
@@ -634,7 +634,7 @@ class AssociateLegacyMedia extends Command
         }
 
         $imageInfo = @getimagesize($sourceAbsolutePath);
-        if ($imageInfo === false || ! isset($imageInfo['mime'])) {
+        if ($imageInfo === false) {
             return;
         }
 

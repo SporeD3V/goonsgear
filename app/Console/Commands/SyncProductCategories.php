@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 class SyncProductCategories extends Command
 {
     protected $signature = 'products:sync-categories';
+
     protected $description = 'Sync product categories from WordPress to category_product pivot table';
 
     public function handle(): int
@@ -24,7 +25,7 @@ class SyncProductCategories extends Command
                 ->where('product_id', $product->id)
                 ->first();
 
-            if (!$mapping) {
+            if (! $mapping) {
                 continue;
             }
 
@@ -40,13 +41,13 @@ class SyncProductCategories extends Command
                 $catMapping = DB::table('import_legacy_categories')
                     ->where('legacy_term_id', $termId)
                     ->first();
-                
+
                 if ($catMapping) {
                     $categoryIds[] = $catMapping->category_id;
                 }
             }
 
-            if (!empty($categoryIds)) {
+            if (! empty($categoryIds)) {
                 $product->categories()->sync($categoryIds);
                 $count++;
             }

@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -38,11 +39,13 @@ class AssignVariantTypes extends Command
             $type = $this->detectVariantType($variant);
 
             if ($type === 'uncertain') {
+                /** @var Product $variantProduct */
+                $variantProduct = $variant->product;
                 $uncertain[] = [
                     'id' => $variant->id,
-                    'product' => $variant->product->name,
+                    'product' => $variantProduct->name,
                     'variant' => $variant->name,
-                    'category' => $variant->product->primaryCategory?->name ?? 'None',
+                    'category' => $variantProduct->primaryCategory->name ?? 'None',
                 ];
                 $this->stats['uncertain']++;
             } else {
@@ -85,8 +88,10 @@ class AssignVariantTypes extends Command
     private function detectVariantType(ProductVariant $variant): string
     {
         $name = trim($variant->name);
-        $productName = $variant->product->name ?? '';
-        $categoryName = $variant->product->primaryCategory?->name ?? '';
+        /** @var Product $variantProduct */
+        $variantProduct = $variant->product;
+        $productName = $variantProduct->name ?? '';
+        $categoryName = $variantProduct->primaryCategory->name ?? '';
 
         // Detect combination variants (e.g., "M, Black" or "L, Red")
         // These contain both size and color info and should be marked as custom

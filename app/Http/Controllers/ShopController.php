@@ -71,7 +71,8 @@ class ShopController extends Controller
                 ->orderBy('id'),
         ]);
 
-        $product->setRelation('media', $product->media->map(function (ProductMedia $media): ProductMedia {
+        $product->setRelation('media', $product->media->map(function ($media): ProductMedia {
+            /** @var ProductMedia $media */
             $media->setAttribute('display_path', $this->resolveGalleryPath($media));
             $media->setAttribute('thumbnail_path', $this->resolveThumbnailPath($media));
             $media->setAttribute('zoom_path', $this->resolveZoomPath($media));
@@ -116,10 +117,12 @@ class ShopController extends Controller
         // Build breadcrumbs: Home > Category > Product
         $breadcrumbs = [['name' => 'Home', 'url' => route('shop.index')]];
 
+        /** @var Category|null $primaryCategory */
         $primaryCategory = $product->primaryCategory;
 
         if ($primaryCategory !== null) {
             if ($primaryCategory->parent_id !== null) {
+                /** @var Category|null $parentCategory */
                 $parentCategory = $primaryCategory->parent ?? Category::find($primaryCategory->parent_id);
 
                 if ($parentCategory !== null) {
@@ -171,8 +174,10 @@ class ShopController extends Controller
             ->select(['id', 'primary_category_id', 'name', 'slug', 'excerpt'])
             ->limit(8)
             ->get()
-            ->map(function ($product) {
+            ->map(function (Product $product) {
+                /** @var ProductMedia|null $primaryMedia */
                 $primaryMedia = $product->media->first();
+                /** @var ProductMedia|null $secondaryMedia */
                 $secondaryMedia = $product->media->skip(1)->first();
                 $primaryImagePath = $primaryMedia ? $this->resolveThumbnailPath($primaryMedia) : null;
                 $secondaryImagePath = $secondaryMedia ? $this->resolveThumbnailPath($secondaryMedia) : null;
@@ -204,6 +209,7 @@ class ShopController extends Controller
 
         if ($activeCategory !== null) {
             if ($activeCategory->parent_id !== null) {
+                /** @var Category|null $parentCategory */
                 $parentCategory = $activeCategory->parent ?? Category::find($activeCategory->parent_id);
 
                 if ($parentCategory !== null) {
@@ -216,7 +222,7 @@ class ShopController extends Controller
             $typeLabel = match ($activeTag->type) {
                 'artist' => 'Artists',
                 'brand' => 'Brands',
-                'custom' => 'Tags',
+                default => 'Tags',
             };
 
             $breadcrumbs[] = ['name' => $typeLabel, 'url' => null];

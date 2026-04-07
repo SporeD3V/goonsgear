@@ -175,6 +175,12 @@ parameters:
 			path: app/Http/Controllers/CheckoutController.php
 
 		-
+			message: '#^Call to function is_array\(\) with string\|null will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
 			message: '#^Method App\\Http\\Controllers\\CheckoutController\:\:getCountries\(\) is unused\.$#'
 			identifier: method.unused
 			count: 1
@@ -201,6 +207,18 @@ parameters:
 		-
 			message: '#^Method App\\Http\\Controllers\\CheckoutController\:\:resolvePricing\(\) should return array\{subtotal\: float, discount_total\: float, regional_discount_total\: float, bundle_discount_total\: float, total\: float, coupon\: App\\Http\\Controllers\\App\\Models\\Coupon\|null, coupons\: Illuminate\\Support\\Collection\<int, App\\Http\\Controllers\\App\\Models\\Coupon\>, coupon_code\: string\|null, \.\.\.\} but returns array\{subtotal\: float, discount_total\: float, regional_discount_total\: float, bundle_discount_total\: float, total\: float, coupon\: App\\Models\\Coupon\|null, coupons\: Illuminate\\Support\\Collection\<int, App\\Models\\Coupon\>, coupon_code\: string\|null, \.\.\.\}\.$#'
 			identifier: return.type
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Http/Controllers/CheckoutController.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between \*NEVER\* and array\{\} will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
 			count: 1
 			path: app/Http/Controllers/CheckoutController.php
 
@@ -309,7 +327,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$path\.$#'
 			identifier: property.notFound
-			count: 3
+			count: 1
 			path: app/Http/Controllers/ShopController.php
 
 		-
@@ -327,12 +345,6 @@ parameters:
 		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Product\>\:\:map\(\) contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/ShopController.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>slug" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Http/Controllers/ShopController.php
 

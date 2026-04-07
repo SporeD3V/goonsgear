@@ -41,6 +41,13 @@ jobs:
           extensions: mbstring, intl, pdo_mysql, curl, bcmath, gd
           coverage: none
 
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/composer-cache
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -51,10 +58,18 @@ jobs:
         run: composer validate --strict --no-check-publish
 
       - name: Install Composer dependencies
+        env:
+          COMPOSER_CACHE_DIR: ${{ runner.temp }}/composer-cache
         run: composer install --prefer-dist --no-interaction --no-progress
 
       - name: Install Node dependencies
         run: npm ci --no-audit --no-fund
+
+      - name: Code style check (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Static analysis (Larastan)
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=512M
 
       - name: Run release gate tests
         run: |
@@ -70,6 +85,8 @@ jobs:
         run: npm run build
 
       - name: Optimize Composer dependencies for deploy
+        env:
+          COMPOSER_CACHE_DIR: ${{ runner.temp }}/composer-cache
         run: composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
 
       - name: Generate release marker
@@ -119,12 +136,20 @@ jobs:
             exit 1
           fi
 
-          test -f deploy/public/release.json
+          for required in artisan vendor/autoload.php public/release.json public/index.php; do
+            if [ ! -f "deploy/${required}" ]; then
+              echo "FAIL: deploy/${required} missing from payload"
+              exit 1
+            fi
+          done
 
       - name: Install SSH deploy tooling
         run: |
-          sudo apt-get update
-          sudo apt-get install -y sshpass
+          if ! command -v sshpass &>/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y sshpass
+          fi
+          sshpass -V
 
       - name: Trust staging host key
         run: |
@@ -238,8 +263,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          for path in / /catalog /cart /release.json; do
-            code=$(curl -fsS -o /tmp/response -w '%{http_code}' "${STAGING_URL}${path}")
+          for path in / /catalog /cart; do
+            code=$(curl -sS -o /tmp/response -w '%{http_code}' "${STAGING_URL}${path}")
             echo "${path} -> ${code}"
             if [ "$code" -ne 200 ]; then
               echo "FAIL: ${path} returned ${code}"
@@ -247,14 +272,14 @@ jobs:
             fi
           done
 
-          SEARCH_RESPONSE=$(curl -fsS "${STAGING_URL}/api/shop/search?q=sh")
+          SEARCH_RESPONSE=$(curl -sS "${STAGING_URL}/api/shop/search?q=sh")
           echo "$SEARCH_RESPONSE"
           echo "$SEARCH_RESPONSE" | grep -F '"results"' >/dev/null || {
             echo 'FAIL: search endpoint smoke test failed'
             exit 1
           }
 
-          RELEASE_JSON=$(curl -fsS "${STAGING_URL}/release.json")
+          RELEASE_JSON=$(curl -sS "${STAGING_URL}/release.json")
           echo "$RELEASE_JSON"
           RELEASE_COMMIT=$(echo "$RELEASE_JSON" | grep -o '"commit" *: *"[^"]*"' | cut -d'"' -f4)
           if [ "$RELEASE_COMMIT" != "$GITHUB_SHA" ]; then

@@ -7,6 +7,8 @@ use App\Http\Requests\StoreCheckoutRequest;
 use App\Mail\OrderConfirmation;
 use App\Models\Coupon;
 use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\SizeProfile;
@@ -307,7 +309,11 @@ class CheckoutController extends Controller
         ]);
 
         $order->setRelation('items', $order->items->map(function ($item) {
-            $primaryMedia = $item->product?->media->first();
+            /** @var OrderItem $item */
+            /** @var Product|null $product */
+            $product = $item->product;
+            /** @var ProductMedia|null $primaryMedia */
+            $primaryMedia = $product?->media->first();
 
             if ($primaryMedia !== null) {
                 $primaryMedia->setAttribute('thumbnail_path', $this->resolveCheckoutThumbnailPath($primaryMedia));
@@ -339,7 +345,9 @@ class CheckoutController extends Controller
 
         $orderedSizes = [];
 
+        /** @var OrderItem $item */
         foreach ($order->items as $item) {
+            /** @var ProductVariant|null $variant */
             $variant = $item->variant;
 
             if ($variant === null) {
@@ -383,6 +391,7 @@ class CheckoutController extends Controller
             return null;
         }
 
+        /** @var SizeProfile|null $selfProfile */
         $selfProfile = $user->sizeProfiles()->where('is_self', true)->first();
 
         if ($selfProfile === null) {

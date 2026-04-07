@@ -995,7 +995,7 @@ class ImportLegacyData extends Command
         $optionValues = [];
 
         foreach ($meta as $metaKey => $metaValue) {
-            if (! is_string($metaKey) || ! str_starts_with($metaKey, 'attribute_')) {
+            if (! str_starts_with($metaKey, 'attribute_')) {
                 continue;
             }
 

@@ -216,7 +216,7 @@ trait ResolvesProductDisplay
         }
 
         if ($matchedPartCount > 0 && $matchedPartCount < count($parts)) {
-            return array_values(array_slice($parts, $matchedPartCount));
+            return array_slice($parts, $matchedPartCount);
         }
 
         return $parts;
@@ -332,7 +332,7 @@ trait ResolvesProductDisplay
         $disk = (string) ($media->disk ?: 'public');
         $pathInfo = pathinfo($path);
         $directory = $pathInfo['dirname'] ?? '';
-        $filename = $pathInfo['filename'] ?? '';
+        $filename = $pathInfo['filename'];
 
         if ($filename === '') {
             return $path;
