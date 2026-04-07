@@ -23,6 +23,9 @@ class ProductMedia extends Model
         'mime_type',
         'is_converted',
         'converted_to',
+        'thumbnail_path',
+        'gallery_path',
+        'zoom_path',
         'width',
         'height',
         'alt_text',
@@ -43,15 +46,32 @@ class ProductMedia extends Model
 
     public function getThumbnailPath(): string
     {
-        return $this->getVariantPath('thumbnail');
+        if ($this->thumbnail_path !== null && $this->thumbnail_path !== '') {
+            return $this->thumbnail_path;
+        }
+
+        return $this->computeVariantPath('thumbnail');
     }
 
     public function getGalleryPath(): string
     {
-        return $this->getVariantPath('gallery');
+        if ($this->gallery_path !== null && $this->gallery_path !== '') {
+            return $this->gallery_path;
+        }
+
+        return $this->computeVariantPath('gallery');
     }
 
-    private function getVariantPath(string $variant): string
+    public function getZoomPath(): string
+    {
+        if ($this->zoom_path !== null && $this->zoom_path !== '') {
+            return $this->zoom_path;
+        }
+
+        return $this->path;
+    }
+
+    public function computeVariantPath(string $variant): string
     {
         $pathInfo = pathinfo($this->path);
         $dirname = $pathInfo['dirname'];

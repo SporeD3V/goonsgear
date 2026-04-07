@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\ProductMedia;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 
 class SyncProductMediaFromStorageCommand extends Command
 {
@@ -91,6 +92,8 @@ class SyncProductMediaFromStorageCommand extends Command
                 }
 
                 if (! $dryRun) {
+                    $variantPaths = $this->resolveVariantPaths($relativePath, $mimeType);
+
                     ProductMedia::query()->create([
                         'product_id' => $product->id,
                         'product_variant_id' => null,
@@ -101,6 +104,9 @@ class SyncProductMediaFromStorageCommand extends Command
                         'converted_to' => null,
                         'is_primary' => $isPrimary,
                         'position' => $position,
+                        'thumbnail_path' => $variantPaths['thumbnail'],
+                        'gallery_path' => $variantPaths['gallery'],
+                        'zoom_path' => $variantPaths['zoom'],
                     ]);
                 }
 
@@ -197,5 +203,25 @@ class SyncProductMediaFromStorageCommand extends Command
         $extension = strtolower((string) pathinfo($relativePath, PATHINFO_EXTENSION));
 
         return self::MIME_BY_EXTENSION[$extension] ?? 'application/octet-stream';
+    }
+
+    /**
+     * @return array{thumbnail: ?string, gallery: ?string, zoom: string}
+     */
+    private function resolveVariantPaths(string $relativePath, string $mimeType): array
+    {
+        if (str_starts_with($mimeType, 'video/')) {
+            return ['thumbnail' => null, 'gallery' => null, 'zoom' => $relativePath];
+        }
+
+        $tempMedia = new ProductMedia(['path' => $relativePath]);
+        $thumbnailPath = $tempMedia->computeVariantPath('thumbnail');
+        $galleryPath = $tempMedia->computeVariantPath('gallery');
+
+        return [
+            'thumbnail' => Storage::disk('public')->exists($thumbnailPath) ? $thumbnailPath : $relativePath,
+            'gallery' => Storage::disk('public')->exists($galleryPath) ? $galleryPath : $relativePath,
+            'zoom' => $relativePath,
+        ];
     }
 }

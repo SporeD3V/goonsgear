@@ -128,6 +128,9 @@ class ProductController extends Controller
                         'alt_text' => $mediaAltText !== '' ? $mediaAltText : null,
                         'is_primary' => $index === 0,
                         'position' => $index,
+                        'thumbnail_path' => $storedMedia['thumbnail_path'],
+                        'gallery_path' => $storedMedia['gallery_path'],
+                        'zoom_path' => $storedMedia['zoom_path'],
                     ];
 
                     if ($this->productMediaSupportsConversionMetadata()) {
@@ -287,6 +290,9 @@ class ProductController extends Controller
                         'alt_text' => $mediaAltText !== '' ? $mediaAltText : null,
                         'is_primary' => ! $hasPrimaryMedia && $index === 0,
                         'position' => $nextPosition + $index,
+                        'thumbnail_path' => $storedMedia['thumbnail_path'],
+                        'gallery_path' => $storedMedia['gallery_path'],
+                        'zoom_path' => $storedMedia['zoom_path'],
                     ];
 
                     if ($this->productMediaSupportsConversionMetadata()) {
@@ -336,7 +342,7 @@ class ProductController extends Controller
     }
 
     /**
-     * @return array{path: string, mime_type: string, is_converted: bool, converted_to: ?string}
+     * @return array{path: string, mime_type: string, is_converted: bool, converted_to: ?string, thumbnail_path: ?string, gallery_path: ?string, zoom_path: ?string}
      */
     private function storeMediaFile(Product $product, UploadedFile $uploadedMediaFile, ?ProductVariant $variant, int $index, string $uploadTraceId): array
     {
@@ -368,6 +374,9 @@ class ProductController extends Controller
                 'mime_type' => (string) ($uploadedMediaFile->getMimeType() ?: 'application/octet-stream'),
                 'is_converted' => false,
                 'converted_to' => null,
+                'thumbnail_path' => null,
+                'gallery_path' => null,
+                'zoom_path' => null,
             ];
         }
 
@@ -394,6 +403,9 @@ class ProductController extends Controller
                 'mime_type' => (string) ($uploadedMediaFile->getMimeType() ?: 'application/octet-stream'),
                 'is_converted' => false,
                 'converted_to' => null,
+                'thumbnail_path' => null,
+                'gallery_path' => null,
+                'zoom_path' => null,
             ];
         }
 
@@ -430,18 +442,24 @@ class ProductController extends Controller
                     'mime_type' => self::IMAGE_MIME_BY_EXTENSION[$extension] ?? 'application/octet-stream',
                     'is_converted' => false,
                     'converted_to' => null,
+                    'thumbnail_path' => null,
+                    'gallery_path' => null,
+                    'zoom_path' => null,
                 ];
             }
         }
 
         // Create responsive size variants from the best converted image
-        $this->createImageVariants($absoluteFallbackPath, $mediaDirectory, $baseFilename);
+        $variantPaths = $this->createImageVariants($absoluteFallbackPath, $mediaDirectory, $baseFilename);
 
         return [
             'path' => $storedPath,
             'mime_type' => $convertedTo === 'webp' ? 'image/webp' : 'image/avif',
             'is_converted' => true,
             'converted_to' => $convertedTo,
+            'thumbnail_path' => $variantPaths['thumbnail'] ?? null,
+            'gallery_path' => $variantPaths['gallery'] ?? null,
+            'zoom_path' => $storedPath,
         ];
     }
 
@@ -613,21 +631,22 @@ class ProductController extends Controller
      * @param  string  $sourceAbsolutePath  Path to original uploaded image
      * @param  string  $mediaDirectory  Relative directory where variants are stored
      * @param  string  $baseFilename  Base filename without extension
+     * @return array<string, string>
      */
-    private function createImageVariants(string $sourceAbsolutePath, string $mediaDirectory, string $baseFilename): void
+    private function createImageVariants(string $sourceAbsolutePath, string $mediaDirectory, string $baseFilename): array
     {
         $useImagick = class_exists('Imagick');
         $useGd = function_exists('imagecreatetruecolor');
 
         if (! $useGd && ! $useImagick) {
-            return;
+            return [];
         }
 
         try {
             if ($useImagick) {
-                $this->createImageVariantsWithImagick($sourceAbsolutePath, $mediaDirectory, $baseFilename);
+                return $this->createImageVariantsWithImagick($sourceAbsolutePath, $mediaDirectory, $baseFilename);
             } elseif ($useGd) {
-                $this->createImageVariantsWithGd($sourceAbsolutePath, $mediaDirectory, $baseFilename);
+                return $this->createImageVariantsWithGd($sourceAbsolutePath, $mediaDirectory, $baseFilename);
             }
         } catch (Throwable $exception) {
             Log::debug('Image variant creation failed.', [
@@ -635,11 +654,17 @@ class ProductController extends Controller
                 'message' => $exception->getMessage(),
             ]);
         }
+
+        return [];
     }
 
-    private function createImageVariantsWithImagick(string $sourceAbsolutePath, string $mediaDirectory, string $baseFilename): void
+    /**
+     * @return array<string, string>
+     */
+    private function createImageVariantsWithImagick(string $sourceAbsolutePath, string $mediaDirectory, string $baseFilename): array
     {
         $variants = config('images.sizes', []);
+        $createdPaths = [];
 
         foreach ($variants as $variantName => $variant) {
             $variantWidth = $variant['width'] ?? 0;
@@ -656,7 +681,8 @@ class ProductController extends Controller
             $imagick->stripImage();
 
             $variantFilename = $baseFilename.'-'.$variantName.'-'.$variantWidth.'x'.$variantHeight.'.avif';
-            $absoluteVariantPath = storage_path('app/public/'.$mediaDirectory.'/'.$variantFilename);
+            $variantRelativePath = $mediaDirectory.'/'.$variantFilename;
+            $absoluteVariantPath = storage_path('app/public/'.$variantRelativePath);
 
             $variantDirectory = dirname($absoluteVariantPath);
             if (! is_dir($variantDirectory)) {
@@ -666,18 +692,25 @@ class ProductController extends Controller
             $imagick->writeImage($absoluteVariantPath);
             $imagick->clear();
             $imagick->destroy();
+
+            $createdPaths[$variantName] = $variantRelativePath;
         }
+
+        return $createdPaths;
     }
 
-    private function createImageVariantsWithGd(string $sourceAbsolutePath, string $mediaDirectory, string $baseFilename): void
+    /**
+     * @return array<string, string>
+     */
+    private function createImageVariantsWithGd(string $sourceAbsolutePath, string $mediaDirectory, string $baseFilename): array
     {
         if (! function_exists('imageavif') && ! function_exists('imagewebp')) {
-            return;
+            return [];
         }
 
         $imageInfo = @getimagesize($sourceAbsolutePath);
         if ($imageInfo === false) {
-            return;
+            return [];
         }
 
         $srcWidth = $imageInfo[0];
@@ -693,10 +726,11 @@ class ProductController extends Controller
         };
 
         if ($sourceImage === false) {
-            return;
+            return [];
         }
 
         $variants = config('images.sizes', []);
+        $createdPaths = [];
 
         foreach ($variants as $variantName => $variant) {
             $variantWidth = $variant['width'] ?? 0;
@@ -729,14 +763,20 @@ class ProductController extends Controller
 
             if (function_exists('imageavif')) {
                 $variantFilename = $baseFilename.'-'.$variantName.'-'.$variantWidth.'x'.$variantHeight.'.avif';
-                $absoluteVariantPath = storage_path('app/public/'.$mediaDirectory.'/'.$variantFilename);
+                $variantRelativePath = $mediaDirectory.'/'.$variantFilename;
+                $absoluteVariantPath = storage_path('app/public/'.$variantRelativePath);
                 @imageavif($destImage, $absoluteVariantPath, 62);
             } else {
                 $variantFilename = $baseFilename.'-'.$variantName.'-'.$variantWidth.'x'.$variantHeight.'.webp';
-                $absoluteVariantPath = storage_path('app/public/'.$mediaDirectory.'/'.$variantFilename);
+                $variantRelativePath = $mediaDirectory.'/'.$variantFilename;
+                $absoluteVariantPath = storage_path('app/public/'.$variantRelativePath);
                 @imagewebp($destImage, $absoluteVariantPath, 82);
             }
+
+            $createdPaths[$variantName] = $variantRelativePath;
         }
+
+        return $createdPaths;
     }
 
     /**

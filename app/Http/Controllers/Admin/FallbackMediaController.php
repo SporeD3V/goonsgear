@@ -185,6 +185,13 @@ class FallbackMediaController extends Controller
         $preferredPath = $avifCreated ? $avifPath : $webpPath;
         $preferredFormat = $avifCreated ? 'avif' : 'webp';
 
+        // Compute variant paths based on the preferred converted path
+        $tempMedia = new ProductMedia(['path' => $preferredPath]);
+        $variantThumbnail = $tempMedia->computeVariantPath('thumbnail');
+        $variantGallery = $tempMedia->computeVariantPath('gallery');
+        $resolvedThumbnail = Storage::disk('public')->exists($variantThumbnail) ? $variantThumbnail : $preferredPath;
+        $resolvedGallery = Storage::disk('public')->exists($variantGallery) ? $variantGallery : $preferredPath;
+
         $matchingMedia = ProductMedia::query()
             ->where('product_id', $product->id)
             ->where(function ($query) use ($fallbackPath, $galleryPathWithoutExtension): void {
@@ -206,6 +213,9 @@ class FallbackMediaController extends Controller
                 'mime_type' => self::IMAGE_MIME_BY_EXTENSION[$preferredFormat],
                 'is_primary' => ! ProductMedia::query()->where('product_id', $product->id)->where('is_primary', true)->exists(),
                 'position' => $nextPosition,
+                'thumbnail_path' => $resolvedThumbnail,
+                'gallery_path' => $resolvedGallery,
+                'zoom_path' => $preferredPath,
                 ...($this->productMediaSupportsConversionMetadata() ? [
                     'is_converted' => true,
                     'converted_to' => $preferredFormat,
@@ -218,6 +228,9 @@ class FallbackMediaController extends Controller
                 $updatePayload = [
                     'path' => $preferredPath,
                     'mime_type' => self::IMAGE_MIME_BY_EXTENSION[$preferredFormat],
+                    'thumbnail_path' => $resolvedThumbnail,
+                    'gallery_path' => $resolvedGallery,
+                    'zoom_path' => $preferredPath,
                 ];
 
                 if ($this->productMediaSupportsConversionMetadata()) {

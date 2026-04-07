@@ -13,7 +13,6 @@ use App\Support\CartPricing;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -278,24 +277,7 @@ class CartController extends Controller
             return $media->path;
         }
 
-        $disk = (string) ($media->disk ?: 'public');
-        $thumbnailPath = $media->getThumbnailPath();
-        $candidates = [$thumbnailPath];
-
-        if (str_contains($thumbnailPath, '/fallback/')) {
-            $galleryThumbnailPath = str_replace('/fallback/', '/gallery/', $thumbnailPath);
-            array_unshift($candidates, $galleryThumbnailPath);
-        }
-
-        $candidates[] = $media->path;
-
-        foreach (array_values(array_unique($candidates)) as $candidate) {
-            if (Storage::disk($disk)->exists($candidate)) {
-                return $candidate;
-            }
-        }
-
-        return $media->path;
+        return $media->getThumbnailPath();
     }
 
     private function syncCartItemToDb(Request $request, int $variantId, int $quantity): void

@@ -5,7 +5,6 @@ namespace App\Concerns;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 trait ResolvesProductDisplay
@@ -328,78 +327,25 @@ trait ResolvesProductDisplay
             return $media->path;
         }
 
-        $path = (string) $media->path;
-        $disk = (string) ($media->disk ?: 'public');
-        $pathInfo = pathinfo($path);
-        $directory = $pathInfo['dirname'] ?? '';
-        $filename = $pathInfo['filename'];
-
-        if ($filename === '') {
-            return $path;
-        }
-
-        $baseName = $filename;
-        foreach (['-thumbnail-200x200', '-hero-1200x600', '-gallery-600x600'] as $suffix) {
-            if (str_ends_with($baseName, $suffix)) {
-                $baseName = substr($baseName, 0, -strlen($suffix));
-                break;
-            }
-        }
-
-        $basePath = ($directory !== '' && $directory !== '.' ? $directory.'/' : '').$baseName;
-        $candidates = [
-            $basePath.'.avif',
-            $basePath.'.webp',
-            $path,
-        ];
-
-        if (str_contains($path, '/fallback/')) {
-            $galleryBasePath = str_replace('/fallback/', '/gallery/', $basePath);
-            array_unshift($candidates, $galleryBasePath.'.avif', $galleryBasePath.'.webp');
-        }
-
-        foreach ($candidates as $candidate) {
-            if (Storage::disk($disk)->exists($candidate)) {
-                return $candidate;
-            }
-        }
-
-        return $path;
+        return $media->getZoomPath();
     }
 
     private function resolveGalleryPath(ProductMedia $media): string
-    {
-        return $this->resolveSizedPath($media, $media->getGalleryPath());
-    }
-
-    private function resolveThumbnailPath(ProductMedia $media): string
-    {
-        return $this->resolveSizedPath($media, $media->getThumbnailPath());
-    }
-
-    private function resolveSizedPath(ProductMedia $media, string $preferredPath): string
     {
         if (str_starts_with((string) $media->mime_type, 'video/')) {
             return $media->path;
         }
 
-        $disk = (string) ($media->disk ?: 'public');
-        $candidates = [$preferredPath];
+        return $media->getGalleryPath();
+    }
 
-        if (str_contains($preferredPath, '/fallback/')) {
-            $galleryPreferredPath = str_replace('/fallback/', '/gallery/', $preferredPath);
-            array_unshift($candidates, $galleryPreferredPath);
+    private function resolveThumbnailPath(ProductMedia $media): string
+    {
+        if (str_starts_with((string) $media->mime_type, 'video/')) {
+            return $media->path;
         }
 
-        $candidates[] = $media->path;
-
-        foreach (array_values(array_unique($candidates)) as $candidate) {
-            if (Storage::disk($disk)->exists($candidate)) {
-                return $candidate;
-            }
-        }
-
-        return $media->path;
+        return $media->getThumbnailPath();
     }
 
     /**

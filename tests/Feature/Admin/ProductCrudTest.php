@@ -151,7 +151,7 @@ class ProductCrudTest extends TestCase
             'converted_to' => null,
         ]);
 
-        $storedPath = (string) $product->media()->value('path');
+        $storedPath = (string) $product->media()->where('mime_type', '!=', 'video/mp4')->value('path');
         $this->assertTrue(Storage::disk('public')->exists($storedPath));
         $this->assertStringContainsString('products/upload-media-product/gallery/', $storedPath);
         $this->assertStringContainsString('shirt-front-main', $storedPath);
