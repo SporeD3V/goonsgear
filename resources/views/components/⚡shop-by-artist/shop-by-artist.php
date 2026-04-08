@@ -40,9 +40,15 @@ new class extends Component
                 ->get(['id', 'name', 'slug', 'type'])
             : collect();
 
+        $hasBrands = Tag::query()
+            ->where('type', 'brand')
+            ->where('is_active', true)
+            ->exists();
+
         return view('components.⚡shop-by-artist.shop-by-artist', [
             'carouselTags' => $carouselTags,
             'searchResults' => $searchResults,
+            'hasBrands' => $hasBrands,
         ]);
     }
 };

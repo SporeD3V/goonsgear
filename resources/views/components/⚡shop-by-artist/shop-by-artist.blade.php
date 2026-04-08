@@ -5,30 +5,32 @@
         {{-- Controls row: type selector + search --}}
         <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
             {{-- Type selector --}}
-            <div class="flex rounded border border-slate-300 overflow-hidden shrink-0">
-                <button
-                    wire:click="$set('type', 'artist')"
-                    type="button"
-                    @class([
-                        'px-4 py-2 text-sm font-medium transition',
-                        'bg-slate-900 text-white' => $type === 'artist',
-                        'bg-white text-slate-700 hover:bg-slate-50' => $type !== 'artist',
-                    ])
-                >
-                    Artists
-                </button>
-                <button
-                    wire:click="$set('type', 'brand')"
-                    type="button"
-                    @class([
-                        'px-4 py-2 text-sm font-medium border-l border-slate-300 transition',
-                        'bg-slate-900 text-white' => $type === 'brand',
-                        'bg-white text-slate-700 hover:bg-slate-50' => $type !== 'brand',
-                    ])
-                >
-                    Brands
-                </button>
-            </div>
+            @if ($hasBrands)
+                <div class="flex rounded border border-slate-300 overflow-hidden shrink-0">
+                    <button
+                        wire:click="$set('type', 'artist')"
+                        type="button"
+                        @class([
+                            'px-4 py-2 text-sm font-medium transition',
+                            'bg-slate-900 text-white' => $type === 'artist',
+                            'bg-white text-slate-700 hover:bg-slate-50' => $type !== 'artist',
+                        ])
+                    >
+                        Artists
+                    </button>
+                    <button
+                        wire:click="$set('type', 'brand')"
+                        type="button"
+                        @class([
+                            'px-4 py-2 text-sm font-medium border-l border-slate-300 transition',
+                            'bg-slate-900 text-white' => $type === 'brand',
+                            'bg-white text-slate-700 hover:bg-slate-50' => $type !== 'brand',
+                        ])
+                    >
+                        Brands
+                    </button>
+                </div>
+            @endif
 
             {{-- Live search --}}
             <div class="relative flex-1" x-data="{ open: false }" x-on:click.outside="open = false">
