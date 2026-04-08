@@ -69,3 +69,5 @@ _ide_helper_models.php
 /staging_env.py
 /upload_media.py
 /verify_staging.py
+staging_dump.txt
+staging_err.txt
