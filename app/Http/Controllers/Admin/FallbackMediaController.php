@@ -257,7 +257,7 @@ class FallbackMediaController extends Controller
     }
 
     /**
-     * @return Collection<int, array{fallback_path: string, filename: string, product_name: string, product_slug: string, has_product: bool, fallback_url: string, optimized_variants: array<int, string>, has_optimized: bool, uses_webp: bool, uses_avif: bool, uses_fallback: bool, matching_media_count: int, base_gallery_path: string}>
+     * @return Collection<int, array{fallback_path: string, filename: string, product_name: string, product_slug: string, has_product: bool, fallback_url: string, optimized_variants: list<string>, has_optimized: bool, uses_webp: bool, uses_avif: bool, uses_fallback: bool, matching_media_count: int, base_gallery_path: string}>
      */
     private function collectEnrichedEntries(): Collection
     {

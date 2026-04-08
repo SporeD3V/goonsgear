@@ -25,20 +25,8 @@ parameters:
 			path: app/Http/Controllers/Admin/FallbackMediaController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\FallbackMediaController\:\:collectFallbackFiles\(\) should return Illuminate\\Support\\Collection\<int, array\{relative_path\: string, product_slug\: string, filename\: string, path_without_extension\: string, optimized_variants\: array\<int, string\>\}\> but returns Illuminate\\Support\\Collection\<int, array\{relative_path\: string, product_slug\: string, filename\: string, path_without_extension\: string, optimized_variants\: list\<string\>\}\>\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/Admin/FallbackMediaController.php
-
-		-
 			message: '#^Offset ''mime'' on array\{0\: int\<0, max\>, 1\: int\<0, max\>, 2\: int, 3\: string, mime\: string, channels\?\: int, bits\?\: int\} in isset\(\) always exists and is not nullable\.$#'
 			identifier: isset.offset
-			count: 1
-			path: app/Http/Controllers/Admin/FallbackMediaController.php
-
-		-
-			message: '#^Variable \$allMedia in PHPDoc tag @var does not match assigned variable \$mediaColumns\.$#'
-			identifier: varTag.differentVariable
 			count: 1
 			path: app/Http/Controllers/Admin/FallbackMediaController.php
 
@@ -270,11 +258,7 @@ parameters:
 			count: 1
 			path: app/Http/Controllers/CheckoutController.php
 
-		-
-			message: '#^Offset ''filename'' on array\{dirname\?\: string, basename\: string, extension\?\: string, filename\: string\} on left side of \?\? always exists and is not nullable\.$#'
-			identifier: nullCoalesce.offset
-			count: 1
-			path: app/Http/Controllers/MediaController.php
+
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$allow_backorder\.$#'
