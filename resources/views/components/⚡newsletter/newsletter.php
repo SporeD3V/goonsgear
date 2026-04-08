@@ -86,7 +86,7 @@ new class extends Component
                     $subscriber->update(['brevo_contact_id' => (string) $contactId]);
                 }
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::warning('Brevo newsletter sync failed', [
                 'subscriber_id' => $subscriber->id,
                 'error' => $e->getMessage(),
