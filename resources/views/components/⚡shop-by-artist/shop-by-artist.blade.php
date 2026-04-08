@@ -173,20 +173,20 @@
                                     <a
                                         href="{{ route('shop.artist', $tag->slug) }}"
                                         wire:key="carousel-tag-{{ $tag->id }}"
-                                        class="group flex shrink-0 flex-col items-center gap-3"
+                                        class="group flex w-[calc(50%-0.75rem)] shrink-0 flex-col items-center gap-3 sm:w-[calc(33.333%-1rem)] lg:w-[calc(20%-1.2rem)]"
                                         draggable="false"
                                     >
-                                        <div class="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white p-3 shadow-sm transition-all duration-300 group-hover:border-slate-300 group-hover:shadow-lg sm:h-32 sm:w-32">
+                                        <div class="flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-md transition-all duration-500 group-hover:shadow-xl">
                                             <img
                                                 src="{{ route('media.show', ['path' => $tag->logo_path]) }}"
                                                 alt="{{ $tag->name }} logo"
-                                                class="max-h-full max-w-full object-contain grayscale transition duration-300 group-hover:grayscale-0"
+                                                class="max-h-full max-w-full object-contain grayscale transition-all duration-500 ease-out group-hover:scale-110 group-hover:grayscale-0"
                                                 width="200"
                                                 height="200"
                                                 draggable="false"
                                             >
                                         </div>
-                                        <span class="max-w-[8rem] text-center text-xs font-semibold uppercase tracking-wider text-slate-400 transition-colors duration-200 group-hover:text-slate-900">{{ $tag->name }}</span>
+                                        <span class="max-w-full text-center text-xs font-semibold uppercase tracking-wider text-slate-400 transition-colors duration-200 group-hover:text-slate-900">{{ $tag->name }}</span>
                                     </a>
                                 @endforeach
                             </div>
