@@ -1,19 +1,24 @@
-<div class="border-b border-slate-200 bg-white px-6 py-10">
+<div class="bg-slate-900 px-6 py-16 lg:py-20">
     <div class="mx-auto max-w-6xl">
-        <h2 class="mb-6 text-xl font-bold uppercase tracking-wide text-slate-900">Shop by Artist{{ $hasBrands ? ' / Brand' : '' }}</h2>
+        {{-- Section header --}}
+        <div class="mb-10 text-center">
+            <p class="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-slate-400">Explore</p>
+            <h2 class="text-3xl font-black uppercase tracking-tight text-white md:text-4xl">Shop by Artist{{ $hasBrands ? ' / Brand' : '' }}</h2>
+            <div class="mx-auto mt-4 h-0.5 w-16 bg-white"></div>
+        </div>
 
         {{-- Controls row: type selector + search --}}
-        <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div class="mx-auto mb-10 flex max-w-lg flex-col gap-3 sm:flex-row sm:items-center">
             {{-- Type selector --}}
             @if ($hasBrands)
-                <div class="flex rounded border border-slate-300 overflow-hidden shrink-0">
+                <div class="flex overflow-hidden rounded border border-white/20 shrink-0">
                     <button
                         wire:click="$set('type', 'artist')"
                         type="button"
                         @class([
-                            'px-4 py-2 text-sm font-medium transition',
-                            'bg-slate-900 text-white' => $type === 'artist',
-                            'bg-white text-slate-700 hover:bg-slate-50' => $type !== 'artist',
+                            'px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition',
+                            'bg-white text-slate-900' => $type === 'artist',
+                            'bg-transparent text-white hover:bg-white/10' => $type !== 'artist',
                         ])
                     >
                         Artists
@@ -22,9 +27,9 @@
                         wire:click="$set('type', 'brand')"
                         type="button"
                         @class([
-                            'px-4 py-2 text-sm font-medium border-l border-slate-300 transition',
-                            'bg-slate-900 text-white' => $type === 'brand',
-                            'bg-white text-slate-700 hover:bg-slate-50' => $type !== 'brand',
+                            'px-5 py-2.5 text-sm font-bold uppercase tracking-wider border-l border-white/20 transition',
+                            'bg-white text-slate-900' => $type === 'brand',
+                            'bg-transparent text-white hover:bg-white/10' => $type !== 'brand',
                         ])
                     >
                         Brands
@@ -46,7 +51,7 @@
                         x-on:focus="open = true"
                         x-on:input="open = true"
                         placeholder="Search {{ $type === 'artist' ? 'artists' : 'brands' }}…"
-                        class="w-full rounded border border-slate-300 py-2 pl-9 pr-4 text-sm focus:border-slate-500 focus:outline-none"
+                        class="w-full rounded border border-white/20 bg-white/10 py-2.5 pl-9 pr-4 text-sm text-white placeholder-slate-400 backdrop-blur-sm focus:border-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                         autocomplete="off"
                     >
                 </div>
@@ -56,14 +61,14 @@
                     <div
                         x-show="open && $wire.search.trim() !== ''"
                         x-cloak
-                        class="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded border border-slate-200 bg-white shadow-lg"
+                        class="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded border border-slate-700 bg-slate-800 shadow-2xl"
                     >
                         @foreach ($searchResults as $result)
                             <a
                                 href="{{ $result->type === 'artist' ? route('shop.artist', $result->slug) : ($result->type === 'brand' ? route('shop.brand', $result->slug) : route('shop.tag', $result->slug)) }}"
-                                class="flex items-center gap-3 border-b border-slate-100 px-4 py-2.5 text-sm text-slate-800 last:border-b-0 hover:bg-slate-50"
+                                class="flex items-center gap-3 border-b border-slate-700 px-4 py-2.5 text-sm text-slate-200 last:border-b-0 hover:bg-white/10"
                             >
-                                <svg class="h-3.5 w-3.5 shrink-0 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z"/></svg>
+                                <svg class="h-3.5 w-3.5 shrink-0 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z"/></svg>
                                 {{ $result->name }}
                             </a>
                         @endforeach
@@ -72,9 +77,9 @@
                     <div
                         x-show="open"
                         x-cloak
-                        class="absolute left-0 right-0 top-full z-20 mt-1 rounded border border-slate-200 bg-white px-4 py-3 shadow-lg"
+                        class="absolute left-0 right-0 top-full z-20 mt-1 rounded border border-slate-700 bg-slate-800 px-4 py-3 shadow-2xl"
                     >
-                        <p class="text-sm text-slate-500">No {{ $type === 'artist' ? 'artists' : 'brands' }} found.</p>
+                        <p class="text-sm text-slate-400">No {{ $type === 'artist' ? 'artists' : 'brands' }} found.</p>
                     </div>
                 @endif
             </div>
@@ -124,9 +129,9 @@
                     x-on:click="scrollBy(-1)"
                     type="button"
                     aria-label="Scroll left"
-                    class="absolute left-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-slate-300 bg-white shadow-lg transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    class="absolute left-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-slate-800 shadow-lg transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-white/30"
                 >
-                    <svg class="h-5 w-5 text-slate-800" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+                    <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
                 </button>
 
                 <div
@@ -146,10 +151,10 @@
                         <a
                             href="{{ $tag->type === 'artist' ? route('shop.artist', $tag->slug) : route('shop.brand', $tag->slug) }}"
                             wire:key="carousel-tag-{{ $tag->id }}"
-                            class="group flex shrink-0 flex-col items-center gap-2"
+                            class="group flex shrink-0 flex-col items-center gap-3"
                             draggable="false"
                         >
-                            <div class="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white p-3 transition group-hover:border-slate-500 sm:h-32 sm:w-32">
+                            <div class="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-white p-3 transition group-hover:border-white/40 group-hover:shadow-lg group-hover:shadow-white/5 sm:h-32 sm:w-32">
                                 <img
                                     src="{{ route('media.show', ['path' => $tag->logo_path]) }}"
                                     alt="{{ $tag->name }} logo"
@@ -159,7 +164,7 @@
                                     draggable="false"
                                 >
                             </div>
-                            <span class="max-w-[8rem] text-center text-xs font-medium text-slate-700 group-hover:text-slate-900">{{ $tag->name }}</span>
+                            <span class="max-w-[8rem] text-center text-xs font-semibold uppercase tracking-wider text-slate-400 transition group-hover:text-white">{{ $tag->name }}</span>
                         </a>
                     @endforeach
                 </div>
@@ -170,13 +175,13 @@
                     x-on:click="scrollBy(1)"
                     type="button"
                     aria-label="Scroll right"
-                    class="absolute right-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-slate-300 bg-white shadow-lg transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    class="absolute right-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-slate-800 shadow-lg transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-white/30"
                 >
-                    <svg class="h-5 w-5 text-slate-800" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                    <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
                 </button>
             </div>
         @else
-            <p class="text-sm text-slate-400">No {{ $type === 'artist' ? 'artists' : 'brands' }} have been featured yet.</p>
+            <p class="text-center text-sm text-slate-500">No {{ $type === 'artist' ? 'artists' : 'brands' }} have been featured yet.</p>
         @endif
     </div>
 </div>
