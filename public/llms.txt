@@ -1,0 +1,17 @@
+# GoonsGear
+
+> Official SnowGoons merchandise and vinyl store.
+
+GoonsGear is the authorized online shop for SnowGoons hip-hop merchandise, vinyl records, apparel, and accessories.
+
+## Products
+
+- Vinyl records and limited pressings from SnowGoons artists
+- T-shirts, hoodies, and streetwear apparel
+- Accessories and collector items
+
+## Links
+
+- Homepage: https://goonsgear.macaw.studio
+- Catalog: https://goonsgear.macaw.studio/shop
+- Sitemap: https://goonsgear.macaw.studio/sitemap.xml

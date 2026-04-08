@@ -28,6 +28,8 @@ new class extends Component
     public string $type = 'artist';
     public bool $is_active = true;
     public string $description = '';
+    public string $meta_title = '';
+    public string $meta_description = '';
     public bool $show_on_homepage = false;
     public bool $remove_logo = false;
 
@@ -61,6 +63,8 @@ new class extends Component
         $this->type = $tag->type;
         $this->is_active = $tag->is_active;
         $this->description = $tag->description ?? '';
+        $this->meta_title = $tag->meta_title ?? '';
+        $this->meta_description = $tag->meta_description ?? '';
         $this->show_on_homepage = $tag->show_on_homepage;
         $this->currentLogoPath = $tag->logo_path;
         $this->remove_logo = false;
@@ -85,6 +89,8 @@ new class extends Component
             'type' => ['required', 'string', Rule::in(['artist', 'brand', 'custom'])],
             'is_active' => ['boolean'],
             'description' => ['nullable', 'string'],
+            'meta_title' => ['nullable', 'string', 'max:255'],
+            'meta_description' => ['nullable', 'string'],
             'show_on_homepage' => ['boolean'],
             'logo' => ['nullable', 'image', 'max:5120'],
         ]);
@@ -94,7 +100,7 @@ new class extends Component
         if ($this->editingId) {
             $tag = Tag::findOrFail($this->editingId);
 
-            foreach (['name', 'slug', 'type', 'is_active', 'show_on_homepage', 'description'] as $field) {
+            foreach (['name', 'slug', 'type', 'is_active', 'show_on_homepage', 'description', 'meta_title', 'meta_description'] as $field) {
                 $oldValue = (string) $tag->getAttribute($field);
                 $newValue = (string) ($validated[$field] ?? '');
                 if ($oldValue !== $newValue) {
@@ -191,6 +197,8 @@ new class extends Component
         $this->type = 'artist';
         $this->is_active = true;
         $this->description = '';
+        $this->meta_title = '';
+        $this->meta_description = '';
         $this->show_on_homepage = false;
         $this->remove_logo = false;
         $this->logo = null;
@@ -494,6 +502,33 @@ new class extends Component
                         <label class="mb-1 block text-sm font-medium">Description</label>
                         <textarea wire:model="description" rows="3" class="w-full rounded border border-slate-300 px-3 py-2 text-sm"></textarea>
                         @error('description') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+
+                    {{-- SEO fields with character counters --}}
+                    <div class="space-y-4 rounded border border-slate-200 p-4">
+                        <h4 class="text-sm font-semibold">SEO</h4>
+
+                        @include('admin.partials.seo-field', [
+                            'name'      => 'meta_title',
+                            'label'     => 'Meta Title',
+                            'value'     => $meta_title,
+                            'min'       => 50,
+                            'max'       => 60,
+                            'hint'      => 'Recommended 50–60 characters. This appears as the clickable headline in search results.',
+                            'wireModel' => 'meta_title',
+                        ])
+
+                        @include('admin.partials.seo-field', [
+                            'name'      => 'meta_description',
+                            'label'     => 'Meta Description',
+                            'value'     => $meta_description,
+                            'type'      => 'textarea',
+                            'rows'      => 3,
+                            'min'       => 120,
+                            'max'       => 160,
+                            'hint'      => 'Recommended 120–160 characters. This appears below the title in search results.',
+                            'wireModel' => 'meta_description',
+                        ])
                     </div>
 
                     {{-- Logo section: artist & brand only --}}

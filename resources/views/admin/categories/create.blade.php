@@ -31,20 +31,33 @@
             <textarea name="description" rows="4" class="w-full rounded border border-slate-300 px-3 py-2">{{ old('description') }}</textarea>
         </div>
 
-        <div class="grid gap-4 md:grid-cols-2">
-            <div>
-                <label class="mb-1 block text-sm font-medium">Meta Title</label>
-                <input type="text" name="meta_title" value="{{ old('meta_title') }}" class="w-full rounded border border-slate-300 px-3 py-2">
-            </div>
-            <div>
-                <label class="mb-1 block text-sm font-medium">Sort Order</label>
-                <input type="number" min="0" name="sort_order" value="{{ old('sort_order', 0) }}" class="w-full rounded border border-slate-300 px-3 py-2">
-            </div>
+        <div>
+            <label class="mb-1 block text-sm font-medium">Sort Order</label>
+            <input type="number" min="0" name="sort_order" value="{{ old('sort_order', 0) }}" class="w-full rounded border border-slate-300 px-3 py-2">
         </div>
 
-        <div>
-            <label class="mb-1 block text-sm font-medium">Meta Description</label>
-            <textarea name="meta_description" rows="3" class="w-full rounded border border-slate-300 px-3 py-2">{{ old('meta_description') }}</textarea>
+        <div class="space-y-4 rounded border border-slate-200 p-4">
+            <h3 class="text-sm font-semibold">SEO</h3>
+
+            @include('admin.partials.seo-field', [
+                'name'  => 'meta_title',
+                'label' => 'Meta Title',
+                'value' => old('meta_title', ''),
+                'min'   => 50,
+                'max'   => 60,
+                'hint'  => 'Recommended 50–60 characters. This appears as the clickable headline in search results.',
+            ])
+
+            @include('admin.partials.seo-field', [
+                'name'  => 'meta_description',
+                'label' => 'Meta Description',
+                'value' => old('meta_description', ''),
+                'type'  => 'textarea',
+                'rows'  => 3,
+                'min'   => 120,
+                'max'   => 160,
+                'hint'  => 'Recommended 120–160 characters. This appears below the title in search results.',
+            ])
         </div>
 
         <div>
