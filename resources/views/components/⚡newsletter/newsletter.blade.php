@@ -1,4 +1,4 @@
-<div class="bg-slate-900 px-6 py-16 lg:py-20">
+<div class="bg-black px-6 py-16 lg:py-20">
     <div class="mx-auto max-w-xl text-center">
         {{-- Envelope icon --}}
         <div class="mb-6 flex justify-center">

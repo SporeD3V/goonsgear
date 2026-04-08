@@ -14,7 +14,7 @@
     $light = $light ?? false;
 @endphp
 
-<footer class="{{ $light ? 'mt-24 border-t border-slate-200 bg-white text-slate-600' : 'mt-24 border-t border-slate-700 bg-black text-slate-300' }}">
+<footer class="{{ $light ? 'border-t border-slate-200 bg-white text-slate-600' : 'mt-24 border-t border-slate-700 bg-black text-slate-300' }}">
     <div class="mx-auto max-w-6xl px-6 pb-8 pt-16">
         {{-- Column Grid --}}
         <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
