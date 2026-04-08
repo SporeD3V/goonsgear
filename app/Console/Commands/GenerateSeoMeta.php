@@ -42,7 +42,6 @@ class GenerateSeoMeta extends Command
         'hats' => 'hat',
         'pants' => 'pants',
         'shorts' => 'shorts',
-        'shorts' => 'shorts',
         'wu-wear' => 'socks',
         'accessories' => 'accessory',
         'sale' => 'sale item',
