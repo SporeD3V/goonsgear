@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\GeneratesSlug;
 use App\Concerns\HasEditHistory;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +14,7 @@ use Illuminate\Support\Str;
 
 class Product extends Model
 {
+    use GeneratesSlug;
     use HasEditHistory;
 
     /** @use HasFactory<ProductFactory> */

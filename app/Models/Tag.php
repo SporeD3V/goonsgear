@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\GeneratesSlug;
 use App\Concerns\HasEditHistory;
 use Database\Factories\TagFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Tag extends Model
 {
+    use GeneratesSlug;
     use HasEditHistory;
 
     /** @use HasFactory<TagFactory> */
@@ -25,6 +27,8 @@ class Tag extends Model
         'type',
         'is_active',
         'description',
+        'meta_title',
+        'meta_description',
         'logo_path',
         'show_on_homepage',
     ];

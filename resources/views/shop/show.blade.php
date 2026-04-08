@@ -41,6 +41,18 @@
             ];
         @endphp
         <script type="application/ld+json">{!! Js::from($jsonLdProduct) !!}</script>
+        @if (count($breadcrumbs) > 1)
+            <script type="application/ld+json">{!! json_encode([
+                '@context' => 'https://schema.org',
+                '@type' => 'BreadcrumbList',
+                'itemListElement' => collect($breadcrumbs)->map(fn ($crumb, $i) => [
+                    '@type' => 'ListItem',
+                    'position' => $i + 1,
+                    'name' => $crumb['name'],
+                    ...($crumb['url'] ? ['item' => $crumb['url']] : []),
+                ])->all(),
+            ], JSON_UNESCAPED_SLASHES) !!}</script>
+        @endif
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif

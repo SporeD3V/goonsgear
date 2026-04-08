@@ -12,6 +12,19 @@ class ProductMedia extends Model
     /** @use HasFactory<ProductMediaFactory> */
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::creating(function (ProductMedia $media): void {
+            if (empty($media->alt_text) && $media->product_id) {
+                $productName = Product::where('id', $media->product_id)->value('name');
+
+                if ($productName) {
+                    $media->alt_text = $productName;
+                }
+            }
+        });
+    }
+
     /**
      * @var list<string>
      */

@@ -6,6 +6,57 @@
         <title>{{ $seo['title'] }}</title>
         <meta name="description" content="{{ $seo['description'] }}">
         @include('partials.favicons')
+        <link rel="canonical" href="{{ $seo['canonical_url'] }}">
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="{{ $seo['title'] }}">
+        <meta property="og:description" content="{{ $seo['description'] }}">
+        <meta property="og:url" content="{{ $seo['canonical_url'] }}">
+        <meta property="og:site_name" content="GoonsGear">
+        @if ($seo['og_image'])
+            <meta property="og:image" content="{{ $seo['og_image'] }}">
+        @endif
+        @if (! ($showCatalog ?? false))
+            <script type="application/ld+json">{!! json_encode([
+                '@context' => 'https://schema.org',
+                '@type' => 'Organization',
+                'name' => 'GoonsGear',
+                'url' => route('shop.index'),
+                'logo' => asset('images/goonsgear-logo.avif'),
+                'description' => $seo['description'],
+            ], JSON_UNESCAPED_SLASHES) !!}</script>
+        @endif
+        @if ($activeCategory ?? false)
+            <script type="application/ld+json">{!! json_encode([
+                '@context' => 'https://schema.org',
+                '@type' => 'CollectionPage',
+                'name' => $activeCategory->name,
+                'description' => $seo['description'],
+                'url' => $seo['canonical_url'],
+                'isPartOf' => ['@type' => 'WebSite', 'name' => 'GoonsGear', 'url' => route('shop.index')],
+            ], JSON_UNESCAPED_SLASHES) !!}</script>
+        @endif
+        @if ($activeTag ?? false)
+            <script type="application/ld+json">{!! json_encode([
+                '@context' => 'https://schema.org',
+                '@type' => 'CollectionPage',
+                'name' => $activeTag->name,
+                'description' => $seo['description'],
+                'url' => $seo['canonical_url'],
+                'isPartOf' => ['@type' => 'WebSite', 'name' => 'GoonsGear', 'url' => route('shop.index')],
+            ], JSON_UNESCAPED_SLASHES) !!}</script>
+        @endif
+        @if (count($breadcrumbs) > 1)
+            <script type="application/ld+json">{!! json_encode([
+                '@context' => 'https://schema.org',
+                '@type' => 'BreadcrumbList',
+                'itemListElement' => collect($breadcrumbs)->map(fn ($crumb, $i) => [
+                    '@type' => 'ListItem',
+                    'position' => $i + 1,
+                    'name' => $crumb['name'],
+                    ...($crumb['url'] ? ['item' => $crumb['url']] : []),
+                ])->all(),
+            ], JSON_UNESCAPED_SLASHES) !!}</script>
+        @endif
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif

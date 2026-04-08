@@ -233,20 +233,32 @@ class ShopController extends Controller
             ?: ($activeCategory ? $activeCategory->name.' | Shop | GoonsGear' : null);
 
         if ($pageTitle === null && $activeTag !== null) {
-            $pageTitle = $activeTag->name.' | Shop | GoonsGear';
+            $pageTitle = $activeTag->meta_title ?: $activeTag->name.' | Shop | GoonsGear';
         }
 
-        $pageTitle ??= 'Shop | GoonsGear';
+        $pageTitle ??= 'Official SnowGoons Merchandise & Vinyl | GoonsGear Shop';
 
         $pageDescription = $activeCategory?->meta_description
             ?: (strip_tags((string) $activeCategory?->description) ?: null);
 
         if ($pageDescription === null && $activeTag !== null) {
-            $pageDescription = strip_tags((string) $activeTag->description)
-                ?: 'Browse '.$activeTag->name.' products on GoonsGear.';
+            $pageDescription = $activeTag->meta_description
+                ?: (strip_tags((string) $activeTag->description)
+                    ?: 'Browse '.$activeTag->name.' products on GoonsGear — official merchandise, vinyl, and exclusive drops from SnowGoons.');
         }
 
-        $pageDescription ??= 'Browse active GoonsGear products by category, newest arrivals, and price.';
+        $pageDescription ??= 'Shop official SnowGoons merchandise, limited edition vinyl, exclusive drops, and hip-hop apparel. Worldwide shipping from the legendary production group.';
+
+        $canonicalUrl = match (true) {
+            $activeCategory !== null => route('shop.category', $activeCategory),
+            $activeTag !== null => match ($activeTag->type) {
+                'artist' => route('shop.artist', $activeTag),
+                'brand' => route('shop.brand', $activeTag),
+                default => route('shop.tag', $activeTag),
+            },
+            $showCatalog => route('shop.catalog'),
+            default => route('shop.index'),
+        };
 
         return view('shop.index', [
             'activeCategory' => $activeCategory,
@@ -256,6 +268,8 @@ class ShopController extends Controller
             'seo' => [
                 'title' => $pageTitle,
                 'description' => $pageDescription,
+                'canonical_url' => $canonicalUrl,
+                'og_image' => asset('images/hero-goonsgear.jpg'),
             ],
         ]);
     }

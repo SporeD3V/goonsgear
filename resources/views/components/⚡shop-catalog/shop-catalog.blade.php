@@ -481,7 +481,11 @@
                 'tags' => $tags->map(fn ($tag) => [
                     'name' => $tag->name,
                     'slug' => $tag->slug,
-                    'url' => route('shop.tag', $tag->slug),
+                    'url' => match ($tag->type) {
+                        'artist' => route('shop.artist', $tag->slug),
+                        'brand' => route('shop.brand', $tag->slug),
+                        default => route('shop.tag', $tag->slug),
+                    },
                 ])->values(),
             ])->values()),
             filtered: [],
