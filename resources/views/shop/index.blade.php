@@ -153,6 +153,6 @@
             </div>
         @endif
 
-        @include('partials.footer')
+        @include('partials.footer', ['light' => !$showCatalog])
     </body>
 </html>
