@@ -1,6 +1,6 @@
 <div class="border-b border-slate-200 bg-white px-6 py-10">
     <div class="mx-auto max-w-6xl">
-        <h2 class="mb-6 text-xl font-bold uppercase tracking-wide text-slate-900">Shop by Artist / Brand</h2>
+        <h2 class="mb-6 text-xl font-bold uppercase tracking-wide text-slate-900">Shop by Artist{{ $hasBrands ? ' / Brand' : '' }}</h2>
 
         {{-- Controls row: type selector + search --}}
         <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
