@@ -21,7 +21,7 @@ trait GeneratesSlug
         });
     }
 
-    private static function generateUniqueSlug(string $name, $model): string
+    protected static function generateUniqueSlug(string $name, self $model): string
     {
         $slug = Str::slug($name);
 

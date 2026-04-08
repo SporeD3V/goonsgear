@@ -63,8 +63,11 @@ class BackfillSeoData extends Command
             ->orWhere('alt_text', '')
             ->with('product:id,name')
             ->each(function (ProductMedia $media) use (&$count) {
-                if ($media->product?->name) {
-                    $media->alt_text = $media->product->name;
+                /** @var Product|null $product */
+                $product = $media->product;
+
+                if ($product?->name) {
+                    $media->alt_text = $product->name;
                     $media->saveQuietly();
                     $count++;
                 }
