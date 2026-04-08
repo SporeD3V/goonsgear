@@ -192,7 +192,7 @@
                                     <button
                                         type="submit"
                                         data-catalog-add-to-cart
-                                        class="w-full rounded-lg bg-black px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-slate-800"
+                                        class="w-full rounded-lg bg-black px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-[#242424]"
                                     >
                                         Select options
                                     </button>
@@ -210,7 +210,7 @@
                                             type="submit"
                                             data-catalog-add-to-cart
                                             data-catalog-single-variant
-                                            class="w-full rounded-lg bg-black px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-slate-800"
+                                            class="w-full rounded-lg bg-black px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-[#242424]"
                                         >
                                             Add to cart &mdash; &euro;{{ number_format((float) $singleVariant->price, 2) }}
                                         </button>

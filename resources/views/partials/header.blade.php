@@ -143,7 +143,7 @@
                                 <span class="font-semibold text-slate-900">&euro;{{ number_format($cartSubtotal, 2) }}</span>
                             </div>
                             <p class="mt-1 text-[11px] text-slate-400">Before shipping &amp; taxes</p>
-                            <a href="{{ route('cart.index') }}" class="mt-3 block rounded bg-slate-800 px-4 py-2 text-center text-sm font-medium text-white transition hover:bg-slate-900">View Cart</a>
+                            <a href="{{ route('cart.index') }}" class="mt-3 block rounded bg-black px-4 py-2 text-center text-sm font-medium text-white transition hover:bg-[#242424]">View Cart</a>
                         </div>
                     @endif
                 </div>
@@ -178,7 +178,7 @@
                 </form>
             @else
                 <a href="{{ route('login') }}" class="rounded px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100">Login</a>
-                <a href="{{ route('register') }}" class="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-slate-800">Register</a>
+                <a href="{{ route('register') }}" class="rounded bg-black px-3 py-1.5 text-sm font-medium text-white transition hover:bg-[#242424]">Register</a>
             @endauth
         </div>
     </div>

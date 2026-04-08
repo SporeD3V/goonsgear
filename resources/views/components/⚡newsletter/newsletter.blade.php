@@ -31,7 +31,7 @@
                         type="text"
                         wire:model="name"
                         placeholder="Your Name"
-                        class="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white placeholder-slate-500 transition-colors duration-200 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                        class="w-full rounded-lg border border-[#242424] bg-[#242424] px-4 py-3 text-sm text-white placeholder-slate-500 transition-colors duration-200 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
                     >
                     @error('name')
                         <p class="mt-1 text-left text-xs text-red-400">{{ $message }}</p>
@@ -43,7 +43,7 @@
                         type="email"
                         wire:model="email"
                         placeholder="Your Email Address"
-                        class="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white placeholder-slate-500 transition-colors duration-200 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                        class="w-full rounded-lg border border-[#242424] bg-[#242424] px-4 py-3 text-sm text-white placeholder-slate-500 transition-colors duration-200 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
                     >
                     @error('email')
                         <p class="mt-1 text-left text-xs text-red-400">{{ $message }}</p>
@@ -56,7 +56,7 @@
 
                 <button
                     type="submit"
-                    class="inline-flex items-center justify-center rounded-lg border-2 border-white bg-white px-8 py-3 text-sm font-bold uppercase tracking-widest text-slate-900 transition-all duration-200 hover:bg-transparent hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    class="inline-flex items-center justify-center rounded-lg border-2 border-white bg-white px-8 py-3 text-sm font-bold uppercase tracking-widest text-black transition-all duration-200 hover:bg-transparent hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     wire:loading.attr="disabled"
                 >
                     <span wire:loading.remove wire:target="subscribe">Subscribe</span>
