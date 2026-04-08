@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ $seo['title'] }}</title>
         <meta name="description" content="{{ $seo['description'] }}">
+        @include('partials.favicons')
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif
@@ -15,13 +16,17 @@
         @if (! $showCatalog)
             {{-- Hero section --}}
             <section class="relative flex min-h-screen items-center overflow-hidden bg-slate-900">
-                <img
-                    src="{{ asset('images/hero-goonsgear.jpg') }}"
-                    alt="SnowGoons Gear"
-                    class="absolute inset-0 h-full w-full object-cover"
-                    width="1920"
-                    height="1080"
-                >
+                <picture>
+                    <source srcset="{{ asset('images/hero-goonsgear.avif') }}" type="image/avif">
+                    <img
+                        src="{{ asset('images/hero-goonsgear.jpg') }}"
+                        alt="SnowGoons Gear"
+                        class="absolute inset-0 h-full w-full object-cover"
+                        width="1920"
+                        height="1080"
+                        fetchpriority="high"
+                    >
+                </picture>
                 <div class="absolute inset-0 bg-black/50"></div>
                 <div class="relative z-10 mx-auto w-full max-w-6xl px-6 py-16 lg:py-24">
                     <div class="max-w-xl">

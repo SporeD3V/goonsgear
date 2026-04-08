@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Checkout | GoonsGear</title>
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        @include('partials.favicons')
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif

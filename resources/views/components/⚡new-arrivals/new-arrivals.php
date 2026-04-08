@@ -36,7 +36,7 @@ new class extends Component
             ->get()
             ->map(function (Product $product): Product {
                 $product->setRelation('media', $product->media->map(function (ProductMedia $media): ProductMedia {
-                    $media->setAttribute('catalog_path', $this->resolveGalleryPath($media));
+                    $media->setAttribute('catalog_path', $this->resolveThumbnailPath($media));
 
                     return $media;
                 }));

@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ $seo['title'] }}</title>
         <meta name="description" content="{{ $seo['description'] }}">
+        @include('partials.favicons')
         <link rel="canonical" href="{{ $seo['canonical_url'] }}">
         <meta property="og:type" content="product">
         <meta property="og:title" content="{{ $seo['title'] }}">

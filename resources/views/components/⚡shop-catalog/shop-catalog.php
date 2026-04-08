@@ -362,7 +362,7 @@ new class extends Component
             ->paginate((int) config('pagination.shop_products_per_page', 12))
             ->through(function (Product $product): Product {
                 $product->setRelation('media', $product->media->map(function (ProductMedia $media): ProductMedia {
-                    $media->setAttribute('catalog_path', $this->resolveGalleryPath($media));
+                    $media->setAttribute('catalog_path', $this->resolveThumbnailPath($media));
 
                     return $media;
                 }));

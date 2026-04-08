@@ -80,7 +80,7 @@
         </div>
 
         {{-- Copyright --}}
-        <p class="mt-6 text-center text-xs text-slate-500">
+        <p class="mt-6 text-center text-xs text-slate-400">
             &copy; {{ date('Y') }} GoonsGear. All rights reserved.
             Crafted by Hip-Hop heads for Hip-Hop heads by Mean Mugga CRU | <a href="https://macaw.studio" target="_blank" rel="noopener noreferrer" class="hover:text-white">Macaw Studio</a>.
         </p>

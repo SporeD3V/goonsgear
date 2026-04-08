@@ -150,8 +150,10 @@
                             <div class="flex h-28 w-28 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white p-3 transition group-hover:border-slate-500 sm:h-32 sm:w-32">
                                 <img
                                     src="{{ route('media.show', ['path' => $tag->logo_path]) }}"
-                                    alt="{{ $tag->name }}"
+                                    alt="{{ $tag->name }} logo"
                                     class="max-h-full max-w-full object-contain grayscale transition duration-300 group-hover:grayscale-0"
+                                    width="200"
+                                    height="200"
                                     draggable="false"
                                 >
                             </div>
