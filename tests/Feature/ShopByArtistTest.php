@@ -54,7 +54,7 @@ class ShopByArtistTest extends TestCase
             ->assertDontSee('Featured Brand');
     }
 
-    public function test_type_selector_switches_carousel_to_brands(): void
+    public function test_mode_toggle_switches_between_artist_and_category(): void
     {
         Tag::factory()->create([
             'name' => 'Top Artist',
@@ -65,21 +65,10 @@ class ShopByArtistTest extends TestCase
             'show_on_homepage' => true,
         ]);
 
-        Tag::factory()->create([
-            'name' => 'Cool Brand',
-            'slug' => 'cool-brand',
-            'type' => 'brand',
-            'is_active' => true,
-            'logo_path' => 'tags/cool-brand/logo/cool-brand-logo.avif',
-            'show_on_homepage' => true,
-        ]);
-
         Livewire::test('shop-by-artist')
             ->assertSee('Top Artist')
-            ->assertDontSee('Cool Brand')
-            ->set('type', 'brand')
-            ->assertDontSee('Top Artist')
-            ->assertSee('Cool Brand');
+            ->set('mode', 'category')
+            ->assertSee('By Category');
     }
 
     public function test_live_search_returns_matching_tags_of_selected_type(): void
@@ -112,11 +101,11 @@ class ShopByArtistTest extends TestCase
             ->assertDontSee('Other Artist');
     }
 
-    public function test_live_search_resets_when_type_changes(): void
+    public function test_live_search_resets_when_mode_changes(): void
     {
         Livewire::test('shop-by-artist')
             ->set('search', 'something')
-            ->set('type', 'brand')
+            ->set('mode', 'category')
             ->assertSet('search', '');
     }
 
