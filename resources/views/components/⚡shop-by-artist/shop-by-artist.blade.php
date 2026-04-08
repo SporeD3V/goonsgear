@@ -216,13 +216,13 @@
                                 <a
                                     href="{{ route('shop.category', $category->slug) }}"
                                     wire:key="cat-{{ $category->id }}"
-                                    class="group relative block aspect-[4/3] overflow-hidden rounded-lg shadow-md transition-shadow duration-300 hover:shadow-xl"
+                                    class="group relative block aspect-square overflow-hidden rounded-lg bg-slate-100 shadow-md transition-shadow duration-300 hover:shadow-xl"
                                 >
                                     @if ($category->cover_url)
                                         <img
                                             src="{{ $category->cover_url }}"
                                             alt="{{ $category->name }}"
-                                            class="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                                            class="absolute inset-0 h-full w-full object-contain transition-transform duration-500 ease-out group-hover:scale-105"
                                             loading="lazy"
                                         >
                                     @else
