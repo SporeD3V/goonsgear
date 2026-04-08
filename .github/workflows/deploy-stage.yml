@@ -246,6 +246,10 @@ jobs:
           fi
           echo 'All migrations applied successfully.'
 
+          echo '--- One-time backfill: media variant paths ---'
+          php artisan media:backfill-variant-paths --no-interaction
+          echo 'Backfill complete.'
+
           echo '--- Clearing caches ---'
           php artisan optimize:clear --no-interaction
 
