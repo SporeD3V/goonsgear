@@ -51,10 +51,16 @@ new class extends Component
             ->orderBy('sort_order')
             ->get()
             ->map(function (Category $category): Category {
+                $categoryIds = Category::where('parent_id', $category->id)
+                    ->where('is_active', true)
+                    ->pluck('id')
+                    ->push($category->id)
+                    ->all();
+
                 /** @var ProductMedia|null $media */
                 $media = ProductMedia::query()
                     ->whereHas('product', fn ($q) => $q
-                        ->where('primary_category_id', $category->id)
+                        ->whereIn('primary_category_id', $categoryIds)
                         ->where('status', 'active'))
                     ->where('is_primary', true)
                     ->inRandomOrder()
@@ -64,7 +70,7 @@ new class extends Component
                     ? route('media.show', ['path' => $media->getGalleryPath()])
                     : null);
 
-                $category->setAttribute('product_count', Product::where('primary_category_id', $category->id)
+                $category->setAttribute('product_count', Product::whereIn('primary_category_id', $categoryIds)
                     ->where('status', 'active')
                     ->count());
 
