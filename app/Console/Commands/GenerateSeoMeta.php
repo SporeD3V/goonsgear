@@ -42,6 +42,7 @@ class GenerateSeoMeta extends Command
         'hats' => 'hat',
         'pants' => 'pants',
         'shorts' => 'shorts',
+        'shorts' => 'shorts',
         'wu-wear' => 'socks',
         'accessories' => 'accessory',
         'sale' => 'sale item',
@@ -174,6 +175,7 @@ class GenerateSeoMeta extends Command
             Str::contains($formatLabel, 'hat') => "Official {$genre} headwear with worldwide shipping.",
             Str::contains($formatLabel, 'socks') => "Official {$genre} socks with worldwide shipping.",
             Str::contains($formatLabel, 'pants') => "Premium {$genre} streetwear pants with worldwide shipping.",
+            Str::contains($formatLabel, 'shorts') => "Premium {$genre} streetwear shorts with worldwide shipping.",
             default => "Official {$genre} merchandise with worldwide shipping.",
         };
 
@@ -219,6 +221,7 @@ class GenerateSeoMeta extends Command
                     'tapes' => "Browse {$count}+ hip-hop cassette tapes at GoonsGear. Limited edition tape releases from SnowGoons and independent artists. Worldwide shipping.",
                     'accessories' => "Shop {$count}+ hip-hop accessories at GoonsGear. Collectibles, stickers, adapters and exclusive merchandise. Worldwide shipping.",
                     'pants' => "Shop {$count}+ hip-hop pants at GoonsGear. Premium streetwear denim and joggers from Tribal Gear and more. Worldwide shipping.",
+                    'shorts' => "Shop {$count}+ hip-hop shorts at GoonsGear. Premium streetwear shorts from SnowGoons artists and hip-hop brands. Worldwide shipping.",
                     'sale' => "Grab deals on {$count}+ discounted hip-hop items at GoonsGear. Sale vinyl, apparel, and accessories from SnowGoons artists. While stocks last.",
                     default => "Browse {$name} products at GoonsGear. Official hip-hop merchandise from SnowGoons artists and independent hip-hop legends. Worldwide shipping.",
                 };
@@ -246,10 +249,11 @@ class GenerateSeoMeta extends Command
             $name = $tag->name;
 
             if ($force || empty($tag->meta_title)) {
+                $suffix = Str::contains($name, 'Hip Hop') ? 'Collection' : 'Hip Hop Collection';
                 $tag->meta_title = match ($tag->type) {
                     'artist' => Str::limit("{$name} Merchandise & Music | GoonsGear", 60, '…'),
                     'brand' => Str::limit("{$name} Collection | GoonsGear", 60, '…'),
-                    default => Str::limit("{$name} Hip Hop Collection | GoonsGear", 60, '…'),
+                    default => Str::limit("{$name} {$suffix} | GoonsGear", 60, '…'),
                 };
                 $changed = true;
             }
