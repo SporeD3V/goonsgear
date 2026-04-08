@@ -117,7 +117,9 @@
                                     <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Save</p>
                                     <p class="mt-1 text-4xl font-black">&euro;{{ number_format((float) $bundle->savings, 0) }}</p>
                                 </div>
-                                <p class="mt-4 text-xs leading-relaxed text-slate-400">Get both items together and save on your order</p>
+                                <p class="mt-3 text-sm font-semibold text-white">Total: &euro;{{ number_format((float) $bundle->total_price - (float) $bundle->savings, 2) }}</p>
+                                <p class="text-xs text-slate-400 line-through">&euro;{{ number_format((float) $bundle->total_price, 2) }}</p>
+                                <p class="mt-3 text-xs leading-relaxed text-slate-400">Get both items together and save on your order</p>
                                 <a
                                     href="{{ route('shop.category', 'sale') }}"
                                     class="mt-4 block w-full rounded-lg border-2 border-white bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-black transition hover:bg-transparent hover:text-white"
