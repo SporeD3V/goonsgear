@@ -1,6 +1,7 @@
 <?php
 
 use App\Concerns\ResolvesProductDisplay;
+use App\Models\BundleDiscountItem;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductMedia;
@@ -385,6 +386,13 @@ new class extends Component
             })
             ->withQueryString();
 
+        $bundleProductIds = BundleDiscountItem::query()
+            ->whereHas('bundleDiscount', fn ($q) => $q->where('is_active', true))
+            ->join('product_variants', 'bundle_discount_items.product_variant_id', '=', 'product_variants.id')
+            ->pluck('product_variants.product_id')
+            ->unique()
+            ->all();
+
         return view('components.⚡shop-catalog.shop-catalog', [
             'products' => $products,
             'activeCategory' => $activeCategory,
@@ -397,6 +405,7 @@ new class extends Component
             'availableShoeSizes' => $availableShoeSizes,
             'priceFloor' => $priceFloor,
             'priceCeiling' => $priceCeiling,
+            'bundleProductIds' => $bundleProductIds,
         ]);
     }
 

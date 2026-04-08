@@ -141,6 +141,7 @@
         @if (! $showCatalog)
             <livewire:shop-by-artist />
             <livewire:new-arrivals />
+            <livewire:bundle-highlights />
             <livewire:newsletter />
         @endif
 

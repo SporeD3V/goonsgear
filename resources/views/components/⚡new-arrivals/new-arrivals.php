@@ -1,6 +1,7 @@
 <?php
 
 use App\Concerns\ResolvesProductDisplay;
+use App\Models\BundleDiscountItem;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
@@ -58,8 +59,16 @@ new class extends Component
                 return $product;
             });
 
+        $bundleProductIds = BundleDiscountItem::query()
+            ->whereHas('bundleDiscount', fn ($q) => $q->where('is_active', true))
+            ->join('product_variants', 'bundle_discount_items.product_variant_id', '=', 'product_variants.id')
+            ->pluck('product_variants.product_id')
+            ->unique()
+            ->all();
+
         return view('components.⚡new-arrivals.new-arrivals', [
             'products' => $products,
+            'bundleProductIds' => $bundleProductIds,
         ]);
     }
 };

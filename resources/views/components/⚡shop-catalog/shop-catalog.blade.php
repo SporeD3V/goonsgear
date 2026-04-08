@@ -339,6 +339,9 @@
                     <a href="{{ route('shop.show', $product) }}" class="group block flex-1">
                         @if ($mediaUrl)
                             <div class="relative mb-3 h-52 w-full overflow-hidden rounded bg-white">
+                                @if (in_array($product->id, $bundleProductIds))
+                                    <span class="absolute right-2 top-2 z-10 rounded border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-black">Part of a bundle</span>
+                                @endif
                                 <img
                                     src="{{ $mediaUrl }}"
                                     alt="{{ $primaryMedia?->alt_text ?: $product->name }}"
