@@ -2,6 +2,7 @@
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductMedia;
 use App\Models\Tag;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
@@ -46,18 +47,21 @@ new class extends Component
         $categories = Category::query()
             ->where('is_active', true)
             ->whereNull('parent_id')
+            ->where('slug', '!=', 'sale')
             ->orderBy('sort_order')
             ->get()
             ->map(function (Category $category): Category {
-                $product = Product::query()
-                    ->where('primary_category_id', $category->id)
-                    ->where('status', 'active')
-                    ->whereHas('media')
-                    ->with(['media' => fn ($q) => $q->orderByDesc('is_primary')->limit(1)])
+                /** @var ProductMedia|null $media */
+                $media = ProductMedia::query()
+                    ->whereHas('product', fn ($q) => $q
+                        ->where('primary_category_id', $category->id)
+                        ->where('status', 'active'))
+                    ->where('is_primary', true)
+                    ->inRandomOrder()
                     ->first();
 
-                $category->setAttribute('cover_url', $product?->media->first()
-                    ? route('media.show', ['path' => $product->media->first()->path])
+                $category->setAttribute('cover_url', $media
+                    ? route('media.show', ['path' => $media->getGalleryPath()])
                     : null);
 
                 $category->setAttribute('product_count', Product::where('primary_category_id', $category->id)
