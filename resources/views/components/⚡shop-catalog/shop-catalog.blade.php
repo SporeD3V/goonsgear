@@ -72,13 +72,13 @@
                             x-on:click.outside="open = false"
                             wire:ignore
                         >
-                            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Artist / Brand</p>
+                            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $shopTags->contains('type', 'brand') ? 'Artist / Brand' : 'Artist' }}</p>
                             <input
                                 type="text"
                                 x-model="query"
                                 x-on:input="filter()"
                                 x-on:focus="showAll()"
-                                placeholder="Search artists & brands…"
+                                placeholder="Search {{ $shopTags->contains('type', 'brand') ? 'artists & brands' : 'artists' }}…"
                                 class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
                                 autocomplete="off"
                             >
@@ -134,8 +134,8 @@
                                 <div class="relative h-6 flex-1">
                                     <div class="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded bg-slate-200"></div>
                                     <div class="absolute top-1/2 h-1 -translate-y-1/2 rounded bg-slate-700" :style="'left:' + minPercent + '%;right:' + (100 - maxPercent) + '%'"></div>
-                                    <input type="range" :min="floor" :max="ceiling" x-model.number="rangeMin" x-on:change="commitMin()" class="pointer-events-none absolute inset-0 z-20 h-full w-full cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-slate-700 [&::-moz-range-thumb]:bg-white [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-slate-700 [&::-webkit-slider-thumb]:bg-white">
-                                    <input type="range" :min="floor" :max="ceiling" x-model.number="rangeMax" x-on:change="commitMax()" class="pointer-events-none absolute inset-0 z-30 h-full w-full cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-slate-700 [&::-moz-range-thumb]:bg-white [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-slate-700 [&::-webkit-slider-thumb]:bg-white">
+                                    <input type="range" :min="floor" :max="ceiling" x-model.number="rangeMin" x-on:change="commitMin()" class="pointer-events-none absolute inset-0 z-[2] h-full w-full cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-slate-700 [&::-moz-range-thumb]:bg-white [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-slate-700 [&::-webkit-slider-thumb]:bg-white">
+                                    <input type="range" :min="floor" :max="ceiling" x-model.number="rangeMax" x-on:change="commitMax()" class="pointer-events-none absolute inset-0 z-[3] h-full w-full cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-slate-700 [&::-moz-range-thumb]:bg-white [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-slate-700 [&::-webkit-slider-thumb]:bg-white">
                                 </div>
                                 <span class="text-xs tabular-nums text-slate-600" x-text="'€' + rangeMax"></span>
                             </div>
@@ -182,7 +182,7 @@
                     @endif
 
                     {{-- Out-of-stock --}}
-                    @if ($activeCategory)
+                    @if ($activeCategory || $activeTag)
                         <label class="flex items-center gap-2 text-sm text-slate-700">
                             <input type="checkbox" wire:model.live="includeOutOfStock" class="rounded border-slate-300">
                             Show out-of-stock

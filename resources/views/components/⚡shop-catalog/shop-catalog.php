@@ -190,7 +190,7 @@ new class extends Component
 
         $categorySlug = $forcedCategory?->slug ?? '';
         $tagSlug = $forcedTag?->slug ?? '';
-        $shouldFilterOutOfStock = $activeCategory !== null && ! $this->includeOutOfStock;
+        $shouldFilterOutOfStock = ($activeCategory !== null || $activeTag !== null) && ! $this->includeOutOfStock;
 
         // Build the base product query (used for both results and available sizes)
         $buildQuery = function (bool $excludeSizeFilter = false, bool $excludePriceFilter = false) use (

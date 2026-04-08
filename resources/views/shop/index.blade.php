@@ -102,8 +102,8 @@
                                 <source srcset="{{ asset('images/worldwide-shipping-icon.avif') }}" type="image/avif">
                                 <img src="{{ asset('images/worldwide-shipping-icon.png') }}" alt="Globe icon representing worldwide shipping" class="mb-3 h-10 w-10 brightness-0 invert" width="80" height="80" loading="lazy">
                             </picture>
-                            <h3 class="text-sm font-bold uppercase tracking-wide text-white">Worldwide Shipping</h3>
-                            <p class="mt-1 text-xs leading-relaxed text-slate-300">We do worldwide shipping with traceable tracking number.</p>
+                            <h3 class="text-base font-bold uppercase tracking-wide text-white">Worldwide Shipping</h3>
+                            <p class="mt-1 text-sm leading-relaxed text-slate-300">We do worldwide shipping with traceable tracking number.</p>
                         </div>
 
                         <div class="flex flex-col items-center rounded-lg bg-white/10 px-4 py-6 text-center backdrop-blur-sm">
@@ -111,8 +111,8 @@
                                 <source srcset="{{ asset('images/vinyl-record-icon.avif') }}" type="image/avif">
                                 <img src="{{ asset('images/vinyl-record-icon.png') }}" alt="Vinyl record icon representing exclusive vinyl collection" class="mb-3 h-10 w-10 brightness-0 invert" width="80" height="80" loading="lazy">
                             </picture>
-                            <h3 class="text-sm font-bold uppercase tracking-wide text-white">Sick Vinyl</h3>
-                            <p class="mt-1 text-xs leading-relaxed text-slate-300">We got a lot of exclusive vinyl and only ship with premium boxes.</p>
+                            <h3 class="text-base font-bold uppercase tracking-wide text-white">Sick Vinyl</h3>
+                            <p class="mt-1 text-sm leading-relaxed text-slate-300">We got a lot of exclusive vinyl and only ship with premium boxes.</p>
                         </div>
 
                         <div class="flex flex-col items-center rounded-lg bg-white/10 px-4 py-6 text-center backdrop-blur-sm">
@@ -120,8 +120,8 @@
                                 <source srcset="{{ asset('images/wholesale-price-tag-icon.avif') }}" type="image/avif">
                                 <img src="{{ asset('images/wholesale-price-tag-icon.png') }}" alt="Price tag icon representing wholesale orders" class="mb-3 h-10 w-10 brightness-0 invert" width="80" height="80" loading="lazy">
                             </picture>
-                            <h3 class="text-sm font-bold uppercase tracking-wide text-white">Wholesale</h3>
-                            <p class="mt-1 text-xs leading-relaxed text-slate-300">For wholesale and shop orders please contact us.</p>
+                            <h3 class="text-base font-bold uppercase tracking-wide text-white">Wholesale</h3>
+                            <p class="mt-1 text-sm leading-relaxed text-slate-300">For wholesale and shop orders please contact us.</p>
                         </div>
 
                         <div class="flex flex-col items-center rounded-lg bg-white/10 px-4 py-6 text-center backdrop-blur-sm">
@@ -129,8 +129,8 @@
                                 <source srcset="{{ asset('images/secure-payment-lock-icon.avif') }}" type="image/avif">
                                 <img src="{{ asset('images/secure-payment-lock-icon.png') }}" alt="Padlock icon representing secure PayPal payments" class="mb-3 h-10 w-10 brightness-0 invert" width="80" height="80" loading="lazy">
                             </picture>
-                            <h3 class="text-sm font-bold uppercase tracking-wide text-white">Secure Payments</h3>
-                            <p class="mt-1 text-xs leading-relaxed text-slate-300">We use PayPal Plus for your secure payments with all possible options.</p>
+                            <h3 class="text-base font-bold uppercase tracking-wide text-white">Secure Payments</h3>
+                            <p class="mt-1 text-sm leading-relaxed text-slate-300">We use PayPal Plus for your secure payments with all possible options.</p>
                         </div>
                     </div>
                 </div>
