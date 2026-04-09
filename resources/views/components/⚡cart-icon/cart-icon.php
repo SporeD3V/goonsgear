@@ -1,13 +1,14 @@
 <?php
 
 use App\Models\UserCartItem;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 new class extends Component
 {
     /**
-     * @return array{items: \Illuminate\Support\Collection<int, mixed>, count: int, subtotal: float}
+     * @return array{items: Collection, count: int, subtotal: float}
      */
     public function getCartData(): array
     {
@@ -47,4 +48,4 @@ new class extends Component
     {
         // Re-renders the component with fresh session data.
     }
-}
+};
