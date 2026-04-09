@@ -1,49 +1,56 @@
 <div class="relative overflow-hidden bg-black px-6 py-16 lg:py-20 shadow-[0_30px_80px_-10px_rgba(0,0,0,0.5)]">
     {{-- Dripping paint animation for "Drops" — nod to the SnowGoons dripping snowflake --}}
     <style>
-        .drip-text {
+        .drip-word {
             position: relative;
             display: inline-block;
+            padding-bottom: 0.15em;
         }
 
-        .drip-text .paint-drip {
+        /* The strand that grows downward from the letter */
+        .drip-word .paint-strand {
             position: absolute;
-            bottom: 0;
-            width: 2px;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.85), rgba(255,255,255,0.5));
-            border-radius: 0 0 100% 100%;
-            transform-origin: top center;
+            top: 88%;
+            width: var(--strand-w, 3px);
+            height: 0;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.6) 60%, rgba(255,255,255,0.3) 100%);
+            border-radius: 0 0 2px 2px;
             pointer-events: none;
-            animation: drip-grow var(--drip-dur, 10s) var(--drip-del, 0s) ease-in-out infinite;
+            animation: strand-pour var(--strand-dur, 4s) var(--strand-del, 0s) ease-in infinite;
         }
 
-        .drip-text .paint-drip::after {
+        /* The droplet that forms at the tip, then detaches and falls */
+        .drip-word .paint-strand::after {
             content: '';
             position: absolute;
-            bottom: -3px;
+            bottom: 0;
             left: 50%;
-            width: 5px;
-            height: 6px;
-            background: rgba(255,255,255,0.8);
-            border-radius: 50% 50% 50% 50% / 30% 30% 60% 60%;
-            pointer-events: none;
-            animation: drop-fall var(--drip-dur, 10s) var(--drip-del, 0s) ease-in infinite;
+            transform: translateX(-50%);
+            width: calc(var(--strand-w, 3px) + 3px);
+            height: calc(var(--strand-w, 3px) + 4px);
+            background: rgba(255,255,255,0.85);
+            border-radius: 45% 45% 50% 50%;
+            opacity: 0;
+            animation: droplet-fall var(--strand-dur, 4s) var(--strand-del, 0s) ease-in infinite;
         }
 
-        @keyframes drip-grow {
-            0%        { height: 0;                   opacity: 0; }
-            4%        { height: 0;                   opacity: 0.9; }
-            18%       { height: var(--drip-h, 20px); opacity: 0.85; }
-            26%       { height: var(--drip-h, 20px); opacity: 0.7; }
-            32%       { height: 0;                   opacity: 0; }
-            100%      { height: 0;                   opacity: 0; }
+        @keyframes strand-pour {
+            0%   { height: 0;                     opacity: 0; }
+            5%   { height: 2px;                   opacity: 0.9; }
+            35%  { height: var(--strand-h, 30px); opacity: 0.85; }
+            50%  { height: var(--strand-h, 30px); opacity: 0.7; }
+            60%  { height: var(--strand-h, 30px); opacity: 0.4; }
+            70%  { height: var(--strand-h, 30px); opacity: 0; }
+            100% { height: var(--strand-h, 30px); opacity: 0; }
         }
 
-        @keyframes drop-fall {
-            0%, 26%   { transform: translateX(-50%) translateY(0);    opacity: 0; }
-            28%       { transform: translateX(-50%) translateY(0);    opacity: 0.85; }
-            48%       { transform: translateX(-50%) translateY(40px); opacity: 0; }
-            100%      { transform: translateX(-50%) translateY(0);    opacity: 0; }
+        @keyframes droplet-fall {
+            0%, 45%  { bottom: 0;    opacity: 0;    }
+            50%      { bottom: 0;    opacity: 0.9;  }
+            55%      { bottom: -5px; opacity: 0.85; }
+            70%      { bottom: -50px; opacity: 0.5; }
+            82%      { bottom: -80px; opacity: 0;   }
+            100%     { bottom: -80px; opacity: 0;   }
         }
     </style>
     <div class="pointer-events-none absolute inset-x-0 top-0 z-0 h-32 bg-gradient-to-b from-neutral-700/40 to-transparent"></div>
@@ -52,7 +59,7 @@
         <div class="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
             {{-- Left: headline + copy --}}
             <div class="text-center lg:text-left">
-                <h2 class="text-3xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">Don't Miss<br class="hidden lg:inline"> Exclusive <span class="drip-text">Drops<span class="paint-drip" style="left:10%; --drip-h:20px; --drip-del:0s"></span><span class="paint-drip" style="left:50%; --drip-h:14px; --drip-del:3.5s"></span><span class="paint-drip" style="left:88%; --drip-h:26px; --drip-del:7s"></span></span></h2>
+                <h2 class="text-3xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">Don't Miss<br class="hidden lg:inline"> Exclusive <span class="drip-word">Drops{{-- D drips --}}<span class="paint-strand" style="left:4%;  --strand-w:3px; --strand-h:28px; --strand-dur:5s;   --strand-del:0s"></span><span class="paint-strand" style="left:12%; --strand-w:2px; --strand-h:20px; --strand-dur:6.5s; --strand-del:1.2s"></span>{{-- R drip --}}<span class="paint-strand" style="left:26%; --strand-w:3px; --strand-h:34px; --strand-dur:5.5s; --strand-del:2.8s"></span>{{-- O drips --}}<span class="paint-strand" style="left:42%; --strand-w:2px; --strand-h:18px; --strand-dur:7s;   --strand-del:0.5s"></span><span class="paint-strand" style="left:52%; --strand-w:3px; --strand-h:26px; --strand-dur:4.5s; --strand-del:4s"></span>{{-- P drip --}}<span class="paint-strand" style="left:66%; --strand-w:3px; --strand-h:32px; --strand-dur:6s;   --strand-del:1.8s"></span>{{-- S drips --}}<span class="paint-strand" style="left:82%; --strand-w:2px; --strand-h:22px; --strand-dur:5s;   --strand-del:3.5s"></span><span class="paint-strand" style="left:94%; --strand-w:3px; --strand-h:38px; --strand-dur:5.5s; --strand-del:0.8s"></span></span></h2>
                 <p class="mt-4 text-base leading-relaxed text-white/60 lg:text-lg">
                     Sign up for our newsletter for special offers and limited releases. Unsubscribe anytime with one click.
                 </p>
