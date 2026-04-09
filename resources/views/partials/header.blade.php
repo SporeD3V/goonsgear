@@ -17,7 +17,7 @@
 @endphp
 
 <header
-    class="sticky top-0 z-50 border-b border-slate-200 bg-white"
+    class="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-[0_4px_30px_-4px_rgba(0,0,0,0.08)]"
     x-data="{ mobileOpen: false }"
     x-on:keydown.escape.window="mobileOpen = false"
 >

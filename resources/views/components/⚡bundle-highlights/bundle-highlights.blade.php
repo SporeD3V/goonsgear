@@ -1,6 +1,6 @@
 <div class="relative overflow-hidden bg-white px-6 py-16 lg:py-20">
-    <div class="pointer-events-none absolute inset-x-0 top-0 z-0 h-24 bg-gradient-to-b from-neutral-100 to-transparent"></div>
-    <div class="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-24 bg-gradient-to-t from-neutral-100 to-transparent"></div>
+    <div class="pointer-events-none absolute inset-x-0 top-0 z-0 h-32 bg-gradient-to-b from-neutral-200/60 to-transparent"></div>
+    <div class="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-32 bg-gradient-to-t from-neutral-200/60 to-transparent"></div>
     <div class="relative z-[1] mx-auto max-w-6xl">
         <div class="mb-10 text-center">
             <h2 class="text-3xl font-black uppercase tracking-tight text-black md:text-4xl">Bundle Up &amp; Save</h2>

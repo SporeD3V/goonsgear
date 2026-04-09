@@ -1,6 +1,6 @@
-<div class="relative overflow-hidden bg-black px-6 py-16 lg:py-20 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)]">
-    <div class="pointer-events-none absolute inset-x-0 top-0 z-[3] h-24 bg-gradient-to-b from-neutral-800/50 to-transparent"></div>
-    <div class="pointer-events-none absolute inset-x-0 bottom-0 z-[3] h-24 bg-gradient-to-t from-neutral-800/50 to-transparent"></div>
+<div class="relative overflow-hidden bg-black px-6 py-16 lg:py-20 shadow-[0_30px_80px_-10px_rgba(0,0,0,0.5)]">
+    <div class="pointer-events-none absolute inset-x-0 top-0 z-[3] h-32 bg-gradient-to-b from-neutral-700/40 to-transparent"></div>
+    <div class="pointer-events-none absolute inset-x-0 bottom-0 z-[3] h-32 bg-gradient-to-t from-neutral-700/40 to-transparent"></div>
     {{-- Snowflake animation — slow drift with frosted glass look --}}
     <style>
         @keyframes snowflake-fall {
