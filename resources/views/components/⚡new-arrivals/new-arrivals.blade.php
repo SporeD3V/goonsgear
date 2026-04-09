@@ -13,24 +13,38 @@
                 x-data="{
                     isDragging: false,
                     startX: 0,
+                    startY: 0,
                     scrollLeft: 0,
+                    direction: null,
                     canScrollLeft: false,
                     canScrollRight: true,
                     start(e) {
                         this.isDragging = true;
-                        this.startX = (e.touches ? e.touches[0].pageX : e.pageX) - this.$refs.track.offsetLeft;
+                        this.direction = null;
+                        const point = e.touches ? e.touches[0] : e;
+                        this.startX = point.pageX - this.$refs.track.offsetLeft;
+                        this.startY = point.pageY;
                         this.scrollLeft = this.$refs.track.scrollLeft;
                         this.$refs.track.style.cursor = 'grabbing';
                     },
                     move(e) {
                         if (!this.isDragging) return;
+                        const point = e.touches ? e.touches[0] : e;
+                        const x = point.pageX - this.$refs.track.offsetLeft;
+                        const diffX = Math.abs(x - this.startX);
+                        const diffY = Math.abs(point.pageY - this.startY);
+                        if (!this.direction) {
+                            if (diffX < 3 && diffY < 3) return;
+                            this.direction = diffX > diffY ? 'horizontal' : 'vertical';
+                        }
+                        if (this.direction === 'vertical') { this.isDragging = false; return; }
                         e.preventDefault();
-                        const x = (e.touches ? e.touches[0].pageX : e.pageX) - this.$refs.track.offsetLeft;
                         const walk = (x - this.startX) * 1.5;
                         this.$refs.track.scrollLeft = this.scrollLeft - walk;
                     },
                     stop() {
                         this.isDragging = false;
+                        this.direction = null;
                         this.$refs.track.style.cursor = 'grab';
                     },
                     scrollByCard(direction) {
