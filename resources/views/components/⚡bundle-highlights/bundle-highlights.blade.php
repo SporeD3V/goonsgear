@@ -131,13 +131,13 @@
                                 {{-- Savings card --}}
                                 <div class="flex min-w-0 flex-1 flex-col items-center justify-center overflow-hidden rounded-2xl bg-black p-6 text-center text-white shadow-sm" draggable="false">
                                     <h3 class="text-sm font-black uppercase tracking-wider">Bundle Savings</h3>
-                                    <div class="mt-4 rounded-lg border border-slate-600 px-6 py-4">
-                                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Save</p>
+                                    <div class="mt-4 rounded-lg border border-white/20 px-6 py-4">
+                                        <p class="text-xs font-semibold uppercase tracking-wider text-red-400">Save</p>
                                         <p class="mt-1 text-4xl font-black">&euro;{{ number_format((float) $bundle->savings, 0) }}</p>
                                     </div>
                                     <p class="mt-3 text-sm font-semibold text-white">Total: &euro;{{ number_format((float) $bundle->total_price - (float) $bundle->savings, 2) }}</p>
-                                    <p class="text-xs text-slate-400 line-through">&euro;{{ number_format((float) $bundle->total_price, 2) }}</p>
-                                    <p class="mt-3 text-xs leading-relaxed text-slate-400">Get both items together and save on your order</p>
+                                    <p class="text-xs text-red-400 line-through">&euro;{{ number_format((float) $bundle->total_price, 2) }}</p>
+                                    <p class="mt-3 text-xs leading-relaxed text-white/50">Get both items together and save on your order</p>
                                     <a
                                         href="{{ route('shop.category', 'sale') }}"
                                         class="mt-4 block w-full rounded-lg border-2 border-white bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-black transition hover:bg-transparent hover:text-white"
