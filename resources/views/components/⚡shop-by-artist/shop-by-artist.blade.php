@@ -180,7 +180,7 @@
                                             <img
                                                 src="{{ route('media.show', ['path' => $tag->logo_path]) }}"
                                                 alt="{{ $tag->name }} logo"
-                                                class="absolute inset-0 h-full w-full object-contain p-4 transition-transform duration-500 ease-out group-hover:scale-110"
+                                                class="absolute inset-0 h-full w-full object-contain p-4 grayscale transition-all duration-500 ease-out group-hover:scale-110 group-hover:grayscale-0"
                                                 width="200"
                                                 height="200"
                                                 draggable="false"
