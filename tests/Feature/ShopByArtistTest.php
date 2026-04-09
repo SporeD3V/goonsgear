@@ -78,6 +78,7 @@ class ShopByArtistTest extends TestCase
             'slug' => 'snowgoons',
             'type' => 'artist',
             'is_active' => true,
+            'logo_path' => 'tags/snowgoons.png',
         ]);
 
         Tag::factory()->create([
@@ -85,6 +86,7 @@ class ShopByArtistTest extends TestCase
             'slug' => 'snowbrand',
             'type' => 'brand',
             'is_active' => true,
+            'logo_path' => 'tags/snowbrand.png',
         ]);
 
         Tag::factory()->create([

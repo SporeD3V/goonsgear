@@ -60,63 +60,26 @@
                     {{-- Search tile — occupies first cell --}}
                     <div
                         class="relative flex aspect-square items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 transition-colors duration-300 focus-within:border-black focus-within:bg-white"
-                        x-data="{ open: false, query: @entangle('search') }"
-                        x-on:click.outside="open = false"
                     >
                         <div class="flex w-full flex-col items-center gap-3 px-4">
-                            <svg class="h-7 w-7 text-slate-300 transition-colors duration-200" :class="open && 'text-black'" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <svg class="h-7 w-7 text-slate-300 transition-colors duration-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z"/>
                             </svg>
                             <input
                                 type="text"
                                 wire:model.live.debounce.300ms="search"
-                                x-on:focus="open = true"
-                                x-on:input="open = true"
                                 placeholder="Search…"
                                 class="w-full border-0 bg-transparent p-0 text-center text-sm font-bold uppercase tracking-widest text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-0"
                                 autocomplete="off"
                             >
                         </div>
-
-                        {{-- Search results dropdown --}}
-                        @if ($searchResults->isNotEmpty())
-                            <div
-                                x-show="open && query.trim() !== ''"
-                                x-cloak
-                                x-transition:enter="transition ease-out duration-200"
-                                x-transition:enter-start="opacity-0 -translate-y-1"
-                                x-transition:enter-end="opacity-100 translate-y-0"
-                                class="absolute inset-x-0 top-full z-30 mt-1 max-h-64 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-xl"
-                            >
-                                @foreach ($searchResults as $result)
-                                    <a
-                                        href="{{ route('shop.artist', $result->slug) }}"
-                                        class="flex items-center gap-3 border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 last:border-b-0 transition-colors duration-150 hover:bg-black hover:text-white"
-                                    >
-                                        <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 19.5 15-15m0 0H8.25m11.25 0v11.25"/></svg>
-                                        {{ $result->name }}
-                                    </a>
-                                @endforeach
-                            </div>
-                        @elseif (trim($this->search) !== '')
-                            <div
-                                x-show="open"
-                                x-cloak
-                                x-transition:enter="transition ease-out duration-200"
-                                x-transition:enter-start="opacity-0 -translate-y-1"
-                                x-transition:enter-end="opacity-100 translate-y-0"
-                                class="absolute inset-x-0 top-full z-30 mt-1 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-xl"
-                            >
-                                <p class="text-sm text-slate-500">No artists found.</p>
-                            </div>
-                        @endif
                     </div>
 
-                    {{-- Artist logo tiles --}}
-                    @foreach ($carouselTags as $tag)
+                    {{-- Artist logo tiles — live-filtered by search --}}
+                    @forelse ($displayTags as $tag)
                         <a
                             href="{{ route('shop.artist', $tag->slug) }}"
-                            wire:key="carousel-tag-{{ $tag->id }}"
+                            wire:key="display-tag-{{ $tag->id }}"
                             class="group relative block aspect-square overflow-hidden rounded-lg bg-white shadow-sm transition-all duration-300 hover:shadow-lg hover:ring-2 hover:ring-black/10"
                             draggable="false"
                         >
@@ -130,7 +93,13 @@
                                 draggable="false"
                             >
                         </a>
-                    @endforeach
+                    @empty
+                        @if (trim($this->search) !== '')
+                            <div class="col-span-full py-8 text-center">
+                                <p class="text-sm text-slate-500">No artists found matching &ldquo;{{ $this->search }}&rdquo;</p>
+                            </div>
+                        @endif
+                    @endforelse
                 </div>
             </div>
 

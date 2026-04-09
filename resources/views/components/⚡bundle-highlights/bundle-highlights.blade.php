@@ -134,7 +134,7 @@
                                         <p class="mt-1 text-4xl font-black">&euro;{{ number_format((float) $bundle->savings, 0) }}</p>
                                     </div>
                                     <p class="mt-3 text-sm font-semibold text-white">Total: &euro;{{ number_format((float) $bundle->total_price - (float) $bundle->savings, 2) }}</p>
-                                    <p class="text-xs text-slate-400 line-through">&euro;{{ number_format((float) $bundle->total_price, 2) }}</p>
+                                    <p class="text-xs text-red-400 line-through">&euro;{{ number_format((float) $bundle->total_price, 2) }}</p>
                                     <p class="mt-3 text-xs leading-relaxed text-slate-400">Get both items together and save on your order</p>
                                     <a
                                         href="{{ route('shop.category', 'sale') }}"

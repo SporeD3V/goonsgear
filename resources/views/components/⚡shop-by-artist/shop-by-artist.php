@@ -39,10 +39,13 @@ new class extends Component
                 ->where('type', 'artist')
                 ->where('is_active', true)
                 ->where('name', 'like', '%'.$search.'%')
+                ->whereNotNull('logo_path')
                 ->orderBy('name')
-                ->limit(10)
-                ->get(['id', 'name', 'slug', 'type'])
+                ->limit(11)
+                ->get(['id', 'name', 'slug', 'logo_path', 'type'])
             : collect();
+
+        $displayTags = $search !== '' ? $searchResults : $carouselTags;
 
         /** @var Collection<int, Category> $categories */
         $categories = Category::query()
@@ -82,6 +85,7 @@ new class extends Component
 
         return view('components.⚡shop-by-artist.shop-by-artist', [
             'carouselTags' => $carouselTags,
+            'displayTags' => $displayTags,
             'searchResults' => $searchResults,
             'categories' => $categories,
         ]);
