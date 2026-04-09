@@ -1,11 +1,58 @@
 <div class="relative overflow-hidden bg-black px-6 py-16 lg:py-20 shadow-[0_30px_80px_-10px_rgba(0,0,0,0.5)]">
+    {{-- Dripping paint animation for "Drops" — nod to the SnowGoons dripping snowflake --}}
+    <style>
+        .drip-text {
+            position: relative;
+            display: inline-block;
+        }
+
+        .drip-text .paint-drip {
+            position: absolute;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.85), rgba(255,255,255,0.5));
+            border-radius: 0 0 100% 100%;
+            transform-origin: top center;
+            pointer-events: none;
+            animation: drip-grow var(--drip-dur, 10s) var(--drip-del, 0s) ease-in-out infinite;
+        }
+
+        .drip-text .paint-drip::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 50%;
+            width: 5px;
+            height: 6px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 50% 50% 50% 50% / 30% 30% 60% 60%;
+            pointer-events: none;
+            animation: drop-fall var(--drip-dur, 10s) var(--drip-del, 0s) ease-in infinite;
+        }
+
+        @keyframes drip-grow {
+            0%        { height: 0;                   opacity: 0; }
+            4%        { height: 0;                   opacity: 0.9; }
+            18%       { height: var(--drip-h, 20px); opacity: 0.85; }
+            26%       { height: var(--drip-h, 20px); opacity: 0.7; }
+            32%       { height: 0;                   opacity: 0; }
+            100%      { height: 0;                   opacity: 0; }
+        }
+
+        @keyframes drop-fall {
+            0%, 26%   { transform: translateX(-50%) translateY(0);    opacity: 0; }
+            28%       { transform: translateX(-50%) translateY(0);    opacity: 0.85; }
+            48%       { transform: translateX(-50%) translateY(40px); opacity: 0; }
+            100%      { transform: translateX(-50%) translateY(0);    opacity: 0; }
+        }
+    </style>
     <div class="pointer-events-none absolute inset-x-0 top-0 z-0 h-32 bg-gradient-to-b from-neutral-700/40 to-transparent"></div>
     <div class="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-32 bg-gradient-to-t from-neutral-700/40 to-transparent"></div>
     <div class="relative z-[1] mx-auto max-w-6xl">
         <div class="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
             {{-- Left: headline + copy --}}
             <div class="text-center lg:text-left">
-                <h2 class="text-3xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">Don't Miss<br class="hidden lg:inline"> Exclusive Drops</h2>
+                <h2 class="text-3xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">Don't Miss<br class="hidden lg:inline"> Exclusive <span class="drip-text">Drops<span class="paint-drip" style="left:10%; --drip-h:20px; --drip-del:0s"></span><span class="paint-drip" style="left:50%; --drip-h:14px; --drip-del:3.5s"></span><span class="paint-drip" style="left:88%; --drip-h:26px; --drip-del:7s"></span></span></h2>
                 <p class="mt-4 text-base leading-relaxed text-white/60 lg:text-lg">
                     Sign up for our newsletter for special offers and limited releases. Unsubscribe anytime with one click.
                 </p>
