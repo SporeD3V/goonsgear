@@ -24,7 +24,7 @@
                         x-transition:enter-end="opacity-100 translate-y-0"
                         class="rounded-xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur-sm"
                     >
-                        <svg class="mx-auto mb-4 h-10 w-10 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <svg class="mx-auto mb-4 h-10 w-10 text-white/60" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
                         </svg>
                         <p class="text-lg font-bold text-white">You're in!</p>
@@ -40,7 +40,7 @@
                                 class="w-full rounded-xl border-2 border-white/10 bg-white/10 px-5 py-4 text-base font-medium text-white backdrop-blur-sm placeholder-white/45 transition-all duration-200 focus:border-white/40 focus:bg-white/15 focus:outline-none focus:ring-0"
                             >
                             @error('name')
-                                <p class="mt-1.5 text-left text-xs text-red-400">{{ $message }}</p>
+                                <p class="mt-1.5 text-left text-xs text-white/60">{{ $message }}</p>
                             @enderror
                         </div>
 
@@ -52,12 +52,12 @@
                                 class="w-full rounded-xl border-2 border-white/10 bg-white/10 px-5 py-4 text-base font-medium text-white backdrop-blur-sm placeholder-white/45 transition-all duration-200 focus:border-white/40 focus:bg-white/15 focus:outline-none focus:ring-0"
                             >
                             @error('email')
-                                <p class="mt-1.5 text-left text-xs text-red-400">{{ $message }}</p>
+                                <p class="mt-1.5 text-left text-xs text-white/60">{{ $message }}</p>
                             @enderror
                         </div>
 
                         @if ($errorMessage)
-                            <p class="text-sm text-red-400">{{ $errorMessage }}</p>
+                            <p class="text-sm text-white/60">{{ $errorMessage }}</p>
                         @endif
 
                         <button

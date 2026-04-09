@@ -178,12 +178,9 @@
                                         alt="{{ $primaryMedia?->alt_text ?: $product->name }}"
                                         data-catalog-primary-image
                                         data-catalog-original-src="{{ $mediaUrl }}"
-                                        class="h-full w-full object-contain p-6 transition-all duration-500 {{ $secondaryMediaUrl ? 'group-hover:opacity-0 group-hover:scale-105' : 'group-hover:scale-105' }}"
+                                        class="h-full w-full object-contain p-6 transition-all duration-500 group-hover:scale-105"
                                         draggable="false"
                                     >
-                                    @if ($secondaryMediaUrl)
-                                        <img src="{{ $secondaryMediaUrl }}" alt="{{ $secondaryMedia?->alt_text ?: $product->name }}" class="pointer-events-none absolute inset-0 h-full w-full object-contain p-6 opacity-0 transition-all duration-500 group-hover:scale-105 group-hover:opacity-100" draggable="false">
-                                    @endif
                                     <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent transition-opacity duration-300 group-hover:from-black/50"></div>
                                 </div>
                             @else
@@ -193,7 +190,7 @@
                             @endif
 
                             <div class="p-5">
-                                <p class="text-xs font-bold uppercase tracking-widest text-amber-600">{{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>
+                                <p class="text-xs font-bold uppercase tracking-widest text-slate-500">{{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>
                                 <h3 class="mt-2 text-lg font-black leading-tight text-black">{{ $product->name }}</h3>
                                 @if ($startingPrice !== null)
                                     <p class="mt-2 text-base font-bold text-black" data-catalog-price>

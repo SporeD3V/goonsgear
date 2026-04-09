@@ -60,7 +60,7 @@
             >
                 {{-- Search bar — full width on mobile, grid tile on larger screens --}}
                 <div class="mb-3 sm:hidden">
-                    <div class="relative flex items-center gap-3 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-3 transition-colors duration-300 focus-within:border-black focus-within:bg-white">
+                    <div @click="$el.querySelector('input').focus()" class="relative flex cursor-text items-center gap-3 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-3 transition-colors duration-300 focus-within:border-black focus-within:bg-white">
                         <svg class="h-5 w-5 shrink-0 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z"/>
                         </svg>
@@ -77,7 +77,8 @@
                 <div class="grid min-h-[21rem] grid-cols-3 content-start gap-3 sm:min-h-[22rem] sm:grid-cols-4 lg:min-h-[23rem] lg:grid-cols-6">
                     {{-- Search tile — hidden on mobile, first cell on sm+ --}}
                     <div
-                        class="relative hidden aspect-square items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 transition-colors duration-300 focus-within:border-black focus-within:bg-white sm:flex"
+                        @click="$el.querySelector('input').focus()"
+                        class="relative hidden aspect-square cursor-text items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 transition-colors duration-300 focus-within:border-black focus-within:bg-white sm:flex"
                     >
                         <div class="flex w-full flex-col items-center gap-3 px-4">
                             <svg class="h-7 w-7 text-slate-300 transition-colors duration-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
