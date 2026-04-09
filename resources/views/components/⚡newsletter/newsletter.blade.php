@@ -1,5 +1,7 @@
-<div class="bg-black px-6 py-16 lg:py-20">
-    <div class="mx-auto max-w-6xl">
+<div class="relative overflow-hidden bg-black px-6 py-16 lg:py-20 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)]">
+    <div class="pointer-events-none absolute inset-x-0 top-0 z-0 h-24 bg-gradient-to-b from-neutral-800/50 to-transparent"></div>
+    <div class="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-24 bg-gradient-to-t from-neutral-800/50 to-transparent"></div>
+    <div class="relative z-[1] mx-auto max-w-6xl">
         <div class="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
             {{-- Left: headline + copy --}}
             <div class="text-center lg:text-left">
@@ -73,5 +75,6 @@
                 @endif
             </div>
         </div>
+    </div>
     </div>
 </div>

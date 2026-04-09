@@ -66,7 +66,8 @@
 
         @if (! $showCatalog)
             {{-- Hero section --}}
-            <section class="relative flex min-h-screen items-center overflow-hidden bg-slate-900">
+            <section class="relative flex min-h-screen items-center overflow-hidden bg-slate-900 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)]">
+                <div class="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-32 bg-gradient-to-t from-black/60 to-transparent"></div>
                 <picture>
                     <source srcset="{{ asset('images/hero-goonsgear.avif') }}" type="image/avif">
                     <img

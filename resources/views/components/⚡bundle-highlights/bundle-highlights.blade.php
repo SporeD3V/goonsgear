@@ -1,5 +1,7 @@
-<div class="bg-white px-6 py-16 lg:py-20">
-    <div class="mx-auto max-w-6xl">
+<div class="relative overflow-hidden bg-white px-6 py-16 lg:py-20">
+    <div class="pointer-events-none absolute inset-x-0 top-0 z-0 h-24 bg-gradient-to-b from-neutral-100 to-transparent"></div>
+    <div class="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-24 bg-gradient-to-t from-neutral-100 to-transparent"></div>
+    <div class="relative z-[1] mx-auto max-w-6xl">
         <div class="mb-10 text-center">
             <h2 class="text-3xl font-black uppercase tracking-tight text-black md:text-4xl">Bundle Up &amp; Save</h2>
             <p class="mt-3 text-base text-slate-600">Get more for less with our exclusive product bundles</p>
@@ -160,5 +162,6 @@
                 </button>
             </div>
         @endif
+    </div>
     </div>
 </div>
