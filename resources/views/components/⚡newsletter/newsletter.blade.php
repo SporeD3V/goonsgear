@@ -93,16 +93,17 @@
             {{-- Left: headline + copy --}}
             <div class="text-center lg:text-left">
                 <h2 class="text-3xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">Don't Miss<br class="hidden lg:inline"> Exclusive <span class="drip-word">Drops{{--
-                    D drips — fire at 0s and 18s
-                    --}}<span class="paint-strand" style="left:4%;  --strand-w:2px; --strand-h:28px; --bulge-top:7px; --bulge-bot:6px; --strand-dur:24s;  --strand-del:0s"></span><span class="paint-strand" style="left:13%; --strand-w:2px; --strand-h:18px; --bulge-top:5px; --bulge-bot:4px; --strand-dur:26s;  --strand-del:18s"></span>{{--
-                    R drip — fire at 6s
-                    --}}<span class="paint-strand" style="left:27%; --strand-w:2px; --strand-h:34px; --bulge-top:8px; --bulge-bot:7px; --strand-dur:22s;  --strand-del:6s"></span>{{--
-                    O drips — fire at 21s and 9s
-                    --}}<span class="paint-strand" style="left:43%; --strand-w:2px; --strand-h:16px; --bulge-top:5px; --bulge-bot:4px; --strand-dur:28s;  --strand-del:21s"></span><span class="paint-strand" style="left:53%; --strand-w:2px; --strand-h:26px; --bulge-top:6px; --bulge-bot:5px; --strand-dur:24s;  --strand-del:9s"></span>{{--
-                    P drip — fire at 3s
-                    --}}<span class="paint-strand" style="left:67%; --strand-w:2px; --strand-h:30px; --bulge-top:7px; --bulge-bot:6px; --strand-dur:25s;  --strand-del:3s"></span>{{--
-                    S drips — fire at 15s and 12s
-                    --}}<span class="paint-strand" style="left:83%; --strand-w:2px; --strand-h:20px; --bulge-top:5px; --bulge-bot:5px; --strand-dur:23s;  --strand-del:15s"></span><span class="paint-strand" style="left:94%; --strand-w:2px; --strand-h:36px; --bulge-top:9px; --bulge-bot:8px; --strand-dur:22s;  --strand-del:12s"></span></span></h2>
+                    Each drip has a unique prime-ish duration so they never sync phases.
+                    D drips
+                    --}}<span class="paint-strand" style="left:4%;  --strand-w:2px; --strand-h:28px; --bulge-top:7px; --bulge-bot:6px; --strand-dur:11s;  --strand-del:0s"></span><span class="paint-strand" style="left:13%; --strand-w:2px; --strand-h:18px; --bulge-top:5px; --bulge-bot:4px; --strand-dur:17s;  --strand-del:4s"></span>{{--
+                    R drip
+                    --}}<span class="paint-strand" style="left:27%; --strand-w:2px; --strand-h:34px; --bulge-top:8px; --bulge-bot:7px; --strand-dur:13s;  --strand-del:2s"></span>{{--
+                    O drips
+                    --}}<span class="paint-strand" style="left:43%; --strand-w:2px; --strand-h:16px; --bulge-top:5px; --bulge-bot:4px; --strand-dur:19s;  --strand-del:7s"></span><span class="paint-strand" style="left:53%; --strand-w:2px; --strand-h:26px; --bulge-top:6px; --bulge-bot:5px; --strand-dur:14s;  --strand-del:1s"></span>{{--
+                    P drip
+                    --}}<span class="paint-strand" style="left:67%; --strand-w:2px; --strand-h:30px; --bulge-top:7px; --bulge-bot:6px; --strand-dur:16s;  --strand-del:5s"></span>{{--
+                    S drips
+                    --}}<span class="paint-strand" style="left:83%; --strand-w:2px; --strand-h:20px; --bulge-top:5px; --bulge-bot:5px; --strand-dur:23s;  --strand-del:9s"></span><span class="paint-strand" style="left:94%; --strand-w:2px; --strand-h:36px; --bulge-top:9px; --bulge-bot:8px; --strand-dur:12s;  --strand-del:3s"></span></span></h2>
                 <p class="mt-4 text-base leading-relaxed text-white/60 lg:text-lg">
                     Sign up for our newsletter for special offers and limited releases. Unsubscribe anytime with one click.
                 </p>
