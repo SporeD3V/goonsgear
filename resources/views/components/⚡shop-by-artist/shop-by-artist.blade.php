@@ -56,7 +56,7 @@
                 x-transition:leave-end="opacity-0"
                 :class="mode === 'artist' ? 'relative' : 'absolute inset-x-0 top-0'"
             >
-                <div class="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+                <div class="grid min-h-[21rem] grid-cols-3 content-start gap-3 sm:min-h-[22rem] sm:grid-cols-4 lg:min-h-[23rem] lg:grid-cols-6">
                     {{-- Search tile — occupies first cell --}}
                     <div
                         class="relative flex aspect-square items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 transition-colors duration-300 focus-within:border-black focus-within:bg-white"
@@ -68,7 +68,7 @@
                             <input
                                 type="text"
                                 wire:model.live.debounce.300ms="search"
-                                placeholder="Search…"
+                                placeholder="Type the name of the artist…"
                                 class="w-full border-0 bg-transparent p-0 text-center text-sm font-bold uppercase tracking-widest text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-0"
                                 autocomplete="off"
                             >
