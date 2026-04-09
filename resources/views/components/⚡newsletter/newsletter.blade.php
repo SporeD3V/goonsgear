@@ -53,37 +53,36 @@
             animation: droplet-swell-fall var(--strand-dur, 10s) var(--strand-del, 0s) ease-in infinite;
         }
 
-        /* Top bulge fades in, holds while strand pours, then fades */
+        /* Top bulge fades in, holds while strand pours, then fades — visible ~2-18% */
         @keyframes bulge-top {
             0%        { opacity: 0; }
-            3%        { opacity: 0.85; }
-            40%       { opacity: 0.7; }
-            55%       { opacity: 0.3; }
-            60%       { opacity: 0; }
+            2%        { opacity: 0.85; }
+            12%       { opacity: 0.7; }
+            17%       { opacity: 0.3; }
+            20%       { opacity: 0; }
             100%      { opacity: 0; }
         }
 
-        /* Strand grows slowly downward, holds, then fades from top */
+        /* Strand grows slowly downward, holds, then fades — visible ~2-22% */
         @keyframes strand-pour {
             0%        { height: 0;                     opacity: 0; }
-            3%        { height: 0;                     opacity: 0.85; }
-            30%       { height: var(--strand-h, 30px); opacity: 0.8; }
-            50%       { height: var(--strand-h, 30px); opacity: 0.65; }
-            58%       { height: var(--strand-h, 30px); opacity: 0.3; }
-            65%       { height: var(--strand-h, 30px); opacity: 0; }
+            2%        { height: 0;                     opacity: 0.85; }
+            12%       { height: var(--strand-h, 30px); opacity: 0.8; }
+            18%       { height: var(--strand-h, 30px); opacity: 0.5; }
+            22%       { height: var(--strand-h, 30px); opacity: 0; }
             100%      { height: var(--strand-h, 30px); opacity: 0; }
         }
 
-        /* Droplet swells at strand tip, then detaches and falls with slight stretch */
+        /* Droplet swells at strand tip, then detaches and falls — visible ~8-25% */
         @keyframes droplet-swell-fall {
-            0%, 20%   { bottom: -1px;  opacity: 0;    transform: translateX(-50%) scaleY(1) scaleX(0.8); }
-            25%       { bottom: -1px;  opacity: 0.3;  transform: translateX(-50%) scaleY(1) scaleX(0.9); }
-            35%       { bottom: -1px;  opacity: 0.9;  transform: translateX(-50%) scaleY(1) scaleX(1); }
-            42%       { bottom: -2px;  opacity: 0.95; transform: translateX(-50%) scaleY(1.15) scaleX(1); }
+            0%, 8%    { bottom: -1px;  opacity: 0;    transform: translateX(-50%) scaleY(1) scaleX(0.8); }
+            10%       { bottom: -1px;  opacity: 0.3;  transform: translateX(-50%) scaleY(1) scaleX(0.9); }
+            14%       { bottom: -1px;  opacity: 0.9;  transform: translateX(-50%) scaleY(1) scaleX(1); }
+            17%       { bottom: -2px;  opacity: 0.95; transform: translateX(-50%) scaleY(1.15) scaleX(1); }
             /* detach */
-            45%       { bottom: -4px;  opacity: 0.9;  transform: translateX(-50%) scaleY(1.3) scaleX(0.9); }
-            55%       { bottom: -35px; opacity: 0.6;  transform: translateX(-50%) scaleY(1.4) scaleX(0.85); }
-            65%       { bottom: -70px; opacity: 0;    transform: translateX(-50%) scaleY(1.5) scaleX(0.8); }
+            19%       { bottom: -4px;  opacity: 0.9;  transform: translateX(-50%) scaleY(1.3) scaleX(0.9); }
+            23%       { bottom: -35px; opacity: 0.6;  transform: translateX(-50%) scaleY(1.4) scaleX(0.85); }
+            28%       { bottom: -70px; opacity: 0;    transform: translateX(-50%) scaleY(1.5) scaleX(0.8); }
             100%      { bottom: -70px; opacity: 0;    transform: translateX(-50%) scaleY(1.5) scaleX(0.8); }
         }
     </style>
@@ -94,16 +93,16 @@
             {{-- Left: headline + copy --}}
             <div class="text-center lg:text-left">
                 <h2 class="text-3xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">Don't Miss<br class="hidden lg:inline"> Exclusive <span class="drip-word">Drops{{--
-                    D drips
-                    --}}<span class="paint-strand" style="left:4%;  --strand-w:2px; --strand-h:28px; --bulge-top:7px; --bulge-bot:6px; --strand-dur:10s;  --strand-del:0s"></span><span class="paint-strand" style="left:13%; --strand-w:2px; --strand-h:18px; --bulge-top:5px; --bulge-bot:4px; --strand-dur:13s;  --strand-del:3s"></span>{{--
-                    R drip
-                    --}}<span class="paint-strand" style="left:27%; --strand-w:2px; --strand-h:34px; --bulge-top:8px; --bulge-bot:7px; --strand-dur:11s;  --strand-del:6s"></span>{{--
-                    O drips
-                    --}}<span class="paint-strand" style="left:43%; --strand-w:2px; --strand-h:16px; --bulge-top:5px; --bulge-bot:4px; --strand-dur:14s;  --strand-del:1.5s"></span><span class="paint-strand" style="left:53%; --strand-w:2px; --strand-h:26px; --bulge-top:6px; --bulge-bot:5px; --strand-dur:10.5s; --strand-del:8s"></span>{{--
-                    P drip
-                    --}}<span class="paint-strand" style="left:67%; --strand-w:2px; --strand-h:30px; --bulge-top:7px; --bulge-bot:6px; --strand-dur:12s;  --strand-del:4.5s"></span>{{--
-                    S drips
-                    --}}<span class="paint-strand" style="left:83%; --strand-w:2px; --strand-h:20px; --bulge-top:5px; --bulge-bot:5px; --strand-dur:11.5s; --strand-del:7.5s"></span><span class="paint-strand" style="left:94%; --strand-w:2px; --strand-h:36px; --bulge-top:9px; --bulge-bot:8px; --strand-dur:10s;  --strand-del:2s"></span></span></h2>
+                    D drips — fire at 0s and 18s
+                    --}}<span class="paint-strand" style="left:4%;  --strand-w:2px; --strand-h:28px; --bulge-top:7px; --bulge-bot:6px; --strand-dur:24s;  --strand-del:0s"></span><span class="paint-strand" style="left:13%; --strand-w:2px; --strand-h:18px; --bulge-top:5px; --bulge-bot:4px; --strand-dur:26s;  --strand-del:18s"></span>{{--
+                    R drip — fire at 6s
+                    --}}<span class="paint-strand" style="left:27%; --strand-w:2px; --strand-h:34px; --bulge-top:8px; --bulge-bot:7px; --strand-dur:22s;  --strand-del:6s"></span>{{--
+                    O drips — fire at 21s and 9s
+                    --}}<span class="paint-strand" style="left:43%; --strand-w:2px; --strand-h:16px; --bulge-top:5px; --bulge-bot:4px; --strand-dur:28s;  --strand-del:21s"></span><span class="paint-strand" style="left:53%; --strand-w:2px; --strand-h:26px; --bulge-top:6px; --bulge-bot:5px; --strand-dur:24s;  --strand-del:9s"></span>{{--
+                    P drip — fire at 3s
+                    --}}<span class="paint-strand" style="left:67%; --strand-w:2px; --strand-h:30px; --bulge-top:7px; --bulge-bot:6px; --strand-dur:25s;  --strand-del:3s"></span>{{--
+                    S drips — fire at 15s and 12s
+                    --}}<span class="paint-strand" style="left:83%; --strand-w:2px; --strand-h:20px; --bulge-top:5px; --bulge-bot:5px; --strand-dur:23s;  --strand-del:15s"></span><span class="paint-strand" style="left:94%; --strand-w:2px; --strand-h:36px; --bulge-top:9px; --bulge-bot:8px; --strand-dur:22s;  --strand-del:12s"></span></span></h2>
                 <p class="mt-4 text-base leading-relaxed text-white/60 lg:text-lg">
                     Sign up for our newsletter for special offers and limited releases. Unsubscribe anytime with one click.
                 </p>
