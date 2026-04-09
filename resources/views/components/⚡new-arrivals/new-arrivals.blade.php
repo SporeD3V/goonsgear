@@ -130,7 +130,7 @@
                     x-on:touchstart.passive="start($event)"
                     x-on:touchmove="move($event)"
                     x-on:touchend="stop()"
-                    class="no-scrollbar flex snap-x snap-mandatory gap-6 overflow-x-auto select-none"
+                    class="no-scrollbar flex snap-x snap-mandatory gap-6 overflow-x-auto py-2 select-none"
                     style="cursor: grab; -webkit-overflow-scrolling: touch; scroll-behavior: smooth;"
                 >
                 @foreach ($products as $product)
