@@ -1,5 +1,5 @@
 <div class="relative overflow-hidden bg-black px-6 py-16 lg:py-20">
-    {{-- Snowflake animation --}}
+    {{-- Snowflake animation — slow drift with frosted glass look --}}
     <style>
         @keyframes snowflake-fall {
             0% { transform: translateY(-40px) translateX(0) rotate(0deg); opacity: 0; }
@@ -21,28 +21,29 @@
                 snowflake-fall var(--snow-duration) var(--snow-delay) linear infinite,
                 snowflake-sway var(--snow-sway-speed) var(--snow-delay) ease-in-out infinite;
             will-change: transform, margin-left;
+            filter: blur(0.5px) drop-shadow(0 0 8px rgba(255, 255, 255, 0.15));
         }
     </style>
     <div class="pointer-events-none absolute inset-0 z-[1]" aria-hidden="true">
         {{-- Left-side flakes (negative delays = already mid-fall on load) --}}
-        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="left:4%;width:34px;height:34px;opacity:.18;--snow-duration:12s;--snow-delay:-4s;--snow-drift:20px;--snow-spin:180deg;--snow-sway-amount:14px;--snow-sway-speed:4s;">
-        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="left:15%;width:22px;height:22px;opacity:.14;--snow-duration:16s;--snow-delay:-10s;--snow-drift:-15px;--snow-spin:-120deg;--snow-sway-amount:10px;--snow-sway-speed:5s;">
-        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="left:33%;width:28px;height:28px;opacity:.10;--snow-duration:14s;--snow-delay:-7s;--snow-drift:25px;--snow-spin:240deg;--snow-sway-amount:12px;--snow-sway-speed:3.5s;">
-        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="left:10%;width:18px;height:18px;opacity:.12;--snow-duration:18s;--snow-delay:-2s;--snow-drift:-10px;--snow-spin:90deg;--snow-sway-amount:8px;--snow-sway-speed:6s;">
-        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="left:26%;width:40px;height:40px;opacity:.07;--snow-duration:15s;--snow-delay:-12s;--snow-drift:18px;--snow-spin:-200deg;--snow-sway-amount:11px;--snow-sway-speed:4.5s;">
-        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="left:8%;width:26px;height:26px;opacity:.11;--snow-duration:13s;--snow-delay:-9s;--snow-drift:14px;--snow-spin:130deg;--snow-sway-amount:9px;--snow-sway-speed:5.2s;">
-        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="left:38%;width:20px;height:20px;opacity:.09;--snow-duration:17s;--snow-delay:-5s;--snow-drift:-12px;--snow-spin:-170deg;--snow-sway-amount:7px;--snow-sway-speed:4.8s;">
-        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="left:20%;width:36px;height:36px;opacity:.08;--snow-duration:11s;--snow-delay:0s;--snow-drift:22px;--snow-spin:260deg;--snow-sway-amount:13px;--snow-sway-speed:3.6s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="left:4%;width:34px;height:34px;opacity:.18;--snow-duration:24s;--snow-delay:-8s;--snow-drift:20px;--snow-spin:180deg;--snow-sway-amount:14px;--snow-sway-speed:6s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="left:15%;width:22px;height:22px;opacity:.14;--snow-duration:32s;--snow-delay:-20s;--snow-drift:-15px;--snow-spin:-120deg;--snow-sway-amount:10px;--snow-sway-speed:7.5s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle hidden sm:block" style="left:33%;width:28px;height:28px;opacity:.10;--snow-duration:28s;--snow-delay:-14s;--snow-drift:25px;--snow-spin:240deg;--snow-sway-amount:12px;--snow-sway-speed:5.2s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="left:10%;width:18px;height:18px;opacity:.12;--snow-duration:36s;--snow-delay:-4s;--snow-drift:-10px;--snow-spin:90deg;--snow-sway-amount:8px;--snow-sway-speed:9s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle hidden sm:block" style="left:26%;width:40px;height:40px;opacity:.07;--snow-duration:30s;--snow-delay:-24s;--snow-drift:18px;--snow-spin:-200deg;--snow-sway-amount:11px;--snow-sway-speed:6.8s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle hidden sm:block" style="left:8%;width:26px;height:26px;opacity:.11;--snow-duration:26s;--snow-delay:-18s;--snow-drift:14px;--snow-spin:130deg;--snow-sway-amount:9px;--snow-sway-speed:7.8s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle hidden sm:block" style="left:38%;width:20px;height:20px;opacity:.09;--snow-duration:34s;--snow-delay:-10s;--snow-drift:-12px;--snow-spin:-170deg;--snow-sway-amount:7px;--snow-sway-speed:7.2s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle hidden sm:block" style="left:20%;width:36px;height:36px;opacity:.08;--snow-duration:22s;--snow-delay:0s;--snow-drift:22px;--snow-spin:260deg;--snow-sway-amount:13px;--snow-sway-speed:5.4s;">
 
         {{-- Right-side flakes --}}
-        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="right:5%;left:auto;width:30px;height:30px;opacity:.16;--snow-duration:13s;--snow-delay:-6s;--snow-drift:-22px;--snow-spin:160deg;--snow-sway-amount:13px;--snow-sway-speed:4.2s;">
-        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="right:18%;left:auto;width:20px;height:20px;opacity:.13;--snow-duration:17s;--snow-delay:-11s;--snow-drift:12px;--snow-spin:-150deg;--snow-sway-amount:9px;--snow-sway-speed:5.5s;">
-        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="right:32%;left:auto;width:38px;height:38px;opacity:.08;--snow-duration:11s;--snow-delay:-3s;--snow-drift:-20px;--snow-spin:220deg;--snow-sway-amount:15px;--snow-sway-speed:3.8s;">
-        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="right:12%;left:auto;width:24px;height:24px;opacity:.11;--snow-duration:19s;--snow-delay:-14s;--snow-drift:15px;--snow-spin:-100deg;--snow-sway-amount:8px;--snow-sway-speed:6.2s;">
-        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="right:3%;left:auto;width:26px;height:26px;opacity:.15;--snow-duration:14s;--snow-delay:-8s;--snow-drift:-18px;--snow-spin:280deg;--snow-sway-amount:12px;--snow-sway-speed:4.8s;">
-        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="right:25%;left:auto;width:18px;height:18px;opacity:.10;--snow-duration:16s;--snow-delay:-1s;--snow-drift:16px;--snow-spin:-230deg;--snow-sway-amount:10px;--snow-sway-speed:5.8s;">
-        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="right:8%;left:auto;width:34px;height:34px;opacity:.09;--snow-duration:12s;--snow-delay:-10s;--snow-drift:-14px;--snow-spin:190deg;--snow-sway-amount:11px;--snow-sway-speed:4.4s;">
-        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="right:36%;left:auto;width:22px;height:22px;opacity:.07;--snow-duration:15s;--snow-delay:-13s;--snow-drift:20px;--snow-spin:-140deg;--snow-sway-amount:14px;--snow-sway-speed:3.4s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="right:5%;left:auto;width:30px;height:30px;opacity:.16;--snow-duration:26s;--snow-delay:-12s;--snow-drift:-22px;--snow-spin:160deg;--snow-sway-amount:13px;--snow-sway-speed:6.3s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="right:18%;left:auto;width:20px;height:20px;opacity:.13;--snow-duration:34s;--snow-delay:-22s;--snow-drift:12px;--snow-spin:-150deg;--snow-sway-amount:9px;--snow-sway-speed:8.2s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle hidden sm:block" style="right:32%;left:auto;width:38px;height:38px;opacity:.08;--snow-duration:22s;--snow-delay:-6s;--snow-drift:-20px;--snow-spin:220deg;--snow-sway-amount:15px;--snow-sway-speed:5.7s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle hidden sm:block" style="right:12%;left:auto;width:24px;height:24px;opacity:.11;--snow-duration:38s;--snow-delay:-28s;--snow-drift:15px;--snow-spin:-100deg;--snow-sway-amount:8px;--snow-sway-speed:9.3s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="right:3%;left:auto;width:26px;height:26px;opacity:.15;--snow-duration:28s;--snow-delay:-16s;--snow-drift:-18px;--snow-spin:280deg;--snow-sway-amount:12px;--snow-sway-speed:7.2s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle hidden sm:block" style="right:25%;left:auto;width:18px;height:18px;opacity:.10;--snow-duration:32s;--snow-delay:-2s;--snow-drift:16px;--snow-spin:-230deg;--snow-sway-amount:10px;--snow-sway-speed:8.7s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle hidden sm:block" style="right:8%;left:auto;width:34px;height:34px;opacity:.09;--snow-duration:24s;--snow-delay:-20s;--snow-drift:-14px;--snow-spin:190deg;--snow-sway-amount:11px;--snow-sway-speed:6.6s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle hidden sm:block" style="right:36%;left:auto;width:22px;height:22px;opacity:.07;--snow-duration:30s;--snow-delay:-26s;--snow-drift:20px;--snow-spin:-140deg;--snow-sway-amount:14px;--snow-sway-speed:5.1s;">
     </div>
 
     <div class="relative z-[2] mx-auto max-w-6xl">

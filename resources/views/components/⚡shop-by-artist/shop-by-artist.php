@@ -14,6 +14,39 @@ new class extends Component
 
     public string $search = '';
 
+    /** @var array<int, string> */
+    public array $categoryCovers = [];
+
+    public function mount(): void
+    {
+        $categories = Category::query()
+            ->where('is_active', true)
+            ->whereNull('parent_id')
+            ->where('slug', '!=', 'sale')
+            ->get();
+
+        foreach ($categories as $category) {
+            $categoryIds = Category::where('parent_id', $category->id)
+                ->where('is_active', true)
+                ->pluck('id')
+                ->push($category->id)
+                ->all();
+
+            /** @var ProductMedia|null $media */
+            $media = ProductMedia::query()
+                ->whereHas('product', fn ($q) => $q
+                    ->whereIn('primary_category_id', $categoryIds)
+                    ->where('status', 'active'))
+                ->where('is_primary', true)
+                ->inRandomOrder()
+                ->first();
+
+            if ($media) {
+                $this->categoryCovers[$category->id] = route('media.show', ['path' => $media->getGalleryPath()]);
+            }
+        }
+    }
+
     public function updatedMode(): void
     {
         $this->search = '';
@@ -61,18 +94,7 @@ new class extends Component
                     ->push($category->id)
                     ->all();
 
-                /** @var ProductMedia|null $media */
-                $media = ProductMedia::query()
-                    ->whereHas('product', fn ($q) => $q
-                        ->whereIn('primary_category_id', $categoryIds)
-                        ->where('status', 'active'))
-                    ->where('is_primary', true)
-                    ->inRandomOrder()
-                    ->first();
-
-                $category->setAttribute('cover_url', $media
-                    ? route('media.show', ['path' => $media->getGalleryPath()])
-                    : null);
+                $category->setAttribute('cover_url', $this->categoryCovers[$category->id] ?? null);
 
                 $category->setAttribute('product_count', Product::whereIn('primary_category_id', $categoryIds)
                     ->where('status', 'active')
