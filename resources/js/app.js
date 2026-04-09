@@ -63,14 +63,19 @@ window.initCatalogCards = () => {
 						body: formData,
 					})
 						.then((response) => {
-							if (response.ok && btn) {
-								const originalText = btn.textContent;
-								btn.textContent = '✓ Added!';
-								btn.classList.add('bg-green-700');
-								setTimeout(() => {
-									btn.textContent = originalText;
-									btn.classList.remove('bg-green-700');
-								}, 1500);
+							if (response.ok) {
+								if (window.Livewire) {
+									window.Livewire.dispatch('cart-updated');
+								}
+								if (btn) {
+									const originalText = btn.textContent;
+									btn.textContent = '✓ Added!';
+									btn.classList.add('bg-green-700');
+									setTimeout(() => {
+										btn.textContent = originalText;
+										btn.classList.remove('bg-green-700');
+									}, 1500);
+								}
 							}
 						})
 						.catch(() => {});
@@ -176,15 +181,15 @@ window.initCatalogCards = () => {
 				const isSelected = selectedAttributes[key] === value;
 
 				button.disabled = !hasMatchingVariant;
-				button.classList.toggle('border-slate-900', isSelected);
-				button.classList.toggle('bg-slate-900', isSelected);
+				button.classList.toggle('border-black', isSelected);
+				button.classList.toggle('bg-black', isSelected);
 				button.classList.toggle('text-white', isSelected);
-				button.classList.toggle('border-slate-300', !isSelected && hasMatchingVariant);
+				button.classList.toggle('border-black/20', !isSelected && hasMatchingVariant);
 				button.classList.toggle('bg-white', !isSelected);
-				button.classList.toggle('text-slate-700', !isSelected && hasMatchingVariant);
+				button.classList.toggle('text-black/70', !isSelected && hasMatchingVariant);
 				button.classList.toggle('opacity-40', !hasMatchingVariant);
 				button.classList.toggle('line-through', !hasMatchingVariant && !isSelected);
-				button.classList.toggle('text-slate-400', !hasMatchingVariant && !isSelected);
+				button.classList.toggle('text-black/40', !hasMatchingVariant && !isSelected);
 			});
 		};
 
@@ -277,6 +282,9 @@ window.initCatalogCards = () => {
 				})
 					.then((response) => {
 						if (response.ok) {
+							if (window.Livewire) {
+								window.Livewire.dispatch('cart-updated');
+							}
 							if (addToCartButton) {
 								const originalText = addToCartButton.textContent;
 								addToCartButton.textContent = '✓ Added!';
@@ -446,15 +454,15 @@ document.addEventListener('DOMContentLoaded', () => {
 				const isSelected = selectedAttributes[attributeKey] === attributeValue;
 
 				button.disabled = !hasMatchingVariant;
-				button.classList.toggle('border-slate-900', isSelected);
-				button.classList.toggle('bg-slate-900', isSelected);
+				button.classList.toggle('border-black', isSelected);
+				button.classList.toggle('bg-black', isSelected);
 				button.classList.toggle('text-white', isSelected);
-				button.classList.toggle('border-slate-300', !isSelected && hasMatchingVariant);
+				button.classList.toggle('border-black/20', !isSelected && hasMatchingVariant);
 				button.classList.toggle('bg-white', !isSelected);
-				button.classList.toggle('text-slate-700', !isSelected && hasMatchingVariant);
+				button.classList.toggle('text-black/70', !isSelected && hasMatchingVariant);
 				button.classList.toggle('opacity-40', !hasMatchingVariant);
 				button.classList.toggle('line-through', hasMatchingVariant && !hasInStockVariant && !isSelected);
-				button.classList.toggle('text-slate-400', hasMatchingVariant && !hasInStockVariant && !isSelected);
+				button.classList.toggle('text-black/40', hasMatchingVariant && !hasInStockVariant && !isSelected);
 			});
 		};
 
@@ -627,6 +635,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	// ── Catalog card variant pickers ──────────────────────────────────────
 	window.initCatalogCards();
+
+	// ── Product detail page add-to-cart (AJAX) ───────────────────────────
+	variantPickers.forEach((picker) => {
+		const addToCartButton = picker.querySelector('[data-add-to-cart-button]');
+		if (!addToCartButton) {
+			return;
+		}
+
+		const form = addToCartButton.closest('form');
+		if (!form || form.hasAttribute('data-catalog-cart-form')) {
+			return;
+		}
+
+		form.addEventListener('submit', (event) => {
+			event.preventDefault();
+			const formData = new FormData(form);
+			const csrfToken = formData.get('_token');
+
+			fetch(form.action, {
+				method: 'POST',
+				headers: {
+					'X-CSRF-TOKEN': csrfToken,
+					'X-Requested-With': 'XMLHttpRequest',
+					Accept: 'application/json',
+				},
+				body: formData,
+			})
+				.then((response) => {
+					if (response.ok) {
+						if (window.Livewire) {
+							window.Livewire.dispatch('cart-updated');
+						}
+						const originalText = addToCartButton.textContent;
+						addToCartButton.textContent = '\u2713 Added!';
+						addToCartButton.classList.add('bg-green-700');
+						setTimeout(() => {
+							addToCartButton.textContent = originalText;
+							addToCartButton.classList.remove('bg-green-700');
+						}, 1500);
+					} else {
+						response.json().then((data) => {
+							if (data.errors?.cart) {
+								addToCartButton.textContent = data.errors.cart[0] || 'Error';
+								setTimeout(() => {
+									addToCartButton.textContent = 'Add to cart';
+								}, 2500);
+							}
+						}).catch(() => {});
+					}
+				})
+				.catch(() => {});
+		});
+	});
 
 	const galleries = document.querySelectorAll('[data-media-gallery]');
 

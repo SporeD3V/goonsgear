@@ -377,7 +377,7 @@
                                                 type="checkbox"
                                                 name="subscribe_stock_alert"
                                                 value="1"
-                                                class="rounded border-black/20"
+                                                class="rounded border-black/20 text-black focus:ring-black"
                                                 checked
                                                 data-stock-alert-checkbox
                                             >

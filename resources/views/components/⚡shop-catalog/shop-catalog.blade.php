@@ -184,7 +184,7 @@
                     {{-- Out-of-stock --}}
                     @if ($activeCategory || $activeTag)
                         <label class="flex items-center gap-2 text-sm text-black/70">
-                            <input type="checkbox" wire:model.live="includeOutOfStock" class="rounded border-black/20">
+                            <input type="checkbox" wire:model.live="includeOutOfStock" class="rounded border-black/20 text-black focus:ring-black">
                             Show out-of-stock
                         </label>
                     @endif

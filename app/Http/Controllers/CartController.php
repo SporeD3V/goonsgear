@@ -143,7 +143,7 @@ class CartController extends Controller
         return redirect()->route('cart.index')->with('status', 'Coupon selection updated.');
     }
 
-    public function store(StoreCartItemRequest $request): RedirectResponse
+    public function store(StoreCartItemRequest $request): JsonResponse|RedirectResponse
     {
         $payload = $request->validated();
 
@@ -158,6 +158,10 @@ class CartController extends Controller
             ->findOrFail($payload['variant_id']);
 
         if (! $variant->is_active || $variant->product?->status !== 'active') {
+            if ($request->wantsJson()) {
+                return response()->json(['errors' => ['cart' => ['This variant is not available for purchase.']]], 422);
+            }
+
             return back()->withErrors(['cart' => 'This variant is not available for purchase.']);
         }
 
@@ -169,6 +173,10 @@ class CartController extends Controller
         $maxQuantity = $this->getMaxAllowedQuantity($variant);
 
         if ($maxQuantity !== null && $nextQuantity > $maxQuantity) {
+            if ($request->wantsJson()) {
+                return response()->json(['errors' => ['cart' => ["Only {$maxQuantity} unit(s) are currently available for {$variant->name}."]]], 422);
+            }
+
             return back()->withErrors([
                 'cart' => "Only {$maxQuantity} unit(s) are currently available for {$variant->name}.",
             ]);
@@ -183,6 +191,10 @@ class CartController extends Controller
 
         $request->session()->put(self::CART_SESSION_KEY, $cartItems);
         $this->syncCartItemToDb($request, $variant->id, $nextQuantity);
+
+        if ($request->wantsJson()) {
+            return response()->json(['status' => 'Added item to cart.']);
+        }
 
         return back()->with('status', 'Added item to cart.');
     }

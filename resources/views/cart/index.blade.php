@@ -97,7 +97,7 @@
                                                 type="checkbox"
                                                 name="coupon_codes[]"
                                                 value="{{ $coupon->code }}"
-                                                class="mt-0.5 rounded border-black/20"
+                                                class="mt-0.5 rounded border-black/20 text-black focus:ring-black"
                                                 @checked(in_array($coupon->code, $selectedCouponCodes, true))
                                             >
                                             <span>
