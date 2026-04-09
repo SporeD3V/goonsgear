@@ -68,7 +68,7 @@
                             <input
                                 type="text"
                                 wire:model.live.debounce.300ms="search"
-                                placeholder="Type the name of the artist…"
+                                placeholder="Search artist…"
                                 class="w-full border-0 bg-transparent p-0 text-center text-sm font-bold uppercase tracking-widest text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-0"
                                 autocomplete="off"
                             >
