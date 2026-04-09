@@ -76,7 +76,9 @@ new class extends Component
                     ->count());
 
                 return $category;
-            });
+            })
+            ->filter(fn (Category $category): bool => $category->getAttribute('product_count') > 0)
+            ->values();
 
         return view('components.⚡shop-by-artist.shop-by-artist', [
             'carouselTags' => $carouselTags,

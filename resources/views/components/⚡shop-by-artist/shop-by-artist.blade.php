@@ -34,145 +34,150 @@
             </div>
         </div>
 
-        {{-- Content area with smooth transition --}}
+        {{-- Content area with smooth crossfade and fixed height --}}
         <div
-            x-data="{ shown: true, transitioning: false }"
-            x-init="$watch('$wire.mode', () => {
-                transitioning = true;
-                shown = false;
-                setTimeout(() => { shown = true; transitioning = false; }, 200);
-            })"
+            x-data="{
+                mode: @js($mode),
+                init() {
+                    this.mode = @js($mode);
+                    $watch('$wire.mode', (val) => this.mode = val);
+                }
+            }"
+            class="relative"
         >
+            {{-- Artist panel --}}
             <div
-                class="transition-[min-height] duration-300 ease-out"
-                x-show="shown"
-                x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 scale-[0.98]"
-                x-transition:enter-end="opacity-100 scale-100"
-                x-transition:leave="transition ease-in duration-150"
+                x-show="mode === 'artist'"
+                x-transition:enter="transition ease-out duration-400"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition ease-in duration-200"
                 x-transition:leave-start="opacity-100"
                 x-transition:leave-end="opacity-0"
+                :class="mode === 'artist' ? 'relative' : 'absolute inset-x-0 top-0'"
             >
-                @if ($mode === 'artist')
-                    {{-- Artist search --}}
-                    <div class="mx-auto mb-6 max-w-lg">
-                        <div class="relative" x-data="{ open: false }" x-on:click.outside="open = false">
-                            <div class="relative">
-                                <span class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-400">
-                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z"/>
-                                    </svg>
-                                </span>
-                                <input
-                                    type="text"
-                                    wire:model.live.debounce.300ms="search"
-                                    x-on:focus="open = true"
-                                    x-on:input="open = true"
-                                    placeholder="Search artists…"
-                                    class="w-full rounded-lg border border-slate-300 bg-white py-3 pl-11 pr-4 text-sm text-slate-900 placeholder-slate-400 shadow-sm transition-shadow duration-200 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
-                                    autocomplete="off"
-                                >
-                            </div>
-
-                            {{-- Search results dropdown --}}
-                            @if ($searchResults->isNotEmpty())
-                                <div
-                                    x-show="open && $wire.search.trim() !== ''"
-                                    x-cloak
-                                    x-transition:enter="transition ease-out duration-200"
-                                    x-transition:enter-start="opacity-0 -translate-y-1"
-                                    x-transition:enter-end="opacity-100 translate-y-0"
-                                    class="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-xl"
-                                >
-                                    @foreach ($searchResults as $result)
-                                        <a
-                                            href="{{ route('shop.artist', $result->slug) }}"
-                                            class="flex items-center gap-3 border-b border-slate-100 px-4 py-3 text-sm text-slate-700 last:border-b-0 transition-colors duration-150 hover:bg-slate-50"
-                                        >
-                                            <svg class="h-3.5 w-3.5 shrink-0 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z"/></svg>
-                                            {{ $result->name }}
-                                        </a>
-                                    @endforeach
-                                </div>
-                            @elseif (trim($this->search) !== '')
-                                <div
-                                    x-show="open"
-                                    x-cloak
-                                    x-transition:enter="transition ease-out duration-200"
-                                    x-transition:enter-start="opacity-0 -translate-y-1"
-                                    x-transition:enter-end="opacity-100 translate-y-0"
-                                    class="absolute left-0 right-0 top-full z-20 mt-1 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-xl"
-                                >
-                                    <p class="text-sm text-slate-500">No artists found.</p>
-                                </div>
-                            @endif
+                <div class="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+                    {{-- Search tile — occupies first cell --}}
+                    <div
+                        class="relative flex aspect-square items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 transition-colors duration-300 focus-within:border-black focus-within:bg-white"
+                        x-data="{ open: false, query: @entangle('search') }"
+                        x-on:click.outside="open = false"
+                    >
+                        <div class="flex w-full flex-col items-center gap-3 px-4">
+                            <svg class="h-7 w-7 text-slate-300 transition-colors duration-200" :class="open && 'text-black'" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z"/>
+                            </svg>
+                            <input
+                                type="text"
+                                wire:model.live.debounce.300ms="search"
+                                x-on:focus="open = true"
+                                x-on:input="open = true"
+                                placeholder="Search…"
+                                class="w-full border-0 bg-transparent p-0 text-center text-sm font-bold uppercase tracking-widest text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-0"
+                                autocomplete="off"
+                            >
                         </div>
+
+                        {{-- Search results dropdown --}}
+                        @if ($searchResults->isNotEmpty())
+                            <div
+                                x-show="open && query.trim() !== ''"
+                                x-cloak
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 -translate-y-1"
+                                x-transition:enter-end="opacity-100 translate-y-0"
+                                class="absolute inset-x-0 top-full z-30 mt-1 max-h-64 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-xl"
+                            >
+                                @foreach ($searchResults as $result)
+                                    <a
+                                        href="{{ route('shop.artist', $result->slug) }}"
+                                        class="flex items-center gap-3 border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-700 last:border-b-0 transition-colors duration-150 hover:bg-black hover:text-white"
+                                    >
+                                        <svg class="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 19.5 15-15m0 0H8.25m11.25 0v11.25"/></svg>
+                                        {{ $result->name }}
+                                    </a>
+                                @endforeach
+                            </div>
+                        @elseif (trim($this->search) !== '')
+                            <div
+                                x-show="open"
+                                x-cloak
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 -translate-y-1"
+                                x-transition:enter-end="opacity-100 translate-y-0"
+                                class="absolute inset-x-0 top-full z-30 mt-1 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-xl"
+                            >
+                                <p class="text-sm text-slate-500">No artists found.</p>
+                            </div>
+                        @endif
                     </div>
 
-                    {{-- Artist logo grid --}}
-                    @if ($carouselTags->isNotEmpty())
-                        <div class="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-                            @foreach ($carouselTags as $tag)
-                                <a
-                                    href="{{ route('shop.artist', $tag->slug) }}"
-                                    wire:key="carousel-tag-{{ $tag->id }}"
-                                    class="group relative block overflow-hidden rounded-lg bg-white shadow-sm transition-shadow duration-300 hover:shadow-lg"
-                                    draggable="false"
-                                >
-                                    <div class="relative aspect-square w-full">
-                                        <img
-                                            src="{{ route('media.show', ['path' => $tag->logo_path]) }}"
-                                            alt="{{ $tag->name }} logo"
-                                            class="absolute inset-0 h-full w-full object-contain p-3 transition-transform duration-300 ease-out group-hover:scale-110"
-                                            width="200"
-                                            height="200"
-                                            loading="lazy"
-                                            draggable="false"
-                                        >
-                                    </div>
-                                </a>
-                            @endforeach
-                        </div>
-                    @else
-                        <p class="text-center text-sm text-slate-500">No artists have been featured yet.</p>
-                    @endif
-                @else
-                    {{-- Category cards grid --}}
-                    @if ($categories->isNotEmpty())
-                        <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                            @foreach ($categories as $category)
-                                <a
-                                    href="{{ route('shop.category', $category->slug) }}"
-                                    wire:key="cat-{{ $category->id }}"
-                                    class="group relative block aspect-square overflow-hidden rounded-lg bg-slate-100 shadow-md transition-shadow duration-300 hover:shadow-xl"
-                                >
-                                    @if ($category->cover_url)
-                                        <img
-                                            src="{{ $category->cover_url }}"
-                                            alt="{{ $category->name }}"
-                                            class="absolute inset-0 h-full w-full object-contain transition-transform duration-500 ease-out group-hover:scale-105"
-                                            loading="lazy"
-                                        >
-                                    @else
-                                        <div class="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-900"></div>
+                    {{-- Artist logo tiles --}}
+                    @foreach ($carouselTags as $tag)
+                        <a
+                            href="{{ route('shop.artist', $tag->slug) }}"
+                            wire:key="carousel-tag-{{ $tag->id }}"
+                            class="group relative block aspect-square overflow-hidden rounded-lg bg-white shadow-sm transition-all duration-300 hover:shadow-lg hover:ring-2 hover:ring-black/10"
+                            draggable="false"
+                        >
+                            <img
+                                src="{{ route('media.show', ['path' => $tag->logo_path]) }}"
+                                alt="{{ $tag->name }} logo"
+                                class="absolute inset-0 h-full w-full object-contain p-4 transition-transform duration-300 ease-out group-hover:scale-110"
+                                width="200"
+                                height="200"
+                                loading="lazy"
+                                draggable="false"
+                            >
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Category panel --}}
+            <div
+                x-show="mode === 'category'"
+                x-transition:enter="transition ease-out duration-400"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                :class="mode === 'category' ? 'relative' : 'absolute inset-x-0 top-0'"
+            >
+                @if ($categories->isNotEmpty())
+                    <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                        @foreach ($categories as $category)
+                            <a
+                                href="{{ route('shop.category', $category->slug) }}"
+                                wire:key="cat-{{ $category->id }}"
+                                class="group relative block aspect-square overflow-hidden rounded-lg bg-slate-100 shadow-md transition-shadow duration-300 hover:shadow-xl"
+                            >
+                                @if ($category->cover_url)
+                                    <img
+                                        src="{{ $category->cover_url }}"
+                                        alt="{{ $category->name }}"
+                                        class="absolute inset-0 h-full w-full object-contain transition-transform duration-500 ease-out group-hover:scale-105"
+                                        loading="lazy"
+                                    >
+                                @else
+                                    <div class="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-900"></div>
+                                @endif
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent transition-opacity duration-300 group-hover:from-black/80"></div>
+                                <div class="absolute inset-x-0 bottom-0 p-5">
+                                    <h3 class="text-xl font-black uppercase tracking-wide text-white drop-shadow-lg md:text-2xl">{{ $category->name }}</h3>
+                                    @if ($category->product_count > 0)
+                                        <p class="mt-1 text-sm font-medium text-white/70">{{ $category->product_count }} {{ Str::plural('product', $category->product_count) }}</p>
                                     @endif
-                                    <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent transition-opacity duration-300 group-hover:from-black/80"></div>
-                                    <div class="absolute inset-x-0 bottom-0 p-5">
-                                        <h3 class="text-xl font-black uppercase tracking-wide text-white drop-shadow-lg md:text-2xl">{{ $category->name }}</h3>
-                                        @if ($category->product_count > 0)
-                                            <p class="mt-1 text-sm font-medium text-white/70">{{ $category->product_count }} {{ Str::plural('product', $category->product_count) }}</p>
-                                        @endif
-                                    </div>
-                                    {{-- Hover arrow indicator --}}
-                                    <div class="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/0 transition-all duration-300 group-hover:bg-white/20">
-                                        <svg class="h-4 w-4 text-white opacity-0 transition-all duration-300 group-hover:opacity-100" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 19.5 15-15m0 0H8.25m11.25 0v11.25"/></svg>
-                                    </div>
-                                </a>
-                            @endforeach
-                        </div>
-                    @else
-                        <p class="text-center text-sm text-slate-500">No categories available yet.</p>
-                    @endif
+                                </div>
+                                <div class="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/0 transition-all duration-300 group-hover:bg-white/20">
+                                    <svg class="h-4 w-4 text-white opacity-0 transition-all duration-300 group-hover:opacity-100" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 19.5 15-15m0 0H8.25m11.25 0v11.25"/></svg>
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="text-center text-sm text-slate-500">No categories available yet.</p>
                 @endif
             </div>
         </div>
