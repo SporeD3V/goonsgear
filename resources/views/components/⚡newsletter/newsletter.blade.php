@@ -113,7 +113,7 @@
                     P
                     --}}<span class="paint-drip" style="left:68%; --drip-head:6px; --drip-len:36px; --drip-dur:12s; --drip-del:4s"></span>{{--
                     S
-                    --}}<span class="paint-drip" style="left:84%; --drip-head:4px; --drip-len:20px; --drip-dur:23s; --drip-del:14s"></span><span class="paint-drip" style="left:95%; --drip-head:7px; --drip-len:44px; --drip-dur:14s; --drip-del:7s"></span></span></h2>
+                    --}}<span class="paint-drip" style="left:84%; --drip-head:4px; --drip-len:20px; --drip-dur:23s; --drip-del:14s"></span><span class="paint-drip" style="left:91%; --drip-head:7px; --drip-len:44px; --drip-dur:14s; --drip-del:7s"></span></span></h2>
                 <p class="mt-4 text-base leading-relaxed text-white/60 lg:text-lg">
                     Sign up for our newsletter for special offers and limited releases. Unsubscribe anytime with one click.
                 </p>
