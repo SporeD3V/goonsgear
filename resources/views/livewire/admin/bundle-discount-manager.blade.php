@@ -93,7 +93,7 @@ new class extends Component
         ]);
 
         $variantIds = collect($this->selectedVariants)
-            ->filter(fn (bool $selected): bool => $selected)
+            ->filter(fn (mixed $selected): bool => (bool) $selected)
             ->keys()
             ->map(fn ($id): int => (int) $id)
             ->filter(fn (int $id): bool => $id > 0)
@@ -198,7 +198,7 @@ new class extends Component
     public function variantOptions(): array
     {
         $selectedIds = collect($this->selectedVariants)
-            ->filter(fn (bool $selected): bool => $selected)
+            ->filter(fn (mixed $selected): bool => (bool) $selected)
             ->keys()
             ->map(fn ($id): int => (int) $id)
             ->filter(fn (int $id): bool => $id > 0)

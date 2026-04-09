@@ -36,17 +36,22 @@
 
         {{-- Content area with smooth transition --}}
         <div
-            x-data="{ shown: true }"
-            x-init="$watch('$wire.mode', () => { shown = false; setTimeout(() => shown = true, 150) })"
+            x-data="{ shown: true, transitioning: false }"
+            x-init="$watch('$wire.mode', () => {
+                transitioning = true;
+                shown = false;
+                setTimeout(() => { shown = true; transitioning = false; }, 200);
+            })"
         >
             <div
+                class="transition-[min-height] duration-300 ease-out"
                 x-show="shown"
                 x-transition:enter="transition ease-out duration-300"
-                x-transition:enter-start="opacity-0 translate-y-2"
-                x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:enter-start="opacity-0 scale-[0.98]"
+                x-transition:enter-end="opacity-100 scale-100"
                 x-transition:leave="transition ease-in duration-150"
-                x-transition:leave-start="opacity-100 translate-y-0"
-                x-transition:leave-end="opacity-0 -translate-y-2"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
             >
                 @if ($mode === 'artist')
                     {{-- Artist search --}}
@@ -124,9 +129,6 @@
                                             loading="lazy"
                                             draggable="false"
                                         >
-                                    </div>
-                                    <div class="border-t border-slate-100 px-2 py-1.5 text-center">
-                                        <span class="text-[11px] font-bold uppercase tracking-wide text-slate-700 group-hover:text-black">{{ $tag->name }}</span>
                                     </div>
                                 </a>
                             @endforeach
