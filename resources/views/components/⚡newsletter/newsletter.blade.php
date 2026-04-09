@@ -4,86 +4,95 @@
         .drip-word {
             position: relative;
             display: inline-block;
-            padding-bottom: 0.15em;
         }
 
-        /* Top bulge — paint pooling at the letter before running down */
-        .drip-word .paint-strand::before {
-            content: '';
+        /*
+         * Each .paint-drip is a single element with:
+         *   ::before = accumulation bulge at the letter base (swells then shrinks)
+         *   itself   = the drip body (rounded head via border-radius + tapered tail via clip-path)
+         *   The drip extends downward with ease-out (decelerates like drying paint)
+         *   It does NOT disappear — it freezes at final length, then fades very slowly.
+         */
+        .drip-word .paint-drip {
             position: absolute;
-            top: -2px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: var(--bulge-top, 6px);
-            height: calc(var(--bulge-top, 6px) * 0.65);
-            background: radial-gradient(ellipse at center, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 60%, transparent 100%);
-            border-radius: 50% 50% 35% 35%;
-            opacity: 0;
-            animation: bulge-top var(--strand-dur, 10s) var(--strand-del, 0s) ease-in-out infinite;
-        }
-
-        /* The thin strand that runs between the two bulges */
-        .drip-word .paint-strand {
-            position: absolute;
-            top: 88%;
-            width: var(--strand-w, 2px);
+            top: 85%;
+            pointer-events: none;
+            /* Pill shape that's wider at top (head) and narrower at bottom (tail) */
+            width: var(--drip-head, 5px);
             height: 0;
             background: linear-gradient(to bottom,
-                rgba(255,255,255,0.85) 0%,
-                rgba(255,255,255,0.65) 40%,
-                rgba(255,255,255,0.45) 80%,
-                rgba(255,255,255,0.3) 100%);
-            border-radius: 1px;
-            pointer-events: none;
-            animation: strand-pour var(--strand-dur, 10s) var(--strand-del, 0s) ease-in-out infinite;
+                rgba(255,255,255,0.92) 0%,
+                rgba(255,255,255,0.8) 15%,
+                rgba(255,255,255,0.55) 50%,
+                rgba(255,255,255,0.3) 85%,
+                rgba(255,255,255,0.1) 100%);
+            border-radius: 40% 40% 50% 50% / 10% 10% 45% 45%;
+            clip-path: polygon(
+                15% 0%, 85% 0%,          /* wide head */
+                70% 50%,                  /* narrows */
+                60% 85%,                  /* thin tail */
+                50% 100%,                 /* tip */
+                40% 85%,
+                30% 50%
+            );
+            /* ease-out = fast start, decelerates = paint running then drying */
+            animation: drip-pour var(--drip-dur) var(--drip-del) cubic-bezier(0.16, 1, 0.3, 1) infinite;
         }
 
-        /* Bottom droplet — teardrop that swells then detaches and falls */
-        .drip-word .paint-strand::after {
+        /* Accumulation bulge — swells at the letter's base before drip starts */
+        .drip-word .paint-drip::before {
             content: '';
             position: absolute;
-            bottom: -1px;
+            top: -3px;
             left: 50%;
-            transform: translateX(-50%) scaleY(1);
-            width: var(--bulge-bot, 5px);
-            height: calc(var(--bulge-bot, 5px) * 1.3);
-            background: radial-gradient(ellipse at 50% 40%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.7) 50%, rgba(255,255,255,0.4) 100%);
-            border-radius: 40% 40% 50% 50% / 30% 30% 60% 60%;
-            opacity: 0;
-            animation: droplet-swell-fall var(--strand-dur, 10s) var(--strand-del, 0s) ease-in infinite;
+            transform: translateX(-50%) scale(0);
+            width: calc(var(--drip-head, 5px) + 3px);
+            height: calc(var(--drip-head, 5px) * 0.55 + 2px);
+            background: radial-gradient(ellipse at 50% 60%,
+                rgba(255,255,255,0.95) 0%,
+                rgba(255,255,255,0.7) 50%,
+                rgba(255,255,255,0.3) 80%,
+                transparent 100%);
+            border-radius: 50% 50% 45% 45%;
+            animation: bulge-swell var(--drip-dur) var(--drip-del) ease-in-out infinite;
         }
 
-        /* Top bulge fades in, holds while strand pours, then fades — visible ~2-18% */
-        @keyframes bulge-top {
-            0%        { opacity: 0; }
-            2%        { opacity: 0.85; }
-            12%       { opacity: 0.7; }
-            17%       { opacity: 0.3; }
-            20%       { opacity: 0; }
-            100%      { opacity: 0; }
+        /* Phase 1: Accumulation — bulge swells, holds, then shrinks as paint drains into drip */
+        @keyframes bulge-swell {
+            0%        { transform: translateX(-50%) scale(0);    opacity: 0; }
+            /* swell up */
+            4%        { transform: translateX(-50%) scale(0.6);  opacity: 0.7; }
+            8%        { transform: translateX(-50%) scale(1);    opacity: 0.9; }
+            /* hold — paint accumulates */
+            14%       { transform: translateX(-50%) scale(1.1);  opacity: 0.85; }
+            /* shrink as paint flows into the drip strand */
+            22%       { transform: translateX(-50%) scale(0.5);  opacity: 0.5; }
+            28%       { transform: translateX(-50%) scale(0);    opacity: 0; }
+            100%      { transform: translateX(-50%) scale(0);    opacity: 0; }
         }
 
-        /* Strand grows slowly downward, holds, then fades — visible ~2-22% */
-        @keyframes strand-pour {
+        /*
+         * Phase 2 & 3: Pour + Freeze
+         * Drip extends with deceleration (ease-out via cubic-bezier on anim).
+         * Reaches final length, holds (frozen paint), then slowly fades.
+         */
+        @keyframes drip-pour {
             0%        { height: 0;                     opacity: 0; }
-            2%        { height: 0;                     opacity: 0.85; }
-            12%       { height: var(--strand-h, 30px); opacity: 0.8; }
-            18%       { height: var(--strand-h, 30px); opacity: 0.5; }
-            22%       { height: var(--strand-h, 30px); opacity: 0; }
-            100%      { height: var(--strand-h, 30px); opacity: 0; }
-        }
-
-        /* Droplet swells at strand tip, then detaches and falls — visible ~8-25% */
-        @keyframes droplet-swell-fall {
-            0%, 8%    { bottom: -1px;  opacity: 0;    transform: translateX(-50%) scaleY(1) scaleX(0.8); }
-            10%       { bottom: -1px;  opacity: 0.3;  transform: translateX(-50%) scaleY(1) scaleX(0.9); }
-            14%       { bottom: -1px;  opacity: 0.9;  transform: translateX(-50%) scaleY(1) scaleX(1); }
-            17%       { bottom: -2px;  opacity: 0.95; transform: translateX(-50%) scaleY(1.15) scaleX(1); }
-            /* detach */
-            19%       { bottom: -4px;  opacity: 0.9;  transform: translateX(-50%) scaleY(1.3) scaleX(0.9); }
-            23%       { bottom: -35px; opacity: 0.6;  transform: translateX(-50%) scaleY(1.4) scaleX(0.85); }
-            28%       { bottom: -70px; opacity: 0;    transform: translateX(-50%) scaleY(1.5) scaleX(0.8); }
-            100%      { bottom: -70px; opacity: 0;    transform: translateX(-50%) scaleY(1.5) scaleX(0.8); }
+            /* starts just as bulge begins shrinking */
+            10%       { height: 0;                     opacity: 0; }
+            12%       { height: 3px;                   opacity: 0.9; }
+            /* fast pour with deceleration baked into the curve */
+            30%       { height: calc(var(--drip-len, 30px) * 0.7); opacity: 0.85; }
+            /* slows down... almost frozen */
+            42%       { height: calc(var(--drip-len, 30px) * 0.92); opacity: 0.8; }
+            /* fully frozen at final length */
+            50%       { height: var(--drip-len, 30px); opacity: 0.75; }
+            /* paint sits there drying */
+            70%       { height: var(--drip-len, 30px); opacity: 0.5; }
+            /* slowly evaporates */
+            85%       { height: var(--drip-len, 30px); opacity: 0.15; }
+            90%       { height: var(--drip-len, 30px); opacity: 0; }
+            100%      { height: var(--drip-len, 30px); opacity: 0; }
         }
     </style>
     <div class="pointer-events-none absolute inset-x-0 top-0 z-0 h-32 bg-gradient-to-b from-neutral-700/40 to-transparent"></div>
@@ -93,17 +102,18 @@
             {{-- Left: headline + copy --}}
             <div class="text-center lg:text-left">
                 <h2 class="text-3xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">Don't Miss<br class="hidden lg:inline"> Exclusive <span class="drip-word">Drops{{--
-                    Each drip has a unique prime-ish duration so they never sync phases.
-                    D drips
-                    --}}<span class="paint-strand" style="left:4%;  --strand-w:2px; --strand-h:28px; --bulge-top:7px; --bulge-bot:6px; --strand-dur:11s;  --strand-del:0s"></span><span class="paint-strand" style="left:13%; --strand-w:2px; --strand-h:18px; --bulge-top:5px; --bulge-bot:4px; --strand-dur:17s;  --strand-del:4s"></span>{{--
-                    R drip
-                    --}}<span class="paint-strand" style="left:27%; --strand-w:2px; --strand-h:34px; --bulge-top:8px; --bulge-bot:7px; --strand-dur:13s;  --strand-del:2s"></span>{{--
-                    O drips
-                    --}}<span class="paint-strand" style="left:43%; --strand-w:2px; --strand-h:16px; --bulge-top:5px; --bulge-bot:4px; --strand-dur:19s;  --strand-del:7s"></span><span class="paint-strand" style="left:53%; --strand-w:2px; --strand-h:26px; --bulge-top:6px; --bulge-bot:5px; --strand-dur:14s;  --strand-del:1s"></span>{{--
-                    P drip
-                    --}}<span class="paint-strand" style="left:67%; --strand-w:2px; --strand-h:30px; --bulge-top:7px; --bulge-bot:6px; --strand-dur:16s;  --strand-del:5s"></span>{{--
-                    S drips
-                    --}}<span class="paint-strand" style="left:83%; --strand-w:2px; --strand-h:20px; --bulge-top:5px; --bulge-bot:5px; --strand-dur:23s;  --strand-del:9s"></span><span class="paint-strand" style="left:94%; --strand-w:2px; --strand-h:36px; --bulge-top:9px; --bulge-bot:8px; --strand-dur:12s;  --strand-del:3s"></span></span></h2>
+                    Per-drip: head width, final length, cycle duration, start delay.
+                    Coprime durations + spread delays = never same phase.
+                    D
+                    --}}<span class="paint-drip" style="left:5%;  --drip-head:5px; --drip-len:32px; --drip-dur:11s; --drip-del:0s"></span><span class="paint-drip" style="left:14%; --drip-head:4px; --drip-len:18px; --drip-dur:17s; --drip-del:5s"></span>{{--
+                    R
+                    --}}<span class="paint-drip" style="left:28%; --drip-head:6px; --drip-len:40px; --drip-dur:13s; --drip-del:2s"></span>{{--
+                    O
+                    --}}<span class="paint-drip" style="left:44%; --drip-head:4px; --drip-len:14px; --drip-dur:19s; --drip-del:8s"></span><span class="paint-drip" style="left:54%; --drip-head:5px; --drip-len:28px; --drip-dur:15s; --drip-del:11s"></span>{{--
+                    P
+                    --}}<span class="paint-drip" style="left:68%; --drip-head:6px; --drip-len:36px; --drip-dur:12s; --drip-del:4s"></span>{{--
+                    S
+                    --}}<span class="paint-drip" style="left:84%; --drip-head:4px; --drip-len:20px; --drip-dur:23s; --drip-del:14s"></span><span class="paint-drip" style="left:95%; --drip-head:7px; --drip-len:44px; --drip-dur:14s; --drip-del:7s"></span></span></h2>
                 <p class="mt-4 text-base leading-relaxed text-white/60 lg:text-lg">
                     Sign up for our newsletter for special offers and limited releases. Unsubscribe anytime with one click.
                 </p>
