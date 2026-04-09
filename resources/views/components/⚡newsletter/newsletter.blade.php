@@ -7,50 +7,84 @@
             padding-bottom: 0.15em;
         }
 
-        /* The strand that grows downward from the letter */
+        /* Top bulge — paint pooling at the letter before running down */
+        .drip-word .paint-strand::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: var(--bulge-top, 6px);
+            height: calc(var(--bulge-top, 6px) * 0.65);
+            background: radial-gradient(ellipse at center, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 60%, transparent 100%);
+            border-radius: 50% 50% 35% 35%;
+            opacity: 0;
+            animation: bulge-top var(--strand-dur, 10s) var(--strand-del, 0s) ease-in-out infinite;
+        }
+
+        /* The thin strand that runs between the two bulges */
         .drip-word .paint-strand {
             position: absolute;
             top: 88%;
-            width: var(--strand-w, 3px);
+            width: var(--strand-w, 2px);
             height: 0;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.6) 60%, rgba(255,255,255,0.3) 100%);
-            border-radius: 0 0 2px 2px;
+            background: linear-gradient(to bottom,
+                rgba(255,255,255,0.85) 0%,
+                rgba(255,255,255,0.65) 40%,
+                rgba(255,255,255,0.45) 80%,
+                rgba(255,255,255,0.3) 100%);
+            border-radius: 1px;
             pointer-events: none;
-            animation: strand-pour var(--strand-dur, 4s) var(--strand-del, 0s) ease-in infinite;
+            animation: strand-pour var(--strand-dur, 10s) var(--strand-del, 0s) ease-in-out infinite;
         }
 
-        /* The droplet that forms at the tip, then detaches and falls */
+        /* Bottom droplet — teardrop that swells then detaches and falls */
         .drip-word .paint-strand::after {
             content: '';
             position: absolute;
-            bottom: 0;
+            bottom: -1px;
             left: 50%;
-            transform: translateX(-50%);
-            width: calc(var(--strand-w, 3px) + 3px);
-            height: calc(var(--strand-w, 3px) + 4px);
-            background: rgba(255,255,255,0.85);
-            border-radius: 45% 45% 50% 50%;
+            transform: translateX(-50%) scaleY(1);
+            width: var(--bulge-bot, 5px);
+            height: calc(var(--bulge-bot, 5px) * 1.3);
+            background: radial-gradient(ellipse at 50% 40%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.7) 50%, rgba(255,255,255,0.4) 100%);
+            border-radius: 40% 40% 50% 50% / 30% 30% 60% 60%;
             opacity: 0;
-            animation: droplet-fall var(--strand-dur, 4s) var(--strand-del, 0s) ease-in infinite;
+            animation: droplet-swell-fall var(--strand-dur, 10s) var(--strand-del, 0s) ease-in infinite;
         }
 
+        /* Top bulge fades in, holds while strand pours, then fades */
+        @keyframes bulge-top {
+            0%        { opacity: 0; }
+            3%        { opacity: 0.85; }
+            40%       { opacity: 0.7; }
+            55%       { opacity: 0.3; }
+            60%       { opacity: 0; }
+            100%      { opacity: 0; }
+        }
+
+        /* Strand grows slowly downward, holds, then fades from top */
         @keyframes strand-pour {
-            0%   { height: 0;                     opacity: 0; }
-            5%   { height: 2px;                   opacity: 0.9; }
-            35%  { height: var(--strand-h, 30px); opacity: 0.85; }
-            50%  { height: var(--strand-h, 30px); opacity: 0.7; }
-            60%  { height: var(--strand-h, 30px); opacity: 0.4; }
-            70%  { height: var(--strand-h, 30px); opacity: 0; }
-            100% { height: var(--strand-h, 30px); opacity: 0; }
+            0%        { height: 0;                     opacity: 0; }
+            3%        { height: 0;                     opacity: 0.85; }
+            30%       { height: var(--strand-h, 30px); opacity: 0.8; }
+            50%       { height: var(--strand-h, 30px); opacity: 0.65; }
+            58%       { height: var(--strand-h, 30px); opacity: 0.3; }
+            65%       { height: var(--strand-h, 30px); opacity: 0; }
+            100%      { height: var(--strand-h, 30px); opacity: 0; }
         }
 
-        @keyframes droplet-fall {
-            0%, 45%  { bottom: 0;    opacity: 0;    }
-            50%      { bottom: 0;    opacity: 0.9;  }
-            55%      { bottom: -5px; opacity: 0.85; }
-            70%      { bottom: -50px; opacity: 0.5; }
-            82%      { bottom: -80px; opacity: 0;   }
-            100%     { bottom: -80px; opacity: 0;   }
+        /* Droplet swells at strand tip, then detaches and falls with slight stretch */
+        @keyframes droplet-swell-fall {
+            0%, 20%   { bottom: -1px;  opacity: 0;    transform: translateX(-50%) scaleY(1) scaleX(0.8); }
+            25%       { bottom: -1px;  opacity: 0.3;  transform: translateX(-50%) scaleY(1) scaleX(0.9); }
+            35%       { bottom: -1px;  opacity: 0.9;  transform: translateX(-50%) scaleY(1) scaleX(1); }
+            42%       { bottom: -2px;  opacity: 0.95; transform: translateX(-50%) scaleY(1.15) scaleX(1); }
+            /* detach */
+            45%       { bottom: -4px;  opacity: 0.9;  transform: translateX(-50%) scaleY(1.3) scaleX(0.9); }
+            55%       { bottom: -35px; opacity: 0.6;  transform: translateX(-50%) scaleY(1.4) scaleX(0.85); }
+            65%       { bottom: -70px; opacity: 0;    transform: translateX(-50%) scaleY(1.5) scaleX(0.8); }
+            100%      { bottom: -70px; opacity: 0;    transform: translateX(-50%) scaleY(1.5) scaleX(0.8); }
         }
     </style>
     <div class="pointer-events-none absolute inset-x-0 top-0 z-0 h-32 bg-gradient-to-b from-neutral-700/40 to-transparent"></div>
@@ -59,7 +93,17 @@
         <div class="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
             {{-- Left: headline + copy --}}
             <div class="text-center lg:text-left">
-                <h2 class="text-3xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">Don't Miss<br class="hidden lg:inline"> Exclusive <span class="drip-word">Drops{{-- D drips --}}<span class="paint-strand" style="left:4%;  --strand-w:3px; --strand-h:28px; --strand-dur:5s;   --strand-del:0s"></span><span class="paint-strand" style="left:12%; --strand-w:2px; --strand-h:20px; --strand-dur:6.5s; --strand-del:1.2s"></span>{{-- R drip --}}<span class="paint-strand" style="left:26%; --strand-w:3px; --strand-h:34px; --strand-dur:5.5s; --strand-del:2.8s"></span>{{-- O drips --}}<span class="paint-strand" style="left:42%; --strand-w:2px; --strand-h:18px; --strand-dur:7s;   --strand-del:0.5s"></span><span class="paint-strand" style="left:52%; --strand-w:3px; --strand-h:26px; --strand-dur:4.5s; --strand-del:4s"></span>{{-- P drip --}}<span class="paint-strand" style="left:66%; --strand-w:3px; --strand-h:32px; --strand-dur:6s;   --strand-del:1.8s"></span>{{-- S drips --}}<span class="paint-strand" style="left:82%; --strand-w:2px; --strand-h:22px; --strand-dur:5s;   --strand-del:3.5s"></span><span class="paint-strand" style="left:94%; --strand-w:3px; --strand-h:38px; --strand-dur:5.5s; --strand-del:0.8s"></span></span></h2>
+                <h2 class="text-3xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">Don't Miss<br class="hidden lg:inline"> Exclusive <span class="drip-word">Drops{{--
+                    D drips
+                    --}}<span class="paint-strand" style="left:4%;  --strand-w:2px; --strand-h:28px; --bulge-top:7px; --bulge-bot:6px; --strand-dur:10s;  --strand-del:0s"></span><span class="paint-strand" style="left:13%; --strand-w:2px; --strand-h:18px; --bulge-top:5px; --bulge-bot:4px; --strand-dur:13s;  --strand-del:3s"></span>{{--
+                    R drip
+                    --}}<span class="paint-strand" style="left:27%; --strand-w:2px; --strand-h:34px; --bulge-top:8px; --bulge-bot:7px; --strand-dur:11s;  --strand-del:6s"></span>{{--
+                    O drips
+                    --}}<span class="paint-strand" style="left:43%; --strand-w:2px; --strand-h:16px; --bulge-top:5px; --bulge-bot:4px; --strand-dur:14s;  --strand-del:1.5s"></span><span class="paint-strand" style="left:53%; --strand-w:2px; --strand-h:26px; --bulge-top:6px; --bulge-bot:5px; --strand-dur:10.5s; --strand-del:8s"></span>{{--
+                    P drip
+                    --}}<span class="paint-strand" style="left:67%; --strand-w:2px; --strand-h:30px; --bulge-top:7px; --bulge-bot:6px; --strand-dur:12s;  --strand-del:4.5s"></span>{{--
+                    S drips
+                    --}}<span class="paint-strand" style="left:83%; --strand-w:2px; --strand-h:20px; --bulge-top:5px; --bulge-bot:5px; --strand-dur:11.5s; --strand-del:7.5s"></span><span class="paint-strand" style="left:94%; --strand-w:2px; --strand-h:36px; --bulge-top:9px; --bulge-bot:8px; --strand-dur:10s;  --strand-del:2s"></span></span></h2>
                 <p class="mt-4 text-base leading-relaxed text-white/60 lg:text-lg">
                     Sign up for our newsletter for special offers and limited releases. Unsubscribe anytime with one click.
                 </p>
