@@ -1,15 +1,15 @@
 <div class="bg-black px-6 py-16 lg:py-20">
     <div class="mx-auto max-w-6xl">
         <div class="mb-10 text-center">
-            <h2 class="text-3xl font-black uppercase tracking-tight text-white md:text-4xl">New Arrivals</h2>
-            <p class="mt-3 text-base text-slate-400">Fresh drops from the GoonsGear collection</p>
+            <h2 class="text-3xl font-black uppercase tracking-tight text-white md:text-4xl lg:text-5xl">New Arrivals</h2>
+            <p class="mt-3 text-base text-white/50">Fresh drops from the GoonsGear collection</p>
         </div>
 
         @if ($products->isEmpty())
-            <p class="text-center text-sm text-slate-500">No products yet.</p>
+            <p class="text-center text-sm text-white/40">No products yet.</p>
         @else
             <div
-                class="relative px-0 md:px-12"
+                class="relative px-0 md:px-14"
                 x-data="{
                     isDragging: false,
                     startX: 0,
@@ -66,7 +66,7 @@
                     x-on:click="scrollByCard(-1)"
                     type="button"
                     aria-label="Scroll left"
-                    class="absolute -left-2 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center transition-opacity hover:opacity-70 focus:outline-none md:flex"
+                    class="absolute -left-2 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center transition-opacity duration-200 hover:opacity-60 focus:outline-none md:flex"
                 >
                     <svg class="h-10 w-10 text-white" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
                 </button>
@@ -110,7 +110,7 @@
                     @endphp
 
                     <article
-                        class="group/card relative flex w-full shrink-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)]"
+                        class="group/card relative flex w-full shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)]"
                         data-catalog-card
                         @if ($hasGroups)
                             data-catalog-attribute-order="{{ implode(',', $selectorData['attributeOrder']) }}"
@@ -120,34 +120,34 @@
                     >
                         <a href="{{ route('shop.show', $product) }}" class="group block flex-1" draggable="false">
                             @if ($mediaUrl)
-                                <div class="relative aspect-square w-full overflow-hidden bg-slate-50">
+                                <div class="relative aspect-square w-full overflow-hidden bg-white">
                                     @if (in_array($product->id, $bundleProductIds))
-                                        <span class="absolute right-2 top-2 z-10 rounded border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-black">Part of a bundle</span>
+                                        <span class="absolute right-3 top-3 z-10 rounded-md bg-black px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white">Bundle</span>
                                     @endif
                                     <img
                                         src="{{ $mediaUrl }}"
                                         alt="{{ $primaryMedia?->alt_text ?: $product->name }}"
                                         data-catalog-primary-image
                                         data-catalog-original-src="{{ $mediaUrl }}"
-                                        class="h-full w-full object-contain p-4 transition-opacity duration-200 {{ $secondaryMediaUrl ? 'group-hover:opacity-0' : '' }}"
+                                        class="h-full w-full object-contain p-6 transition-all duration-500 {{ $secondaryMediaUrl ? 'group-hover:opacity-0 group-hover:scale-105' : 'group-hover:scale-105' }}"
                                         draggable="false"
                                     >
                                     @if ($secondaryMediaUrl)
-                                        <img src="{{ $secondaryMediaUrl }}" alt="{{ $secondaryMedia?->alt_text ?: $product->name }}" class="pointer-events-none absolute inset-0 h-full w-full object-contain p-4 opacity-0 transition-opacity duration-200 group-hover:opacity-100" draggable="false">
+                                        <img src="{{ $secondaryMediaUrl }}" alt="{{ $secondaryMedia?->alt_text ?: $product->name }}" class="pointer-events-none absolute inset-0 h-full w-full object-contain p-6 opacity-0 transition-all duration-500 group-hover:scale-105 group-hover:opacity-100" draggable="false">
                                     @endif
-                                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent transition-opacity duration-300 group-hover:from-black/70"></div>
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent transition-opacity duration-300 group-hover:from-black/50"></div>
                                 </div>
                             @else
-                                <div class="aspect-square w-full overflow-hidden bg-slate-50">
-                                    <img src="{{ asset('images/placeholder-product.svg') }}" alt="No image available" class="h-full w-full object-contain p-4" data-catalog-primary-image draggable="false">
+                                <div class="aspect-square w-full overflow-hidden bg-white">
+                                    <img src="{{ asset('images/placeholder-product.svg') }}" alt="No image available" class="h-full w-full object-contain p-6" data-catalog-primary-image draggable="false">
                                 </div>
                             @endif
 
-                            <div class="p-4">
-                                <p class="text-xs font-medium uppercase tracking-wide text-amber-600">{{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>
-                                <h3 class="mt-1 text-base font-bold leading-snug text-black">{{ $product->name }}</h3>
+                            <div class="p-5">
+                                <p class="text-xs font-bold uppercase tracking-widest text-amber-500">{{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>
+                                <h3 class="mt-2 text-lg font-black leading-tight text-black">{{ $product->name }}</h3>
                                 @if ($startingPrice !== null)
-                                    <p class="mt-1 text-sm font-semibold text-black" data-catalog-price>
+                                    <p class="mt-2 text-base font-bold text-black" data-catalog-price>
                                         @if ($hasPriceRange)
                                             From &euro;{{ number_format((float) $startingPrice, 2) }}
                                         @else
@@ -159,12 +159,12 @@
                         </a>
 
                         @if ($hasGroups && $hasMultipleVariants)
-                            <div class="mt-auto border-t border-slate-100 p-4" data-catalog-hover-section>
-                                <div class="space-y-2" data-catalog-options>
+                            <div class="mt-auto border-t border-slate-200 p-5" data-catalog-hover-section>
+                                <div class="space-y-3" data-catalog-options>
                                     @foreach ($selectorData['groups'] as $attributeKey => $attributeGroup)
                                         <div>
-                                            <p class="mb-1 text-xs font-medium text-slate-500">{{ $attributeGroup['label'] }}</p>
-                                            <div class="flex flex-wrap gap-1">
+                                            <p class="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-400">{{ $attributeGroup['label'] }}</p>
+                                            <div class="flex flex-wrap gap-1.5">
                                                 @foreach ($attributeGroup['values'] as $attributeValue)
                                                     @php
                                                         $isAvailable = $catalogVariants->contains(function ($v) use ($selectorData, $attributeKey, $attributeValue) {
@@ -177,7 +177,7 @@
                                                             type="button"
                                                             data-catalog-attribute="{{ $attributeKey }}"
                                                             data-catalog-attribute-value="{{ $attributeValue }}"
-                                                            class="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-700 transition hover:border-black"
+                                                            class="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-200 hover:border-black hover:bg-black hover:text-white"
                                                         >
                                                             {{ $attributeValue }}
                                                         </button>
@@ -203,14 +203,14 @@
                                     @endforeach
                                 </select>
 
-                                <form method="POST" action="{{ route('cart.items.store') }}" data-catalog-cart-form class="mt-3">
+                                <form method="POST" action="{{ route('cart.items.store') }}" data-catalog-cart-form class="mt-4">
                                     @csrf
                                     <input type="hidden" name="variant_id" value="" data-catalog-cart-variant-input>
                                     <input type="hidden" name="quantity" value="1">
                                     <button
                                         type="submit"
                                         data-catalog-add-to-cart
-                                        class="w-full rounded-lg border-2 border-black bg-black px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-white transition hover:bg-transparent hover:text-black"
+                                        class="w-full rounded-lg border-2 border-black bg-black px-4 py-3 text-xs font-bold uppercase tracking-widest text-white transition-all duration-200 hover:bg-white hover:text-black"
                                     >
                                         Select options
                                     </button>
@@ -219,7 +219,7 @@
                         @elseif (!$hasMultipleVariants && $catalogVariants->count() === 1)
                             @php $singleVariant = $catalogVariants->first(); @endphp
                             @if (!$singleVariant->is_out_of_stock)
-                                <div class="mt-auto border-t border-slate-100 p-4" data-catalog-hover-section>
+                                <div class="mt-auto border-t border-slate-200 p-5" data-catalog-hover-section>
                                     <form method="POST" action="{{ route('cart.items.store') }}" data-catalog-cart-form>
                                         @csrf
                                         <input type="hidden" name="variant_id" value="{{ $singleVariant->id }}">
@@ -228,7 +228,7 @@
                                             type="submit"
                                             data-catalog-add-to-cart
                                             data-catalog-single-variant
-                                            class="w-full rounded-lg border-2 border-black bg-black px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-white transition hover:bg-transparent hover:text-black"
+                                            class="w-full rounded-lg border-2 border-black bg-black px-4 py-3 text-xs font-bold uppercase tracking-widest text-white transition-all duration-200 hover:bg-white hover:text-black"
                                         >
                                             Add to cart &mdash; &euro;{{ number_format((float) $singleVariant->price, 2) }}
                                         </button>
@@ -246,7 +246,7 @@
                     x-on:click="scrollByCard(1)"
                     type="button"
                     aria-label="Scroll right"
-                    class="absolute -right-2 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center transition-opacity hover:opacity-70 focus:outline-none md:flex"
+                    class="absolute -right-2 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center transition-opacity duration-200 hover:opacity-60 focus:outline-none md:flex"
                 >
                     <svg class="h-10 w-10 text-white" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
                 </button>
