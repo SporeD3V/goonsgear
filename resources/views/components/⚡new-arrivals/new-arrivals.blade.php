@@ -2,14 +2,14 @@
     <div class="mx-auto max-w-6xl">
         <div class="mb-10 text-center">
             <h2 class="text-3xl font-black uppercase tracking-tight text-white md:text-4xl">New Arrivals</h2>
-            <p class="mt-3 text-base text-slate-400">Fresh drops from the SnowGoons collection</p>
+            <p class="mt-3 text-base text-slate-400">Fresh drops from the GoonsGear collection</p>
         </div>
 
         @if ($products->isEmpty())
             <p class="text-center text-sm text-slate-500">No products yet.</p>
         @else
             <div
-                class="relative px-12"
+                class="relative px-0 md:px-12"
                 x-data="{
                     isDragging: false,
                     startX: 0,
@@ -52,7 +52,7 @@
                     x-on:click="scrollByCard(-1)"
                     type="button"
                     aria-label="Scroll left"
-                    class="absolute left-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-slate-300 bg-white shadow-lg transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    class="absolute left-0 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-slate-300 bg-white shadow-lg transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400 md:flex"
                 >
                     <svg class="h-5 w-5 text-slate-800" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
                 </button>
@@ -121,6 +121,7 @@
                                     @if ($secondaryMediaUrl)
                                         <img src="{{ $secondaryMediaUrl }}" alt="{{ $secondaryMedia?->alt_text ?: $product->name }}" class="pointer-events-none absolute inset-0 h-full w-full object-contain p-4 opacity-0 transition-opacity duration-200 group-hover:opacity-100" draggable="false">
                                     @endif
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent transition-opacity duration-300 group-hover:from-black/70"></div>
                                 </div>
                             @else
                                 <div class="aspect-square w-full overflow-hidden bg-slate-50">
@@ -231,7 +232,7 @@
                     x-on:click="scrollByCard(1)"
                     type="button"
                     aria-label="Scroll right"
-                    class="absolute right-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-slate-300 bg-white shadow-lg transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    class="absolute right-0 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-slate-300 bg-white shadow-lg transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400 md:flex"
                 >
                     <svg class="h-5 w-5 text-slate-800" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
                 </button>

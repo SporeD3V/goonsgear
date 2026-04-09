@@ -9,7 +9,7 @@
             <p class="text-center text-sm text-slate-400">No bundles available right now.</p>
         @else
             <div
-                class="relative px-12"
+                class="relative px-0 md:px-12"
                 x-data="{
                     isDragging: false,
                     startX: 0,
@@ -52,7 +52,7 @@
                     x-on:click="scrollByBundle(-1)"
                     type="button"
                     aria-label="Scroll left"
-                    class="absolute left-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-slate-300 bg-white shadow-lg transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    class="absolute left-0 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-slate-300 bg-white shadow-lg transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400 md:flex"
                 >
                     <svg class="h-5 w-5 text-slate-800" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
                 </button>
@@ -71,61 +71,64 @@
                     style="cursor: grab; -webkit-overflow-scrolling: touch; scroll-behavior: smooth;"
                 >
                     @foreach ($bundles as $bundle)
-                        <div class="bundle-slide flex w-full shrink-0 items-stretch gap-0 lg:w-[calc(100%)]" draggable="false">
-                            {{-- Product cards --}}
-                            @foreach ($bundle->items as $index => $item)
-                                @if ($index > 0)
-                                    {{-- Plus sign between products --}}
-                                    <div class="flex shrink-0 items-center px-3">
-                                        <div class="flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-300 bg-white">
-                                            <svg class="h-6 w-6 text-black" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                        <div class="bundle-slide w-full shrink-0" draggable="false">
+                            <div class="flex flex-col gap-4 md:flex-row md:items-stretch md:gap-0">
+                                {{-- Product cards --}}
+                                @foreach ($bundle->items as $index => $item)
+                                    @if ($index > 0)
+                                        {{-- Plus sign between products --}}
+                                        <div class="flex shrink-0 items-center justify-center py-2 md:px-3 md:py-0">
+                                            <div class="flex h-10 w-10 items-center justify-center rounded-full border-2 border-slate-300 bg-white md:h-12 md:w-12">
+                                                <svg class="h-5 w-5 text-black md:h-6 md:w-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                                            </div>
                                         </div>
-                                    </div>
-                                @endif
+                                    @endif
 
-                                <div class="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" draggable="false">
-                                    <a href="{{ route('shop.show', $item->variant->product) }}" class="group block flex-1" draggable="false">
-                                        <div class="relative aspect-square w-full overflow-hidden bg-slate-50">
-                                            <span class="absolute right-2 top-2 z-10 rounded border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-black">Part of a bundle</span>
-                                            <img
-                                                src="{{ $item->media_url }}"
-                                                alt="{{ $item->variant->product->name }}"
-                                                class="h-full w-full object-contain p-4"
-                                                draggable="false"
-                                            >
-                                        </div>
-                                        <div class="p-4">
-                                            <h3 class="text-sm font-bold leading-snug text-black">{{ $item->variant->product->name }}</h3>
-                                            <p class="mt-1 text-xs text-slate-500">{{ $item->variant->product->primaryCategory?->name ?? 'Uncategorized' }}</p>
-                                            <p class="mt-1 text-sm font-semibold text-black">&euro;{{ number_format((float) $item->variant->price, 2) }}</p>
-                                        </div>
+                                    <div class="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" draggable="false">
+                                        <a href="{{ route('shop.show', $item->variant->product) }}" class="group block flex-1" draggable="false">
+                                            <div class="relative aspect-square w-full overflow-hidden bg-slate-50">
+                                                <span class="absolute right-2 top-2 z-10 rounded border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-black">Part of a bundle</span>
+                                                <img
+                                                    src="{{ $item->media_url }}"
+                                                    alt="{{ $item->variant->product->name }}"
+                                                    class="h-full w-full object-contain p-4"
+                                                    draggable="false"
+                                                >
+                                                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent transition-opacity duration-300 group-hover:from-black/70"></div>
+                                            </div>
+                                            <div class="p-4">
+                                                <h3 class="text-sm font-bold leading-snug text-black">{{ $item->variant->product->name }}</h3>
+                                                <p class="mt-1 text-xs text-slate-500">{{ $item->variant->product->primaryCategory?->name ?? 'Uncategorized' }}</p>
+                                                <p class="mt-1 text-sm font-semibold text-black">&euro;{{ number_format((float) $item->variant->price, 2) }}</p>
+                                            </div>
+                                        </a>
+                                    </div>
+                                @endforeach
+
+                                {{-- Equals sign --}}
+                                <div class="flex shrink-0 items-center justify-center py-2 md:px-3 md:py-0">
+                                    <div class="flex h-10 w-10 items-center justify-center rounded-full border-2 border-slate-300 bg-white md:h-12 md:w-12">
+                                        <svg class="h-5 w-5 text-black md:h-6 md:w-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5"/></svg>
+                                    </div>
+                                </div>
+
+                                {{-- Savings card --}}
+                                <div class="flex min-w-0 flex-1 flex-col items-center justify-center overflow-hidden rounded-2xl bg-black p-6 text-center text-white shadow-sm" draggable="false">
+                                    <h3 class="text-sm font-black uppercase tracking-wider">Bundle Savings</h3>
+                                    <div class="mt-4 rounded-lg border border-slate-600 px-6 py-4">
+                                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Save</p>
+                                        <p class="mt-1 text-4xl font-black">&euro;{{ number_format((float) $bundle->savings, 0) }}</p>
+                                    </div>
+                                    <p class="mt-3 text-sm font-semibold text-white">Total: &euro;{{ number_format((float) $bundle->total_price - (float) $bundle->savings, 2) }}</p>
+                                    <p class="text-xs text-slate-400 line-through">&euro;{{ number_format((float) $bundle->total_price, 2) }}</p>
+                                    <p class="mt-3 text-xs leading-relaxed text-slate-400">Get both items together and save on your order</p>
+                                    <a
+                                        href="{{ route('shop.category', 'sale') }}"
+                                        class="mt-4 block w-full rounded-lg border-2 border-white bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-black transition hover:bg-transparent hover:text-white"
+                                    >
+                                        Get Bundle
                                     </a>
                                 </div>
-                            @endforeach
-
-                            {{-- Equals sign --}}
-                            <div class="flex shrink-0 items-center px-3">
-                                <div class="flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-300 bg-white">
-                                    <svg class="h-6 w-6 text-black" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9h16.5m-16.5 6.75h16.5"/></svg>
-                                </div>
-                            </div>
-
-                            {{-- Savings card --}}
-                            <div class="flex min-w-0 flex-1 flex-col items-center justify-center overflow-hidden rounded-2xl bg-black p-6 text-center text-white shadow-sm" draggable="false">
-                                <h3 class="text-sm font-black uppercase tracking-wider">Bundle Savings</h3>
-                                <div class="mt-4 rounded-lg border border-slate-600 px-6 py-4">
-                                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Save</p>
-                                    <p class="mt-1 text-4xl font-black">&euro;{{ number_format((float) $bundle->savings, 0) }}</p>
-                                </div>
-                                <p class="mt-3 text-sm font-semibold text-white">Total: &euro;{{ number_format((float) $bundle->total_price - (float) $bundle->savings, 2) }}</p>
-                                <p class="text-xs text-slate-400 line-through">&euro;{{ number_format((float) $bundle->total_price, 2) }}</p>
-                                <p class="mt-3 text-xs leading-relaxed text-slate-400">Get both items together and save on your order</p>
-                                <a
-                                    href="{{ route('shop.category', 'sale') }}"
-                                    class="mt-4 block w-full rounded-lg border-2 border-white bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-black transition hover:bg-transparent hover:text-white"
-                                >
-                                    Get Bundle
-                                </a>
                             </div>
                         </div>
                     @endforeach
@@ -137,7 +140,7 @@
                     x-on:click="scrollByBundle(1)"
                     type="button"
                     aria-label="Scroll right"
-                    class="absolute right-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-slate-300 bg-white shadow-lg transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    class="absolute right-0 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-slate-300 bg-white shadow-lg transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400 md:flex"
                 >
                     <svg class="h-5 w-5 text-slate-800" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
                 </button>
