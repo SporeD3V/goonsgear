@@ -173,20 +173,23 @@
                                     <a
                                         href="{{ route('shop.artist', $tag->slug) }}"
                                         wire:key="carousel-tag-{{ $tag->id }}"
-                                        class="group flex w-[calc(50%-0.75rem)] shrink-0 flex-col items-center gap-3 sm:w-[calc(33.333%-1rem)] lg:w-[calc(20%-1.2rem)]"
+                                        class="group relative block w-[calc(50%-0.75rem)] shrink-0 overflow-hidden rounded-lg sm:w-[calc(33.333%-1rem)] lg:w-[calc(20%-1.2rem)]"
                                         draggable="false"
                                     >
-                                        <div class="flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-md transition-all duration-500 group-hover:shadow-xl">
+                                        <div class="relative aspect-square w-full bg-white shadow-md transition-shadow duration-500 group-hover:shadow-xl">
                                             <img
                                                 src="{{ route('media.show', ['path' => $tag->logo_path]) }}"
                                                 alt="{{ $tag->name }} logo"
-                                                class="max-h-full max-w-full object-contain transition-all duration-500 ease-out group-hover:scale-110"
+                                                class="absolute inset-0 h-full w-full object-contain p-4 transition-transform duration-500 ease-out group-hover:scale-110"
                                                 width="200"
                                                 height="200"
                                                 draggable="false"
                                             >
+                                            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent transition-opacity duration-300 group-hover:from-black/80"></div>
+                                            <div class="absolute inset-x-0 bottom-0 p-4">
+                                                <span class="text-sm font-black uppercase tracking-wide text-white drop-shadow-lg">{{ $tag->name }}</span>
+                                            </div>
                                         </div>
-                                        <span class="max-w-full text-center text-xs font-semibold uppercase tracking-wider text-slate-400 transition-colors duration-200 group-hover:text-slate-900">{{ $tag->name }}</span>
                                     </a>
                                 @endforeach
                             </div>
