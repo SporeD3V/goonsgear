@@ -52,9 +52,9 @@
                     x-on:click="scrollByCard(-1)"
                     type="button"
                     aria-label="Scroll left"
-                    class="absolute left-0 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-slate-300 bg-white shadow-lg transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400 md:flex"
+                    class="absolute -left-2 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center transition-opacity hover:opacity-70 focus:outline-none md:flex"
                 >
-                    <svg class="h-5 w-5 text-slate-800" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+                    <svg class="h-10 w-10 text-white" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
                 </button>
 
                 <div
@@ -196,7 +196,7 @@
                                     <button
                                         type="submit"
                                         data-catalog-add-to-cart
-                                        class="w-full rounded-lg bg-black px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-[#242424]"
+                                        class="w-full rounded-lg border-2 border-black bg-black px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-white transition hover:bg-transparent hover:text-black"
                                     >
                                         Select options
                                     </button>
@@ -214,7 +214,7 @@
                                             type="submit"
                                             data-catalog-add-to-cart
                                             data-catalog-single-variant
-                                            class="w-full rounded-lg bg-black px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-[#242424]"
+                                            class="w-full rounded-lg border-2 border-black bg-black px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-white transition hover:bg-transparent hover:text-black"
                                         >
                                             Add to cart &mdash; &euro;{{ number_format((float) $singleVariant->price, 2) }}
                                         </button>
@@ -232,9 +232,9 @@
                     x-on:click="scrollByCard(1)"
                     type="button"
                     aria-label="Scroll right"
-                    class="absolute right-0 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-slate-300 bg-white shadow-lg transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400 md:flex"
+                    class="absolute -right-2 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center transition-opacity hover:opacity-70 focus:outline-none md:flex"
                 >
-                    <svg class="h-5 w-5 text-slate-800" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                    <svg class="h-10 w-10 text-white" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
                 </button>
             </div>
         @endif

@@ -151,9 +151,9 @@
                                 x-on:click="scrollBy(-1)"
                                 type="button"
                                 aria-label="Scroll left"
-                                class="absolute left-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md transition-all duration-200 hover:bg-slate-50 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-slate-900/20"
+                                class="absolute -left-2 top-1/2 z-10 flex -translate-y-1/2 items-center justify-center transition-opacity hover:opacity-70 focus:outline-none"
                             >
-                                <svg class="h-5 w-5 text-slate-700" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
+                                <svg class="h-10 w-10 text-black" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
                             </button>
 
                             <div
@@ -203,9 +203,9 @@
                                 x-on:click="scrollBy(1)"
                                 type="button"
                                 aria-label="Scroll right"
-                                class="absolute right-0 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md transition-all duration-200 hover:bg-slate-50 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-slate-900/20"
+                                class="absolute -right-2 top-1/2 z-10 flex -translate-y-1/2 items-center justify-center transition-opacity hover:opacity-70 focus:outline-none"
                             >
-                                <svg class="h-5 w-5 text-slate-700" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                                <svg class="h-10 w-10 text-black" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
                             </button>
                         </div>
                     @else
