@@ -1,5 +1,45 @@
-<div class="bg-black px-6 py-16 lg:py-20">
-    <div class="mx-auto max-w-6xl">
+<div class="relative overflow-hidden bg-black px-6 py-16 lg:py-20">
+    {{-- Snowflake animation --}}
+    <style>
+        @keyframes snowflake-fall {
+            0% { transform: translateY(-40px) translateX(0) rotate(0deg); opacity: 0; }
+            5% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(calc(100vh + 40px)) translateX(var(--snow-drift)) rotate(var(--snow-spin)); opacity: 0; }
+        }
+        @keyframes snowflake-sway {
+            0%, 100% { margin-left: 0; }
+            25% { margin-left: var(--snow-sway-amount); }
+            75% { margin-left: calc(var(--snow-sway-amount) * -1); }
+        }
+        .snowflake-particle {
+            position: absolute;
+            top: -40px;
+            pointer-events: none;
+            z-index: 1;
+            animation:
+                snowflake-fall var(--snow-duration) var(--snow-delay) linear infinite,
+                snowflake-sway var(--snow-sway-speed) var(--snow-delay) ease-in-out infinite;
+            will-change: transform, margin-left;
+        }
+    </style>
+    <div class="pointer-events-none absolute inset-0 z-[1]" aria-hidden="true">
+        {{-- Left-side flakes --}}
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="left:3%;width:14px;height:14px;opacity:.18;--snow-duration:12s;--snow-delay:0s;--snow-drift:20px;--snow-spin:180deg;--snow-sway-amount:12px;--snow-sway-speed:4s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="left:8%;width:10px;height:10px;opacity:.12;--snow-duration:16s;--snow-delay:3s;--snow-drift:-15px;--snow-spin:-120deg;--snow-sway-amount:8px;--snow-sway-speed:5s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="left:14%;width:12px;height:12px;opacity:.15;--snow-duration:14s;--snow-delay:7s;--snow-drift:25px;--snow-spin:240deg;--snow-sway-amount:10px;--snow-sway-speed:3.5s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="left:6%;width:8px;height:8px;opacity:.10;--snow-duration:18s;--snow-delay:11s;--snow-drift:-10px;--snow-spin:90deg;--snow-sway-amount:6px;--snow-sway-speed:6s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="left:18%;width:10px;height:10px;opacity:.13;--snow-duration:15s;--snow-delay:5s;--snow-drift:18px;--snow-spin:-200deg;--snow-sway-amount:9px;--snow-sway-speed:4.5s;">
+
+        {{-- Right-side flakes --}}
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="right:4%;left:auto;width:12px;height:12px;opacity:.16;--snow-duration:13s;--snow-delay:2s;--snow-drift:-22px;--snow-spin:160deg;--snow-sway-amount:11px;--snow-sway-speed:4.2s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="right:10%;left:auto;width:9px;height:9px;opacity:.11;--snow-duration:17s;--snow-delay:6s;--snow-drift:12px;--snow-spin:-150deg;--snow-sway-amount:7px;--snow-sway-speed:5.5s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="right:16%;left:auto;width:14px;height:14px;opacity:.14;--snow-duration:11s;--snow-delay:9s;--snow-drift:-20px;--snow-spin:220deg;--snow-sway-amount:13px;--snow-sway-speed:3.8s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="right:7%;left:auto;width:8px;height:8px;opacity:.10;--snow-duration:19s;--snow-delay:13s;--snow-drift:15px;--snow-spin:-100deg;--snow-sway-amount:6px;--snow-sway-speed:6.2s;">
+        <img src="{{ asset('images/snowgoons-snowflake.png') }}" alt="" class="snowflake-particle" style="right:2%;left:auto;width:11px;height:11px;opacity:.12;--snow-duration:14s;--snow-delay:4s;--snow-drift:-18px;--snow-spin:280deg;--snow-sway-amount:10px;--snow-sway-speed:4.8s;">
+    </div>
+
+    <div class="relative z-[2] mx-auto max-w-6xl">
         <div class="mb-10 text-center">
             <h2 class="text-3xl font-black uppercase tracking-tight text-white md:text-4xl lg:text-5xl">New Arrivals</h2>
             <p class="mt-3 text-base text-white/50">Fresh drops from the GoonsGear collection</p>
