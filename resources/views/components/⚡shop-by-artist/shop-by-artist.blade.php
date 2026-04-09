@@ -56,10 +56,26 @@
                 x-transition:leave-end="opacity-0"
                 :class="mode === 'artist' ? 'relative' : 'absolute inset-x-0 top-0'"
             >
+                {{-- Search bar — full width on mobile, grid tile on larger screens --}}
+                <div class="mb-3 sm:hidden">
+                    <div class="relative flex items-center gap-3 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-3 transition-colors duration-300 focus-within:border-black focus-within:bg-white">
+                        <svg class="h-5 w-5 shrink-0 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z"/>
+                        </svg>
+                        <input
+                            type="text"
+                            wire:model.live.debounce.300ms="search"
+                            placeholder="Search artist…"
+                            class="w-full border-0 bg-transparent p-0 text-sm font-bold uppercase tracking-widest text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-0"
+                            autocomplete="off"
+                        >
+                    </div>
+                </div>
+
                 <div class="grid min-h-[21rem] grid-cols-3 content-start gap-3 sm:min-h-[22rem] sm:grid-cols-4 lg:min-h-[23rem] lg:grid-cols-6">
-                    {{-- Search tile — occupies first cell --}}
+                    {{-- Search tile — hidden on mobile, first cell on sm+ --}}
                     <div
-                        class="relative flex aspect-square items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 transition-colors duration-300 focus-within:border-black focus-within:bg-white"
+                        class="relative hidden aspect-square items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 transition-colors duration-300 focus-within:border-black focus-within:bg-white sm:flex"
                     >
                         <div class="flex w-full flex-col items-center gap-3 px-4">
                             <svg class="h-7 w-7 text-slate-300 transition-colors duration-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
