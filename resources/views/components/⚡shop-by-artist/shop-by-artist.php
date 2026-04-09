@@ -28,6 +28,7 @@ new class extends Component
             ->where('show_on_homepage', true)
             ->whereNotNull('logo_path')
             ->orderBy('name')
+            ->limit(12)
             ->get(['id', 'name', 'slug', 'logo_path', 'type']);
 
         $search = trim($this->search);

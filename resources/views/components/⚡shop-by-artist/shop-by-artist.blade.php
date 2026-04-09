@@ -50,7 +50,7 @@
             >
                 @if ($mode === 'artist')
                     {{-- Artist search --}}
-                    <div class="mx-auto mb-10 max-w-lg">
+                    <div class="mx-auto mb-6 max-w-lg">
                         <div class="relative" x-data="{ open: false }" x-on:click.outside="open = false">
                             <div class="relative">
                                 <span class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-400">
@@ -104,123 +104,32 @@
                         </div>
                     </div>
 
-                    {{-- Artist logo carousel --}}
+                    {{-- Artist logo grid --}}
                     @if ($carouselTags->isNotEmpty())
-                        <div
-                            class="relative px-12"
-                            x-data="{
-                                isDragging: false,
-                                startX: 0,
-                                startY: 0,
-                                scrollLeft: 0,
-                                direction: null,
-                                canScrollLeft: false,
-                                canScrollRight: true,
-                                start(e) {
-                                    this.isDragging = true;
-                                    this.direction = null;
-                                    const point = e.touches ? e.touches[0] : e;
-                                    this.startX = point.pageX - this.$refs.track.offsetLeft;
-                                    this.startY = point.pageY;
-                                    this.scrollLeft = this.$refs.track.scrollLeft;
-                                    this.$refs.track.style.cursor = 'grabbing';
-                                },
-                                move(e) {
-                                    if (!this.isDragging) return;
-                                    const point = e.touches ? e.touches[0] : e;
-                                    const x = point.pageX - this.$refs.track.offsetLeft;
-                                    const diffX = Math.abs(x - this.startX);
-                                    const diffY = Math.abs(point.pageY - this.startY);
-                                    if (!this.direction) {
-                                        if (diffX < 3 && diffY < 3) return;
-                                        this.direction = diffX > diffY ? 'horizontal' : 'vertical';
-                                    }
-                                    if (this.direction === 'vertical') { this.isDragging = false; return; }
-                                    e.preventDefault();
-                                    const walk = (x - this.startX) * 1.5;
-                                    this.$refs.track.scrollLeft = this.scrollLeft - walk;
-                                },
-                                stop() {
-                                    this.isDragging = false;
-                                    this.direction = null;
-                                    this.$refs.track.style.cursor = 'grab';
-                                },
-                                scrollBy(direction) {
-                                    this.$refs.track.scrollBy({ left: direction * 300, behavior: 'smooth' });
-                                },
-                                updateArrows() {
-                                    const el = this.$refs.track;
-                                    this.canScrollLeft = el.scrollLeft > 0;
-                                    this.canScrollRight = el.scrollLeft < el.scrollWidth - el.clientWidth - 1;
-                                }
-                            }"
-                            x-init="$nextTick(() => updateArrows())"
-                        >
-                            {{-- Left arrow --}}
-                            <button
-                                x-show="canScrollLeft"
-                                x-transition:enter="transition ease-out duration-200"
-                                x-transition:enter-start="opacity-0 scale-75"
-                                x-transition:enter-end="opacity-100 scale-100"
-                                x-on:click="scrollBy(-1)"
-                                type="button"
-                                aria-label="Scroll left"
-                                class="absolute -left-2 top-1/2 z-10 flex -translate-y-1/2 items-center justify-center transition-opacity hover:opacity-70 focus:outline-none"
-                            >
-                                <svg class="h-10 w-10 text-black" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/></svg>
-                            </button>
-
-                            <div
-                                x-ref="track"
-                                x-on:scroll.debounce.50ms="updateArrows()"
-                                x-on:mousedown="start($event)"
-                                x-on:mousemove="move($event)"
-                                x-on:mouseup="stop()"
-                                x-on:mouseleave="stop()"
-                                x-on:touchstart.passive="start($event)"
-                                x-on:touchmove="move($event)"
-                                x-on:touchend="stop()"
-                                class="no-scrollbar flex gap-6 overflow-x-auto select-none"
-                                style="cursor: grab; -webkit-overflow-scrolling: touch; scroll-behavior: smooth;"
-                            >
-                                @foreach ($carouselTags as $tag)
-                                    <a
-                                        href="{{ route('shop.artist', $tag->slug) }}"
-                                        wire:key="carousel-tag-{{ $tag->id }}"
-                                        class="group relative block w-[calc(50%-0.75rem)] shrink-0 overflow-hidden rounded-lg sm:w-[calc(33.333%-1rem)] lg:w-[calc(20%-1.2rem)]"
-                                        draggable="false"
-                                    >
-                                        <div class="relative aspect-square w-full bg-white shadow-md transition-shadow duration-500 group-hover:shadow-xl">
-                                            <img
-                                                src="{{ route('media.show', ['path' => $tag->logo_path]) }}"
-                                                alt="{{ $tag->name }} logo"
-                                                class="absolute inset-0 h-full w-full object-contain p-4 grayscale transition-all duration-500 ease-out group-hover:scale-110 group-hover:grayscale-0"
-                                                width="200"
-                                                height="200"
-                                                draggable="false"
-                                            >
-                                            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent transition-opacity duration-300 group-hover:from-black/80"></div>
-                                            <div class="absolute inset-x-0 bottom-0 p-4">
-                                                <span class="text-sm font-black uppercase tracking-wide text-white drop-shadow-lg">{{ $tag->name }}</span>
-                                            </div>
-                                        </div>
-                                    </a>
-                                @endforeach
-                            </div>
-
-                            {{-- Right arrow --}}
-                            <button
-                                x-show="canScrollRight"
-                                x-transition:enter="transition ease-out duration-200"
-                                x-transition:enter-start="opacity-0 scale-75"
-                                x-transition:enter-end="opacity-100 scale-100"
-                                x-on:click="scrollBy(1)"
-                                type="button"
-                                aria-label="Scroll right"
-                                class="absolute -right-2 top-1/2 z-10 flex -translate-y-1/2 items-center justify-center transition-opacity hover:opacity-70 focus:outline-none"
-                            >
-                                <svg class="h-10 w-10 text-black" fill="none" stroke="currentColor" stroke-width="4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
-                            </button>
+                        <div class="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+                            @foreach ($carouselTags as $tag)
+                                <a
+                                    href="{{ route('shop.artist', $tag->slug) }}"
+                                    wire:key="carousel-tag-{{ $tag->id }}"
+                                    class="group relative block overflow-hidden rounded-lg bg-white shadow-sm transition-shadow duration-300 hover:shadow-lg"
+                                    draggable="false"
+                                >
+                                    <div class="relative aspect-square w-full">
+                                        <img
+                                            src="{{ route('media.show', ['path' => $tag->logo_path]) }}"
+                                            alt="{{ $tag->name }} logo"
+                                            class="absolute inset-0 h-full w-full object-contain p-3 transition-transform duration-300 ease-out group-hover:scale-110"
+                                            width="200"
+                                            height="200"
+                                            loading="lazy"
+                                            draggable="false"
+                                        >
+                                    </div>
+                                    <div class="border-t border-slate-100 px-2 py-1.5 text-center">
+                                        <span class="text-[11px] font-bold uppercase tracking-wide text-slate-700 group-hover:text-black">{{ $tag->name }}</span>
+                                    </div>
+                                </a>
+                            @endforeach
                         </div>
                     @else
                         <p class="text-center text-sm text-slate-500">No artists have been featured yet.</p>
