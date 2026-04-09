@@ -3,7 +3,7 @@
         {{-- Section header --}}
         <div class="mb-10 text-center">
             <h2 class="text-3xl font-black uppercase tracking-tight text-slate-900 md:text-4xl lg:text-5xl">How Do You Want to Shop?</h2>
-            <p class="mt-3 text-base text-slate-500">Choose your shopping style</p>
+            <p class="mt-3 text-base text-slate-600">Choose your shopping style</p>
         </div>
 
         {{-- Mode toggle --}}
@@ -112,7 +112,7 @@
                     @empty
                         @if (trim($this->search) !== '')
                             <div class="col-span-full py-8 text-center">
-                                <p class="text-sm text-slate-500">No artists found matching &ldquo;{{ $this->search }}&rdquo;</p>
+                                <p class="text-sm text-slate-600">No artists found matching &ldquo;{{ $this->search }}&rdquo;</p>
                             </div>
                         @endif
                     @endforelse
@@ -162,7 +162,7 @@
                         @endforeach
                     </div>
                 @else
-                    <p class="text-center text-sm text-slate-500">No categories available yet.</p>
+                    <p class="text-center text-sm text-slate-600">No categories available yet.</p>
                 @endif
             </div>
         </div>

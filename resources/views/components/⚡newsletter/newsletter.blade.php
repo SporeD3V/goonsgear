@@ -4,10 +4,10 @@
             {{-- Left: headline + copy --}}
             <div class="text-center lg:text-left">
                 <h2 class="text-3xl font-black uppercase tracking-tight text-white md:text-4xl lg:text-5xl">Don't Miss<br class="hidden lg:inline"> Exclusive Drops</h2>
-                <p class="mt-4 text-base leading-relaxed text-white/50 lg:text-lg">
+                <p class="mt-4 text-base leading-relaxed text-white/60 lg:text-lg">
                     Sign up for our newsletter for special offers and limited releases. Unsubscribe anytime with one click.
                 </p>
-                <p class="mt-4 text-xs tracking-wide text-white/30">Newsletter sent once a week maximum. We don't spam.</p>
+                <p class="mt-4 text-xs tracking-wide text-white/45">Newsletter sent once a week maximum. We don't spam.</p>
             </div>
 
             {{-- Right: form --}}
@@ -26,7 +26,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
                         </svg>
                         <p class="text-lg font-bold text-white">You're in!</p>
-                        <p class="mt-1 text-sm text-white/50">Watch your inbox for exclusive drops.</p>
+                        <p class="mt-1 text-sm text-white/60">Watch your inbox for exclusive drops.</p>
                     </div>
                 @else
                     <form wire:submit="subscribe" class="space-y-4">
@@ -35,7 +35,7 @@
                                 type="text"
                                 wire:model="name"
                                 placeholder="Your Name"
-                                class="w-full rounded-xl border-2 border-white/10 bg-white/10 px-5 py-4 text-base font-medium text-white backdrop-blur-sm placeholder-white/30 transition-all duration-200 focus:border-white/40 focus:bg-white/15 focus:outline-none focus:ring-0"
+                                class="w-full rounded-xl border-2 border-white/10 bg-white/10 px-5 py-4 text-base font-medium text-white backdrop-blur-sm placeholder-white/45 transition-all duration-200 focus:border-white/40 focus:bg-white/15 focus:outline-none focus:ring-0"
                             >
                             @error('name')
                                 <p class="mt-1.5 text-left text-xs text-red-400">{{ $message }}</p>
@@ -47,7 +47,7 @@
                                 type="email"
                                 wire:model="email"
                                 placeholder="Your Email Address"
-                                class="w-full rounded-xl border-2 border-white/10 bg-white/10 px-5 py-4 text-base font-medium text-white backdrop-blur-sm placeholder-white/30 transition-all duration-200 focus:border-white/40 focus:bg-white/15 focus:outline-none focus:ring-0"
+                                class="w-full rounded-xl border-2 border-white/10 bg-white/10 px-5 py-4 text-base font-medium text-white backdrop-blur-sm placeholder-white/45 transition-all duration-200 focus:border-white/40 focus:bg-white/15 focus:outline-none focus:ring-0"
                             >
                             @error('email')
                                 <p class="mt-1.5 text-left text-xs text-red-400">{{ $message }}</p>

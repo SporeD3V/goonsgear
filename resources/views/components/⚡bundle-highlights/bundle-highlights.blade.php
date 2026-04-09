@@ -2,11 +2,11 @@
     <div class="mx-auto max-w-6xl">
         <div class="mb-10 text-center">
             <h2 class="text-3xl font-black uppercase tracking-tight text-black md:text-4xl">Bundle Up &amp; Save</h2>
-            <p class="mt-3 text-base text-slate-500">Get more for less with our exclusive product bundles</p>
+            <p class="mt-3 text-base text-slate-600">Get more for less with our exclusive product bundles</p>
         </div>
 
         @if ($bundles->isEmpty())
-            <p class="text-center text-sm text-slate-400">No bundles available right now.</p>
+            <p class="text-center text-sm text-slate-500">No bundles available right now.</p>
         @else
             <div
                 class="relative px-0 md:px-12"
@@ -112,7 +112,7 @@
                                             </div>
                                             <div class="p-4">
                                                 <h3 class="text-sm font-bold leading-snug text-black">{{ $item->variant->product->name }}</h3>
-                                                <p class="mt-1 text-xs text-slate-500">{{ $item->variant->product->primaryCategory?->name ?? 'Uncategorized' }}</p>
+                                                <p class="mt-1 text-xs text-slate-600">{{ $item->variant->product->primaryCategory?->name ?? 'Uncategorized' }}</p>
                                                 <p class="mt-1 text-sm font-semibold text-black">&euro;{{ number_format((float) $item->variant->price, 2) }}</p>
                                             </div>
                                         </a>

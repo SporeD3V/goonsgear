@@ -49,11 +49,11 @@
     <div class="relative z-[2] mx-auto max-w-6xl">
         <div class="mb-10 text-center">
             <h2 class="text-3xl font-black uppercase tracking-tight text-white md:text-4xl lg:text-5xl">New Arrivals</h2>
-            <p class="mt-3 text-base text-white/50">Fresh drops from the GoonsGear collection</p>
+            <p class="mt-3 text-base text-white/60">Fresh drops from the GoonsGear collection</p>
         </div>
 
         @if ($products->isEmpty())
-            <p class="text-center text-sm text-white/40">No products yet.</p>
+            <p class="text-center text-sm text-white/60">No products yet.</p>
         @else
             <div
                 class="relative px-0 md:px-14"
@@ -191,7 +191,7 @@
                             @endif
 
                             <div class="p-5">
-                                <p class="text-xs font-bold uppercase tracking-widest text-amber-500">{{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>
+                                <p class="text-xs font-bold uppercase tracking-widest text-amber-600">{{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>
                                 <h3 class="mt-2 text-lg font-black leading-tight text-black">{{ $product->name }}</h3>
                                 @if ($startingPrice !== null)
                                     <p class="mt-2 text-base font-bold text-black" data-catalog-price>
@@ -210,7 +210,7 @@
                                 <div class="space-y-3" data-catalog-options>
                                     @foreach ($selectorData['groups'] as $attributeKey => $attributeGroup)
                                         <div>
-                                            <p class="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-400">{{ $attributeGroup['label'] }}</p>
+                                            <p class="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">{{ $attributeGroup['label'] }}</p>
                                             <div class="flex flex-wrap gap-1.5">
                                                 @foreach ($attributeGroup['values'] as $attributeValue)
                                                     @php
