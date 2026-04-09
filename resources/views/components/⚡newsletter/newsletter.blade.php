@@ -35,7 +35,7 @@
                                 type="text"
                                 wire:model="name"
                                 placeholder="Your Name"
-                                class="w-full rounded-xl border-2 border-white/10 bg-white/5 px-5 py-4 text-base font-medium text-white placeholder-white/30 transition-all duration-200 focus:border-white/40 focus:bg-white/10 focus:outline-none focus:ring-0"
+                                class="w-full rounded-xl border-2 border-white/10 bg-white/10 px-5 py-4 text-base font-medium text-white backdrop-blur-sm placeholder-white/30 transition-all duration-200 focus:border-white/40 focus:bg-white/15 focus:outline-none focus:ring-0"
                             >
                             @error('name')
                                 <p class="mt-1.5 text-left text-xs text-red-400">{{ $message }}</p>
@@ -47,7 +47,7 @@
                                 type="email"
                                 wire:model="email"
                                 placeholder="Your Email Address"
-                                class="w-full rounded-xl border-2 border-white/10 bg-white/5 px-5 py-4 text-base font-medium text-white placeholder-white/30 transition-all duration-200 focus:border-white/40 focus:bg-white/10 focus:outline-none focus:ring-0"
+                                class="w-full rounded-xl border-2 border-white/10 bg-white/10 px-5 py-4 text-base font-medium text-white backdrop-blur-sm placeholder-white/30 transition-all duration-200 focus:border-white/40 focus:bg-white/15 focus:outline-none focus:ring-0"
                             >
                             @error('email')
                                 <p class="mt-1.5 text-left text-xs text-red-400">{{ $message }}</p>
