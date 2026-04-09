@@ -3,17 +3,17 @@
 @endphp
 
 @if (!empty($breadcrumbs))
-    <nav aria-label="Breadcrumb" class="mb-4 text-sm text-slate-500">
+    <nav aria-label="Breadcrumb" class="mb-4 text-sm text-black/50">
         <ol class="flex flex-wrap items-center gap-1">
             @foreach ($breadcrumbs as $i => $crumb)
                 <li class="flex items-center gap-1">
                     @if ($i > 0)
-                        <svg class="h-3 w-3 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                        <svg class="h-3 w-3 text-black/40" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
                     @endif
                     @if ($crumb['url'] && $i < count($breadcrumbs) - 1)
-                        <a href="{{ $crumb['url'] }}" class="hover:text-slate-800 hover:underline">{{ $crumb['name'] }}</a>
+                        <a href="{{ $crumb['url'] }}" class="hover:text-black hover:underline">{{ $crumb['name'] }}</a>
                     @else
-                        <span class="text-slate-700 font-medium">{{ $crumb['name'] }}</span>
+                        <span class="text-black/70 font-medium">{{ $crumb['name'] }}</span>
                     @endif
                 </li>
             @endforeach

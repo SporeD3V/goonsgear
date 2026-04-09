@@ -10,7 +10,7 @@
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif
     </head>
-    <body class="bg-slate-100 text-slate-900">
+    <body class="bg-white text-black">
         @include('partials.header')
 
         <div class="mx-auto max-w-6xl p-6">
@@ -24,7 +24,7 @@
             @endif
 
             <div class="grid gap-6 lg:grid-cols-2">
-                <section class="rounded border border-slate-200 bg-white p-5">
+                <section class="rounded border border-black/10 bg-white p-5">
                     <h2 class="text-base font-semibold">Shipping details</h2>
 
                                         <form method="POST"
@@ -36,33 +36,33 @@
                                                 <input id="recaptcha_token" name="recaptcha_token" type="hidden" value="{{ old('recaptcha_token') }}">
 
                         <div>
-                            <label for="email" class="mb-1 block text-sm font-medium text-slate-700">Email</label>
-                            <input id="email" name="email" type="email" value="{{ $formDefaults['email'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                            <label for="email" class="mb-1 block text-sm font-medium text-black/70">Email</label>
+                            <input id="email" name="email" type="email" value="{{ $formDefaults['email'] }}" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                             @error('email')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                         </div>
 
                         <div class="grid gap-3 sm:grid-cols-2">
                             <div>
-                                <label for="first_name" class="mb-1 block text-sm font-medium text-slate-700">First name</label>
-                                <input id="first_name" name="first_name" type="text" value="{{ $formDefaults['first_name'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <label for="first_name" class="mb-1 block text-sm font-medium text-black/70">First name</label>
+                                <input id="first_name" name="first_name" type="text" value="{{ $formDefaults['first_name'] }}" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                                 @error('first_name')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
-                                <label for="last_name" class="mb-1 block text-sm font-medium text-slate-700">Last name</label>
-                                <input id="last_name" name="last_name" type="text" value="{{ $formDefaults['last_name'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <label for="last_name" class="mb-1 block text-sm font-medium text-black/70">Last name</label>
+                                <input id="last_name" name="last_name" type="text" value="{{ $formDefaults['last_name'] }}" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                                 @error('last_name')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                         </div>
 
                         <div class="grid gap-3 sm:grid-cols-2">
                             <div>
-                                <label for="phone" class="mb-1 block text-sm font-medium text-slate-700">Phone (optional)</label>
-                                <input id="phone" name="phone" type="text" value="{{ $formDefaults['phone'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <label for="phone" class="mb-1 block text-sm font-medium text-black/70">Phone (optional)</label>
+                                <input id="phone" name="phone" type="text" value="{{ $formDefaults['phone'] }}" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                                 @error('phone')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
-                                <label for="country" class="mb-1 block text-sm font-medium text-slate-700">Country</label>
-                                <select id="country" name="country" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <label for="country" class="mb-1 block text-sm font-medium text-black/70">Country</label>
+                                <select id="country" name="country" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                                     <option value="">— Select country —</option>
                                     @foreach ($countries as $code => $name)
                                         <option value="{{ $code }}" @selected($formDefaults['country'] === $code)>{{ $name }}</option>
@@ -78,67 +78,67 @@
 
                         <div class="grid gap-3 sm:grid-cols-2">
                             <div>
-                                <label for="state" class="mb-1 block text-sm font-medium text-slate-700">State / Region <span class="text-slate-400">(optional)</span></label>
+                                <label for="state" class="mb-1 block text-sm font-medium text-black/70">State / Region <span class="text-black/40">(optional)</span></label>
                                 <div id="state-wrapper" data-initial-state="{{ $formDefaults['state'] }}">
-                                    <input id="state" name="state" type="text" value="{{ $formDefaults['state'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                    <input id="state" name="state" type="text" value="{{ $formDefaults['state'] }}" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                                 </div>
                                 @error('state')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
-                                <label for="city" class="mb-1 block text-sm font-medium text-slate-700">City</label>
+                                <label for="city" class="mb-1 block text-sm font-medium text-black/70">City</label>
                                 <div id="city-wrapper" data-initial-city="{{ $formDefaults['city'] }}">
-                                    <input id="city" name="city" type="text" value="{{ $formDefaults['city'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                    <input id="city" name="city" type="text" value="{{ $formDefaults['city'] }}" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                                 </div>
                                 @error('city')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                         </div>
 
                         <div>
-                            <label for="postal_code" class="mb-1 block text-sm font-medium text-slate-700">Postal code</label>
-                            <input id="postal_code" name="postal_code" type="text" value="{{ $formDefaults['postal_code'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                            <label for="postal_code" class="mb-1 block text-sm font-medium text-black/70">Postal code</label>
+                            <input id="postal_code" name="postal_code" type="text" value="{{ $formDefaults['postal_code'] }}" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                             @error('postal_code')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                         </div>
 
                         <div class="grid gap-3 sm:grid-cols-2">
                             <div>
-                                <label for="street_name" class="mb-1 block text-sm font-medium text-slate-700">Street name</label>
-                                <input id="street_name" name="street_name" type="text" value="{{ $formDefaults['street_name'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <label for="street_name" class="mb-1 block text-sm font-medium text-black/70">Street name</label>
+                                <input id="street_name" name="street_name" type="text" value="{{ $formDefaults['street_name'] }}" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                                 @error('street_name')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
-                                <label for="street_number" class="mb-1 block text-sm font-medium text-slate-700">Street number</label>
-                                <input id="street_number" name="street_number" type="text" value="{{ $formDefaults['street_number'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <label for="street_number" class="mb-1 block text-sm font-medium text-black/70">Street number</label>
+                                <input id="street_number" name="street_number" type="text" value="{{ $formDefaults['street_number'] }}" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                                 @error('street_number')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                         </div>
 
                         <div class="grid gap-3 sm:grid-cols-2">
                             <div>
-                                <label for="apartment_block" class="mb-1 block text-sm font-medium text-slate-700">Apartment block <span class="text-slate-400">(optional)</span></label>
-                                <input id="apartment_block" name="apartment_block" type="text" value="{{ $formDefaults['apartment_block'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <label for="apartment_block" class="mb-1 block text-sm font-medium text-black/70">Apartment block <span class="text-black/40">(optional)</span></label>
+                                <input id="apartment_block" name="apartment_block" type="text" value="{{ $formDefaults['apartment_block'] }}" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                                 @error('apartment_block')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
-                                <label for="entrance" class="mb-1 block text-sm font-medium text-slate-700">Entrance <span class="text-slate-400">(optional)</span></label>
-                                <input id="entrance" name="entrance" type="text" value="{{ $formDefaults['entrance'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <label for="entrance" class="mb-1 block text-sm font-medium text-black/70">Entrance <span class="text-black/40">(optional)</span></label>
+                                <input id="entrance" name="entrance" type="text" value="{{ $formDefaults['entrance'] }}" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                                 @error('entrance')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                         </div>
 
                         <div class="grid gap-3 sm:grid-cols-2">
                             <div>
-                                <label for="floor" class="mb-1 block text-sm font-medium text-slate-700">Floor <span class="text-slate-400">(optional)</span></label>
-                                <input id="floor" name="floor" type="text" value="{{ $formDefaults['floor'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <label for="floor" class="mb-1 block text-sm font-medium text-black/70">Floor <span class="text-black/40">(optional)</span></label>
+                                <input id="floor" name="floor" type="text" value="{{ $formDefaults['floor'] }}" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                                 @error('floor')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
-                                <label for="apartment_number" class="mb-1 block text-sm font-medium text-slate-700">Apartment number <span class="text-slate-400">(optional)</span></label>
-                                <input id="apartment_number" name="apartment_number" type="text" value="{{ $formDefaults['apartment_number'] }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <label for="apartment_number" class="mb-1 block text-sm font-medium text-black/70">Apartment number <span class="text-black/40">(optional)</span></label>
+                                <input id="apartment_number" name="apartment_number" type="text" value="{{ $formDefaults['apartment_number'] }}" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                                 @error('apartment_number')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
                         </div>
 
-                        <button type="submit" class="mt-2 rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Place order</button>
+                        <button type="submit" class="mt-2 rounded bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80">Place order</button>
                         @error('recaptcha_token')<p class="text-xs text-rose-600">{{ $message }}</p>@enderror
                         <div id="recaptcha-errors" class="hidden rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700"></div>
 
@@ -148,13 +148,13 @@
                                  data-create-order-url="{{ route('checkout.paypal.create-order') }}"
                                  data-capture-order-url="{{ route('checkout.paypal.capture-order') }}"
                                  data-csrf-token="{{ csrf_token() }}"></div>
-                            <p class="text-xs text-slate-500">Or pay securely with PayPal.</p>
+                            <p class="text-xs text-black/50">Or pay securely with PayPal.</p>
                             <div id="paypal-errors" class="hidden rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700"></div>
                         @endif
                     </form>
                 </section>
 
-                <aside class="rounded border border-slate-200 bg-white p-5"
+                <aside class="rounded border border-black/10 bg-white p-5"
                        id="order-summary"
                        data-subtotal="{{ number_format((float) $subtotal, 2, '.', '') }}"
                        data-coupon-discount="{{ number_format((float) $discountTotal, 2, '.', '') }}"
@@ -171,8 +171,8 @@
                                         <img src="{{ asset('images/placeholder-product.svg') }}" alt="No image available" class="h-12 w-12 rounded object-cover">
                                     @endif
                                     <div>
-                                        <p class="text-sm font-medium text-slate-900">{{ $item['product_name'] }}</p>
-                                        <p class="text-xs text-slate-600">{{ $item['variant_name'] }} x {{ $item['quantity'] }}</p>
+                                        <p class="text-sm font-medium text-black">{{ $item['product_name'] }}</p>
+                                        <p class="text-xs text-black/60">{{ $item['variant_name'] }} x {{ $item['quantity'] }}</p>
                                     </div>
                                 </div>
                                 <p class="text-sm font-medium">&euro;{{ number_format((float) $item['price'] * (int) $item['quantity'], 2) }}</p>
@@ -180,32 +180,32 @@
                         @endforeach
                     </div>
 
-                    <div class="mt-4 flex items-center justify-between border-t border-slate-200 pt-3">
-                        <p class="text-sm text-slate-600">Subtotal</p>
+                    <div class="mt-4 flex items-center justify-between border-t border-black/10 pt-3">
+                        <p class="text-sm text-black/60">Subtotal</p>
                         <p class="text-lg font-semibold">&euro;{{ number_format((float) $subtotal, 2) }}</p>
                     </div>
 
                     @if ($discountTotal > 0)
-                        <div class="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
+                        <div class="mt-3 flex items-center justify-between border-t border-black/10 pt-3">
                             <p class="text-sm text-emerald-700">Discount @if ($appliedCoupons->isNotEmpty())( {{ $appliedCoupons->pluck('code')->implode(', ') }} )@endif</p>
                             <p class="text-lg font-semibold text-emerald-700">- &euro;{{ number_format((float) $discountTotal, 2) }}</p>
                         </div>
                     @endif
 
                     @if ($bundleDiscountTotal > 0)
-                        <div class="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
+                        <div class="mt-3 flex items-center justify-between border-t border-black/10 pt-3">
                             <p class="text-sm text-emerald-700">Bundle discount @if ($appliedBundle)( {{ $appliedBundle->name }} )@endif</p>
                             <p class="text-lg font-semibold text-emerald-700">- &euro;{{ number_format((float) $bundleDiscountTotal, 2) }}</p>
                         </div>
                     @endif
 
-                    <div id="regional-discount-line" class="mt-3 hidden items-center justify-between border-t border-slate-200 pt-3">
+                    <div id="regional-discount-line" class="mt-3 hidden items-center justify-between border-t border-black/10 pt-3">
                         <p class="text-sm text-emerald-700">Regional discount<br><span id="regional-discount-reason" class="text-xs font-normal"></span></p>
                         <p id="regional-discount-amount" class="text-lg font-semibold text-emerald-700"></p>
                     </div>
 
-                    <div class="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
-                        <p class="text-sm text-slate-600">Grand total</p>
+                    <div class="mt-3 flex items-center justify-between border-t border-black/10 pt-3">
+                        <p class="text-sm text-black/60">Grand total</p>
                         <p id="grand-total" class="text-lg font-semibold">&euro;{{ number_format((float) $total, 2) }}</p>
                     </div>
                 </aside>

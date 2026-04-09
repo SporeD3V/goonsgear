@@ -61,12 +61,12 @@
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif
     </head>
-    <body class="bg-white text-slate-900">
+    <body class="bg-white text-black">
         @include('partials.header')
 
         @if (! $showCatalog)
             {{-- Hero section --}}
-            <section class="relative flex min-h-screen items-center overflow-hidden bg-slate-900 shadow-[0_30px_80px_-10px_rgba(0,0,0,0.5)]">
+            <section class="relative flex min-h-screen items-center overflow-hidden bg-black shadow-[0_30px_80px_-10px_rgba(0,0,0,0.5)]">
                 <div class="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-40 bg-gradient-to-t from-black/70 to-transparent"></div>
                 <picture>
                     <source srcset="{{ asset('images/hero-goonsgear.avif') }}" type="image/avif">
@@ -82,14 +82,14 @@
                 <div class="absolute inset-0 bg-black/50"></div>
                 <div class="relative z-10 mx-auto w-full max-w-6xl px-6 py-16 lg:py-24">
                     <div class="max-w-xl">
-                        <h1 class="text-4xl font-black uppercase leading-none tracking-tight text-white md:text-5xl lg:text-6xl">
+                        <h1 class="text-4xl font-black uppercase leading-none tracking-wide text-white md:text-5xl lg:text-6xl">
                             Official<br>SnowGoons<br>Gear
                         </h1>
-                        <p class="mt-6 text-lg leading-relaxed text-slate-200 md:text-xl">
+                        <p class="mt-6 text-lg leading-relaxed text-white/80 md:text-xl">
                             Exclusive merchandise, limited edition vinyl, and official drops from the legendary hip-hop production group. Worldwide shipping available.
                         </p>
                         <div class="mt-8">
-                            <a href="{{ route('shop.catalog') }}" class="inline-flex items-center gap-2 rounded border-2 border-white bg-white px-6 py-3 text-sm font-bold uppercase tracking-wider text-slate-900 transition hover:bg-slate-100">
+                            <a href="{{ route('shop.catalog') }}" class="inline-flex items-center gap-2 rounded border-2 border-white bg-white px-6 py-3 text-sm font-bold uppercase tracking-wider text-black transition hover:bg-white/90">
                                 Shop Now
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
                             </a>
@@ -104,7 +104,7 @@
                                 <img src="{{ asset('images/worldwide-shipping-icon.png') }}" alt="Globe icon representing worldwide shipping" class="mb-3 h-10 w-10 brightness-0 invert transition-transform duration-300 ease-out group-hover:scale-110" width="80" height="80" loading="lazy">
                             </picture>
                             <h3 class="text-base font-bold uppercase tracking-wide text-white">Worldwide Shipping</h3>
-                            <p class="mt-1 text-sm leading-relaxed text-slate-300">We do worldwide shipping with traceable tracking number.</p>
+                            <p class="mt-1 text-sm leading-relaxed text-white/70">We do worldwide shipping with traceable tracking number.</p>
                         </div>
 
                         <div class="group flex flex-col items-center rounded-lg bg-white/10 px-4 py-6 text-center backdrop-blur-sm">
@@ -113,7 +113,7 @@
                                 <img src="{{ asset('images/vinyl-record-icon.png') }}" alt="Vinyl record icon representing exclusive vinyl collection" class="mb-3 h-10 w-10 brightness-0 invert transition-transform duration-300 ease-out group-hover:scale-110" width="80" height="80" loading="lazy">
                             </picture>
                             <h3 class="text-base font-bold uppercase tracking-wide text-white">Sick Vinyl</h3>
-                            <p class="mt-1 text-sm leading-relaxed text-slate-300">We got a lot of exclusive vinyl and only ship with premium boxes.</p>
+                            <p class="mt-1 text-sm leading-relaxed text-white/70">We got a lot of exclusive vinyl and only ship with premium boxes.</p>
                         </div>
 
                         <div class="group flex flex-col items-center rounded-lg bg-white/10 px-4 py-6 text-center backdrop-blur-sm">
@@ -122,7 +122,7 @@
                                 <img src="{{ asset('images/wholesale-price-tag-icon.png') }}" alt="Price tag icon representing wholesale orders" class="mb-3 h-10 w-10 brightness-0 invert transition-transform duration-300 ease-out group-hover:scale-110" width="80" height="80" loading="lazy">
                             </picture>
                             <h3 class="text-base font-bold uppercase tracking-wide text-white">Wholesale</h3>
-                            <p class="mt-1 text-sm leading-relaxed text-slate-300">For wholesale and shop orders please contact us.</p>
+                            <p class="mt-1 text-sm leading-relaxed text-white/70">For wholesale and shop orders please contact us.</p>
                         </div>
 
                         <div class="group flex flex-col items-center rounded-lg bg-white/10 px-4 py-6 text-center backdrop-blur-sm">
@@ -131,7 +131,7 @@
                                 <img src="{{ asset('images/secure-payment-lock-icon.png') }}" alt="Padlock icon representing secure PayPal payments" class="mb-3 h-10 w-10 brightness-0 invert transition-transform duration-300 ease-out group-hover:scale-110" width="80" height="80" loading="lazy">
                             </picture>
                             <h3 class="text-base font-bold uppercase tracking-wide text-white">Secure Payments</h3>
-                            <p class="mt-1 text-sm leading-relaxed text-slate-300">We use PayPal Plus for your secure payments with all possible options.</p>
+                            <p class="mt-1 text-sm leading-relaxed text-white/70">We use PayPal Plus for your secure payments with all possible options.</p>
                         </div>
                     </div>
                 </div>

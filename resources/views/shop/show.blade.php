@@ -57,7 +57,7 @@
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif
     </head>
-    <body class="bg-slate-100 text-slate-900">
+    <body class="bg-white text-black">
         @include('partials.header')
 
         <div class="mx-auto max-w-6xl p-6">
@@ -88,12 +88,12 @@
                         <img
                             src="{{ $primaryMediaUrl }}"
                             alt="{{ $primaryMedia?->alt_text ?: $product->name }}"
-                            class="{{ $primaryIsVideo ? 'hidden ' : '' }}h-112 w-full cursor-zoom-in rounded border border-slate-200 bg-white object-contain p-2"
+                            class="{{ $primaryIsVideo ? 'hidden ' : '' }}h-112 w-full cursor-zoom-in rounded border border-black/10 bg-white object-contain p-2"
                             data-media-main-image
                             tabindex="0"
                         >
                         <video
-                            class="{{ $primaryIsVideo ? '' : 'hidden ' }}h-112 w-full cursor-zoom-in rounded border border-slate-200 bg-black object-contain p-2"
+                            class="{{ $primaryIsVideo ? '' : 'hidden ' }}h-112 w-full cursor-zoom-in rounded border border-black/10 bg-black object-contain p-2"
                             controls
                             @if ($primaryIsVideo)
                                 src="{{ $primaryMediaUrl }}"
@@ -103,12 +103,12 @@
                         ></video>
 
                         <div class="mt-2 flex justify-end">
-                            <button type="button" class="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50" data-lightbox-launch>
+                            <button type="button" class="rounded border border-black/20 bg-white px-3 py-1.5 text-xs font-medium text-black/70 hover:bg-black/5" data-lightbox-launch>
                                 Open lightbox
                             </button>
                         </div>
                     @else
-                        <img src="{{ asset('images/placeholder-product.svg') }}" alt="No image available" class="h-112 w-full rounded border border-slate-200 bg-white object-contain p-2">
+                        <img src="{{ asset('images/placeholder-product.svg') }}" alt="No image available" class="h-112 w-full rounded border border-black/10 bg-white object-contain p-2">
                     @endif
 
                     @if ($product->media->count() > 0)
@@ -126,7 +126,7 @@
                                 @endphp
                                 <button
                                     type="button"
-                                    class="h-20 w-full cursor-pointer rounded border border-slate-200 bg-white p-0 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                                    class="h-20 w-full cursor-pointer rounded border border-black/10 bg-white p-0 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-black"
                                     data-media-thumb
                                     data-media-type="{{ $isVideo ? 'video' : 'image' }}"
                                     data-media-url="{{ $displayUrl }}"
@@ -137,7 +137,7 @@
                                     aria-pressed="false"
                                 >
                                     @if ($isVideo)
-                                        <span class="flex h-20 w-full items-center justify-center rounded bg-slate-900 text-xs font-medium text-white">VIDEO</span>
+                                        <span class="flex h-20 w-full items-center justify-center rounded bg-black text-xs font-medium text-white">VIDEO</span>
                                     @else
                                         <img src="{{ $thumbnailUrl }}" alt="{{ $media->alt_text ?: $product->name }}" class="h-20 w-full rounded bg-white object-cover">
                                     @endif
@@ -226,14 +226,14 @@
                     </div>
                 </section>
 
-                <section class="rounded border border-slate-200 bg-white p-5">
-                    <p class="text-sm text-slate-500">Category: {{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>
+                <section class="rounded border border-black/10 bg-white p-5">
+                    <p class="text-sm text-black/50">Category: {{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>
                     @if ($product->formattedExcerpt() !== '')
-                        <div class="mt-3 text-slate-700">{!! $product->formattedExcerpt() !!}</div>
+                        <div class="mt-3 text-black/70">{!! $product->formattedExcerpt() !!}</div>
                     @endif
 
                     @if ($product->formattedDescription() !== '')
-                        <div class="mt-4 text-sm leading-6 text-slate-700">
+                        <div class="mt-4 text-sm leading-6 text-black/70">
                             {!! $product->formattedDescription() !!}
                         </div>
                     @endif
@@ -241,7 +241,7 @@
                     <div class="mt-6">
                         <h2 class="text-base font-semibold">Available Variants</h2>
                         @if ($variantsWithStockState->isEmpty())
-                            <p class="mt-2 text-sm text-slate-600">No active variants available.</p>
+                            <p class="mt-2 text-sm text-black/60">No active variants available.</p>
                         @else
                             @php
                                 $defaultVariant = $variantsWithStockState->first();
@@ -270,7 +270,7 @@
                             @endphp
 
                             <div
-                                class="mt-3 rounded border border-slate-200 bg-slate-50 p-3"
+                                class="mt-3 rounded border border-black/10 bg-black/5 p-3"
                                 data-product-variant-picker
                                 data-requires-attribute-selection="{{ $hasAttributeGroups ? '1' : '0' }}"
                                 data-unselected-price="{{ $unselectedPriceText }}"
@@ -280,14 +280,14 @@
                                     <div class="mb-3 space-y-3">
                                         @foreach ($variantSelectorData['groups'] as $attributeKey => $attributeGroup)
                                             <div data-variant-attribute-group="{{ $attributeKey }}">
-                                                <p class="mb-2 text-sm font-medium text-slate-700">{{ $attributeGroup['label'] }}</p>
+                                                <p class="mb-2 text-sm font-medium text-black/70">{{ $attributeGroup['label'] }}</p>
                                                 <div class="flex flex-wrap gap-2">
                                                     @foreach ($attributeGroup['values'] as $attributeValue)
                                                         <button
                                                             type="button"
                                                             data-variant-attribute="{{ $attributeKey }}"
                                                             data-variant-attribute-value="{{ $attributeValue }}"
-                                                            class="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 transition hover:border-slate-500"
+                                                            class="rounded border border-black/20 bg-white px-3 py-1.5 text-sm text-black/70 transition hover:border-black/50"
                                                         >
                                                             {{ $attributeValue }}
                                                         </button>
@@ -330,14 +330,14 @@
 
                                 <div class="mt-3 grid gap-2 text-sm sm:grid-cols-2" data-variant-panel>
                                     @if ($hasAttributeGroups)
-                                        <p class="sm:col-span-2 text-xs text-slate-500">Select variant options to view details.</p>
+                                        <p class="sm:col-span-2 text-xs text-black/50">Select variant options to view details.</p>
                                     @endif
-                                    <p><span class="font-medium text-slate-700">Price:</span> &euro;<span data-display-price>{{ $hasAttributeGroups ? $unselectedPriceText : number_format((float) $defaultVariant->price, 2) }}</span></p>
-                                    <p><span class="font-medium text-slate-700">SKU:</span> <span data-display-sku>{{ $hasAttributeGroups ? '--' : $defaultVariant->sku }}</span></p>
-                                    <p><span class="font-medium text-slate-700">Status:</span> <span data-display-status>{{ $hasAttributeGroups ? 'Select options' : $defaultStockStatus }}</span></p>
-                                    <p><span class="font-medium text-slate-700">Qty:</span> <span data-display-qty>{{ $hasAttributeGroups ? '--' : $defaultVariant->stock_quantity }}</span></p>
+                                    <p><span class="font-medium text-black/70">Price:</span> &euro;<span data-display-price>{{ $hasAttributeGroups ? $unselectedPriceText : number_format((float) $defaultVariant->price, 2) }}</span></p>
+                                    <p><span class="font-medium text-black/70">SKU:</span> <span data-display-sku>{{ $hasAttributeGroups ? '--' : $defaultVariant->sku }}</span></p>
+                                    <p><span class="font-medium text-black/70">Status:</span> <span data-display-status>{{ $hasAttributeGroups ? 'Select options' : $defaultStockStatus }}</span></p>
+                                    <p><span class="font-medium text-black/70">Qty:</span> <span data-display-qty>{{ $hasAttributeGroups ? '--' : $defaultVariant->stock_quantity }}</span></p>
                                     <p class="{{ !$hasAttributeGroups && $defaultStockStatus === 'Preorder' && $defaultAvailabilityDate ? '' : 'hidden' }} sm:col-span-2" data-display-availability-line>
-                                        <span class="font-medium text-slate-700">Available on:</span>
+                                        <span class="font-medium text-black/70">Available on:</span>
                                         <span data-display-availability>{{ $hasAttributeGroups ? '' : $defaultAvailabilityDate }}</span>
                                     </p>
                                 </div>
@@ -347,7 +347,7 @@
                                     <input type="hidden" name="variant_id" value="{{ $hasAttributeGroups ? '' : $defaultVariant->id }}" data-cart-variant-input>
 
                                     <div>
-                                        <label for="cart-quantity" class="mb-1 block text-sm font-medium text-slate-700">Quantity</label>
+                                        <label for="cart-quantity" class="mb-1 block text-sm font-medium text-black/70">Quantity</label>
                                         <input
                                             id="cart-quantity"
                                             type="number"
@@ -355,29 +355,29 @@
                                             min="1"
                                             value="1"
                                             data-cart-quantity-input
-                                            class="w-24 rounded border border-slate-300 bg-white px-3 py-2 text-sm"
+                                            class="w-24 rounded border border-black/20 bg-white px-3 py-2 text-sm"
                                         >
                                     </div>
 
-                                    <button type="submit" data-add-to-cart-button class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-60" {{ $hasAttributeGroups ? 'disabled' : '' }}>Add to cart</button>
+                                    <button type="submit" data-add-to-cart-button class="rounded bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-60" {{ $hasAttributeGroups ? 'disabled' : '' }}>Add to cart</button>
                                 </form>
 
                                 @auth
                                     <form
                                         method="POST"
                                         action="{{ route('stock-alert-subscriptions.store') }}"
-                                        class="{{ !$hasAttributeGroups && $defaultVariant->is_out_of_stock ? 'mt-4' : 'mt-4 hidden' }} rounded border border-slate-200 bg-white p-3"
+                                        class="{{ !$hasAttributeGroups && $defaultVariant->is_out_of_stock ? 'mt-4' : 'mt-4 hidden' }} rounded border border-black/10 bg-white p-3"
                                         data-stock-alert-form
                                     >
                                         @csrf
                                         <input type="hidden" name="variant_id" value="{{ $defaultVariant->id }}" data-stock-alert-variant-input>
 
-                                        <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+                                        <label class="inline-flex items-center gap-2 text-sm text-black/70">
                                             <input
                                                 type="checkbox"
                                                 name="subscribe_stock_alert"
                                                 value="1"
-                                                class="rounded border-slate-300"
+                                                class="rounded border-black/20"
                                                 checked
                                                 data-stock-alert-checkbox
                                             >
@@ -385,26 +385,26 @@
                                         </label>
 
                                         <div class="mt-3 flex items-center gap-3">
-                                            <button type="submit" class="rounded bg-slate-700 px-3 py-2 text-sm text-white hover:bg-slate-800">Save alert</button>
-                                            <span class="text-xs text-slate-500 hidden" data-stock-alert-subscribed-label>Alert is active for this variant.</span>
+                                            <button type="submit" class="rounded bg-black px-3 py-2 text-sm text-white hover:bg-black/80">Save alert</button>
+                                            <span class="text-xs text-black/50 hidden" data-stock-alert-subscribed-label>Alert is active for this variant.</span>
                                         </div>
                                     </form>
                                 @else
-                                    <p class="{{ !$hasAttributeGroups && $defaultVariant->is_out_of_stock ? 'mt-4 text-sm text-slate-600' : 'mt-4 hidden text-sm text-slate-600' }}" data-stock-alert-login-note>
-                                        <a href="{{ route('login') }}" class="text-blue-700 hover:underline">Login</a> to enable back-in-stock alerts.
+                                    <p class="{{ !$hasAttributeGroups && $defaultVariant->is_out_of_stock ? 'mt-4 text-sm text-black/60' : 'mt-4 hidden text-sm text-black/60' }}" data-stock-alert-login-note>
+                                        <a href="{{ route('login') }}" class="font-medium text-black underline hover:no-underline">Login</a> to enable back-in-stock alerts.
                                     </p>
                                 @endauth
                             </div>
 
                             @if ($variantsWithStockState->count() > 1)
                             <div class="mt-3 overflow-x-auto">
-                                <table class="min-w-full border border-slate-200 text-sm">
-                                    <thead class="bg-slate-50">
+                                <table class="min-w-full border border-black/10 text-sm">
+                                    <thead class="bg-black/5">
                                         <tr>
-                                            <th class="border border-slate-200 px-3 py-2 text-left">Variant</th>
-                                            <th class="border border-slate-200 px-3 py-2 text-left">SKU</th>
-                                            <th class="border border-slate-200 px-3 py-2 text-left">Price</th>
-                                            <th class="border border-slate-200 px-3 py-2 text-left">Stock</th>
+                                            <th class="border border-black/10 px-3 py-2 text-left">Variant</th>
+                                            <th class="border border-black/10 px-3 py-2 text-left">SKU</th>
+                                            <th class="border border-black/10 px-3 py-2 text-left">Price</th>
+                                            <th class="border border-black/10 px-3 py-2 text-left">Stock</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -421,16 +421,16 @@
                                                 );
                                             @endphp
                                             <tr>
-                                                <td class="border border-slate-200 px-3 py-2">{{ $variant->name }}</td>
-                                                <td class="border border-slate-200 px-3 py-2">{{ $variant->sku }}</td>
-                                                <td class="border border-slate-200 px-3 py-2">&euro;{{ number_format((float) $variant->price, 2) }}</td>
-                                                <td class="border border-slate-200 px-3 py-2">
+                                                <td class="border border-black/10 px-3 py-2">{{ $variant->name }}</td>
+                                                <td class="border border-black/10 px-3 py-2">{{ $variant->sku }}</td>
+                                                <td class="border border-black/10 px-3 py-2">&euro;{{ number_format((float) $variant->price, 2) }}</td>
+                                                <td class="border border-black/10 px-3 py-2">
                                                     <span class="inline-flex rounded px-2 py-0.5 text-xs {{ $stockStatus === 'In stock' ? 'bg-emerald-100 text-emerald-700' : ($stockStatus === 'Preorder' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700') }}">
                                                         {{ $stockStatus }}
                                                     </span>
-                                                    <div class="mt-1 text-xs text-slate-500">Qty: {{ $variant->stock_quantity }}</div>
+                                                    <div class="mt-1 text-xs text-black/50">Qty: {{ $variant->stock_quantity }}</div>
                                                     @if ($stockStatus === 'Preorder' && $availabilityDate)
-                                                        <div class="mt-1 text-xs text-slate-500">Available on {{ $availabilityDate }}</div>
+                                                        <div class="mt-1 text-xs text-black/50">Available on {{ $availabilityDate }}</div>
                                                     @endif
                                                 </td>
                                             </tr>

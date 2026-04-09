@@ -3,7 +3,7 @@
     <div class="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-32 bg-gradient-to-t from-neutral-200/60 to-transparent"></div>
     <div class="relative z-[1] mx-auto max-w-6xl">
         <div class="mb-10 text-center">
-            <h2 class="text-3xl font-black uppercase tracking-tight text-black md:text-4xl">Bundle Up &amp; Save</h2>
+            <h2 class="text-3xl font-black uppercase tracking-wide text-black md:text-4xl">Bundle Up &amp; Save</h2>
             <p class="mt-3 text-base text-slate-600">Get more for less with our exclusive product bundles</p>
         </div>
 
@@ -83,11 +83,11 @@
                     x-on:touchstart.passive="start($event)"
                     x-on:touchmove="move($event)"
                     x-on:touchend="stop()"
-                    class="no-scrollbar flex gap-6 overflow-x-auto select-none"
+                    class="no-scrollbar flex snap-x snap-mandatory gap-6 overflow-x-auto select-none"
                     style="cursor: grab; -webkit-overflow-scrolling: touch; scroll-behavior: smooth;"
                 >
                     @foreach ($bundles as $bundle)
-                        <div class="bundle-slide w-full shrink-0" draggable="false">
+                        <div class="bundle-slide w-full shrink-0 snap-start" draggable="false">
                             <div class="flex flex-col gap-4 md:flex-row md:items-stretch md:gap-0">
                                 {{-- Product cards --}}
                                 @foreach ($bundle->items as $index => $item)
@@ -107,7 +107,7 @@
                                                 <img
                                                     src="{{ $item->media_url }}"
                                                     alt="{{ $item->variant->product->name }}"
-                                                    class="h-full w-full object-contain p-4"
+                                                    class="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
                                                     draggable="false"
                                                 >
                                                 <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent transition-opacity duration-300 group-hover:from-black/70"></div>

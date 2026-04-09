@@ -9,40 +9,40 @@
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif
     </head>
-    <body class="bg-slate-100 text-slate-900">
+    <body class="bg-white text-black">
         @include('partials.header')
 
         <main class="mx-auto max-w-md p-6">
-            <div class="rounded border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="rounded border border-black/10 bg-white p-6 shadow-sm">
                 <h1 class="text-2xl font-semibold">Reset password</h1>
-                <p class="mt-1 text-sm text-slate-600">Choose a new password for your account.</p>
+                <p class="mt-1 text-sm text-black/60">Choose a new password for your account.</p>
 
                 <form method="POST" action="{{ route('password.store') }}" class="mt-5 grid gap-4">
                     @csrf
                     <input type="hidden" name="token" value="{{ $token }}">
 
                     <div>
-                        <label for="email" class="mb-1 block text-sm font-medium text-slate-700">Email</label>
-                        <input id="email" name="email" type="email" value="{{ old('email', $email) }}" required autocomplete="email" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                        <label for="email" class="mb-1 block text-sm font-medium text-black/70">Email</label>
+                        <input id="email" name="email" type="email" value="{{ old('email', $email) }}" required autocomplete="email" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                         @error('email')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                     </div>
 
                     <div>
-                        <label for="password" class="mb-1 block text-sm font-medium text-slate-700">New password</label>
-                        <input id="password" name="password" type="password" required autocomplete="new-password" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                        <label for="password" class="mb-1 block text-sm font-medium text-black/70">New password</label>
+                        <input id="password" name="password" type="password" required autocomplete="new-password" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                         @error('password')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                     </div>
 
                     <div>
-                        <label for="password_confirmation" class="mb-1 block text-sm font-medium text-slate-700">Confirm password</label>
-                        <input id="password_confirmation" name="password_confirmation" type="password" required autocomplete="new-password" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                        <label for="password_confirmation" class="mb-1 block text-sm font-medium text-black/70">Confirm password</label>
+                        <input id="password_confirmation" name="password_confirmation" type="password" required autocomplete="new-password" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                     </div>
 
-                    <button type="submit" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Reset password</button>
+                    <button type="submit" class="rounded bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80">Reset password</button>
                 </form>
 
-                <p class="mt-4 text-sm text-slate-600">
-                    <a href="{{ route('login') }}" class="text-blue-700 hover:underline">Back to login</a>
+                <p class="mt-4 text-sm text-black/60">
+                    <a href="{{ route('login') }}" class="font-medium text-black underline hover:no-underline">Back to login</a>
                 </p>
             </div>
         </main>

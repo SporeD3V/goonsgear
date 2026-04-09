@@ -5,7 +5,7 @@
         <div class="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
             {{-- Left: headline + copy --}}
             <div class="text-center lg:text-left">
-                <h2 class="text-3xl font-black uppercase tracking-tight text-white md:text-4xl lg:text-5xl">Don't Miss<br class="hidden lg:inline"> Exclusive Drops</h2>
+                <h2 class="text-3xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">Don't Miss<br class="hidden lg:inline"> Exclusive Drops</h2>
                 <p class="mt-4 text-base leading-relaxed text-white/60 lg:text-lg">
                     Sign up for our newsletter for special offers and limited releases. Unsubscribe anytime with one click.
                 </p>

@@ -50,7 +50,7 @@
 
     <div class="relative z-[2] mx-auto max-w-6xl">
         <div class="mb-10 text-center">
-            <h2 class="text-3xl font-black uppercase tracking-tight text-white md:text-4xl lg:text-5xl">New Arrivals</h2>
+            <h2 class="text-3xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">New Arrivals</h2>
             <p class="mt-3 text-base text-white/60">Fresh drops from the GoonsGear collection</p>
         </div>
 
@@ -130,7 +130,7 @@
                     x-on:touchstart.passive="start($event)"
                     x-on:touchmove="move($event)"
                     x-on:touchend="stop()"
-                    class="no-scrollbar flex gap-6 overflow-x-auto select-none"
+                    class="no-scrollbar flex snap-x snap-mandatory gap-6 overflow-x-auto select-none"
                     style="cursor: grab; -webkit-overflow-scrolling: touch; scroll-behavior: smooth;"
                 >
                 @foreach ($products as $product)
@@ -159,7 +159,7 @@
                     @endphp
 
                     <article
-                        class="group/card relative flex w-full shrink-0 flex-col overflow-hidden rounded-xl bg-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)]"
+                        class="group/card relative flex w-full shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl sm:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)]"
                         data-catalog-card
                         @if ($hasGroups)
                             data-catalog-attribute-order="{{ implode(',', $selectorData['attributeOrder']) }}"
@@ -190,7 +190,7 @@
                             @endif
 
                             <div class="p-5">
-                                <p class="text-xs font-bold uppercase tracking-widest text-slate-500">{{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>
+                                <p class="text-xs font-bold uppercase tracking-widest text-black/50">{{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>
                                 <h3 class="mt-2 text-lg font-black leading-tight text-black">{{ $product->name }}</h3>
                                 @if ($startingPrice !== null)
                                     <p class="mt-2 text-base font-bold text-black" data-catalog-price>
@@ -205,11 +205,11 @@
                         </a>
 
                         @if ($hasGroups && $hasMultipleVariants)
-                            <div class="mt-auto border-t border-slate-200 p-5" data-catalog-hover-section>
+                            <div class="mt-auto border-t border-black/10 p-5" data-catalog-hover-section>
                                 <div class="space-y-3" data-catalog-options>
                                     @foreach ($selectorData['groups'] as $attributeKey => $attributeGroup)
                                         <div>
-                                            <p class="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">{{ $attributeGroup['label'] }}</p>
+                                            <p class="mb-1.5 text-xs font-bold uppercase tracking-wider text-black/50">{{ $attributeGroup['label'] }}</p>
                                             <div class="flex flex-wrap gap-1.5">
                                                 @foreach ($attributeGroup['values'] as $attributeValue)
                                                     @php
@@ -223,7 +223,7 @@
                                                             type="button"
                                                             data-catalog-attribute="{{ $attributeKey }}"
                                                             data-catalog-attribute-value="{{ $attributeValue }}"
-                                                            class="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-all duration-200 hover:border-black hover:bg-black hover:text-white"
+                                                            class="rounded-md border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-black/70 transition-all duration-200 hover:border-black hover:bg-black hover:text-white"
                                                         >
                                                             {{ $attributeValue }}
                                                         </button>
@@ -265,7 +265,7 @@
                         @elseif (!$hasMultipleVariants && $catalogVariants->count() === 1)
                             @php $singleVariant = $catalogVariants->first(); @endphp
                             @if (!$singleVariant->is_out_of_stock)
-                                <div class="mt-auto border-t border-slate-200 p-5" data-catalog-hover-section>
+                                <div class="mt-auto border-t border-black/10 p-5" data-catalog-hover-section>
                                     <form method="POST" action="{{ route('cart.items.store') }}" data-catalog-cart-form>
                                         @csrf
                                         <input type="hidden" name="variant_id" value="{{ $singleVariant->id }}">

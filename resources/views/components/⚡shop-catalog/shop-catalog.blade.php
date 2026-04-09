@@ -1,6 +1,6 @@
 <div>
     {{-- Loading overlay --}}
-    <div wire:loading.delay class="pointer-events-none fixed inset-x-0 top-0 z-50 h-1 animate-pulse bg-slate-700"></div>
+    <div wire:loading.delay class="pointer-events-none fixed inset-x-0 top-0 z-50 h-1 animate-pulse bg-black"></div>
 
     @if ($activeCategory || $activeTag)
         {{-- Two-column layout --}}
@@ -11,7 +11,7 @@
                 <button
                     @click="filtersOpen = !filtersOpen"
                     type="button"
-                    class="flex w-full items-center justify-between rounded border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 lg:hidden"
+                    class="flex w-full items-center justify-between rounded border border-black/20 bg-white px-4 py-2.5 text-sm font-medium text-black/70 lg:hidden"
                 >
                     <span class="flex items-center gap-2">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"/></svg>
@@ -22,44 +22,44 @@
 
                 {{-- Filter panel --}}
                 <div
-                    class="mt-3 space-y-5 rounded border border-slate-200 bg-white p-4 max-lg:hidden lg:mt-0 lg:sticky lg:top-20"
+                    class="mt-3 space-y-5 rounded border border-black/10 bg-white p-4 max-lg:hidden lg:mt-0 lg:sticky lg:top-20"
                     :class="filtersOpen && '!block'"
                 >
                     {{-- Search --}}
                     <div class="relative" x-data="searchAutocomplete()" x-on:click.outside="open = false">
-                        <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Search</p>
+                        <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-black/50">Search</p>
                         <input
                             type="text"
                             wire:model.live.debounce.300ms="search"
                             x-on:input.debounce.300ms="performSearch($event.target.value)"
                             x-on:focus="showResults()"
                             placeholder="Search products…"
-                            class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                            class="w-full rounded border border-black/20 px-3 py-2 text-sm"
                             autocomplete="off"
                             data-search-endpoint="{{ route('api.shop.search') }}"
                         >
-                        <div wire:ignore x-show="open" x-cloak class="absolute left-0 right-0 top-full z-10 mt-1 max-h-64 overflow-y-auto rounded border border-slate-300 bg-white shadow-lg">
+                        <div wire:ignore x-show="open" x-cloak class="absolute left-0 right-0 top-full z-10 mt-1 max-h-64 overflow-y-auto rounded border border-black/20 bg-white shadow-lg">
                             <template x-for="result in results" :key="result.id">
-                                <a :href="result.url" class="group flex gap-3 border-b border-slate-100 p-2 text-sm hover:bg-slate-50">
+                                <a :href="result.url" class="group flex gap-3 border-b border-black/10 p-2 text-sm hover:bg-black/5">
                                     <template x-if="result.image">
                                         <div class="relative h-10 w-10 overflow-hidden rounded">
                                             <img :src="result.image" :alt="result.name" class="h-10 w-10 object-cover">
                                         </div>
                                     </template>
                                     <template x-if="!result.image">
-                                        <div class="h-10 w-10 rounded bg-slate-100"></div>
+                                        <div class="h-10 w-10 rounded bg-black/10"></div>
                                     </template>
                                     <div class="flex-1">
-                                        <div class="font-medium text-slate-900" x-text="result.name"></div>
-                                        <div class="text-xs text-slate-600" x-text="result.category || 'Uncategorized'"></div>
+                                        <div class="font-medium text-black" x-text="result.name"></div>
+                                        <div class="text-xs text-black/60" x-text="result.category || 'Uncategorized'"></div>
                                         <template x-if="result.price !== null">
-                                            <div class="text-xs font-medium text-slate-800" x-text="'€' + Number(result.price).toFixed(2)"></div>
+                                            <div class="text-xs font-medium text-black/80" x-text="'€' + Number(result.price).toFixed(2)"></div>
                                         </template>
                                     </div>
                                 </a>
                             </template>
                             <template x-if="results.length === 0 && noResults">
-                                <div class="p-3 text-center text-xs text-slate-600">No products found</div>
+                                <div class="p-3 text-center text-xs text-black/60">No products found</div>
                             </template>
                         </div>
                     </div>
@@ -72,31 +72,31 @@
                             x-on:click.outside="open = false"
                             wire:ignore
                         >
-                            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $shopTags->contains('type', 'brand') ? 'Artist / Brand' : 'Artist' }}</p>
+                            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-black/50">{{ $shopTags->contains('type', 'brand') ? 'Artist / Brand' : 'Artist' }}</p>
                             <input
                                 type="text"
                                 x-model="query"
                                 x-on:input="filter()"
                                 x-on:focus="showAll()"
                                 placeholder="Search {{ $shopTags->contains('type', 'brand') ? 'artists & brands' : 'artists' }}…"
-                                class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                                class="w-full rounded border border-black/20 px-3 py-2 text-sm"
                                 autocomplete="off"
                             >
-                            <div x-show="open" x-cloak class="absolute left-0 right-0 top-full z-10 mt-1 max-h-64 overflow-y-auto rounded border border-slate-300 bg-white shadow-lg">
+                            <div x-show="open" x-cloak class="absolute left-0 right-0 top-full z-10 mt-1 max-h-64 overflow-y-auto rounded border border-black/20 bg-white shadow-lg">
                                 <template x-for="group in filtered" :key="group.type">
                                     <div>
-                                        <div class="sticky top-0 border-b border-slate-100 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500" x-text="group.type"></div>
+                                        <div class="sticky top-0 border-b border-black/10 bg-black/5 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-black/50" x-text="group.type"></div>
                                         <template x-for="tag in group.tags" :key="tag.slug">
                                             <a
                                                 :href="tag.url"
-                                                class="block px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                                class="block px-3 py-2 text-sm text-black/70 hover:bg-black/5"
                                                 x-text="tag.name"
                                             ></a>
                                         </template>
                                     </div>
                                 </template>
                                 <template x-if="filtered.length === 0">
-                                    <div class="p-3 text-center text-xs text-slate-600">No matches found</div>
+                                    <div class="p-3 text-center text-xs text-black/60">No matches found</div>
                                 </template>
                             </div>
                         </div>
@@ -105,8 +105,8 @@
                     {{-- Shop for --}}
                     @if ($sizeProfiles->isNotEmpty())
                         <div>
-                            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Shop for</p>
-                            <select wire:model.live="sizeProfileId" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-black/50">Shop for</p>
+                            <select wire:model.live="sizeProfileId" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                                 <option value="0">All sizes</option>
                                 @foreach ($sizeProfiles as $profile)
                                     <option value="{{ $profile->id }}">
@@ -128,16 +128,16 @@
                                 initialMax: {{ $maxPrice !== null && $maxPrice !== '' ? (int) $maxPrice : (int) $priceCeiling }},
                             })"
                         >
-                            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Price</p>
+                            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-black/50">Price</p>
                             <div class="flex items-center gap-2">
-                                <span class="text-xs tabular-nums text-slate-600" x-text="'€' + rangeMin"></span>
+                                <span class="text-xs tabular-nums text-black/60" x-text="'€' + rangeMin"></span>
                                 <div class="relative h-6 flex-1">
-                                    <div class="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded bg-slate-200"></div>
-                                    <div class="absolute top-1/2 h-1 -translate-y-1/2 rounded bg-slate-700" :style="'left:' + minPercent + '%;right:' + (100 - maxPercent) + '%'"></div>
-                                    <input type="range" :min="floor" :max="ceiling" x-model.number="rangeMin" x-on:change="commitMin()" class="pointer-events-none absolute inset-0 z-[2] h-full w-full cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-slate-700 [&::-moz-range-thumb]:bg-white [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-slate-700 [&::-webkit-slider-thumb]:bg-white">
-                                    <input type="range" :min="floor" :max="ceiling" x-model.number="rangeMax" x-on:change="commitMax()" class="pointer-events-none absolute inset-0 z-[3] h-full w-full cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-slate-700 [&::-moz-range-thumb]:bg-white [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-slate-700 [&::-webkit-slider-thumb]:bg-white">
+                                    <div class="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded bg-black/20"></div>
+                                    <div class="absolute top-1/2 h-1 -translate-y-1/2 rounded bg-black" :style="'left:' + minPercent + '%;right:' + (100 - maxPercent) + '%'"></div>
+                                    <input type="range" :min="floor" :max="ceiling" x-model.number="rangeMin" x-on:change="commitMin()" class="pointer-events-none absolute inset-0 z-[2] h-full w-full cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-black [&::-moz-range-thumb]:bg-white [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-black [&::-webkit-slider-thumb]:bg-white">
+                                    <input type="range" :min="floor" :max="ceiling" x-model.number="rangeMax" x-on:change="commitMax()" class="pointer-events-none absolute inset-0 z-[3] h-full w-full cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-black [&::-moz-range-thumb]:bg-white [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-black [&::-webkit-slider-thumb]:bg-white">
                                 </div>
-                                <span class="text-xs tabular-nums text-slate-600" x-text="'€' + rangeMax"></span>
+                                <span class="text-xs tabular-nums text-black/60" x-text="'€' + rangeMax"></span>
                             </div>
                         </div>
                     @endif
@@ -145,7 +145,7 @@
                     {{-- Shoe size --}}
                     @if ($availableShoeSizes !== [])
                         <div>
-                            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Shoe size</p>
+                            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-black/50">Shoe size</p>
                             @php
                                 $euToUs = [
                                     '36' => '4', '37' => '5', '38' => '5.5', '39' => '6.5',
@@ -153,7 +153,7 @@
                                     '43' => '9.5', '44' => '10', '45' => '11.5', '46' => '12.5',
                                 ];
                             @endphp
-                            <select wire:model.live="selectedShoeSize" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <select wire:model.live="selectedShoeSize" class="w-full rounded border border-black/20 px-3 py-2 text-sm">
                                 <option value="">All sizes</option>
                                 @foreach ($availableShoeSizes as $eu)
                                     <option value="{{ $eu }}">EU {{ $eu }} / US {{ $euToUs[$eu] ?? $eu }}</option>
@@ -165,14 +165,14 @@
                     {{-- Clothing size --}}
                     @if ($availableSizes !== [])
                         <div>
-                            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Size</p>
+                            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-black/50">Size</p>
                             <div class="flex flex-wrap gap-1">
                                 @foreach ($availableSizes as $size)
                                     <button
                                         type="button"
                                         wire:click="toggleSize('{{ $size }}')"
                                         wire:key="size-{{ $size }}"
-                                        class="rounded border px-2 py-1 text-xs transition {{ in_array($size, $selectedSizes, true) ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500' }}"
+                                        class="rounded border px-2 py-1 text-xs transition {{ in_array($size, $selectedSizes, true) ? 'border-black bg-black text-white' : 'border-black/20 bg-white text-black/70 hover:border-black/50' }}"
                                     >
                                         {{ $size }}
                                     </button>
@@ -183,14 +183,14 @@
 
                     {{-- Out-of-stock --}}
                     @if ($activeCategory || $activeTag)
-                        <label class="flex items-center gap-2 text-sm text-slate-700">
-                            <input type="checkbox" wire:model.live="includeOutOfStock" class="rounded border-slate-300">
+                        <label class="flex items-center gap-2 text-sm text-black/70">
+                            <input type="checkbox" wire:model.live="includeOutOfStock" class="rounded border-black/20">
                             Show out-of-stock
                         </label>
                     @endif
 
                     {{-- Reset --}}
-                    <button wire:click="resetFilters" type="button" class="w-full rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                    <button wire:click="resetFilters" type="button" class="w-full rounded border border-black/20 px-3 py-2 text-sm text-black/70 hover:bg-black/5">
                         Reset filters
                     </button>
                 </div>
@@ -206,8 +206,8 @@
                             type="button"
                             @class([
                                 'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition',
-                                'border-slate-800 bg-slate-800 text-white' => $sort === 'newest',
-                                'border-slate-300 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-800' => $sort !== 'newest',
+                                'border-black bg-black text-white' => $sort === 'newest',
+                                'border-black/20 bg-white text-black/60 hover:border-black/40 hover:text-black/80' => $sort !== 'newest',
                             ])
                         >
                             <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
@@ -219,8 +219,8 @@
                             type="button"
                             @class([
                                 'inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm font-medium transition',
-                                'border-slate-800 bg-slate-800 text-white' => $sort === 'name_asc',
-                                'border-slate-300 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-800' => $sort !== 'name_asc',
+                                'border-black bg-black text-white' => $sort === 'name_asc',
+                                'border-black/20 bg-white text-black/60 hover:border-black/40 hover:text-black/80' => $sort !== 'name_asc',
                             ])
                         >
                             A – Z
@@ -232,8 +232,8 @@
                             type="button"
                             @class([
                                 'inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm font-medium transition',
-                                'border-slate-800 bg-slate-800 text-white' => $sort === 'name_desc',
-                                'border-slate-300 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-800' => $sort !== 'name_desc',
+                                'border-black bg-black text-white' => $sort === 'name_desc',
+                                'border-black/20 bg-white text-black/60 hover:border-black/40 hover:text-black/80' => $sort !== 'name_desc',
                             ])
                         >
                             Z – A
@@ -245,8 +245,8 @@
                             type="button"
                             @class([
                                 'inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm font-medium transition',
-                                'border-slate-800 bg-slate-800 text-white' => $sort === 'price_asc',
-                                'border-slate-300 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-800' => $sort !== 'price_asc',
+                                'border-black bg-black text-white' => $sort === 'price_asc',
+                                'border-black/20 bg-white text-black/60 hover:border-black/40 hover:text-black/80' => $sort !== 'price_asc',
                             ])
                         >
                             Price
@@ -258,8 +258,8 @@
                             type="button"
                             @class([
                                 'inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm font-medium transition',
-                                'border-slate-800 bg-slate-800 text-white' => $sort === 'price_desc',
-                                'border-slate-300 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-800' => $sort !== 'price_desc',
+                                'border-black bg-black text-white' => $sort === 'price_desc',
+                                'border-black/20 bg-white text-black/60 hover:border-black/40 hover:text-black/80' => $sort !== 'price_desc',
                             ])
                         >
                             Price
@@ -268,14 +268,14 @@
                     </div>
 
                     <div>
-                        <span class="text-sm text-slate-500" wire:loading.remove>{{ $products->total() }} product(s)</span>
-                        <span class="text-sm text-slate-400" wire:loading>Updating…</span>
+                        <span class="text-sm text-black/50" wire:loading.remove>{{ $products->total() }} product(s)</span>
+                        <span class="text-sm text-black/40" wire:loading>Updating…</span>
                     </div>
                 </div>
     @endif
 
     @if ($products->isEmpty())
-        <p class="rounded border border-slate-200 bg-white p-4 text-sm text-slate-600">No active products found.</p>
+        <p class="rounded border border-black/10 bg-white p-4 text-sm text-black/60">No active products found.</p>
     @else
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             @foreach ($products as $product)
@@ -305,7 +305,7 @@
 
                 <article
                     wire:key="product-{{ $product->id }}"
-                    class="group/card relative flex flex-col rounded border border-slate-200 bg-white p-4 shadow-sm"
+                    class="group/card relative flex flex-col rounded border border-black/10 bg-white p-4 shadow-sm"
                     data-catalog-card
                     @if ($hasGroups)
                         data-catalog-attribute-order="{{ implode(',', $selectorData['attributeOrder']) }}"
@@ -340,7 +340,7 @@
                         @if ($mediaUrl)
                             <div class="relative mb-3 h-52 w-full overflow-hidden rounded bg-white">
                                 @if (in_array($product->id, $bundleProductIds))
-                                    <span class="absolute right-2 top-2 z-10 rounded border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-black">Part of a bundle</span>
+                                    <span class="absolute right-2 top-2 z-10 rounded border border-black/20 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-black">Part of a bundle</span>
                                 @endif
                                 <img
                                     src="{{ $mediaUrl }}"
@@ -359,9 +359,9 @@
                             </div>
                         @endif
                         <h2 class="text-lg font-semibold">{{ $product->name }}</h2>
-                        <p class="mt-1 text-sm text-slate-600">{{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>
+                        <p class="mt-1 text-sm text-black/60">{{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>
                         @if ($startingPrice !== null)
-                            <p class="mt-1 text-sm font-medium text-slate-800" data-catalog-price>
+                            <p class="mt-1 text-sm font-medium text-black/80" data-catalog-price>
                                 @if ($hasPriceRange)
                                     From &euro;{{ number_format((float) $startingPrice, 2) }}
                                 @else
@@ -370,7 +370,7 @@
                             </p>
                         @endif
                         @if ($product->plainExcerpt() !== '')
-                            <p class="mt-2 text-sm text-slate-700">{{ $product->plainExcerpt() }}</p>
+                            <p class="mt-2 text-sm text-black/70">{{ $product->plainExcerpt() }}</p>
                         @endif
                     </a>
 
@@ -379,7 +379,7 @@
                             <div class="space-y-2" data-catalog-options>
                                 @foreach ($selectorData['groups'] as $attributeKey => $attributeGroup)
                                     <div>
-                                        <p class="mb-1 text-xs font-medium text-slate-500">{{ $attributeGroup['label'] }}</p>
+                                        <p class="mb-1 text-xs font-medium text-black/50">{{ $attributeGroup['label'] }}</p>
                                         <div class="flex flex-wrap gap-1">
                                             @foreach ($attributeGroup['values'] as $attributeValue)
                                                 @php
@@ -393,7 +393,7 @@
                                                         type="button"
                                                         data-catalog-attribute="{{ $attributeKey }}"
                                                         data-catalog-attribute-value="{{ $attributeValue }}"
-                                                        class="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 transition hover:border-slate-500"
+                                                        class="rounded border border-black/20 bg-white px-2 py-1 text-xs text-black/70 transition hover:border-black/50"
                                                     >
                                                         {{ $attributeValue }}
                                                     </button>
@@ -426,7 +426,7 @@
                                 <button
                                     type="submit"
                                     data-catalog-add-to-cart
-                                    class="w-full rounded bg-slate-800 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-900"
+                                    class="w-full rounded bg-black px-3 py-2 text-sm font-medium text-white transition hover:bg-black/80"
                                 >
                                     Select options
                                 </button>
@@ -444,7 +444,7 @@
                                         type="submit"
                                         data-catalog-add-to-cart
                                         data-catalog-single-variant
-                                        class="w-full rounded bg-slate-800 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-900"
+                                        class="w-full rounded bg-black px-3 py-2 text-sm font-medium text-white transition hover:bg-black/80"
                                     >
                                         Add to cart &mdash; &euro;{{ number_format((float) $singleVariant->price, 2) }}
                                     </button>

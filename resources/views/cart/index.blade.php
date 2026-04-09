@@ -9,7 +9,7 @@
             @vite(['resources/css/app.css'])
         @endif
     </head>
-    <body class="bg-slate-100 text-slate-900">
+    <body class="bg-white text-black">
         @include('partials.header')
 
         <div class="mx-auto max-w-6xl p-6">
@@ -27,25 +27,25 @@
             @endif
 
             @if (empty($items))
-                <p class="rounded border border-slate-200 bg-white p-4 text-sm text-slate-600">Your cart is empty.</p>
+                <p class="rounded border border-black/10 bg-white p-4 text-sm text-black/60">Your cart is empty.</p>
             @else
-                <div class="mb-4 rounded border border-slate-200 bg-white p-4">
+                <div class="mb-4 rounded border border-black/10 bg-white p-4">
                     <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                         <form method="POST" action="{{ route('cart.coupon.apply') }}" class="flex flex-1 flex-col gap-2 sm:flex-row sm:items-end">
                             @csrf
                             <div class="flex-1">
-                                <label for="coupon_code" class="mb-1 block text-sm font-medium text-slate-700">Coupon code</label>
-                                <input id="coupon_code" name="coupon_code" type="text" value="{{ old('coupon_code', $couponCode) }}" class="w-full rounded border border-slate-300 px-3 py-2 text-sm uppercase" placeholder="SAVE10">
+                                <label for="coupon_code" class="mb-1 block text-sm font-medium text-black/70">Coupon code</label>
+                                <input id="coupon_code" name="coupon_code" type="text" value="{{ old('coupon_code', $couponCode) }}" class="w-full rounded border border-black/20 px-3 py-2 text-sm uppercase" placeholder="SAVE10">
                                 @error('coupon_code')<p class="mt-1 text-xs text-rose-600">{{ $message }}</p>@enderror
                             </div>
-                            <button type="submit" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Add code</button>
+                            <button type="submit" class="rounded bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80">Add code</button>
                         </form>
 
                         @if (!empty($selectedCouponCodes))
                             <form method="POST" action="{{ route('cart.coupon.remove') }}">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">Clear selected coupons</button>
+                                <button type="submit" class="rounded border border-black/20 px-3 py-2 text-sm text-black/70 hover:bg-black/5">Clear selected coupons</button>
                             </form>
                         @endif
                     </div>
@@ -85,26 +85,26 @@
 
                     @auth
                         @if ($availableCoupons->isNotEmpty())
-                            <form method="POST" action="{{ route('cart.coupon.select') }}" class="mt-4 rounded border border-slate-200 bg-slate-50 p-3">
+                            <form method="POST" action="{{ route('cart.coupon.select') }}" class="mt-4 rounded border border-black/10 bg-black/5 p-3">
                                 @csrf
-                                <p class="text-sm font-medium text-slate-800">Choose from your account coupons</p>
-                                <p class="text-xs text-slate-500">Select one or more. We will automatically apply the best valid combination.</p>
+                                <p class="text-sm font-medium text-black/80">Choose from your account coupons</p>
+                                <p class="text-xs text-black/50">Select one or more. We will automatically apply the best valid combination.</p>
 
                                 <div class="mt-3 space-y-2">
                                     @foreach ($availableCoupons as $coupon)
-                                        <label class="flex cursor-pointer items-start gap-2 rounded border border-slate-200 bg-white px-3 py-2 text-sm">
+                                        <label class="flex cursor-pointer items-start gap-2 rounded border border-black/10 bg-white px-3 py-2 text-sm">
                                             <input
                                                 type="checkbox"
                                                 name="coupon_codes[]"
                                                 value="{{ $coupon->code }}"
-                                                class="mt-0.5 rounded border-slate-300"
+                                                class="mt-0.5 rounded border-black/20"
                                                 @checked(in_array($coupon->code, $selectedCouponCodes, true))
                                             >
                                             <span>
-                                                <span class="font-medium text-slate-800">{{ $coupon->code }}</span>
-                                                <span class="text-xs text-slate-600">{{ $coupon->is_stackable ? 'Can combine' : 'Exclusive' }}</span>
+                                                <span class="font-medium text-black/80">{{ $coupon->code }}</span>
+                                                <span class="text-xs text-black/60">{{ $coupon->is_stackable ? 'Can combine' : 'Exclusive' }}</span>
                                                 @if ($coupon->stack_group)
-                                                    <span class="text-xs text-slate-500">(Group {{ $coupon->stack_group }})</span>
+                                                    <span class="text-xs text-black/50">(Group {{ $coupon->stack_group }})</span>
                                                 @endif
                                             </span>
                                         </label>
@@ -112,28 +112,28 @@
                                 </div>
 
                                 <div class="mt-3">
-                                    <button type="submit" class="rounded bg-slate-800 px-3 py-2 text-xs font-medium text-white hover:bg-slate-900">Update selected coupons</button>
+                                    <button type="submit" class="rounded bg-black px-3 py-2 text-xs font-medium text-white hover:bg-black/80">Update selected coupons</button>
                                 </div>
                             </form>
                         @endif
                     @endif
                 </div>
 
-                <div class="overflow-x-auto rounded border border-slate-200 bg-white">
+                <div class="overflow-x-auto rounded border border-black/10 bg-white">
                     <table class="min-w-full text-sm">
-                        <thead class="bg-slate-50 text-slate-700">
+                        <thead class="bg-black/5 text-black/70">
                             <tr>
-                                <th class="border-b border-slate-200 px-3 py-2 text-left">Item</th>
-                                <th class="border-b border-slate-200 px-3 py-2 text-left">Price</th>
-                                <th class="border-b border-slate-200 px-3 py-2 text-left">Qty</th>
-                                <th class="border-b border-slate-200 px-3 py-2 text-left">Total</th>
-                                <th class="border-b border-slate-200 px-3 py-2 text-left">Actions</th>
+                                <th class="border-b border-black/10 px-3 py-2 text-left">Item</th>
+                                <th class="border-b border-black/10 px-3 py-2 text-left">Price</th>
+                                <th class="border-b border-black/10 px-3 py-2 text-left">Qty</th>
+                                <th class="border-b border-black/10 px-3 py-2 text-left">Total</th>
+                                <th class="border-b border-black/10 px-3 py-2 text-left">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($items as $item)
                                 <tr>
-                                    <td class="border-b border-slate-200 px-3 py-3 align-top">
+                                    <td class="border-b border-black/10 px-3 py-3 align-top">
                                         <div class="flex gap-3">
                                             @if ($item['image'] ?? null)
                                                 <img src="{{ $item['image'] }}" alt="{{ $item['product_name'] }}" class="h-16 w-16 rounded object-cover">
@@ -142,16 +142,16 @@
                                             @endif
                                             <div>
                                                 @if ($item['url'])
-                                                    <a href="{{ $item['url'] }}" class="font-medium text-slate-900 hover:underline">{{ $item['product_name'] }}</a>
+                                                    <a href="{{ $item['url'] }}" class="font-medium text-black hover:underline">{{ $item['product_name'] }}</a>
                                                 @else
-                                                    <p class="font-medium text-slate-900">{{ $item['product_name'] }}</p>
+                                                    <p class="font-medium text-black">{{ $item['product_name'] }}</p>
                                                 @endif
-                                                <p class="text-xs text-slate-600">{{ $item['variant_name'] }} ({{ $item['sku'] }})</p>
+                                                <p class="text-xs text-black/60">{{ $item['variant_name'] }} ({{ $item['sku'] }})</p>
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="border-b border-slate-200 px-3 py-3 align-top">&euro;{{ number_format((float) $item['price'], 2) }}</td>
-                                    <td class="border-b border-slate-200 px-3 py-3 align-top">
+                                    <td class="border-b border-black/10 px-3 py-3 align-top">&euro;{{ number_format((float) $item['price'], 2) }}</td>
+                                    <td class="border-b border-black/10 px-3 py-3 align-top">
                                         <form method="POST" action="{{ route('cart.items.update', $item['variant_id']) }}" class="flex items-center gap-2">
                                             @csrf
                                             @method('PATCH')
@@ -165,13 +165,13 @@
                                                     max="{{ $item['max_quantity'] }}"
                                                 @endif
                                                 value="{{ $item['quantity'] }}"
-                                                class="w-20 rounded border border-slate-300 px-2 py-1"
+                                                class="w-20 rounded border border-black/20 px-2 py-1"
                                             >
-                                            <button type="submit" class="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50">Update</button>
+                                            <button type="submit" class="rounded border border-black/20 px-2 py-1 text-xs text-black/70 hover:bg-black/5">Update</button>
                                         </form>
                                     </td>
-                                    <td class="border-b border-slate-200 px-3 py-3 align-top">&euro;{{ number_format((float) $item['price'] * (int) $item['quantity'], 2) }}</td>
-                                    <td class="border-b border-slate-200 px-3 py-3 align-top">
+                                    <td class="border-b border-black/10 px-3 py-3 align-top">&euro;{{ number_format((float) $item['price'] * (int) $item['quantity'], 2) }}</td>
+                                    <td class="border-b border-black/10 px-3 py-3 align-top">
                                         <form method="POST" action="{{ route('cart.items.destroy', $item['variant_id']) }}">
                                             @csrf
                                             @method('DELETE')
@@ -184,8 +184,8 @@
                     </table>
                 </div>
 
-                <div class="mt-4 rounded border border-slate-200 bg-white p-4">
-                    <div class="flex items-center justify-between text-sm text-slate-600">
+                <div class="mt-4 rounded border border-black/10 bg-white p-4">
+                    <div class="flex items-center justify-between text-sm text-black/60">
                         <p>Subtotal</p>
                         <p>&euro;{{ number_format((float) $subtotal, 2) }}</p>
                     </div>
@@ -204,14 +204,14 @@
                         </div>
                     @endif
 
-                    <div class="mt-3 flex items-center justify-between border-t border-slate-200 pt-3">
+                    <div class="mt-3 flex items-center justify-between border-t border-black/10 pt-3">
                         <div>
-                            <p class="text-sm text-slate-600">Total</p>
-                            <p class="text-[11px] text-slate-400">Before shipping &amp; taxes</p>
+                            <p class="text-sm text-black/60">Total</p>
+                            <p class="text-[11px] text-black/40">Before shipping &amp; taxes</p>
                         </div>
                         <div class="flex items-center gap-4">
                             <p class="text-lg font-semibold">&euro;{{ number_format((float) $total, 2) }}</p>
-                            <a href="{{ route('checkout.index') }}" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Proceed to checkout</a>
+                            <a href="{{ route('checkout.index') }}" class="rounded bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80">Proceed to checkout</a>
                         </div>
                     </div>
                 </div>

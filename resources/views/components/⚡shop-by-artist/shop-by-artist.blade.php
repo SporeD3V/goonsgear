@@ -4,20 +4,20 @@
     <div class="relative z-[1] mx-auto max-w-6xl">
         {{-- Section header --}}
         <div class="mb-10 text-center">
-            <h2 class="text-3xl font-black uppercase tracking-tight text-slate-900 md:text-4xl lg:text-5xl">How Do You Want to Shop?</h2>
+            <h2 class="text-3xl font-black uppercase tracking-wide text-black md:text-4xl lg:text-5xl">How Do You Want to Shop?</h2>
             <p class="mt-3 text-base text-slate-600">Choose your shopping style</p>
         </div>
 
         {{-- Mode toggle --}}
         <div class="mx-auto mb-12 flex justify-center">
-            <div class="inline-flex overflow-hidden rounded border border-slate-900">
+            <div class="inline-flex overflow-hidden rounded border border-black">
                 <button
                     wire:click="$set('mode', 'artist')"
                     type="button"
                     @class([
                         'px-8 py-3 text-sm font-bold uppercase tracking-widest transition-all duration-300',
-                        'bg-slate-900 text-white' => $mode === 'artist',
-                        'bg-white text-slate-900 hover:bg-slate-100' => $mode !== 'artist',
+                        'bg-black text-white' => $mode === 'artist',
+                        'bg-white text-black hover:bg-slate-100' => $mode !== 'artist',
                     ])
                 >
                     By Artist
@@ -26,9 +26,9 @@
                     wire:click="$set('mode', 'category')"
                     type="button"
                     @class([
-                        'px-8 py-3 text-sm font-bold uppercase tracking-widest border-l border-slate-900 transition-all duration-300',
-                        'bg-slate-900 text-white' => $mode === 'category',
-                        'bg-white text-slate-900 hover:bg-slate-100' => $mode !== 'category',
+                        'px-8 py-3 text-sm font-bold uppercase tracking-widest border-l border-black transition-all duration-300',
+                        'bg-black text-white' => $mode === 'category',
+                        'bg-white text-black hover:bg-slate-100' => $mode !== 'category',
                     ])
                 >
                     By Category
