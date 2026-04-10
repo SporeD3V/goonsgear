@@ -639,6 +639,8 @@
             </div>
         </div>
 
+        <livewire:⚡recently-viewed :current-product-id="$product->id" lazy />
+
         @include('partials.footer')
     </body>
 </html>
