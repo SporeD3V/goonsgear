@@ -639,7 +639,7 @@
             </div>
         </div>
 
-        <livewire:recently-viewed :current-product-id="$product->id" lazy />
+        <livewire:recently-viewed :current-product-id="$product->id" />
 
         @include('partials.footer')
     </body>

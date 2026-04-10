@@ -27,7 +27,7 @@ new class extends Component
      */
     public function loadProducts(array $ids): void
     {
-        $this->viewedIds = array_map('intval', array_slice($ids, 0, 12));
+        $this->viewedIds = array_map('intval', array_slice($ids, 0, 20));
     }
 
     public function render(): View
@@ -36,7 +36,7 @@ new class extends Component
 
         if (! empty($this->viewedIds)) {
             $ids = array_filter($this->viewedIds, fn (int $id): bool => $id !== $this->currentProductId);
-            $ids = array_slice(array_values($ids), 0, 8);
+            $ids = array_slice(array_values($ids), 0, 12);
 
             if (! empty($ids)) {
                 $products = Product::query()
