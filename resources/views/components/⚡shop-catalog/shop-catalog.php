@@ -215,15 +215,25 @@ new class extends Component
                     })
                 )
                 ->when(
-                    $filterCategoryIds !== [],
+                    $filterCategoryIds !== [] && ! in_array($categorySlug, ['sale', 'discounts', 'bundles'], true),
                     fn ($query) => $query->whereHas('categories', fn ($cq) => $cq->whereIn('categories.id', $filterCategoryIds))
                 )
                 ->when(
-                    $categorySlug === 'sale',
-                    fn ($query) => $query->where(function ($saleQuery): void {
-                        $saleQuery->whereHas('variants', fn ($vq) => $vq->where('is_active', true)->whereNotNull('compare_at_price')->whereColumn('compare_at_price', '>', 'price'))
-                            ->orWhereHas('bundleDiscount', fn ($bq) => $bq->where('is_active', true)->whereNotNull('bundle_price'));
-                    })
+                    in_array($categorySlug, ['sale', 'discounts', 'bundles'], true),
+                    function ($query) use ($categorySlug) {
+                        if ($categorySlug === 'bundles') {
+                            return $query->whereHas('bundleDiscount', fn ($bq) => $bq->where('is_active', true)->whereNotNull('bundle_price'));
+                        }
+
+                        if ($categorySlug === 'discounts') {
+                            return $query->whereHas('variants', fn ($vq) => $vq->where('is_active', true)->whereNotNull('compare_at_price')->whereColumn('compare_at_price', '>', 'price'));
+                        }
+
+                        return $query->where(function ($saleQuery): void {
+                            $saleQuery->whereHas('variants', fn ($vq) => $vq->where('is_active', true)->whereNotNull('compare_at_price')->whereColumn('compare_at_price', '>', 'price'))
+                                ->orWhereHas('bundleDiscount', fn ($bq) => $bq->where('is_active', true)->whereNotNull('bundle_price'));
+                        });
+                    }
                 )
                 ->when(
                     $tagSlug !== '',
@@ -390,9 +400,9 @@ new class extends Component
             ->withQueryString();
 
         $bundleProductIds = BundleDiscountItem::query()
-            ->whereHas('bundleDiscount', fn ($q) => $q->where('is_active', true))
-            ->join('product_variants', 'bundle_discount_items.product_variant_id', '=', 'product_variants.id')
-            ->pluck('product_variants.product_id')
+            ->whereNotNull('product_id')
+            ->whereHas('bundleDiscount', fn ($q) => $q->where('is_active', true)->whereNotNull('bundle_price'))
+            ->pluck('product_id')
             ->unique()
             ->all();
 

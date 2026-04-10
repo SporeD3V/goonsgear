@@ -4,9 +4,10 @@
         ->whereNull('parent_id')
         ->where(function ($q) {
             $q->whereHas('products')
-              ->orWhereHas('children', fn ($cq) => $cq->where('is_active', true)->whereHas('products'));
+              ->orWhereHas('children', fn ($cq) => $cq->where('is_active', true)->whereHas('products'))
+              ->orWhere('slug', 'sale');
         })
-        ->with(['children' => fn ($q) => $q->where('is_active', true)->whereHas('products')->orderBy('name')])
+        ->with(['children' => fn ($q) => $q->where('is_active', true)->orderBy('sort_order')->orderBy('name')])
         ->orderBy('sort_order')
         ->orderBy('name')
         ->get(['id', 'name', 'slug']);
@@ -35,7 +36,26 @@
         {{-- Categories Nav (desktop) --}}
         <nav class="hidden items-center gap-1 lg:flex" aria-label="Categories">
             @foreach ($headerCategories as $cat)
-                @if ($cat->slug === 'sale')
+                @if ($cat->slug === 'sale' && $cat->children->isNotEmpty())
+                    <div class="group relative">
+                        <a href="{{ route('shop.category', $cat->slug) }}"
+                           class="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-black uppercase tracking-wider text-red-600 transition-all duration-200 hover:bg-red-50"
+                           title="Sale">
+                            Sale
+                            <svg class="h-3.5 w-3.5 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+                            </svg>
+                        </a>
+                        <div class="invisible absolute left-0 top-full z-50 min-w-48 overflow-hidden rounded-xl border border-black/5 bg-white opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:opacity-100">
+                            @foreach ($cat->children as $child)
+                                <a href="{{ route('shop.category', $child->slug) }}"
+                                   class="block px-5 py-2.5 text-sm font-medium text-red-600/70 transition-colors duration-150 hover:bg-red-600 hover:text-white">
+                                    {{ $child->name }}
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+                @elseif ($cat->slug === 'sale')
                     <a href="{{ route('shop.category', $cat->slug) }}"
                        class="rounded-lg px-3 py-2 text-sm font-black uppercase tracking-wider text-red-600 transition-all duration-200 hover:bg-red-50"
                        title="Sale">
@@ -134,7 +154,47 @@
             <div class="space-y-1">
                 <p class="mb-3 text-xs font-bold uppercase tracking-widest text-black/40">Shop</p>
                 @foreach ($headerCategories as $cat)
-                    @if ($cat->slug === 'sale')
+                    @if ($cat->slug === 'sale' && $cat->children->isNotEmpty())
+                        <div x-data="{ expanded: false }">
+                            <button
+                                type="button"
+                                x-on:click="expanded = !expanded"
+                                class="flex w-full items-center justify-between rounded-lg px-4 py-3 text-base font-black uppercase tracking-wider text-red-600 transition-all duration-200 hover:bg-red-50"
+                            >
+                                <span class="flex items-center gap-3">
+                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6Z"/>
+                                    </svg>
+                                    Sale
+                                </span>
+                                <svg class="h-4 w-4 text-red-400 transition-transform duration-200" :class="expanded && 'rotate-180'" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+                                </svg>
+                            </button>
+                            <div
+                                x-show="expanded"
+                                x-cloak
+                                x-transition:enter="transition ease-out duration-200"
+                                x-transition:enter-start="opacity-0 -translate-y-1"
+                                x-transition:enter-end="opacity-100 translate-y-0"
+                                class="ml-4 space-y-0.5 border-l-2 border-red-100 pl-4"
+                            >
+                                <a href="{{ route('shop.category', $cat->slug) }}"
+                                   x-on:click="mobileOpen = false"
+                                   class="block rounded-lg px-3 py-2.5 text-sm font-semibold text-red-600/70 transition-colors duration-150 hover:bg-red-600 hover:text-white">
+                                    All Sale
+                                </a>
+                                @foreach ($cat->children as $child)
+                                    <a href="{{ route('shop.category', $child->slug) }}"
+                                       x-on:click="mobileOpen = false"
+                                       class="block rounded-lg px-3 py-2.5 text-sm font-semibold text-red-600/70 transition-colors duration-150 hover:bg-red-600 hover:text-white">
+                                        {{ $child->name }}
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @elseif ($cat->slug === 'sale')
                         <a href="{{ route('shop.category', $cat->slug) }}"
                            x-on:click="mobileOpen = false"
                            class="flex items-center gap-3 rounded-lg px-4 py-3 text-base font-black uppercase tracking-wider text-red-600 transition-all duration-200 hover:bg-red-50">

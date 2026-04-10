@@ -232,10 +232,15 @@ new class extends Component
             return;
         }
 
-        $saleCategory = Category::where('slug', 'sale')->first();
+        $bundlesCategory = Category::where('slug', 'bundles')
+            ->whereHas('parent', fn ($q) => $q->where('slug', 'sale'))
+            ->first();
 
-        if ($saleCategory) {
-            Product::find($bundle->product_id)?->categories()->syncWithoutDetaching([$saleCategory->id]);
+        $categoryId = $bundlesCategory?->id
+            ?? Category::where('slug', 'sale')->first()?->id;
+
+        if ($categoryId) {
+            Product::find($bundle->product_id)?->categories()->syncWithoutDetaching([$categoryId]);
         }
     }
 

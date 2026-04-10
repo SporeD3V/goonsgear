@@ -142,6 +142,9 @@ class ShopController extends Controller
         // Load bundle data if this product is linked to a bundle
         $bundleData = $this->loadBundleData($product);
 
+        // Check if this product is a component of an active bundle
+        $parentBundle = $this->loadParentBundleData($product);
+
         return view('shop.show', [
             'product' => $product,
             'variantsWithStockState' => $variantsWithStockState,
@@ -150,6 +153,7 @@ class ShopController extends Controller
             'breadcrumbs' => $breadcrumbs,
             'seo' => $seo,
             'bundleData' => $bundleData,
+            'parentBundle' => $parentBundle,
         ]);
     }
 
@@ -289,6 +293,66 @@ class ShopController extends Controller
             'bundle_price' => $bundlePrice,
             'component_total' => round($componentTotal, 2),
             'savings' => $savings,
+        ];
+    }
+
+    /**
+     * Check if this product is a component of an active bundle and return bundle product info.
+     *
+     * @return array{name: string, slug: string, bundle_price: float, savings: float, media_url: string|null}|null
+     */
+    private function loadParentBundleData(Product $product): ?array
+    {
+        /** @var BundleDiscountItem|null $bundleItem */
+        $bundleItem = BundleDiscountItem::query()
+            ->where('product_id', $product->id)
+            ->whereHas('bundleDiscount', fn ($q) => $q->where('is_active', true)->whereNotNull('bundle_price')->whereNotNull('product_id'))
+            ->with([
+                'bundleDiscount.product' => fn ($q) => $q->where('status', 'active'),
+                'bundleDiscount.product.media' => fn ($q) => $q->orderByDesc('is_primary')->orderBy('position')->limit(1),
+                'bundleDiscount.items.product.variants' => fn ($q) => $q->where('is_active', true)->orderBy('price'),
+            ])
+            ->first();
+
+        if ($bundleItem === null) {
+            return null;
+        }
+
+        /** @var BundleDiscount $bundle */
+        $bundle = $bundleItem->bundleDiscount;
+
+        /** @var Product|null $bundleProduct */
+        $bundleProduct = $bundle->product;
+
+        if ($bundleProduct === null) {
+            return null;
+        }
+
+        /** @var ProductMedia|null $media */
+        $media = $bundleProduct->media->first();
+        $mediaUrl = $media
+            ? route('media.show', ['path' => $this->resolveThumbnailPath($media)])
+            : null;
+
+        $componentTotal = 0.0;
+
+        /** @var BundleDiscountItem $item */
+        foreach ($bundle->items as $item) {
+            /** @var Product|null $componentProduct */
+            $componentProduct = $item->product;
+
+            if ($componentProduct !== null) {
+                $cheapest = $componentProduct->variants->min('price');
+                $componentTotal += (float) $cheapest * max(1, (int) $item->min_quantity);
+            }
+        }
+
+        return [
+            'name' => $bundleProduct->name,
+            'slug' => $bundleProduct->slug,
+            'bundle_price' => (float) $bundle->bundle_price,
+            'savings' => $bundle->calculateSavings($componentTotal),
+            'media_url' => $mediaUrl,
         ];
     }
 

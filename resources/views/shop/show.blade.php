@@ -239,6 +239,24 @@
                         </div>
                     @endif
 
+                    @if ($parentBundle !== null)
+                        {{-- Get the Bundle Instead CTA --}}
+                        <a href="{{ route('shop.show', ['product' => $parentBundle['slug']]) }}" class="mt-6 flex items-center gap-4 rounded border border-black/10 bg-black/5 p-4 transition hover:bg-black/10">
+                            @if ($parentBundle['media_url'])
+                                <img src="{{ $parentBundle['media_url'] }}" alt="{{ $parentBundle['name'] }}" class="h-16 w-16 shrink-0 rounded border border-black/10 bg-white object-contain p-1">
+                            @endif
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs font-semibold uppercase tracking-wider text-black/50">Part of a bundle</p>
+                                <p class="mt-0.5 text-sm font-bold text-black">{{ $parentBundle['name'] }}</p>
+                                <p class="mt-0.5 text-sm">
+                                    <span class="font-semibold">&euro;{{ number_format($parentBundle['bundle_price'], 2) }}</span>
+                                    <span class="ml-1 text-xs font-bold text-red-600">Save &euro;{{ number_format($parentBundle['savings'], 2) }}</span>
+                                </p>
+                            </div>
+                            <span class="shrink-0 rounded bg-black px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-white">Get Bundle</span>
+                        </a>
+                    @endif
+
                     @if ($bundleData !== null)
                         {{-- Bundle section: shows component products with variant selectors --}}
                         <div
@@ -255,7 +273,7 @@
                                     </div>
                                     <div class="text-right">
                                         <p class="text-xs text-white/50 line-through">&euro;{{ number_format($bundleData['component_total'], 2) }}</p>
-                                        <p class="text-sm font-bold text-emerald-400">Save &euro;{{ number_format($bundleData['savings'], 2) }}</p>
+                                        <p class="text-sm font-bold text-red-500">Save &euro;{{ number_format($bundleData['savings'], 2) }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -281,7 +299,8 @@
 
                                                 @if (count($component['variants']) === 1)
                                                     {{-- Single variant — auto-selected --}}
-                                                    <p class="mt-1 text-sm text-black/70">{{ $component['variants'][0]['name'] }} &mdash; &euro;{{ number_format($component['variants'][0]['price'], 2) }}</p>
+                                                    @php $singleName = preg_replace('/^Default\s*[—–-]\s*/i', '', $component['variants'][0]['name']); @endphp
+                                                    <p class="mt-1 text-sm text-black/70">{{ $singleName !== '' ? $singleName.' — ' : '' }}&euro;{{ number_format($component['variants'][0]['price'], 2) }}</p>
                                                 @else
                                                     {{-- Multiple variants — show selector --}}
                                                     <div class="mt-2">
@@ -292,11 +311,12 @@
                                                         >
                                                             <option value="">Select option…</option>
                                                             @foreach ($component['variants'] as $variant)
+                                                                @php $variantName = preg_replace('/^Default\s*[—–-]\s*/i', '', $variant['name']); @endphp
                                                                 <option
                                                                     value="{{ $variant['id'] }}"
                                                                     {{ !$variant['in_stock'] ? 'disabled' : '' }}
                                                                 >
-                                                                    {{ $variant['name'] }} &mdash; &euro;{{ number_format($variant['price'], 2) }}
+                                                                    {{ $variantName !== '' ? $variantName.' — ' : '' }}&euro;{{ number_format($variant['price'], 2) }}
                                                                     {{ !$variant['in_stock'] ? '(Out of stock)' : '' }}
                                                                 </option>
                                                             @endforeach
