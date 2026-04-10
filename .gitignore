@@ -71,3 +71,7 @@ _ide_helper_models.php
 /verify_staging.py
 staging_dump.txt
 staging_err.txt
+/bundle_analysis.txt
+/bundle_matching_results.txt
+/query_bundle_matching.py
+/setup_bundles.py
