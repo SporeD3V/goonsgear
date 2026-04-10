@@ -46,6 +46,7 @@ class Order extends Model
         'discount_total',
         'regional_discount_total',
         'bundle_discount_total',
+        'bundle_sku',
         'subtotal',
         'total',
         'placed_at',

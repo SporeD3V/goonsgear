@@ -220,7 +220,10 @@ new class extends Component
                 )
                 ->when(
                     $categorySlug === 'sale',
-                    fn ($query) => $query->whereHas('variants', fn ($vq) => $vq->where('is_active', true)->whereNotNull('compare_at_price')->whereColumn('compare_at_price', '>', 'price'))
+                    fn ($query) => $query->where(function ($saleQuery): void {
+                        $saleQuery->whereHas('variants', fn ($vq) => $vq->where('is_active', true)->whereNotNull('compare_at_price')->whereColumn('compare_at_price', '>', 'price'))
+                            ->orWhereHas('bundleDiscount', fn ($bq) => $bq->where('is_active', true)->whereNotNull('bundle_price'));
+                    })
                 )
                 ->when(
                     $tagSlug !== '',

@@ -145,30 +145,6 @@ parameters:
 			path: app/Http/Controllers/CheckoutController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\CheckoutController\:\:resolvePricing\(\) has invalid return type App\\Http\\Controllers\\App\\Models\\BundleDiscount\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Http/Controllers/CheckoutController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\CheckoutController\:\:resolvePricing\(\) has invalid return type App\\Http\\Controllers\\App\\Models\\Coupon\.$#'
-			identifier: class.notFound
-			count: 2
-			path: app/Http/Controllers/CheckoutController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\CheckoutController\:\:resolvePricing\(\) has invalid return type App\\Http\\Controllers\\App\\Models\\RegionalDiscount\.$#'
-			identifier: class.notFound
-			count: 1
-			path: app/Http/Controllers/CheckoutController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\CheckoutController\:\:resolvePricing\(\) should return array\{subtotal\: float, discount_total\: float, regional_discount_total\: float, bundle_discount_total\: float, total\: float, coupon\: App\\Http\\Controllers\\App\\Models\\Coupon\|null, coupons\: Illuminate\\Support\\Collection\<int, App\\Http\\Controllers\\App\\Models\\Coupon\>, coupon_code\: string\|null, \.\.\.\} but returns array\{subtotal\: float, discount_total\: float, regional_discount_total\: float, bundle_discount_total\: float, total\: float, coupon\: App\\Models\\Coupon\|null, coupons\: Illuminate\\Support\\Collection\<int, App\\Models\\Coupon\>, coupon_code\: string\|null, \.\.\.\}\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Http/Controllers/CheckoutController.php
-
-		-
 			message: '#^Result of && is always false\.$#'
 			identifier: booleanAnd.alwaysFalse
 			count: 1

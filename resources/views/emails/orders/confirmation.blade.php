@@ -21,6 +21,10 @@ Your order **#{{ $order->order_number }}** has been received and is being proces
 **Discount{{ $order->coupon_code ? ' ('.$order->coupon_code.')' : '' }}:** − €{{ number_format((float) $order->discount_total, 2) }}
 
 @endif
+@if ((float) $order->bundle_discount_total > 0)
+**Bundle Discount{{ $order->bundle_sku ? ' ('.$order->bundle_sku.')' : '' }}:** − €{{ number_format((float) $order->bundle_discount_total, 2) }}
+
+@endif
 **Grand Total:** €{{ number_format((float) $order->total, 2) }}
 
 ---

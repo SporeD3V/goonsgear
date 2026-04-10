@@ -16,19 +16,12 @@ new class extends Component
         /** @var Collection<int, BundleDiscount> $bundles */
         $bundles = BundleDiscount::query()
             ->where('is_active', true)
+            ->whereNotNull('bundle_price')
+            ->whereNotNull('product_id')
             ->has('items')
             ->with([
                 'product:id,name,slug',
                 'items' => fn ($query) => $query->orderBy('position')->orderBy('id'),
-                // Legacy: variant-based items
-                'items.variant' => fn ($query) => $query->where('is_active', true),
-                'items.variant.product' => fn ($query) => $query->where('status', 'active'),
-                'items.variant.product.primaryCategory:id,name,slug',
-                'items.variant.product.media' => fn ($query) => $query
-                    ->orderByDesc('is_primary')
-                    ->orderBy('position')
-                    ->orderBy('id')
-                    ->limit(1),
                 // Product bundles: product-based items
                 'items.product' => fn ($query) => $query->where('status', 'active'),
                 'items.product.primaryCategory:id,name,slug',
@@ -42,22 +35,11 @@ new class extends Component
             ->limit(5)
             ->get()
             ->filter(function (BundleDiscount $bundle): bool {
-                if ($bundle->bundle_price !== null) {
-                    // Product bundle: all items must have an active product
-                    return $bundle->items->every(fn ($item) => $item->product !== null);
-                }
-
-                // Legacy: all items must have active variants with active products
-                return $bundle->items->every(
-                    fn ($item) => $item->variant !== null && $item->variant->product !== null
-                );
+                // All items must have an active product
+                return $bundle->items->every(fn ($item) => $item->product !== null);
             })
             ->map(function (BundleDiscount $bundle): BundleDiscount {
-                if ($bundle->bundle_price !== null) {
-                    return $this->mapProductBundle($bundle);
-                }
-
-                return $this->mapLegacyBundle($bundle);
+                return $this->mapProductBundle($bundle);
             });
 
         return view('components.⚡bundle-highlights.bundle-highlights', [
@@ -87,7 +69,6 @@ new class extends Component
 
         $bundle->setAttribute('total_price', $totalPrice);
         $bundle->setAttribute('savings', $savings);
-        $bundle->setAttribute('is_product_bundle', true);
 
         // Set display data on each item from the product relation
         $bundle->items->each(function ($item) use ($cheapestPrices): void {
@@ -96,30 +77,6 @@ new class extends Component
 
             $item->setAttribute('display_product', $product);
             $item->setAttribute('display_price', (float) ($cheapestPrices[$item->product_id] ?? 0));
-            $item->setAttribute('media_url', $media
-                ? route('media.show', ['path' => $this->resolveGalleryPath($media)])
-                : asset('images/placeholder-product.svg')
-            );
-        });
-
-        return $bundle;
-    }
-
-    private function mapLegacyBundle(BundleDiscount $bundle): BundleDiscount
-    {
-        $totalPrice = $bundle->items->sum(fn ($item) => (float) $item->variant->price * max(1, (int) $item->min_quantity));
-        $savings = $bundle->discountFor($totalPrice);
-
-        $bundle->setAttribute('total_price', $totalPrice);
-        $bundle->setAttribute('savings', $savings);
-        $bundle->setAttribute('is_product_bundle', false);
-
-        $bundle->items->each(function ($item): void {
-            $product = $item->variant->product;
-            $media = $product->media->first();
-
-            $item->setAttribute('display_product', $product);
-            $item->setAttribute('display_price', (float) $item->variant->price);
             $item->setAttribute('media_url', $media
                 ? route('media.show', ['path' => $this->resolveGalleryPath($media)])
                 : asset('images/placeholder-product.svg')

@@ -123,6 +123,18 @@ new class extends Component
     {
         $this->product_id = $productId;
         $this->productLinkSearch = '';
+
+        // Auto-populate bundle_price from the product's cheapest active variant
+        if ($this->bundle_price === '') {
+            $cheapestPrice = ProductVariant::query()
+                ->where('product_id', $productId)
+                ->where('is_active', true)
+                ->min('price');
+
+            if ($cheapestPrice !== null) {
+                $this->bundle_price = number_format((float) $cheapestPrice, 2, '.', '');
+            }
+        }
     }
 
     public function clearLinkedProduct(): void

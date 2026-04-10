@@ -139,7 +139,7 @@
                                     <p class="text-xs text-red-400 line-through">&euro;{{ number_format((float) $bundle->total_price, 2) }}</p>
                                     <p class="mt-3 text-xs leading-relaxed text-white/50">Get both items together and save on your order</p>
                                     <a
-                                        href="{{ $bundle->is_product_bundle && $bundle->product ? route('shop.show', $bundle->product) : route('shop.category', 'sale') }}"
+                                        href="{{ route('shop.show', $bundle->product) }}"
                                         class="mt-4 block w-full rounded-lg border-2 border-white bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-black transition hover:bg-transparent hover:text-white"
                                     >
                                         Get Bundle

@@ -275,6 +275,12 @@ new class extends Component
                 <p>- ${{ number_format((float) $this->order->discount_total, 2) }}</p>
             </div>
         @endif
+        @if ((float) $this->order->bundle_discount_total > 0)
+            <div class="flex items-center justify-between text-sm text-emerald-700">
+                <p>Bundle Discount @if ($this->order->bundle_sku)( {{ $this->order->bundle_sku }} )@endif</p>
+                <p>- ${{ number_format((float) $this->order->bundle_discount_total, 2) }}</p>
+            </div>
+        @endif
         <div class="flex items-center justify-between border-t border-slate-200 pt-3">
             <p class="text-lg font-semibold">Grand total</p>
             <p class="text-lg font-semibold">${{ number_format((float) $this->order->total, 2) }}</p>

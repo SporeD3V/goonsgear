@@ -42,9 +42,10 @@ class CreateOrderAction
         bool $markAsPaid = false,
         float $regionalDiscountTotal = 0.0,
         float $bundleDiscountTotal = 0.0,
+        ?string $bundleSku = null,
         ?User $customer = null,
     ): Order {
-        $order = DB::transaction(function () use ($payload, $normalizedItems, $subtotal, $discountTotal, $total, $couponCodes, $couponBreakdown, $paymentMethod, $paymentStatus, $paypalOrderId, $paypalCaptureId, $markAsPaid, $regionalDiscountTotal, $bundleDiscountTotal, $customer): Order {
+        $order = DB::transaction(function () use ($payload, $normalizedItems, $subtotal, $discountTotal, $total, $couponCodes, $couponBreakdown, $paymentMethod, $paymentStatus, $paypalOrderId, $paypalCaptureId, $markAsPaid, $regionalDiscountTotal, $bundleDiscountTotal, $bundleSku, $customer): Order {
             $variantIds = collect($normalizedItems)->pluck('product_variant_id')->map(fn ($id): int => (int) $id)->values();
             $variants = ProductVariant::query()->whereIn('id', $variantIds)->get()->keyBy('id');
 
@@ -105,6 +106,10 @@ class CreateOrderAction
 
             if ($this->orderColumnAvailable('bundle_discount_total')) {
                 $orderPayload['bundle_discount_total'] = $bundleDiscountTotal;
+            }
+
+            if ($this->orderColumnAvailable('bundle_sku') && $bundleSku !== null) {
+                $orderPayload['bundle_sku'] = $bundleSku;
             }
 
             if ($this->orderPaymentColumnsAvailable()) {

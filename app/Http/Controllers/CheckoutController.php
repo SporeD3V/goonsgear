@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Actions\Checkout\CreateOrderAction;
 use App\Http\Requests\StoreCheckoutRequest;
 use App\Mail\OrderConfirmation;
+use App\Models\BundleDiscount;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
+use App\Models\RegionalDiscount;
 use App\Models\SizeProfile;
 use App\Models\User;
 use App\Support\CartPricing;
@@ -129,6 +131,8 @@ class CheckoutController extends Controller
             return redirect()->route('cart.index')->withErrors($exception->errors());
         }
 
+        $bundleSku = $this->resolveBundleSku($pricing['bundle_discount']);
+
         $order = $this->createOrder(
             payload: $payload,
             normalizedItems: $checkoutContext['normalized_items'],
@@ -141,6 +145,7 @@ class CheckoutController extends Controller
             paymentStatus: 'pending',
             regionalDiscountTotal: $pricing['regional_discount_total'],
             bundleDiscountTotal: $pricing['bundle_discount_total'],
+            bundleSku: $bundleSku,
             customer: $request->user(),
         );
 
@@ -208,6 +213,7 @@ class CheckoutController extends Controller
             'coupon_breakdown' => $pricing['coupon_breakdown'],
             'regional_discount_total' => $pricing['regional_discount_total'],
             'bundle_discount_total' => $pricing['bundle_discount_total'],
+            'bundle_sku' => $this->resolveBundleSku($pricing['bundle_discount']),
         ];
 
         $pendingOrderData['integrity_hash'] = $this->signPendingOrderData($pendingOrderData);
@@ -280,6 +286,7 @@ class CheckoutController extends Controller
             markAsPaid: true,
             regionalDiscountTotal: (float) ($pendingOrder['regional_discount_total'] ?? 0),
             bundleDiscountTotal: (float) ($pendingOrder['bundle_discount_total'] ?? 0),
+            bundleSku: isset($pendingOrder['bundle_sku']) ? (string) $pendingOrder['bundle_sku'] : null,
             customer: $request->user(),
         );
 
@@ -493,6 +500,7 @@ class CheckoutController extends Controller
             'coupon_breakdown' => $pendingOrderData['coupon_breakdown'] ?? [],
             'regional_discount_total' => $pendingOrderData['regional_discount_total'] ?? 0,
             'bundle_discount_total' => $pendingOrderData['bundle_discount_total'] ?? 0,
+            'bundle_sku' => $pendingOrderData['bundle_sku'] ?? null,
         ];
 
         try {
@@ -606,6 +614,7 @@ class CheckoutController extends Controller
         bool $markAsPaid = false,
         float $regionalDiscountTotal = 0.0,
         float $bundleDiscountTotal = 0.0,
+        ?string $bundleSku = null,
         ?User $customer = null,
     ): Order {
         return app(CreateOrderAction::class)->execute(
@@ -623,13 +632,28 @@ class CheckoutController extends Controller
             markAsPaid: $markAsPaid,
             regionalDiscountTotal: $regionalDiscountTotal,
             bundleDiscountTotal: $bundleDiscountTotal,
+            bundleSku: $bundleSku,
             customer: $customer,
         );
     }
 
+    private function resolveBundleSku(?BundleDiscount $bundle): ?string
+    {
+        if ($bundle === null || $bundle->product_id === null) {
+            return null;
+        }
+
+        return ProductVariant::query()
+            ->where('product_id', $bundle->product_id)
+            ->where('is_active', true)
+            ->orderBy('position')
+            ->orderBy('id')
+            ->value('sku');
+    }
+
     /**
      * @param  array<int|string, array<string, mixed>>  $items
-     * @return array{subtotal: float, discount_total: float, regional_discount_total: float, bundle_discount_total: float, total: float, coupon: ?App\Models\Coupon, coupons: Collection<int, App\Models\Coupon>, coupon_code: ?string, coupon_codes: array<int, string>, coupon_breakdown: array<string, float>, requested_coupon_code: ?string, requested_coupon_codes: array<int, string>, invalid_coupon_messages: array<string, string>, recommendation_message: ?string, error: ?string, regional_discount: ?App\Models\RegionalDiscount, bundle_discount: ?App\Models\BundleDiscount}
+     * @return array{subtotal: float, discount_total: float, regional_discount_total: float, bundle_discount_total: float, total: float, coupon: ?Coupon, coupons: Collection<int, Coupon>, coupon_code: ?string, coupon_codes: array<int, string>, coupon_breakdown: array<string, float>, requested_coupon_code: ?string, requested_coupon_codes: array<int, string>, invalid_coupon_messages: array<string, string>, recommendation_message: ?string, error: ?string, regional_discount: ?RegionalDiscount, bundle_discount: ?BundleDiscount}
      */
     private function resolvePricing(Request $request, array $items, CartPricing $cartPricing, string $countryCode = ''): array
     {
