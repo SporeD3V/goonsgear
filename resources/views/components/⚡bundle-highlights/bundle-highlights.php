@@ -30,13 +30,17 @@ new class extends Component
                     ->orderBy('position')
                     ->orderBy('id')
                     ->limit(1),
+                'items.product.variants' => fn ($query) => $query->where('is_active', true),
             ])
             ->orderByDesc('id')
             ->limit(5)
             ->get()
             ->filter(function (BundleDiscount $bundle): bool {
-                // All items must have an active product
-                return $bundle->items->every(fn ($item) => $item->product !== null);
+                // All items must have an active product with at least one available variant
+                return $bundle->items->every(
+                    fn ($item) => $item->product !== null
+                        && $item->product->variants->contains(fn ($v) => $v->isAvailable())
+                );
             })
             ->map(function (BundleDiscount $bundle): BundleDiscount {
                 return $this->mapProductBundle($bundle);
