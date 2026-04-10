@@ -38,6 +38,40 @@ trait ResolvesProductDisplay
             }
         }
 
+        // When every variant contributes exactly one attribute value but they
+        // land on different keys (e.g. "color" vs "option_1"), merge them into
+        // a single group so all options appear together in the selector.
+        if (count($groupValues) > 1) {
+            $allSingleAttribute = ! empty($rawVariantAttributes)
+                && collect($rawVariantAttributes)->every(fn (array $attrs) => count($attrs) === 1);
+
+            if ($allSingleAttribute) {
+                $bestKey = 'option_1';
+                foreach (['color', 'size'] as $preferred) {
+                    if (isset($groupValues[$preferred])) {
+                        $bestKey = $preferred;
+                        break;
+                    }
+                }
+
+                $mergedValues = [];
+                foreach ($groupValues as $values) {
+                    foreach ($values as $value) {
+                        if (! in_array($value, $mergedValues, true)) {
+                            $mergedValues[] = $value;
+                        }
+                    }
+                }
+
+                $groupValues = [$bestKey => $mergedValues];
+
+                foreach ($rawVariantAttributes as $variantId => $attrs) {
+                    $value = reset($attrs);
+                    $rawVariantAttributes[$variantId] = [$bestKey => $value];
+                }
+            }
+        }
+
         $attributeKeys = collect($groupValues)
             ->filter(fn (array $values) => count($values) > 1)
             ->keys()

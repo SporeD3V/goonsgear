@@ -585,4 +585,50 @@ class ShopProductPresentationTest extends TestCase
         $response->assertSee('data-media-variant-color="Red"', false);
         $response->assertSee('data-media-variant-color="Black"', false);
     }
+
+    public function test_shop_show_merges_mixed_color_and_custom_variants_into_single_color_group(): void
+    {
+        $product = Product::factory()->create([
+            'name' => 'Onyx & Snowgoons - SnowMads Vinyl',
+            'slug' => 'onyx-snowgoons-snowmads-vinyl-test',
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Onyx & Snowgoons - SnowMads Vinyl - Black',
+            'sku' => 'SNOWMADS-BLK',
+            'price' => 29.99,
+            'option_values' => null,
+            'variant_type' => 'color',
+            'stock_quantity' => 5,
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Onyx & Snowgoons - SnowMads Vinyl - Red',
+            'sku' => 'SNOWMADS-RED',
+            'price' => 29.99,
+            'option_values' => null,
+            'variant_type' => 'color',
+            'stock_quantity' => 3,
+        ]);
+
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Onyx & Snowgoons - SnowMads Vinyl - Splatter',
+            'sku' => 'SNOWMADS-SPL',
+            'price' => 29.99,
+            'option_values' => null,
+            'variant_type' => 'custom',
+            'stock_quantity' => 2,
+        ]);
+
+        $response = $this->get(route('shop.show', $product));
+
+        $response->assertOk();
+        $response->assertSee('data-variant-attribute="color"', false);
+        $response->assertSee('data-variant-attribute-value="Black"', false);
+        $response->assertSee('data-variant-attribute-value="Red"', false);
+        $response->assertSee('data-variant-attribute-value="Splatter"', false);
+    }
 }

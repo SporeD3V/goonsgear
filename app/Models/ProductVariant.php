@@ -38,6 +38,14 @@ class ProductVariant extends Model
         'magenta',
         'gold',
         'silver',
+        'splatter',
+        'aqua',
+        'sand',
+        'marble',
+        'galaxy',
+        'blob',
+        'clear',
+        'transparent',
     ];
 
     /** @use HasFactory<ProductVariantFactory> */
