@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Concerns\ResolvesProductDisplay;
 use App\Models\BundleDiscount;
+use App\Models\BundleDiscountItem;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductMedia;
@@ -235,6 +236,7 @@ class ShopController extends Controller
         $components = [];
         $componentTotal = 0.0;
 
+        /** @var BundleDiscountItem $item */
         foreach ($bundle->items as $item) {
             $componentProduct = $item->product;
 
@@ -261,7 +263,7 @@ class ShopController extends Controller
                 'product_id' => (int) $componentProduct->id,
                 'name' => $componentProduct->name,
                 'slug' => $componentProduct->slug,
-                'category' => $componentProduct->primaryCategory?->name ?? 'Uncategorized',
+                'category' => $componentProduct->primaryCategory->name ?? 'Uncategorized',
                 'media_url' => $mediaUrl,
                 'variants' => $variants,
                 'min_quantity' => max(1, (int) $item->min_quantity),

@@ -93,6 +93,7 @@ class BundleDiscount extends Model
 
         $total = 0.0;
 
+        /** @var BundleDiscountItem $bundleItem */
         foreach ($this->items as $bundleItem) {
             $requiredQty = max(1, (int) $bundleItem->min_quantity);
 

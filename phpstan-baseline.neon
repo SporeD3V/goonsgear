@@ -105,7 +105,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
 			identifier: property.notFound
-			count: 1
+			count: 2
 			path: app/Http/Controllers/CartController.php
 
 		-
@@ -328,6 +328,12 @@ parameters:
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$min_quantity\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/BundleDiscount.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$product_id\.$#'
 			identifier: property.notFound
 			count: 1
 			path: app/Models/BundleDiscount.php
