@@ -299,7 +299,7 @@ class ShopController extends Controller
     /**
      * Check if this product is a component of an active bundle and return bundle product info.
      *
-     * @return array{name: string, slug: string, bundle_price: float, savings: float, media_url: string|null, items: array<int, array{name: string, media_url: string|null}>}|null
+     * @return array{name: string, slug: string, bundle_price: float, savings: float, media_url: string|null, items: array<int, array{name: string, media_url: string|null}>, auto_variant_ids: list<int>|null}|null
      */
     private function loadParentBundleData(Product $product): ?array
     {
@@ -349,6 +349,9 @@ class ShopController extends Controller
             }
         }
 
+        $autoVariantIds = [];
+        $allSingleVariant = true;
+
         $items = [];
 
         /** @var BundleDiscountItem $item */
@@ -369,6 +372,16 @@ class ShopController extends Controller
                     ? route('media.show', ['path' => $this->resolveThumbnailPath($cpMedia)])
                     : null,
             ];
+
+            $activeVariants = $cp->variants->where('is_active', true);
+
+            if ($activeVariants->count() === 1) {
+                /** @var ProductVariant $singleVariant */
+                $singleVariant = $activeVariants->first();
+                $autoVariantIds[] = (int) $singleVariant->id;
+            } else {
+                $allSingleVariant = false;
+            }
         }
 
         return [
@@ -378,6 +391,7 @@ class ShopController extends Controller
             'savings' => $bundle->calculateSavings($componentTotal),
             'media_url' => $mediaUrl,
             'items' => $items,
+            'auto_variant_ids' => $allSingleVariant && $autoVariantIds !== [] ? $autoVariantIds : null,
         ];
     }
 

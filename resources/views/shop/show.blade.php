@@ -242,20 +242,32 @@
                     @if ($parentBundle !== null)
                         {{-- Get the Bundle Instead CTA --}}
                         <div class="mt-6 rounded border border-black/10 bg-black/5">
-                            <a href="{{ route('shop.show', ['product' => $parentBundle['slug']]) }}" class="flex items-center gap-4 p-4 transition hover:bg-black/10">
+                            <div class="flex items-center gap-4 p-4">
                                 @if ($parentBundle['media_url'])
-                                    <img src="{{ $parentBundle['media_url'] }}" alt="{{ $parentBundle['name'] }}" class="h-16 w-16 shrink-0 rounded border border-black/10 bg-white object-contain p-1">
+                                    <a href="{{ route('shop.show', ['product' => $parentBundle['slug']]) }}" class="shrink-0">
+                                        <img src="{{ $parentBundle['media_url'] }}" alt="{{ $parentBundle['name'] }}" class="h-16 w-16 rounded border border-black/10 bg-white object-contain p-1">
+                                    </a>
                                 @endif
                                 <div class="min-w-0 flex-1">
                                     <p class="text-xs font-semibold uppercase tracking-wider text-black/50">Part of a bundle</p>
-                                    <p class="mt-0.5 text-sm font-bold text-black">{{ $parentBundle['name'] }}</p>
+                                    <a href="{{ route('shop.show', ['product' => $parentBundle['slug']]) }}" class="mt-0.5 block text-sm font-bold text-black hover:underline">{{ $parentBundle['name'] }}</a>
                                     <p class="mt-0.5 text-sm">
                                         <span class="font-semibold">&euro;{{ number_format($parentBundle['bundle_price'], 2) }}</span>
                                         <span class="ml-1 text-xs font-bold text-red-600">Save &euro;{{ number_format($parentBundle['savings'], 2) }}</span>
                                     </p>
                                 </div>
-                                <span class="shrink-0 rounded bg-black px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-white">Get Bundle</span>
-                            </a>
+                                @if ($parentBundle['auto_variant_ids'] !== null)
+                                    <form method="POST" action="{{ route('cart.bundle.store') }}">
+                                        @csrf
+                                        @foreach ($parentBundle['auto_variant_ids'] as $variantId)
+                                            <input type="hidden" name="variant_ids[]" value="{{ $variantId }}">
+                                        @endforeach
+                                        <button type="submit" class="shrink-0 rounded bg-black px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-black/80">Add Bundle to Cart</button>
+                                    </form>
+                                @else
+                                    <a href="{{ route('shop.show', ['product' => $parentBundle['slug']]) }}" class="shrink-0 rounded bg-black px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-black/80">Get Bundle</a>
+                                @endif
+                            </div>
 
                             @if (count($parentBundle['items']) > 0)
                                 <div class="border-t border-black/10 px-4 pb-3 pt-2">
