@@ -312,11 +312,20 @@ window.initCatalogCards = () => {
 				if (cartVariantInput) {
 					cartVariantInput.value = matchedOption.value;
 				}
+				const comparePrice = matchedOption.dataset.variantComparePrice || '';
 				if (addToCartButton) {
 					addToCartButton.textContent = `Add to cart — \u20AC${matchedOption.dataset.variantPrice}`;
 				}
 				if (priceElement) {
-					priceElement.textContent = `\u20AC${matchedOption.dataset.variantPrice}`;
+					if (comparePrice) {
+						priceElement.classList.add('text-red-600');
+						priceElement.classList.remove('text-black/80');
+						priceElement.innerHTML = `<span class="text-black/40 line-through">\u20AC${comparePrice}</span> <span>\u20AC${matchedOption.dataset.variantPrice}</span>`;
+					} else {
+						priceElement.classList.remove('text-red-600');
+						priceElement.classList.add('text-black/80');
+						priceElement.textContent = `\u20AC${matchedOption.dataset.variantPrice}`;
+					}
 				}
 			} else {
 				variantSelect.selectedIndex = 0;
@@ -416,6 +425,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			.map((value) => value.trim())
 			.filter((value) => value !== '');
 		const attributeButtons = Array.from(picker.querySelectorAll('button[data-variant-attribute]'));
+		const priceWrap = picker.querySelector('[data-display-price-wrap]');
 		const priceElement = picker.querySelector('[data-display-price]');
 		const skuElement = picker.querySelector('[data-display-sku]');
 		const statusElement = picker.querySelector('[data-display-status]');
@@ -429,7 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const stockAlertModalAlpine = picker.querySelector('[data-stock-alert-modal-alpine]');
 		const addToCartButton = picker.querySelector('[data-add-to-cart-button]');
 
-		if (!variantSelect || !priceElement || !skuElement || !statusElement || !qtyElement) {
+		if (!variantSelect || (!priceElement && !priceWrap) || !skuElement || !statusElement || !qtyElement) {
 			return;
 		}
 
@@ -563,7 +573,11 @@ document.addEventListener('DOMContentLoaded', () => {
 		};
 
 		const clearVariantDetails = () => {
-			priceElement.textContent = unselectedPrice;
+			if (priceWrap) {
+				priceWrap.innerHTML = `\u20AC<span data-display-price>${unselectedPrice}</span>`;
+			} else if (priceElement) {
+				priceElement.textContent = unselectedPrice;
+			}
 			skuElement.textContent = '--';
 			statusElement.textContent = 'Select options';
 			qtyElement.textContent = '--';
@@ -607,7 +621,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			selectedAttributes = parseVariantAttributes(selectedOption);
 
-			priceElement.textContent = selectedOption.dataset.variantPrice || '';
+			const comparePrice = selectedOption.dataset.variantComparePrice || '';
+			if (priceWrap) {
+				if (comparePrice) {
+					priceWrap.innerHTML = `<span class="text-black/40 line-through" data-display-compare-price>\u20AC${comparePrice}</span> <span class="font-semibold text-red-600">\u20AC<span data-display-price>${selectedOption.dataset.variantPrice}</span></span>`;
+				} else {
+					priceWrap.innerHTML = `\u20AC<span data-display-price>${selectedOption.dataset.variantPrice || ''}</span>`;
+				}
+			} else if (priceElement) {
+				priceElement.textContent = selectedOption.dataset.variantPrice || '';
+			}
 			skuElement.textContent = resolveVariantSku(selectedOption);
 			statusElement.textContent = selectedOption.dataset.variantStatus || '';
 			qtyElement.textContent = selectedOption.dataset.variantQty || '';

@@ -238,6 +238,7 @@ class ShopController extends Controller
 
         /** @var BundleDiscountItem $item */
         foreach ($bundle->items as $item) {
+            /** @var Product|null $componentProduct */
             $componentProduct = $item->product;
 
             if ($componentProduct === null) {

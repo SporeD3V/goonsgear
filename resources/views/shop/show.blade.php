@@ -401,6 +401,9 @@
                                             value="{{ $variant->id }}"
                                             {{ !$hasAttributeGroups && $loop->first ? 'selected' : '' }}
                                             data-variant-price="{{ number_format((float) $variant->price, 2) }}"
+                                            @if ($variant->compare_at_price !== null && (float) $variant->compare_at_price > (float) $variant->price)
+                                                data-variant-compare-price="{{ number_format((float) $variant->compare_at_price, 2) }}"
+                                            @endif
                                             data-variant-sku="{{ $variant->sku }}"
                                             data-variant-status="{{ $stockStatus }}"
                                             data-variant-qty="{{ $variant->stock_quantity }}"
@@ -421,7 +424,20 @@
                                     @if ($hasAttributeGroups)
                                         <p class="sm:col-span-2 text-xs text-black/50">Select variant options to view details.</p>
                                     @endif
-                                    <p><span class="font-medium text-black/70">Price:</span> &euro;<span data-display-price>{{ $hasAttributeGroups ? $unselectedPriceText : number_format((float) $defaultVariant->price, 2) }}</span></p>
+                                    @php
+                                        $defaultIsOnSale = !$hasAttributeGroups && $defaultVariant->compare_at_price !== null && (float) $defaultVariant->compare_at_price > (float) $defaultVariant->price;
+                                    @endphp
+                                    <p>
+                                        <span class="font-medium text-black/70">Price:</span>
+                                        <span data-display-price-wrap>
+                                            @if ($defaultIsOnSale)
+                                                <span class="text-black/40 line-through" data-display-compare-price>&euro;{{ number_format((float) $defaultVariant->compare_at_price, 2) }}</span>
+                                                <span class="font-semibold text-red-600">&euro;<span data-display-price>{{ number_format((float) $defaultVariant->price, 2) }}</span></span>
+                                            @else
+                                                &euro;<span data-display-price>{{ $hasAttributeGroups ? $unselectedPriceText : number_format((float) $defaultVariant->price, 2) }}</span>
+                                            @endif
+                                        </span>
+                                    </p>
                                     <p><span class="font-medium text-black/70">SKU:</span> <span data-display-sku>{{ $hasAttributeGroups ? '--' : $defaultVariant->sku }}</span></p>
                                     <p><span class="font-medium text-black/70">Status:</span> <span data-display-status>{{ $hasAttributeGroups ? 'Select options' : $defaultStockStatus }}</span></p>
                                     <p><span class="font-medium text-black/70">Qty:</span> <span data-display-qty>{{ $hasAttributeGroups ? '--' : $defaultVariant->stock_quantity }}</span></p>

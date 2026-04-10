@@ -288,6 +288,11 @@
 
                     $selectorData = $product->catalog_selector_data;
                     $catalogVariants = $product->catalog_variants;
+
+                    $cheapestVariant = $catalogVariants->where('price', $startingPrice)->first();
+                    $compareAtPrice = $cheapestVariant?->compare_at_price;
+                    $isOnSale = $compareAtPrice !== null && (float) $compareAtPrice > (float) ($startingPrice ?? 0);
+
                     $maxPrice2 = $catalogVariants->max('price');
                     $hasPriceRange = $startingPrice !== null && $maxPrice2 !== null && (float) $startingPrice !== (float) $maxPrice2;
                     $hasGroups = !empty($selectorData['groups']);
@@ -363,11 +368,28 @@
                         <h2 class="text-lg font-semibold">{{ $product->name }}</h2>
                         <p class="mt-1 text-sm text-black/60">{{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>
                         @if ($startingPrice !== null)
-                            <p class="mt-1 text-sm font-medium text-black/80" data-catalog-price>
-                                @if ($hasPriceRange)
-                                    From &euro;{{ number_format((float) $startingPrice, 2) }}
+                            <p class="mt-1 text-sm font-medium {{ $isOnSale ? 'text-red-600' : 'text-black/80' }}" data-catalog-price>
+                                @if ($isOnSale)
+                                    <span class="text-black/40 line-through" data-catalog-compare-price>
+                                        @if ($hasPriceRange)
+                                            From &euro;{{ number_format((float) $compareAtPrice, 2) }}
+                                        @else
+                                            &euro;{{ number_format((float) $compareAtPrice, 2) }}
+                                        @endif
+                                    </span>
+                                    <span data-catalog-sale-price>
+                                        @if ($hasPriceRange)
+                                            From &euro;{{ number_format((float) $startingPrice, 2) }}
+                                        @else
+                                            &euro;{{ number_format((float) $startingPrice, 2) }}
+                                        @endif
+                                    </span>
                                 @else
-                                    &euro;{{ number_format((float) $startingPrice, 2) }}
+                                    @if ($hasPriceRange)
+                                        From &euro;{{ number_format((float) $startingPrice, 2) }}
+                                    @else
+                                        &euro;{{ number_format((float) $startingPrice, 2) }}
+                                    @endif
                                 @endif
                             </p>
                         @endif
@@ -476,6 +498,9 @@
                                         <option
                                             value="{{ $variant->id }}"
                                             data-variant-price="{{ number_format((float) $variant->price, 2) }}"
+                                            @if ($variant->compare_at_price !== null && (float) $variant->compare_at_price > (float) $variant->price)
+                                                data-variant-compare-price="{{ number_format((float) $variant->compare_at_price, 2) }}"
+                                            @endif
                                             data-variant-attributes='@json($selectorData['variantAttributesById'][$variant->id] ?? [])'
                                         >
                                             {{ $variant->name }}
