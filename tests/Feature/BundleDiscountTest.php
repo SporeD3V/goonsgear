@@ -29,6 +29,7 @@ class BundleDiscountTest extends TestCase
 
         Livewire::test('admin.bundle-discount-manager')
             ->call('openCreate')
+            ->set('bundle_mode', 'rule')
             ->set('name', 'Hoodie + Tee Set')
             ->set('description', 'Discount for matching outfit set')
             ->set('discount_type', BundleDiscount::TYPE_FIXED)

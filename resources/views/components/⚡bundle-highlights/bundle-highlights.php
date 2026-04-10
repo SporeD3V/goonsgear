@@ -2,6 +2,7 @@
 
 use App\Concerns\ResolvesProductDisplay;
 use App\Models\BundleDiscount;
+use App\Models\ProductVariant;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 use Livewire\Component;
@@ -17,11 +18,21 @@ new class extends Component
             ->where('is_active', true)
             ->has('items')
             ->with([
+                'product:id,name,slug',
                 'items' => fn ($query) => $query->orderBy('position')->orderBy('id'),
+                // Legacy: variant-based items
                 'items.variant' => fn ($query) => $query->where('is_active', true),
                 'items.variant.product' => fn ($query) => $query->where('status', 'active'),
                 'items.variant.product.primaryCategory:id,name,slug',
                 'items.variant.product.media' => fn ($query) => $query
+                    ->orderByDesc('is_primary')
+                    ->orderBy('position')
+                    ->orderBy('id')
+                    ->limit(1),
+                // Product bundles: product-based items
+                'items.product' => fn ($query) => $query->where('status', 'active'),
+                'items.product.primaryCategory:id,name,slug',
+                'items.product.media' => fn ($query) => $query
                     ->orderByDesc('is_primary')
                     ->orderBy('position')
                     ->orderBy('id')
@@ -31,33 +42,90 @@ new class extends Component
             ->limit(5)
             ->get()
             ->filter(function (BundleDiscount $bundle): bool {
-                // Only keep bundles where all items have active variants with active products
+                if ($bundle->bundle_price !== null) {
+                    // Product bundle: all items must have an active product
+                    return $bundle->items->every(fn ($item) => $item->product !== null);
+                }
+
+                // Legacy: all items must have active variants with active products
                 return $bundle->items->every(
                     fn ($item) => $item->variant !== null && $item->variant->product !== null
                 );
             })
             ->map(function (BundleDiscount $bundle): BundleDiscount {
-                // Compute the combined original price and savings
-                $totalPrice = $bundle->items->sum(fn ($item) => (float) $item->variant->price * max(1, (int) $item->min_quantity));
-                $savings = $bundle->discountFor($totalPrice);
+                if ($bundle->bundle_price !== null) {
+                    return $this->mapProductBundle($bundle);
+                }
 
-                $bundle->setAttribute('total_price', $totalPrice);
-                $bundle->setAttribute('savings', $savings);
-
-                // Resolve media paths for each item
-                $bundle->items->each(function ($item): void {
-                    $media = $item->variant->product->media->first();
-                    $item->setAttribute('media_url', $media
-                        ? route('media.show', ['path' => $this->resolveGalleryPath($media)])
-                        : asset('images/placeholder-product.svg')
-                    );
-                });
-
-                return $bundle;
+                return $this->mapLegacyBundle($bundle);
             });
 
         return view('components.⚡bundle-highlights.bundle-highlights', [
             'bundles' => $bundles,
         ]);
+    }
+
+    private function mapProductBundle(BundleDiscount $bundle): BundleDiscount
+    {
+        // Get cheapest active variant price for each component product
+        $productIds = $bundle->items->pluck('product_id')->filter()->all();
+
+        $cheapestPrices = ProductVariant::query()
+            ->whereIn('product_id', $productIds)
+            ->where('is_active', true)
+            ->selectRaw('product_id, MIN(price) as min_price')
+            ->groupBy('product_id')
+            ->pluck('min_price', 'product_id');
+
+        $totalPrice = $bundle->items->sum(function ($item) use ($cheapestPrices): float {
+            $price = (float) ($cheapestPrices[$item->product_id] ?? 0);
+
+            return $price * max(1, (int) $item->min_quantity);
+        });
+
+        $savings = $bundle->discountFor($totalPrice);
+
+        $bundle->setAttribute('total_price', $totalPrice);
+        $bundle->setAttribute('savings', $savings);
+        $bundle->setAttribute('is_product_bundle', true);
+
+        // Set display data on each item from the product relation
+        $bundle->items->each(function ($item) use ($cheapestPrices): void {
+            $product = $item->product;
+            $media = $product?->media->first();
+
+            $item->setAttribute('display_product', $product);
+            $item->setAttribute('display_price', (float) ($cheapestPrices[$item->product_id] ?? 0));
+            $item->setAttribute('media_url', $media
+                ? route('media.show', ['path' => $this->resolveGalleryPath($media)])
+                : asset('images/placeholder-product.svg')
+            );
+        });
+
+        return $bundle;
+    }
+
+    private function mapLegacyBundle(BundleDiscount $bundle): BundleDiscount
+    {
+        $totalPrice = $bundle->items->sum(fn ($item) => (float) $item->variant->price * max(1, (int) $item->min_quantity));
+        $savings = $bundle->discountFor($totalPrice);
+
+        $bundle->setAttribute('total_price', $totalPrice);
+        $bundle->setAttribute('savings', $savings);
+        $bundle->setAttribute('is_product_bundle', false);
+
+        $bundle->items->each(function ($item): void {
+            $product = $item->variant->product;
+            $media = $product->media->first();
+
+            $item->setAttribute('display_product', $product);
+            $item->setAttribute('display_price', (float) $item->variant->price);
+            $item->setAttribute('media_url', $media
+                ? route('media.show', ['path' => $this->resolveGalleryPath($media)])
+                : asset('images/placeholder-product.svg')
+            );
+        });
+
+        return $bundle;
     }
 };

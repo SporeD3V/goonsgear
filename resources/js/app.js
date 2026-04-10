@@ -1,5 +1,38 @@
 import './bootstrap';
 
+// Bundle product page: component variant selector
+window.bundleSelector = function () {
+	return {
+		components: [],
+		bundlePrice: 0,
+		selections: [],
+		selectedVariantIds: [],
+		allSelected: false,
+
+		init(components, bundlePrice) {
+			this.components = components;
+			this.bundlePrice = bundlePrice;
+			this.selections = [];
+
+			// Auto-select single-variant components
+			components.forEach((component, index) => {
+				if (component.variants.length === 1 && component.variants[0].in_stock) {
+					this.selections[index] = String(component.variants[0].id);
+				} else {
+					this.selections[index] = '';
+				}
+			});
+
+			this.updateSelections();
+		},
+
+		updateSelections() {
+			this.selectedVariantIds = this.selections.filter((v) => v !== '' && v !== null && v !== undefined).map((v) => Number(v));
+			this.allSelected = this.selectedVariantIds.length === this.components.length;
+		},
+	};
+};
+
 // Stock alert modal for out-of-stock products (used by product detail page)
 window.stockAlertModal = function (variantId, isAuth) {
 	return {

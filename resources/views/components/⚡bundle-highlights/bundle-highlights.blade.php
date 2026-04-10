@@ -101,21 +101,21 @@
                                     @endif
 
                                     <div class="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" draggable="false">
-                                        <a href="{{ route('shop.show', $item->variant->product) }}" class="group block flex-1" draggable="false">
+                                        <a href="{{ route('shop.show', $item->display_product) }}" class="group block flex-1" draggable="false">
                                             <div class="relative aspect-square w-full overflow-hidden bg-slate-50">
                                                 <span class="absolute right-2 top-2 z-10 rounded border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-black">Part of a bundle</span>
                                                 <img
                                                     src="{{ $item->media_url }}"
-                                                    alt="{{ $item->variant->product->name }}"
+                                                    alt="{{ $item->display_product->name }}"
                                                     class="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
                                                     draggable="false"
                                                 >
                                                 <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent transition-opacity duration-300 group-hover:from-black/70"></div>
                                             </div>
                                             <div class="p-4">
-                                                <h3 class="text-sm font-bold leading-snug text-black">{{ $item->variant->product->name }}</h3>
-                                                <p class="mt-1 text-xs text-slate-600">{{ $item->variant->product->primaryCategory?->name ?? 'Uncategorized' }}</p>
-                                                <p class="mt-1 text-sm font-semibold text-black">&euro;{{ number_format((float) $item->variant->price, 2) }}</p>
+                                                <h3 class="text-sm font-bold leading-snug text-black">{{ $item->display_product->name }}</h3>
+                                                <p class="mt-1 text-xs text-slate-600">{{ $item->display_product->primaryCategory?->name ?? 'Uncategorized' }}</p>
+                                                <p class="mt-1 text-sm font-semibold text-black">&euro;{{ number_format($item->display_price, 2) }}</p>
                                             </div>
                                         </a>
                                     </div>
@@ -139,7 +139,7 @@
                                     <p class="text-xs text-red-400 line-through">&euro;{{ number_format((float) $bundle->total_price, 2) }}</p>
                                     <p class="mt-3 text-xs leading-relaxed text-white/50">Get both items together and save on your order</p>
                                     <a
-                                        href="{{ route('shop.category', 'sale') }}"
+                                        href="{{ $bundle->is_product_bundle && $bundle->product ? route('shop.show', $bundle->product) : route('shop.category', 'sale') }}"
                                         class="mt-4 block w-full rounded-lg border-2 border-white bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-black transition hover:bg-transparent hover:text-white"
                                     >
                                         Get Bundle

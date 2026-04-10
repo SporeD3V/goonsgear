@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Concerns\ResolvesProductDisplay;
+use App\Models\BundleDiscount;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductMedia;
@@ -135,6 +136,9 @@ class ShopController extends Controller
 
         $breadcrumbs[] = ['name' => $product->name, 'url' => null];
 
+        // Load bundle data if this product is linked to a bundle
+        $bundleData = $this->loadBundleData($product);
+
         return view('shop.show', [
             'product' => $product,
             'variantsWithStockState' => $variantsWithStockState,
@@ -142,6 +146,7 @@ class ShopController extends Controller
             'activeStockAlertVariantIds' => $activeStockAlertVariantIds,
             'breadcrumbs' => $breadcrumbs,
             'seo' => $seo,
+            'bundleData' => $bundleData,
         ]);
     }
 
@@ -197,6 +202,86 @@ class ShopController extends Controller
             });
 
         return response()->json(['results' => $results]);
+    }
+
+    /**
+     * Load bundle component data if this product is linked to a bundle discount.
+     *
+     * @return array{bundle: BundleDiscount, components: array<int, array{product_id: int, name: string, slug: string, media_url: string|null, variants: array<int, array{id: int, name: string, price: float, in_stock: bool}>}>, bundle_price: float, component_total: float, savings: float}|null
+     */
+    private function loadBundleData(Product $product): ?array
+    {
+        $bundle = BundleDiscount::query()
+            ->where('product_id', $product->id)
+            ->where('is_active', true)
+            ->whereNotNull('bundle_price')
+            ->with([
+                'items' => fn ($query) => $query->orderBy('position')->orderBy('id'),
+                'items.product' => fn ($query) => $query->where('status', 'active'),
+                'items.product.variants' => fn ($query) => $query->where('is_active', true)->orderBy('position')->orderBy('id'),
+                'items.product.primaryCategory:id,name,slug',
+                'items.product.media' => fn ($query) => $query
+                    ->orderByDesc('is_primary')
+                    ->orderBy('position')
+                    ->orderBy('id')
+                    ->limit(1),
+            ])
+            ->first();
+
+        if ($bundle === null) {
+            return null;
+        }
+
+        $components = [];
+        $componentTotal = 0.0;
+
+        foreach ($bundle->items as $item) {
+            $componentProduct = $item->product;
+
+            if ($componentProduct === null) {
+                continue;
+            }
+
+            $media = $componentProduct->media->first();
+            $mediaUrl = $media
+                ? route('media.show', ['path' => $this->resolveGalleryPath($media)])
+                : asset('images/placeholder-product.svg');
+
+            $variants = $componentProduct->variants->map(fn ($variant): array => [
+                'id' => (int) $variant->id,
+                'name' => $variant->name,
+                'price' => (float) $variant->price,
+                'in_stock' => $variant->isAvailable(),
+            ])->all();
+
+            $cheapestPrice = $componentProduct->variants->min('price');
+            $componentTotal += (float) $cheapestPrice * max(1, (int) $item->min_quantity);
+
+            $components[] = [
+                'product_id' => (int) $componentProduct->id,
+                'name' => $componentProduct->name,
+                'slug' => $componentProduct->slug,
+                'category' => $componentProduct->primaryCategory?->name ?? 'Uncategorized',
+                'media_url' => $mediaUrl,
+                'variants' => $variants,
+                'min_quantity' => max(1, (int) $item->min_quantity),
+            ];
+        }
+
+        if ($components === []) {
+            return null;
+        }
+
+        $bundlePrice = (float) $bundle->bundle_price;
+        $savings = $bundle->calculateSavings($componentTotal);
+
+        return [
+            'bundle' => $bundle,
+            'components' => $components,
+            'bundle_price' => $bundlePrice,
+            'component_total' => round($componentTotal, 2),
+            'savings' => $savings,
+        ];
     }
 
     private function renderIndex(Request $request, ?Category $forcedCategory = null, ?Tag $forcedTag = null, bool $showCatalog = false): View

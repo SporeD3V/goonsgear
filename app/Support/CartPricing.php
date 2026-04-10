@@ -30,12 +30,17 @@ class CartPricing
             ->with('items')
             ->get()
             ->filter(fn (BundleDiscount $bundle): bool => $bundle->isApplicableToCart($items))
-            ->sortByDesc(fn (BundleDiscount $bundle): float => $bundle->discountFor($subtotal))
+            ->sortByDesc(fn (BundleDiscount $bundle): float => $bundle->discountFor(
+                $bundle->bundle_price !== null ? $bundle->componentSubtotal($items) : $subtotal
+            ))
             ->first();
 
         if ($applicableBundle !== null) {
             $summary['bundle_discount'] = $applicableBundle;
-            $summary['bundle_discount_total'] = round($applicableBundle->discountFor($subtotal), 2);
+            $discountBase = $applicableBundle->bundle_price !== null
+                ? $applicableBundle->componentSubtotal($items)
+                : $subtotal;
+            $summary['bundle_discount_total'] = round($applicableBundle->discountFor($discountBase), 2);
             $summary['total'] = round(max(0, $summary['total'] - $summary['bundle_discount_total']), 2);
         }
 

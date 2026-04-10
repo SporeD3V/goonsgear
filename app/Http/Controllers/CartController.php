@@ -143,6 +143,68 @@ class CartController extends Controller
         return redirect()->route('cart.index')->with('status', 'Coupon selection updated.');
     }
 
+    public function storeBundle(Request $request): JsonResponse|RedirectResponse
+    {
+        $payload = $request->validate([
+            'variant_ids' => ['required', 'array', 'min:1'],
+            'variant_ids.*' => ['required', 'integer', 'exists:product_variants,id'],
+        ]);
+
+        $variants = ProductVariant::query()
+            ->with([
+                'product:id,name,slug,status',
+                'product.media' => fn ($query) => $query
+                    ->orderByDesc('is_primary')
+                    ->orderBy('position')
+                    ->orderBy('id'),
+            ])
+            ->whereIn('id', $payload['variant_ids'])
+            ->get()
+            ->keyBy('id');
+
+        $cartItems = $this->getCartItems($request);
+
+        foreach ($payload['variant_ids'] as $variantId) {
+            $variant = $variants->get((int) $variantId);
+
+            if ($variant === null || ! $variant->is_active || $variant->product?->status !== 'active') {
+                $errorMsg = 'One or more bundle items are not available for purchase.';
+
+                return $request->wantsJson()
+                    ? response()->json(['errors' => ['cart' => [$errorMsg]]], 422)
+                    : back()->withErrors(['cart' => $errorMsg]);
+            }
+
+            $existingItem = $cartItems[$variant->id] ?? null;
+            $nextQuantity = (int) ($existingItem['quantity'] ?? 0) + 1;
+
+            $maxQuantity = $this->getMaxAllowedQuantity($variant);
+
+            if ($maxQuantity !== null && $nextQuantity > $maxQuantity) {
+                $errorMsg = "Only {$maxQuantity} unit(s) are currently available for {$variant->name}.";
+
+                return $request->wantsJson()
+                    ? response()->json(['errors' => ['cart' => [$errorMsg]]], 422)
+                    : back()->withErrors(['cart' => $errorMsg]);
+            }
+
+            $cartItems[$variant->id] = array_merge(
+                $this->buildCartItemData($variant),
+                ['quantity' => $nextQuantity],
+            );
+
+            $this->syncCartItemToDb($request, $variant->id, $nextQuantity);
+        }
+
+        $request->session()->put(self::CART_SESSION_KEY, $cartItems);
+
+        if ($request->wantsJson()) {
+            return response()->json(['status' => 'Bundle added to cart.']);
+        }
+
+        return back()->with('status', 'Bundle added to cart.');
+    }
+
     public function store(StoreCartItemRequest $request): JsonResponse|RedirectResponse
     {
         $payload = $request->validated();

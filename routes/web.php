@@ -109,6 +109,7 @@ Route::delete('/cart/coupon', [CartController::class, 'removeCoupon'])->name('ca
 Route::post('/cart/track-email', [CartController::class, 'trackEmail'])->name('cart.track-email');
 Route::get('/cart/recover/{abandonment}', [CartController::class, 'recoverCart'])->name('cart.recover');
 Route::post('/cart/items', [CartController::class, 'store'])->name('cart.items.store');
+Route::post('/cart/bundle', [CartController::class, 'storeBundle'])->name('cart.bundle.store');
 Route::patch('/cart/items/{variant}', [CartController::class, 'update'])->name('cart.items.update');
 Route::delete('/cart/items/{variant}', [CartController::class, 'destroy'])->name('cart.items.destroy');
 

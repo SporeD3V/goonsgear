@@ -239,6 +239,94 @@
                         </div>
                     @endif
 
+                    @if ($bundleData !== null)
+                        {{-- Bundle section: shows component products with variant selectors --}}
+                        <div
+                            class="mt-6"
+                            x-data="bundleSelector()"
+                            x-init='init(@json($bundleData["components"]), {{ $bundleData["bundle_price"] }})'
+                        >
+                            {{-- Bundle pricing banner --}}
+                            <div class="rounded bg-black p-4 text-white">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-wider text-white/60">Bundle Price</p>
+                                        <p class="text-2xl font-black">&euro;{{ number_format($bundleData['bundle_price'], 2) }}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-xs text-white/50 line-through">&euro;{{ number_format($bundleData['component_total'], 2) }}</p>
+                                        <p class="text-sm font-bold text-emerald-400">Save &euro;{{ number_format($bundleData['savings'], 2) }}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h2 class="mt-5 text-base font-semibold">What's Included</h2>
+
+                            <div class="mt-3 space-y-4">
+                                @foreach ($bundleData['components'] as $index => $component)
+                                    <div class="rounded border border-black/10 bg-black/5 p-3">
+                                        <div class="flex gap-3">
+                                            <a href="{{ route('shop.show', ['product' => $component['slug']]) }}" class="shrink-0">
+                                                <img
+                                                    src="{{ $component['media_url'] }}"
+                                                    alt="{{ $component['name'] }}"
+                                                    class="h-20 w-20 rounded border border-black/10 bg-white object-contain p-1"
+                                                >
+                                            </a>
+                                            <div class="min-w-0 flex-1">
+                                                <a href="{{ route('shop.show', ['product' => $component['slug']]) }}" class="text-sm font-semibold text-black hover:underline">
+                                                    {{ $component['name'] }}
+                                                </a>
+                                                <p class="text-xs text-black/50">{{ $component['category'] }}</p>
+
+                                                @if (count($component['variants']) === 1)
+                                                    {{-- Single variant — auto-selected --}}
+                                                    <p class="mt-1 text-sm text-black/70">{{ $component['variants'][0]['name'] }} &mdash; &euro;{{ number_format($component['variants'][0]['price'], 2) }}</p>
+                                                @else
+                                                    {{-- Multiple variants — show selector --}}
+                                                    <div class="mt-2">
+                                                        <select
+                                                            x-model="selections[{{ $index }}]"
+                                                            x-on:change="updateSelections()"
+                                                            class="w-full rounded border border-black/20 bg-white px-3 py-1.5 text-sm"
+                                                        >
+                                                            <option value="">Select option…</option>
+                                                            @foreach ($component['variants'] as $variant)
+                                                                <option
+                                                                    value="{{ $variant['id'] }}"
+                                                                    {{ !$variant['in_stock'] ? 'disabled' : '' }}
+                                                                >
+                                                                    {{ $variant['name'] }} &mdash; &euro;{{ number_format($variant['price'], 2) }}
+                                                                    {{ !$variant['in_stock'] ? '(Out of stock)' : '' }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            {{-- Add Bundle to Cart form --}}
+                            <form method="POST" action="{{ route('cart.bundle.store') }}" class="mt-4" x-ref="bundleForm">
+                                @csrf
+                                <template x-for="(variantId, idx) in selectedVariantIds" :key="idx">
+                                    <input type="hidden" name="variant_ids[]" x-bind:value="variantId">
+                                </template>
+
+                                <button
+                                    type="submit"
+                                    class="w-full rounded bg-black px-4 py-3 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-60"
+                                    x-bind:disabled="!allSelected"
+                                >
+                                    <span x-show="allSelected">Add Bundle to Cart &mdash; &euro;{{ number_format($bundleData['bundle_price'], 2) }}</span>
+                                    <span x-show="!allSelected" x-cloak>Select all options to continue</span>
+                                </button>
+                            </form>
+                        </div>
+                    @else
                     <div class="mt-6">
                         <h2 class="text-base font-semibold">Available Variants</h2>
                         @if ($variantsWithStockState->isEmpty())
@@ -477,6 +565,7 @@
                             @endif
                         @endif
                     </div>
+                    @endif {{-- end bundle/variant toggle --}}
                 </section>
             </div>
         </div>

@@ -2,7 +2,9 @@
 
 use App\Models\AdminActivityLog;
 use App\Models\BundleDiscount;
+use App\Models\Category;
 use App\Models\EditHistory;
+use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -20,11 +22,30 @@ new class extends Component
     public bool $showModal = false;
     public ?int $editingId = null;
 
+    // Mode: 'product' (new bundle-as-product) or 'rule' (legacy discount rule)
+    public string $bundle_mode = 'product';
+
+    // Common fields
     public string $name = '';
     public string $description = '';
+    public bool $is_active = true;
+
+    // Product mode fields
+    public string $bundle_price = '';
+    public ?int $product_id = null;
+    public string $productLinkSearch = '';
+
+    /** @var array<int, bool> */
+    public array $selectedProducts = [];
+
+    /** @var array<int, int> */
+    public array $productQuantities = [];
+
+    public string $productSearch = '';
+
+    // Rule mode fields (legacy)
     public string $discount_type = BundleDiscount::TYPE_FIXED;
     public string $discount_value = '';
-    public bool $is_active = true;
 
     /** @var array<int, bool> */
     public array $selectedVariants = [];
@@ -61,20 +82,52 @@ new class extends Component
         $this->editingId = $bundle->id;
         $this->name = $bundle->name;
         $this->description = $bundle->description ?? '';
-        $this->discount_type = $bundle->discount_type;
-        $this->discount_value = (string) $bundle->discount_value;
         $this->is_active = $bundle->is_active;
 
-        $this->selectedVariants = [];
-        $this->quantities = [];
-        foreach ($bundle->items as $item) {
-            $variantId = (int) $item->product_variant_id;
-            $this->selectedVariants[$variantId] = true;
-            $this->quantities[$variantId] = (int) $item->min_quantity;
+        // Detect mode from existing data
+        if ($bundle->bundle_price !== null) {
+            $this->bundle_mode = 'product';
+            $this->bundle_price = (string) $bundle->bundle_price;
+            $this->product_id = $bundle->product_id;
+
+            $this->selectedProducts = [];
+            $this->productQuantities = [];
+            foreach ($bundle->items as $item) {
+                if ($item->product_id) {
+                    $productId = (int) $item->product_id;
+                    $this->selectedProducts[$productId] = true;
+                    $this->productQuantities[$productId] = (int) $item->min_quantity;
+                }
+            }
+        } else {
+            $this->bundle_mode = 'rule';
+            $this->discount_type = $bundle->discount_type ?? BundleDiscount::TYPE_FIXED;
+            $this->discount_value = (string) $bundle->discount_value;
+
+            $this->selectedVariants = [];
+            $this->quantities = [];
+            foreach ($bundle->items as $item) {
+                if ($item->product_variant_id) {
+                    $variantId = (int) $item->product_variant_id;
+                    $this->selectedVariants[$variantId] = true;
+                    $this->quantities[$variantId] = (int) $item->min_quantity;
+                }
+            }
         }
 
         $this->resetValidation();
         $this->showModal = true;
+    }
+
+    public function selectLinkedProduct(int $productId): void
+    {
+        $this->product_id = $productId;
+        $this->productLinkSearch = '';
+    }
+
+    public function clearLinkedProduct(): void
+    {
+        $this->product_id = null;
     }
 
     public function save(): void
@@ -84,6 +137,98 @@ new class extends Component
             $uniqueRule = $uniqueRule->ignore($this->editingId);
         }
 
+        if ($this->bundle_mode === 'product') {
+            $this->saveProductBundle($uniqueRule);
+        } else {
+            $this->saveRuleBundle($uniqueRule);
+        }
+    }
+
+    private function saveProductBundle(mixed $uniqueRule): void
+    {
+        $validated = $this->validate([
+            'name' => ['required', 'string', 'max:120', $uniqueRule],
+            'description' => ['nullable', 'string', 'max:500'],
+            'bundle_price' => ['required', 'numeric', 'min:0.01'],
+            'product_id' => ['nullable', 'integer', 'exists:products,id'],
+            'is_active' => ['boolean'],
+        ]);
+
+        $productIds = collect($this->selectedProducts)
+            ->filter(fn (mixed $selected): bool => (bool) $selected)
+            ->keys()
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->values();
+
+        if ($productIds->isEmpty()) {
+            $this->addError('selectedProducts', 'Select at least one component product.');
+            return;
+        }
+
+        $items = $productIds->map(fn (int $productId, int $position): array => [
+            'product_id' => $productId,
+            'product_variant_id' => null,
+            'min_quantity' => max(1, (int) ($this->productQuantities[$productId] ?? 1)),
+            'position' => $position,
+        ])->all();
+
+        $data = [
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'bundle_price' => $validated['bundle_price'],
+            'product_id' => $validated['product_id'],
+            'discount_type' => null,
+            'discount_value' => null,
+            'is_active' => $validated['is_active'],
+        ];
+
+        if ($this->editingId) {
+            $bundle = BundleDiscount::findOrFail($this->editingId);
+
+            foreach (['name', 'description', 'bundle_price', 'product_id', 'is_active'] as $field) {
+                $oldValue = (string) $bundle->getAttribute($field);
+                $newValue = (string) ($data[$field] ?? '');
+                if ($oldValue !== $newValue) {
+                    EditHistory::recordChange($bundle, $field, $oldValue, $newValue);
+                }
+            }
+
+            $bundle->update($data);
+            $bundle->items()->delete();
+            $bundle->items()->createMany($items);
+
+            AdminActivityLog::log(AdminActivityLog::ACTION_UPDATED, $bundle, "Updated bundle discount \"{$bundle->name}\"");
+            $this->ensureSaleCategory($bundle);
+            session()->flash('status', 'Bundle updated.');
+        } else {
+            $bundle = BundleDiscount::create($data);
+            $bundle->items()->createMany($items);
+
+            AdminActivityLog::log(AdminActivityLog::ACTION_CREATED, $bundle, "Created bundle discount \"{$bundle->name}\"");
+            $this->ensureSaleCategory($bundle);
+            session()->flash('status', 'Bundle created.');
+        }
+
+        $this->showModal = false;
+        $this->resetForm();
+    }
+
+    private function ensureSaleCategory(BundleDiscount $bundle): void
+    {
+        if (! $bundle->product_id || ! $bundle->is_active) {
+            return;
+        }
+
+        $saleCategory = Category::where('slug', 'sale')->first();
+
+        if ($saleCategory) {
+            Product::find($bundle->product_id)?->categories()->syncWithoutDetaching([$saleCategory->id]);
+        }
+    }
+
+    private function saveRuleBundle(mixed $uniqueRule): void
+    {
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:120', $uniqueRule],
             'description' => ['nullable', 'string', 'max:500'],
@@ -110,25 +255,35 @@ new class extends Component
             'position' => $position,
         ])->all();
 
+        $data = [
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+            'discount_type' => $validated['discount_type'],
+            'discount_value' => $validated['discount_value'],
+            'bundle_price' => null,
+            'product_id' => null,
+            'is_active' => $validated['is_active'],
+        ];
+
         if ($this->editingId) {
             $bundle = BundleDiscount::findOrFail($this->editingId);
 
             foreach (['name', 'description', 'discount_type', 'discount_value', 'is_active'] as $field) {
                 $oldValue = (string) $bundle->getAttribute($field);
-                $newValue = (string) $validated[$field];
+                $newValue = (string) ($data[$field] ?? '');
                 if ($oldValue !== $newValue) {
                     EditHistory::recordChange($bundle, $field, $oldValue, $newValue);
                 }
             }
 
-            $bundle->update($validated);
+            $bundle->update($data);
             $bundle->items()->delete();
             $bundle->items()->createMany($variantItems);
 
             AdminActivityLog::log(AdminActivityLog::ACTION_UPDATED, $bundle, "Updated bundle discount \"{$bundle->name}\"");
             session()->flash('status', 'Bundle discount updated.');
         } else {
-            $bundle = BundleDiscount::create($validated);
+            $bundle = BundleDiscount::create($data);
             $bundle->items()->createMany($variantItems);
 
             AdminActivityLog::log(AdminActivityLog::ACTION_CREATED, $bundle, "Created bundle discount \"{$bundle->name}\"");
@@ -169,11 +324,18 @@ new class extends Component
     private function resetForm(): void
     {
         $this->editingId = null;
+        $this->bundle_mode = 'product';
         $this->name = '';
         $this->description = '';
+        $this->is_active = true;
+        $this->bundle_price = '';
+        $this->product_id = null;
+        $this->productLinkSearch = '';
+        $this->selectedProducts = [];
+        $this->productQuantities = [];
+        $this->productSearch = '';
         $this->discount_type = BundleDiscount::TYPE_FIXED;
         $this->discount_value = '';
-        $this->is_active = true;
         $this->selectedVariants = [];
         $this->quantities = [];
         $this->variantSearch = '';
@@ -192,6 +354,144 @@ new class extends Component
                 ->orWhere('description', 'like', '%' . $this->search . '%'))
             ->orderBy($sortField, $this->sortDirection)
             ->paginate((int) config('pagination.admin_per_page', 20));
+    }
+
+    #[Computed]
+    public function linkedProduct(): ?Product
+    {
+        if ($this->product_id === null) {
+            return null;
+        }
+
+        return Product::find($this->product_id);
+    }
+
+    #[Computed]
+    public function linkableProducts(): array
+    {
+        if ($this->productLinkSearch === '') {
+            return [];
+        }
+
+        $search = $this->productLinkSearch;
+
+        return Product::query()
+            ->where('status', 'active')
+            ->where(function ($q) use ($search): void {
+                $q->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('slug', 'like', '%' . $search . '%');
+            })
+            ->orderBy('name')
+            ->limit(10)
+            ->get(['id', 'name', 'slug'])
+            ->map(fn (Product $product): array => [
+                'id' => (int) $product->id,
+                'label' => $product->name,
+                'slug' => $product->slug,
+            ])
+            ->all();
+    }
+
+    #[Computed]
+    public function productOptions(): array
+    {
+        $selectedIds = collect($this->selectedProducts)
+            ->filter(fn (mixed $selected): bool => (bool) $selected)
+            ->keys()
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->values()
+            ->all();
+
+        $query = Product::query()
+            ->where('status', 'active')
+            ->orderBy('name');
+
+        if ($this->productSearch !== '') {
+            $search = $this->productSearch;
+            $query->where(function ($q) use ($search): void {
+                $q->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('slug', 'like', '%' . $search . '%');
+            });
+        }
+
+        $searchResults = $query->limit(50)
+            ->get(['id', 'name']);
+
+        if ($selectedIds !== []) {
+            $alreadyFoundIds = $searchResults->pluck('id')->all();
+            $missingSelectedIds = array_diff($selectedIds, $alreadyFoundIds);
+
+            if ($missingSelectedIds !== []) {
+                $selectedProducts = Product::query()
+                    ->whereIn('id', $missingSelectedIds)
+                    ->get(['id', 'name']);
+
+                $searchResults = $selectedProducts->merge($searchResults);
+            }
+        }
+
+        // Get cheapest active variant price per product for savings display
+        $productIds = $searchResults->pluck('id')->all();
+        $cheapestPrices = ProductVariant::query()
+            ->whereIn('product_id', $productIds)
+            ->where('is_active', true)
+            ->selectRaw('product_id, MIN(price) as min_price')
+            ->groupBy('product_id')
+            ->pluck('min_price', 'product_id')
+            ->all();
+
+        return $searchResults
+            ->map(fn (Product $product): array => [
+                'id' => (int) $product->id,
+                'label' => $product->name,
+                'price' => (float) ($cheapestPrices[$product->id] ?? 0),
+                'selected' => in_array((int) $product->id, $selectedIds, true),
+            ])
+            ->sortByDesc('selected')
+            ->values()
+            ->all();
+    }
+
+    #[Computed]
+    public function componentTotal(): float
+    {
+        $selectedIds = collect($this->selectedProducts)
+            ->filter(fn (mixed $selected): bool => (bool) $selected)
+            ->keys()
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->all();
+
+        if ($selectedIds === []) {
+            return 0.0;
+        }
+
+        $cheapestPrices = ProductVariant::query()
+            ->whereIn('product_id', $selectedIds)
+            ->where('is_active', true)
+            ->selectRaw('product_id, MIN(price) as min_price')
+            ->groupBy('product_id')
+            ->pluck('min_price', 'product_id');
+
+        return (float) collect($selectedIds)->sum(function (int $productId) use ($cheapestPrices): float {
+            $price = (float) ($cheapestPrices[$productId] ?? 0);
+            $qty = max(1, (int) ($this->productQuantities[$productId] ?? 1));
+            return $price * $qty;
+        });
+    }
+
+    #[Computed]
+    public function calculatedSavings(): float
+    {
+        $total = $this->componentTotal;
+        $price = (float) $this->bundle_price;
+
+        if ($total <= 0 || $price <= 0) {
+            return 0.0;
+        }
+
+        return max(0.0, round($total - $price, 2));
     }
 
     #[Computed]
@@ -269,7 +569,7 @@ new class extends Component
                 class="w-full rounded border border-slate-300 px-3 py-2 text-sm sm:w-64"
             >
             <button wire:click="openCreate" class="shrink-0 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">
-                New Rule
+                New Bundle
             </button>
         </div>
     </div>
@@ -282,14 +582,14 @@ new class extends Component
         <table class="min-w-full border border-slate-200 text-sm">
             <thead class="bg-slate-50">
                 <tr>
-                    @foreach (['name' => 'Name', 'discount_type' => 'Type', 'discount_value' => 'Value'] as $field => $label)
-                        <th wire:click="sortBy('{{ $field }}')" class="cursor-pointer border border-slate-200 px-3 py-2 text-left select-none hover:bg-slate-100">
-                            {{ $label }}
-                            @if ($sortField === $field)
-                                <span class="ml-1">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                            @endif
-                        </th>
-                    @endforeach
+                    <th wire:click="sortBy('name')" class="cursor-pointer border border-slate-200 px-3 py-2 text-left select-none hover:bg-slate-100">
+                        Name
+                        @if ($sortField === 'name')
+                            <span class="ml-1">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                        @endif
+                    </th>
+                    <th class="border border-slate-200 px-3 py-2 text-left">Mode</th>
+                    <th class="border border-slate-200 px-3 py-2 text-left">Price / Discount</th>
                     <th class="border border-slate-200 px-3 py-2 text-left">Items</th>
                     <th wire:click="sortBy('is_active')" class="cursor-pointer border border-slate-200 px-3 py-2 text-left select-none hover:bg-slate-100">
                         Status
@@ -309,12 +609,20 @@ new class extends Component
                                 <p class="text-xs text-slate-500">{{ $bundle->description }}</p>
                             @endif
                         </td>
-                        <td class="border border-slate-200 px-3 py-2">{{ ucfirst($bundle->discount_type) }}</td>
                         <td class="border border-slate-200 px-3 py-2">
-                            @if ($bundle->discount_type === \App\Models\BundleDiscount::TYPE_PERCENT)
+                            @if ($bundle->bundle_price !== null)
+                                <span class="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">Bundle</span>
+                            @else
+                                <span class="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Rule</span>
+                            @endif
+                        </td>
+                        <td class="border border-slate-200 px-3 py-2">
+                            @if ($bundle->bundle_price !== null)
+                                &euro;{{ number_format((float) $bundle->bundle_price, 2) }}
+                            @elseif ($bundle->discount_type === \App\Models\BundleDiscount::TYPE_PERCENT)
                                 {{ rtrim(rtrim(number_format((float) $bundle->discount_value, 2), '0'), '.') }}%
                             @else
-                                ${{ number_format((float) $bundle->discount_value, 2) }}
+                                &euro;{{ number_format((float) $bundle->discount_value, 2) }}
                             @endif
                         </td>
                         <td class="border border-slate-200 px-3 py-2">{{ $bundle->items_count }}</td>
@@ -354,36 +662,32 @@ new class extends Component
 
             {{-- Dialog --}}
             <div class="relative z-10 w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-                <h3 class="mb-4 text-lg font-semibold">{{ $editingId ? 'Edit Bundle Discount' : 'New Bundle Discount' }}</h3>
+                <h3 class="mb-4 text-lg font-semibold">{{ $editingId ? 'Edit Bundle' : 'New Bundle' }}</h3>
+
+                {{-- Mode toggle --}}
+                <div class="mb-4 flex gap-2">
+                    <button
+                        type="button"
+                        wire:click="$set('bundle_mode', 'product')"
+                        class="rounded px-3 py-1.5 text-sm font-medium {{ $bundle_mode === 'product' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}"
+                    >
+                        Product Bundle
+                    </button>
+                    <button
+                        type="button"
+                        wire:click="$set('bundle_mode', 'rule')"
+                        class="rounded px-3 py-1.5 text-sm font-medium {{ $bundle_mode === 'rule' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}"
+                    >
+                        Discount Rule
+                    </button>
+                </div>
 
                 <form wire:submit="save" class="space-y-4">
-                    <div class="grid gap-4 md:grid-cols-2">
-                        <div>
-                            <label class="mb-1 block text-sm font-medium">Bundle name</label>
-                            <input type="text" wire:model="name" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" maxlength="120">
-                            @error('name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-sm font-medium">Discount type</label>
-                            <select wire:model="discount_type" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
-                                @foreach (\App\Models\BundleDiscount::supportedTypes() as $type)
-                                    <option value="{{ $type }}">{{ ucfirst($type) }}</option>
-                                @endforeach
-                            </select>
-                            @error('discount_type') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                        </div>
-                    </div>
-
-                    <div class="grid gap-4 md:grid-cols-2">
-                        <div>
-                            <label class="mb-1 block text-sm font-medium">Discount value</label>
-                            <input type="number" step="0.01" min="0.01" wire:model="discount_value" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
-                            @error('discount_value') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                        </div>
-                        <div class="flex items-center gap-2 pt-7">
-                            <input type="checkbox" wire:model="is_active" id="modal-is-active" class="h-4 w-4 rounded border-slate-300">
-                            <label for="modal-is-active" class="text-sm font-medium">Active</label>
-                        </div>
+                    {{-- Common: Name + Description --}}
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">Bundle name</label>
+                        <input type="text" wire:model="name" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" maxlength="120">
+                        @error('name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
@@ -392,60 +696,217 @@ new class extends Component
                         @error('description') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
-                    {{-- Variant requirements --}}
-                    <div class="rounded border border-slate-200 p-4">
-                        <p class="mb-2 text-sm font-medium text-slate-900">Variant requirements</p>
-                        <p class="mb-3 text-xs text-slate-500">Search and select variants required for this bundle. Set minimum quantities per variant.</p>
+                    @if ($bundle_mode === 'product')
+                        {{-- PRODUCT BUNDLE MODE --}}
 
-                        @error('selectedVariants') <p class="mb-2 text-xs text-red-600">{{ $message }}</p> @enderror
+                        {{-- Link product page --}}
+                        <div class="rounded border border-slate-200 p-4">
+                            <p class="mb-2 text-sm font-medium text-slate-900">Linked product page</p>
+                            <p class="mb-3 text-xs text-slate-500">Link this bundle to an existing product so it has its own shop page with photos.</p>
 
-                        <input
-                            wire:model.live.debounce.300ms="variantSearch"
-                            type="text"
-                            placeholder="Search by product name, variant, or SKU…"
-                            class="mb-3 w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                        >
-
-                        <div class="max-h-72 overflow-auto border border-slate-200">
-                            <table class="min-w-full text-sm">
-                                <thead class="bg-slate-50 sticky top-0">
-                                    <tr>
-                                        <th class="border-b border-slate-200 px-3 py-2 text-left">Use</th>
-                                        <th class="border-b border-slate-200 px-3 py-2 text-left">Variant</th>
-                                        <th class="border-b border-slate-200 px-3 py-2 text-left">Min Qty</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($this->variantOptions as $variant)
-                                        <tr wire:key="variant-{{ $variant['id'] }}">
-                                            <td class="border-b border-slate-200 px-3 py-2">
-                                                <input
-                                                    type="checkbox"
-                                                    wire:model="selectedVariants.{{ $variant['id'] }}"
-                                                    class="h-4 w-4 rounded border-slate-300"
-                                                >
-                                            </td>
-                                            <td class="border-b border-slate-200 px-3 py-2">{{ $variant['label'] }}</td>
-                                            <td class="border-b border-slate-200 px-3 py-2">
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    max="99"
-                                                    wire:model="quantities.{{ $variant['id'] }}"
-                                                    class="w-20 rounded border border-slate-300 px-2 py-1 text-sm"
-                                                >
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                            @if ($this->linkedProduct)
+                                <div class="flex items-center justify-between rounded bg-blue-50 px-3 py-2">
+                                    <div>
+                                        <span class="text-sm font-medium text-blue-900">{{ $this->linkedProduct->name }}</span>
+                                        <span class="ml-2 text-xs text-blue-600">/shop/{{ $this->linkedProduct->slug }}</span>
+                                    </div>
+                                    <button type="button" wire:click="clearLinkedProduct" class="text-xs text-red-600 hover:underline">Remove</button>
+                                </div>
+                            @else
+                                <input
+                                    wire:model.live.debounce.300ms="productLinkSearch"
+                                    type="text"
+                                    placeholder="Search product by name…"
+                                    class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                                >
+                                @if (count($this->linkableProducts) > 0)
+                                    <div class="mt-1 max-h-40 overflow-auto rounded border border-slate-200 bg-white">
+                                        @foreach ($this->linkableProducts as $option)
+                                            <button
+                                                type="button"
+                                                wire:click="selectLinkedProduct({{ $option['id'] }})"
+                                                wire:key="link-product-{{ $option['id'] }}"
+                                                class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                                            >
+                                                {{ $option['label'] }}
+                                                <span class="text-xs text-slate-400">/shop/{{ $option['slug'] }}</span>
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            @endif
+                            @error('product_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
-                    </div>
+
+                        {{-- Bundle price + savings --}}
+                        <div class="rounded border border-slate-200 p-4">
+                            <p class="mb-2 text-sm font-medium text-slate-900">Bundle pricing</p>
+
+                            <div class="grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label class="mb-1 block text-sm font-medium">Bundle price (&euro;)</label>
+                                    <input type="number" step="0.01" min="0.01" wire:model.live.debounce.500ms="bundle_price" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                    @error('bundle_price') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                </div>
+                                <div class="flex items-center gap-2 pt-7">
+                                    <input type="checkbox" wire:model="is_active" id="modal-is-active" class="h-4 w-4 rounded border-slate-300">
+                                    <label for="modal-is-active" class="text-sm font-medium">Active</label>
+                                </div>
+                            </div>
+
+                            {{-- Live savings display --}}
+                            @if ($this->componentTotal > 0)
+                                <div class="mt-3 rounded bg-slate-50 p-3 text-sm">
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-600">Components total:</span>
+                                        <span class="font-medium">&euro;{{ number_format($this->componentTotal, 2) }}</span>
+                                    </div>
+                                    @if ((float) $bundle_price > 0)
+                                        <div class="flex justify-between">
+                                            <span class="text-slate-600">Bundle price:</span>
+                                            <span class="font-medium">&euro;{{ number_format((float) $bundle_price, 2) }}</span>
+                                        </div>
+                                        <div class="mt-1 flex justify-between border-t border-slate-200 pt-1">
+                                            <span class="font-medium text-emerald-700">Customer saves:</span>
+                                            <span class="font-bold text-emerald-700">&euro;{{ number_format($this->calculatedSavings, 2) }}</span>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
+
+                        {{-- Component products --}}
+                        <div class="rounded border border-slate-200 p-4">
+                            <p class="mb-2 text-sm font-medium text-slate-900">Component products</p>
+                            <p class="mb-3 text-xs text-slate-500">Select the products included in this bundle. Customers will choose specific variants (size/color) on the bundle page.</p>
+
+                            @error('selectedProducts') <p class="mb-2 text-xs text-red-600">{{ $message }}</p> @enderror
+
+                            <input
+                                wire:model.live.debounce.300ms="productSearch"
+                                type="text"
+                                placeholder="Search by product name…"
+                                class="mb-3 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                            >
+
+                            <div class="max-h-72 overflow-auto border border-slate-200">
+                                <table class="min-w-full text-sm">
+                                    <thead class="bg-slate-50 sticky top-0">
+                                        <tr>
+                                            <th class="border-b border-slate-200 px-3 py-2 text-left">Use</th>
+                                            <th class="border-b border-slate-200 px-3 py-2 text-left">Product</th>
+                                            <th class="border-b border-slate-200 px-3 py-2 text-left">From price</th>
+                                            <th class="border-b border-slate-200 px-3 py-2 text-left">Min Qty</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($this->productOptions as $product)
+                                            <tr wire:key="product-{{ $product['id'] }}">
+                                                <td class="border-b border-slate-200 px-3 py-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        wire:model.live="selectedProducts.{{ $product['id'] }}"
+                                                        class="h-4 w-4 rounded border-slate-300"
+                                                    >
+                                                </td>
+                                                <td class="border-b border-slate-200 px-3 py-2">{{ $product['label'] }}</td>
+                                                <td class="border-b border-slate-200 px-3 py-2 text-slate-500">&euro;{{ number_format($product['price'], 2) }}</td>
+                                                <td class="border-b border-slate-200 px-3 py-2">
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        max="99"
+                                                        wire:model.live="productQuantities.{{ $product['id'] }}"
+                                                        class="w-20 rounded border border-slate-300 px-2 py-1 text-sm"
+                                                    >
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    @else
+                        {{-- DISCOUNT RULE MODE (legacy) --}}
+
+                        <div class="grid gap-4 md:grid-cols-2">
+                            <div>
+                                <label class="mb-1 block text-sm font-medium">Discount type</label>
+                                <select wire:model="discount_type" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                    @foreach (\App\Models\BundleDiscount::supportedTypes() as $type)
+                                        <option value="{{ $type }}">{{ ucfirst($type) }}</option>
+                                    @endforeach
+                                </select>
+                                @error('discount_type') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label class="mb-1 block text-sm font-medium">Discount value</label>
+                                <input type="number" step="0.01" min="0.01" wire:model="discount_value" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                @error('discount_value') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" wire:model="is_active" id="modal-is-active-rule" class="h-4 w-4 rounded border-slate-300">
+                            <label for="modal-is-active-rule" class="text-sm font-medium">Active</label>
+                        </div>
+
+                        {{-- Variant requirements --}}
+                        <div class="rounded border border-slate-200 p-4">
+                            <p class="mb-2 text-sm font-medium text-slate-900">Variant requirements</p>
+                            <p class="mb-3 text-xs text-slate-500">Search and select variants required for this bundle. Set minimum quantities per variant.</p>
+
+                            @error('selectedVariants') <p class="mb-2 text-xs text-red-600">{{ $message }}</p> @enderror
+
+                            <input
+                                wire:model.live.debounce.300ms="variantSearch"
+                                type="text"
+                                placeholder="Search by product name, variant, or SKU…"
+                                class="mb-3 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                            >
+
+                            <div class="max-h-72 overflow-auto border border-slate-200">
+                                <table class="min-w-full text-sm">
+                                    <thead class="bg-slate-50 sticky top-0">
+                                        <tr>
+                                            <th class="border-b border-slate-200 px-3 py-2 text-left">Use</th>
+                                            <th class="border-b border-slate-200 px-3 py-2 text-left">Variant</th>
+                                            <th class="border-b border-slate-200 px-3 py-2 text-left">Min Qty</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($this->variantOptions as $variant)
+                                            <tr wire:key="variant-{{ $variant['id'] }}">
+                                                <td class="border-b border-slate-200 px-3 py-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        wire:model="selectedVariants.{{ $variant['id'] }}"
+                                                        class="h-4 w-4 rounded border-slate-300"
+                                                    >
+                                                </td>
+                                                <td class="border-b border-slate-200 px-3 py-2">{{ $variant['label'] }}</td>
+                                                <td class="border-b border-slate-200 px-3 py-2">
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        max="99"
+                                                        wire:model="quantities.{{ $variant['id'] }}"
+                                                        class="w-20 rounded border border-slate-300 px-2 py-1 text-sm"
+                                                    >
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
 
                     <div class="flex items-center justify-end gap-3 pt-2">
                         <button type="button" wire:click="closeModal" class="rounded border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Cancel</button>
                         <button type="submit" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">
-                            <span wire:loading.remove wire:target="save">{{ $editingId ? 'Save Changes' : 'Create Bundle Discount' }}</span>
+                            <span wire:loading.remove wire:target="save">{{ $editingId ? 'Save Changes' : 'Create Bundle' }}</span>
                             <span wire:loading wire:target="save">Saving…</span>
                         </button>
                     </div>

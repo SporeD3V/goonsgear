@@ -17,6 +17,7 @@ class BundleDiscountItem extends Model
      */
     protected $fillable = [
         'bundle_discount_id',
+        'product_id',
         'product_variant_id',
         'min_quantity',
         'position',
@@ -36,6 +37,11 @@ class BundleDiscountItem extends Model
     public function bundleDiscount(): BelongsTo
     {
         return $this->belongsTo(BundleDiscount::class);
+    }
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
     }
 
     public function variant(): BelongsTo

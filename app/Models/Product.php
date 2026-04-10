@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 class Product extends Model
@@ -86,6 +87,11 @@ class Product extends Model
     public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function bundleDiscount(): HasOne
+    {
+        return $this->hasOne(BundleDiscount::class);
     }
 
     public function stockAlertSubscriptions()
