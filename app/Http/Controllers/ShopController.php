@@ -299,7 +299,7 @@ class ShopController extends Controller
     /**
      * Check if this product is a component of an active bundle and return bundle product info.
      *
-     * @return array{name: string, slug: string, bundle_price: float, savings: float, media_url: string|null}|null
+     * @return array{name: string, slug: string, bundle_price: float, savings: float, media_url: string|null, items: array<int, array{name: string, media_url: string|null}>}|null
      */
     private function loadParentBundleData(Product $product): ?array
     {
@@ -310,7 +310,9 @@ class ShopController extends Controller
             ->with([
                 'bundleDiscount.product' => fn ($q) => $q->where('status', 'active'),
                 'bundleDiscount.product.media' => fn ($q) => $q->orderByDesc('is_primary')->orderBy('position')->limit(1),
+                'bundleDiscount.items.product' => fn ($q) => $q->where('status', 'active'),
                 'bundleDiscount.items.product.variants' => fn ($q) => $q->where('is_active', true)->orderBy('price'),
+                'bundleDiscount.items.product.media' => fn ($q) => $q->orderByDesc('is_primary')->orderBy('position')->limit(1),
             ])
             ->first();
 
@@ -347,12 +349,35 @@ class ShopController extends Controller
             }
         }
 
+        $items = [];
+
+        /** @var BundleDiscountItem $item */
+        foreach ($bundle->items as $item) {
+            /** @var Product|null $cp */
+            $cp = $item->product;
+
+            if ($cp === null) {
+                continue;
+            }
+
+            /** @var ProductMedia|null $cpMedia */
+            $cpMedia = $cp->media->first();
+
+            $items[] = [
+                'name' => $cp->name,
+                'media_url' => $cpMedia
+                    ? route('media.show', ['path' => $this->resolveThumbnailPath($cpMedia)])
+                    : null,
+            ];
+        }
+
         return [
             'name' => $bundleProduct->name,
             'slug' => $bundleProduct->slug,
             'bundle_price' => (float) $bundle->bundle_price,
             'savings' => $bundle->calculateSavings($componentTotal),
             'media_url' => $mediaUrl,
+            'items' => $items,
         ];
     }
 

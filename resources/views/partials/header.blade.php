@@ -49,7 +49,7 @@
                         <div class="invisible absolute left-0 top-full z-50 min-w-48 overflow-hidden rounded-xl border border-black/5 bg-white opacity-0 shadow-xl transition-all duration-200 group-hover:visible group-hover:opacity-100">
                             @foreach ($cat->children as $child)
                                 <a href="{{ route('shop.category', $child->slug) }}"
-                                   class="block px-5 py-2.5 text-sm font-medium text-red-600/70 transition-colors duration-150 hover:bg-red-600 hover:text-white">
+                                   class="block px-5 py-2.5 text-sm font-medium text-black/70 transition-colors duration-150 hover:bg-black hover:text-white">
                                     {{ $child->name }}
                                 </a>
                             @endforeach
@@ -178,17 +178,17 @@
                                 x-transition:enter="transition ease-out duration-200"
                                 x-transition:enter-start="opacity-0 -translate-y-1"
                                 x-transition:enter-end="opacity-100 translate-y-0"
-                                class="ml-4 space-y-0.5 border-l-2 border-red-100 pl-4"
+                                class="ml-4 space-y-0.5 border-l-2 border-black/5 pl-4"
                             >
                                 <a href="{{ route('shop.category', $cat->slug) }}"
                                    x-on:click="mobileOpen = false"
-                                   class="block rounded-lg px-3 py-2.5 text-sm font-semibold text-red-600/70 transition-colors duration-150 hover:bg-red-600 hover:text-white">
+                                   class="block rounded-lg px-3 py-2.5 text-sm font-semibold text-black/70 transition-colors duration-150 hover:bg-black hover:text-white">
                                     All Sale
                                 </a>
                                 @foreach ($cat->children as $child)
                                     <a href="{{ route('shop.category', $child->slug) }}"
                                        x-on:click="mobileOpen = false"
-                                       class="block rounded-lg px-3 py-2.5 text-sm font-semibold text-red-600/70 transition-colors duration-150 hover:bg-red-600 hover:text-white">
+                                       class="block rounded-lg px-3 py-2.5 text-sm font-semibold text-black/70 transition-colors duration-150 hover:bg-black hover:text-white">
                                         {{ $child->name }}
                                     </a>
                                 @endforeach
