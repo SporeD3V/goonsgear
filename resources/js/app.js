@@ -1,5 +1,69 @@
 import './bootstrap';
 
+// Stock alert modal for out-of-stock products (used by product detail page)
+window.stockAlertModal = function (variantId, isAuth) {
+	return {
+		variantId: variantId,
+		isAuth: isAuth,
+		email: '',
+		loading: false,
+		success: false,
+		error: '',
+		async submitAuth() {
+			this.loading = true;
+			this.error = '';
+			try {
+				const res = await fetch('/stock-alert-subscriptions', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'Accept': 'application/json',
+						'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+					},
+					body: JSON.stringify({ variant_id: this.variantId, subscribe_stock_alert: '1' }),
+				});
+				if (!res.ok) throw new Error('Failed');
+				this.success = true;
+				setTimeout(() => this.$el.closest('dialog')?.close(), 1500);
+			} catch (e) {
+				this.error = 'Something went wrong. Please try again.';
+			} finally {
+				this.loading = false;
+			}
+		},
+		async submitGuest() {
+			this.error = '';
+			if (!this.email || !this.email.includes('@')) {
+				this.error = 'Please enter a valid email address.';
+				return;
+			}
+			this.loading = true;
+			try {
+				const res = await fetch('/stock-alert-subscriptions', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'Accept': 'application/json',
+						'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+					},
+					body: JSON.stringify({ variant_id: this.variantId, email: this.email }),
+				});
+				const data = await res.json();
+				if (!res.ok) {
+					this.error = data.message || data.errors?.email?.[0] || 'Something went wrong.';
+					return;
+				}
+				this.success = true;
+				setTimeout(() => this.$el.closest('dialog')?.close(), 1500);
+			} catch (e) {
+				this.error = 'Something went wrong. Please try again.';
+			} finally {
+				this.loading = false;
+			}
+		},
+	};
+};
+
 // Alpine.js search autocomplete component (used by Livewire shop-catalog)
 window.searchAutocomplete = () => ({
 	open: false,
@@ -327,10 +391,9 @@ document.addEventListener('DOMContentLoaded', () => {
 		const availabilityLine = picker.querySelector('[data-display-availability-line]');
 		const cartVariantInput = picker.querySelector('[data-cart-variant-input]');
 		const quantityInput = picker.querySelector('[data-cart-quantity-input]');
-		const stockAlertForm = picker.querySelector('[data-stock-alert-form]');
-		const stockAlertVariantInput = picker.querySelector('[data-stock-alert-variant-input]');
+		const stockAlertContainer = picker.querySelector('[data-stock-alert-container]');
 		const stockAlertSubscribedLabel = picker.querySelector('[data-stock-alert-subscribed-label]');
-		const stockAlertLoginNote = picker.querySelector('[data-stock-alert-login-note]');
+		const stockAlertModalAlpine = picker.querySelector('[data-stock-alert-modal-alpine]');
 		const addToCartButton = picker.querySelector('[data-add-to-cart-button]');
 
 		if (!variantSelect || !priceElement || !skuElement || !statusElement || !qtyElement) {
@@ -493,12 +556,8 @@ document.addEventListener('DOMContentLoaded', () => {
 				addToCartButton.disabled = true;
 			}
 
-			if (stockAlertForm) {
-				stockAlertForm.classList.add('hidden');
-			}
-
-			if (stockAlertLoginNote) {
-				stockAlertLoginNote.classList.add('hidden');
+			if (stockAlertContainer) {
+				stockAlertContainer.classList.add('hidden');
 			}
 
 			dispatchColorSelection();
@@ -562,20 +621,18 @@ document.addEventListener('DOMContentLoaded', () => {
 			const isOutOfStock = selectedOption.dataset.variantOutOfStock === '1';
 			const isSubscribed = selectedOption.dataset.variantStockAlertSubscribed === '1';
 
-			if (stockAlertForm) {
-				stockAlertForm.classList.toggle('hidden', !isOutOfStock);
-
-				if (stockAlertVariantInput) {
-					stockAlertVariantInput.value = selectedOption.value;
-				}
+			if (stockAlertContainer) {
+				stockAlertContainer.classList.toggle('hidden', !isOutOfStock);
 
 				if (stockAlertSubscribedLabel) {
 					stockAlertSubscribedLabel.classList.toggle('hidden', !isSubscribed);
 				}
 			}
 
-			if (stockAlertLoginNote) {
-				stockAlertLoginNote.classList.toggle('hidden', !isOutOfStock);
+			if (stockAlertModalAlpine && stockAlertModalAlpine.__x) {
+				stockAlertModalAlpine.__x.$data.variantId = Number(selectedOption.value);
+				stockAlertModalAlpine.__x.$data.success = false;
+				stockAlertModalAlpine.__x.$data.error = '';
 			}
 
 			dispatchColorSelection();

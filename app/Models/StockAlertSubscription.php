@@ -17,6 +17,7 @@ class StockAlertSubscription extends Model
      */
     protected $fillable = [
         'user_id',
+        'email',
         'product_variant_id',
         'is_active',
         'notified_at',

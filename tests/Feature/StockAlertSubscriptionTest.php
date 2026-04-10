@@ -26,16 +26,47 @@ class StockAlertSubscriptionTest extends TestCase
         ]);
     }
 
-    public function test_guest_cannot_create_stock_alert_subscription(): void
+    public function test_guest_without_email_gets_validation_error(): void
     {
         $variant = $this->outOfStockVariant();
 
-        $response = $this->post(route('stock-alert-subscriptions.store'), [
+        $response = $this->postJson(route('stock-alert-subscriptions.store'), [
             'variant_id' => $variant->id,
-            'subscribe_stock_alert' => '1',
         ]);
 
-        $response->assertRedirect(route('login'));
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('email');
+    }
+
+    public function test_guest_can_subscribe_with_email(): void
+    {
+        $variant = $this->outOfStockVariant();
+
+        $response = $this->postJson(route('stock-alert-subscriptions.store'), [
+            'variant_id' => $variant->id,
+            'email' => 'guest@example.com',
+        ]);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('stock_alert_subscriptions', [
+            'email' => 'guest@example.com',
+            'product_variant_id' => $variant->id,
+            'is_active' => true,
+            'user_id' => null,
+        ]);
+    }
+
+    public function test_guest_with_invalid_email_gets_validation_error(): void
+    {
+        $variant = $this->outOfStockVariant();
+
+        $response = $this->postJson(route('stock-alert-subscriptions.store'), [
+            'variant_id' => $variant->id,
+            'email' => 'not-an-email',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('email');
     }
 
     public function test_user_can_subscribe_to_out_of_stock_variant_alert(): void

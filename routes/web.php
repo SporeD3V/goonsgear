@@ -100,7 +100,6 @@ Route::delete('/account/size-profiles/{sizeProfile}', [SizeProfileController::cl
     ->name('account.size-profiles.destroy');
 
 Route::post('/stock-alert-subscriptions', [StockAlertSubscriptionController::class, 'store'])
-    ->middleware('auth')
     ->name('stock-alert-subscriptions.store');
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');

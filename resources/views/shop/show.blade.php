@@ -56,6 +56,7 @@
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
             @vite(['resources/css/app.css', 'resources/js/app.js'])
         @endif
+        <meta name="csrf-token" content="{{ csrf_token() }}">
     </head>
     <body class="bg-white text-black">
         @include('partials.header')
@@ -362,38 +363,73 @@
                                     <button type="submit" data-add-to-cart-button class="rounded bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-60" {{ $hasAttributeGroups ? 'disabled' : '' }}>Add to cart</button>
                                 </form>
 
-                                @auth
-                                    <form
-                                        method="POST"
-                                        action="{{ route('stock-alert-subscriptions.store') }}"
-                                        class="{{ !$hasAttributeGroups && $defaultVariant->is_out_of_stock ? 'mt-4' : 'mt-4 hidden' }} rounded border border-black/10 bg-white p-3"
-                                        data-stock-alert-form
+                                <div
+                                    class="{{ !$hasAttributeGroups && $defaultVariant->is_out_of_stock ? 'mt-4' : 'mt-4 hidden' }}"
+                                    data-stock-alert-container
+                                >
+                                    <button
+                                        type="button"
+                                        class="w-full rounded border border-black/20 bg-white px-4 py-2.5 text-sm font-medium text-black/70 transition hover:border-black hover:text-black"
+                                        onclick="document.getElementById('stock-alert-modal-pdp').showModal()"
                                     >
-                                        @csrf
-                                        <input type="hidden" name="variant_id" value="{{ $defaultVariant->id }}" data-stock-alert-variant-input>
+                                        <svg class="mr-1 inline h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg>
+                                        Notify when back in stock
+                                    </button>
+                                    <span class="mt-1 block text-xs text-black/50 hidden" data-stock-alert-subscribed-label>Alert is active for this variant.</span>
+                                </div>
 
-                                        <label class="inline-flex items-center gap-2 text-sm text-black/70">
-                                            <input
-                                                type="checkbox"
-                                                name="subscribe_stock_alert"
-                                                value="1"
-                                                class="rounded border-black/20 text-black focus:ring-black"
-                                                checked
-                                                data-stock-alert-checkbox
-                                            >
-                                            Notify me when this variant is back in stock
-                                        </label>
-
-                                        <div class="mt-3 flex items-center gap-3">
-                                            <button type="submit" class="rounded bg-black px-3 py-2 text-sm text-white hover:bg-black/80">Save alert</button>
-                                            <span class="text-xs text-black/50 hidden" data-stock-alert-subscribed-label>Alert is active for this variant.</span>
+                                <dialog id="stock-alert-modal-pdp" class="w-full max-w-sm rounded-xl border border-black/10 bg-white p-0 shadow-xl backdrop:bg-black/50">
+                                    <div class="p-6" x-data="stockAlertModal({{ $defaultVariant->id }}, {{ auth()->check() ? 'true' : 'false' }})" data-stock-alert-modal-alpine>
+                                        <div class="flex items-center justify-between">
+                                            <h3 class="text-lg font-bold">Get notified</h3>
+                                            <button type="button" class="text-black/40 hover:text-black" onclick="this.closest('dialog').close()">
+                                                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                                            </button>
                                         </div>
-                                    </form>
-                                @else
-                                    <p class="{{ !$hasAttributeGroups && $defaultVariant->is_out_of_stock ? 'mt-4 text-sm text-black/60' : 'mt-4 hidden text-sm text-black/60' }}" data-stock-alert-login-note>
-                                        <a href="{{ route('login') }}" class="font-medium text-black underline hover:no-underline">Login</a> to enable back-in-stock alerts.
-                                    </p>
-                                @endauth
+                                        <p class="mt-2 text-sm text-black/60">We'll email you when <strong>{{ $product->name }}</strong> is back in stock.</p>
+
+                                        <template x-if="isAuth">
+                                            <div class="mt-4">
+                                                <button
+                                                    type="button"
+                                                    class="w-full rounded bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-black/80 disabled:opacity-50"
+                                                    x-on:click="submitAuth()"
+                                                    x-bind:disabled="loading"
+                                                >
+                                                    <span x-show="!success" x-text="loading ? 'Saving...' : 'Notify me'"></span>
+                                                    <span x-show="success" x-cloak>&#10003; Alert saved!</span>
+                                                </button>
+                                            </div>
+                                        </template>
+
+                                        <template x-if="!isAuth">
+                                            <div class="mt-4 space-y-3">
+                                                <div>
+                                                    <label class="mb-1 block text-sm font-medium text-black/70">Email address</label>
+                                                    <input
+                                                        type="email"
+                                                        x-model="email"
+                                                        placeholder="you@example.com"
+                                                        class="w-full rounded border border-black/20 bg-white px-3 py-2 text-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+                                                    >
+                                                    <p x-show="error" x-text="error" x-cloak class="mt-1 text-xs text-red-600"></p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    class="w-full rounded bg-black px-4 py-2.5 text-sm font-medium text-white transition hover:bg-black/80 disabled:opacity-50"
+                                                    x-on:click="submitGuest()"
+                                                    x-bind:disabled="loading"
+                                                >
+                                                    <span x-show="!success" x-text="loading ? 'Saving...' : 'Notify me'"></span>
+                                                    <span x-show="success" x-cloak>&#10003; Alert saved!</span>
+                                                </button>
+                                                <p class="text-center text-xs text-black/50">
+                                                    or <a href="{{ route('login') }}" class="font-medium text-black underline hover:no-underline">log in</a> to manage your alerts
+                                                </p>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </dialog>
                             </div>
 
                             @if ($variantsWithStockState->count() > 1)

@@ -12,9 +12,9 @@ class StockAlertSubscriptionPolicy
         return (int) $stockAlertSubscription->user_id === (int) $user->id;
     }
 
-    public function create(User $user): bool
+    public function create(?User $user): bool
     {
-        return (int) $user->id > 0;
+        return true;
     }
 
     public function update(User $user, StockAlertSubscription $stockAlertSubscription): bool
