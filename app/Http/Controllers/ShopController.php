@@ -8,8 +8,10 @@ use App\Models\BundleDiscountItem;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductMedia;
+use App\Models\ProductVariant;
 use App\Models\StockAlertSubscription;
 use App\Models\Tag;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -245,12 +247,15 @@ class ShopController extends Controller
                 continue;
             }
 
+            /** @var ProductMedia|null $media */
             $media = $componentProduct->media->first();
             $mediaUrl = $media
                 ? route('media.show', ['path' => $this->resolveGalleryPath($media)])
                 : asset('images/placeholder-product.svg');
 
-            $variants = $componentProduct->variants->map(fn ($variant): array => [
+            /** @var Collection<int, ProductVariant> $variantModels */
+            $variantModels = $componentProduct->variants;
+            $variants = $variantModels->map(fn (ProductVariant $variant): array => [
                 'id' => (int) $variant->id,
                 'name' => $variant->name,
                 'price' => (float) $variant->price,
