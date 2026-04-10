@@ -3,7 +3,6 @@
 use App\Concerns\ResolvesProductDisplay;
 use App\Models\Product;
 use App\Models\ProductMedia;
-use Illuminate\Support\Collection;
 use Illuminate\View\View;
 use Livewire\Component;
 
