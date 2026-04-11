@@ -516,6 +516,77 @@ class DashboardStatsService
     }
 
     /**
+     * Revenue at risk from sold-out variants: estimated monthly revenue loss based on historical sales velocity.
+     *
+     * @return array{total_monthly_revenue: float, variant_count: int, product_count: int, top_items: list<array{product: string, variant: string, sku: string, monthly_revenue: float, avg_daily_units: float, avg_price: float}>}
+     */
+    public function revenueAtRisk(int $topLimit = 20): array
+    {
+        return Cache::remember('dashboard:revenue-at-risk', 300, function () use ($topLimit): array {
+            // Get all active variants that are sold out (stock = 0)
+            $soldOut = DB::table('product_variants as pv')
+                ->join('products as p', 'p.id', '=', 'pv.product_id')
+                ->where('pv.is_active', true)
+                ->where('pv.stock_quantity', 0)
+                ->select('pv.id', 'pv.sku', 'pv.name as variant', 'p.name as product', 'p.id as product_id')
+                ->get();
+
+            if ($soldOut->isEmpty()) {
+                return [
+                    'total_monthly_revenue' => 0.0,
+                    'variant_count' => 0,
+                    'product_count' => 0,
+                    'top_items' => [],
+                ];
+            }
+
+            // Calculate 90-day historical sales velocity per variant (longer window for accuracy)
+            $ninetyDaysAgo = Carbon::now()->subDays(90);
+            $sales = DB::table('order_items')
+                ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                ->whereIn('orders.payment_status', self::PAID_STATUSES)
+                ->where('orders.placed_at', '>=', $ninetyDaysAgo)
+                ->whereIn('order_items.product_variant_id', $soldOut->pluck('id'))
+                ->groupBy('order_items.product_variant_id')
+                ->selectRaw('order_items.product_variant_id, SUM(order_items.quantity) as total_sold, SUM(order_items.line_total) as total_revenue')
+                ->get()
+                ->keyBy('product_variant_id');
+
+            $items = $soldOut->map(function ($v) use ($sales) {
+                $sale = $sales->get($v->id);
+                if (! $sale || (int) $sale->total_sold === 0) {
+                    return null;
+                }
+
+                $totalSold = (int) $sale->total_sold;
+                $totalRevenue = (float) $sale->total_revenue;
+                $avgDailyUnits = round($totalSold / 90, 2);
+                $avgPrice = round($totalRevenue / $totalSold, 2);
+                $monthlyRevenue = round($avgDailyUnits * 30 * $avgPrice, 2);
+
+                return [
+                    'product' => $v->product,
+                    'variant' => $v->variant,
+                    'sku' => $v->sku,
+                    'monthly_revenue' => $monthlyRevenue,
+                    'avg_daily_units' => $avgDailyUnits,
+                    'avg_price' => $avgPrice,
+                ];
+            })
+                ->filter()
+                ->sortByDesc('monthly_revenue')
+                ->values();
+
+            return [
+                'total_monthly_revenue' => round($items->sum('monthly_revenue'), 2),
+                'variant_count' => $soldOut->count(),
+                'product_count' => $soldOut->pluck('product_id')->unique()->count(),
+                'top_items' => $items->take($topLimit)->all(),
+            ];
+        });
+    }
+
+    /**
      * @return array<int, array{sku: string, product: string, variant: string, waiting: int}>
      */
     public function stockAlertDemand(int $limit = 15): array
@@ -1291,23 +1362,38 @@ class DashboardStatsService
 
     /**
      * Best-in-class month benchmark: find the all-time best version of a given month.
+     * Includes MTD (month-to-date) comparison so mid-month stats compare fairly.
      *
-     * @return array{month_name: string, current_year: int, current_revenue: float, best_year: int|null, best_revenue: float, gap_pct: float|null}
+     * @return array{month_name: string, current_year: int, current_revenue: float, best_year: int|null, best_revenue: float, gap_pct: float|null, mtd_day: int, mtd_current: float, mtd_best_revenue: float, mtd_best_year: int|null, mtd_gap_pct: float|null}
      */
     public function bestMonthBenchmark(?int $month = null): array
     {
         $month = $month ?? (int) Carbon::now()->month;
         $currentYear = (int) Carbon::now()->year;
-        $cacheKey = "dashboard:best-month-benchmark:{$month}:{$currentYear}";
+        $currentDay = (int) Carbon::now()->day;
+        $cacheKey = "dashboard:best-month-benchmark:{$month}:{$currentYear}:{$currentDay}";
 
-        return Cache::remember($cacheKey, 300, function () use ($month, $currentYear): array {
+        return Cache::remember($cacheKey, 300, function () use ($month, $currentYear, $currentDay): array {
             $isSqlite = DB::connection()->getDriverName() === 'sqlite';
             $yearExpr = $isSqlite ? "cast(strftime('%Y', placed_at) as integer)" : 'YEAR(placed_at)';
+            $dayExpr = $isSqlite ? "cast(strftime('%d', placed_at) as integer)" : 'DAY(placed_at)';
 
+            // Full month totals per year
             $rows = DB::table('orders')
                 ->whereIn('payment_status', self::PAID_STATUSES)
                 ->whereNotNull('placed_at')
                 ->whereMonth('placed_at', $month)
+                ->selectRaw("{$yearExpr} as yr, SUM(total) as revenue")
+                ->groupBy('yr')
+                ->orderByDesc('revenue')
+                ->get();
+
+            // MTD totals per year (same day range: 1st to current day)
+            $mtdRows = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->whereNotNull('placed_at')
+                ->whereMonth('placed_at', $month)
+                ->whereRaw("{$dayExpr} <= ?", [$currentDay])
                 ->selectRaw("{$yearExpr} as yr, SUM(total) as revenue")
                 ->groupBy('yr')
                 ->orderByDesc('revenue')
@@ -1336,6 +1422,30 @@ class DashboardStatsService
                 $gapPct = round(($currentRevenue - $bestRevenue) / $bestRevenue * 100, 1);
             }
 
+            // MTD: compare same day range across years
+            $mtdCurrent = 0.0;
+            $mtdBestRevenue = 0.0;
+            $mtdBestYear = null;
+
+            foreach ($mtdRows as $row) {
+                $yr = (int) $row->yr;
+                $rev = (float) $row->revenue;
+
+                if ($yr === $currentYear) {
+                    $mtdCurrent = $rev;
+                }
+
+                if ($rev > $mtdBestRevenue && $yr !== $currentYear) {
+                    $mtdBestRevenue = $rev;
+                    $mtdBestYear = $yr;
+                }
+            }
+
+            $mtdGapPct = null;
+            if ($mtdBestRevenue > 0) {
+                $mtdGapPct = round(($mtdCurrent - $mtdBestRevenue) / $mtdBestRevenue * 100, 1);
+            }
+
             $monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
             return [
@@ -1345,6 +1455,11 @@ class DashboardStatsService
                 'best_year' => $bestYear,
                 'best_revenue' => $bestRevenue,
                 'gap_pct' => $gapPct,
+                'mtd_day' => $currentDay,
+                'mtd_current' => $mtdCurrent,
+                'mtd_best_revenue' => $mtdBestRevenue,
+                'mtd_best_year' => $mtdBestYear,
+                'mtd_gap_pct' => $mtdGapPct,
             ];
         });
     }
@@ -1352,32 +1467,45 @@ class DashboardStatsService
     // ── Contextual Sales & Product Performance ────────────────
 
     /**
-     * Compare the first N days of sales for two products (by published_at).
+     * Compare the first N days of sales for two products.
+     * Optionally accepts custom start dates to override published_at.
      *
      * @return array<string, mixed>
      */
-    public function releaseBenchmark(int $productA, int $productB, int $days = 30): array
+    public function releaseBenchmark(int $productA, int $productB, int $days = 30, ?string $startA = null, ?string $startB = null): array
     {
-        $cacheKey = "dashboard:release-benchmark:{$productA}:{$productB}:{$days}";
+        $startAKey = $startA ?: 'default';
+        $startBKey = $startB ?: 'default';
+        $cacheKey = "dashboard:release-benchmark:{$productA}:{$productB}:{$days}:{$startAKey}:{$startBKey}";
 
         /** @var array<string, mixed> */
-        return Cache::remember($cacheKey, 300, function () use ($productA, $productB, $days): array {
+        return Cache::remember($cacheKey, 300, function () use ($productA, $productB, $days, $startA, $startB): array {
             $products = Product::whereIn('id', [$productA, $productB])
                 ->select('id', 'name', 'published_at')
                 ->get()
                 ->keyBy('id');
 
+            $customStarts = [$productA => $startA, $productB => $startB];
             $comparison = [];
 
             foreach ([$productA, $productB] as $pid) {
                 $product = $products->get($pid);
-                if (! $product || ! $product->published_at) {
+                if (! $product) {
                     $comparison[$pid] = [];
 
                     continue;
                 }
 
-                $releaseDate = Carbon::parse($product->published_at)->startOfDay();
+                // Use custom start date if provided, otherwise fall back to published_at
+                $customStart = $customStarts[$pid] ?? null;
+                $releaseDateRaw = $customStart ?: $product->published_at;
+                if (! $releaseDateRaw) {
+                    $comparison[$pid] = [];
+
+                    continue;
+                }
+
+                $releaseDate = Carbon::parse($releaseDateRaw)->startOfDay();
                 $endDate = $releaseDate->copy()->addDays($days - 1)->endOfDay();
 
                 $isSqlite = DB::connection()->getDriverName() === 'sqlite';
@@ -1425,6 +1553,7 @@ class DashboardStatsService
                     'id' => $p->id,
                     'name' => $p->name,
                     'published_at' => $p->published_at ? Carbon::parse($p->published_at)->format('Y-m-d') : null,
+                    'custom_start' => isset($customStarts[$p->id]) && $customStarts[$p->id] ? $customStarts[$p->id] : null,
                 ])->values()->all(),
                 'comparison' => $comparison,
             ];
@@ -1457,14 +1586,15 @@ class DashboardStatsService
 
     /**
      * Regional revenue trend: quarterly revenue per country to track growth/contraction.
+     * Includes AOV per country per quarter for overlay analysis.
      *
-     * @return array{countries: list<string>, quarters: list<string>, series: array<string, list<float>>}
+     * @return array{countries: list<string>, quarters: list<string>, series: array<string, list<float>>, aov_series: array<string, list<float>>}
      */
     public function regionalGrowthTrend(int $topCountries = 6, int $quartersBack = 8): array
     {
         $cacheKey = "dashboard:regional-growth:{$topCountries}:{$quartersBack}";
 
-        /** @var array{countries: list<string>, quarters: list<string>, series: array<string, list<float>>} */
+        /** @var array{countries: list<string>, quarters: list<string>, series: array<string, list<float>>, aov_series: array<string, list<float>>} */
         return Cache::remember($cacheKey, 300, function () use ($topCountries, $quartersBack): array {
             // Find top countries by total revenue
             $countries = DB::table('orders')
@@ -1478,7 +1608,7 @@ class DashboardStatsService
                 ->all();
 
             if (empty($countries)) {
-                return ['countries' => [], 'quarters' => [], 'series' => []];
+                return ['countries' => [], 'quarters' => [], 'series' => [], 'aov_series' => []];
             }
 
             $now = Carbon::now();
@@ -1494,7 +1624,7 @@ class DashboardStatsService
                 ->whereIn('payment_status', self::PAID_STATUSES)
                 ->whereIn('country', $countries)
                 ->where('placed_at', '>=', $startQuarter)
-                ->selectRaw("{$yearExpr} as yr, {$quarterExpr} as qtr, country, SUM(total) as revenue")
+                ->selectRaw("{$yearExpr} as yr, {$quarterExpr} as qtr, country, SUM(total) as revenue, COUNT(*) as order_count")
                 ->groupBy('yr', 'qtr', 'country')
                 ->orderBy('yr')
                 ->orderBy('qtr')
@@ -1509,8 +1639,10 @@ class DashboardStatsService
             }
 
             $series = [];
+            $aovSeries = [];
             foreach ($countries as $country) {
                 $series[$country] = array_fill(0, count($quarters), 0.0);
+                $aovSeries[$country] = array_fill(0, count($quarters), 0.0);
             }
 
             foreach ($rows as $row) {
@@ -1518,6 +1650,9 @@ class DashboardStatsService
                 $idx = array_search($label, $quarters);
                 if ($idx !== false && isset($series[$row->country])) {
                     $series[$row->country][$idx] = (float) $row->revenue;
+                    $aovSeries[$row->country][$idx] = (int) $row->order_count > 0
+                        ? round((float) $row->revenue / (int) $row->order_count, 2)
+                        : 0.0;
                 }
             }
 
@@ -1525,6 +1660,7 @@ class DashboardStatsService
                 'countries' => $countries,
                 'quarters' => $quarters,
                 'series' => $series,
+                'aov_series' => $aovSeries,
             ];
         });
     }

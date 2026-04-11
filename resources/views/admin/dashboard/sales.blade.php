@@ -186,28 +186,57 @@
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">{{ $bestMonthBenchmark['month_name'] }} Benchmark</h3>
 
         <div class="mt-4 space-y-5">
-            {{-- Current Month Revenue --}}
+            {{-- MTD Comparison (fair, same day range) --}}
+            @if ($bestMonthBenchmark['mtd_best_year'])
+                <div class="rounded-lg border border-stone-200 bg-stone-50 p-3">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-stone-500">Month-to-Date (1st–{{ $bestMonthBenchmark['mtd_day'] }}{{ match(true) { $bestMonthBenchmark['mtd_day'] % 10 === 1 && $bestMonthBenchmark['mtd_day'] !== 11 => 'st', $bestMonthBenchmark['mtd_day'] % 10 === 2 && $bestMonthBenchmark['mtd_day'] !== 12 => 'nd', $bestMonthBenchmark['mtd_day'] % 10 === 3 && $bestMonthBenchmark['mtd_day'] !== 13 => 'rd', default => 'th' } }})</p>
+                    <div class="mt-2 grid grid-cols-2 gap-3">
+                        <div>
+                            <p class="text-xs text-stone-400">{{ $bestMonthBenchmark['month_name'] }} {{ $bestMonthBenchmark['current_year'] }}</p>
+                            <p class="text-lg font-bold text-stone-800">&euro;{{ number_format($bestMonthBenchmark['mtd_current'], 2) }}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-stone-400">Same days {{ $bestMonthBenchmark['mtd_best_year'] }}</p>
+                            <p class="text-lg font-semibold text-stone-600">&euro;{{ number_format($bestMonthBenchmark['mtd_best_revenue'], 2) }}</p>
+                        </div>
+                    </div>
+                    @if ($bestMonthBenchmark['mtd_gap_pct'] !== null)
+                        <div class="mt-2 rounded-md p-2 {{ $bestMonthBenchmark['mtd_gap_pct'] >= 0 ? 'bg-[#4bc0c0]/10' : 'bg-[#ff9f40]/10' }}">
+                            <p class="text-sm font-medium {{ $bestMonthBenchmark['mtd_gap_pct'] >= 0 ? 'text-[#4bc0c0]' : 'text-[#ff9f40]' }}">
+                                @if ($bestMonthBenchmark['mtd_gap_pct'] >= 0)
+                                    ▲ {{ number_format(abs($bestMonthBenchmark['mtd_gap_pct']), 1) }}% above same period
+                                @else
+                                    ▼ {{ number_format(abs($bestMonthBenchmark['mtd_gap_pct']), 1) }}% below same period
+                                @endif
+                            </p>
+                        </div>
+                    @endif
+                    <p class="mt-1 text-[11px] text-stone-400">Compares only the first {{ $bestMonthBenchmark['mtd_day'] }} days — a fair comparison even mid-month.</p>
+                </div>
+            @endif
+
+            {{-- Full Month (for reference) --}}
             <div>
-                <p class="text-xs font-medium uppercase tracking-wide text-stone-400">{{ $bestMonthBenchmark['month_name'] }} {{ $bestMonthBenchmark['current_year'] }}</p>
+                <p class="text-xs font-medium uppercase tracking-wide text-stone-400">{{ $bestMonthBenchmark['month_name'] }} {{ $bestMonthBenchmark['current_year'] }} (full month so far)</p>
                 <p class="mt-1 text-2xl font-bold text-stone-800">&euro;{{ number_format($bestMonthBenchmark['current_revenue'], 2) }}</p>
             </div>
 
             @if ($bestMonthBenchmark['best_year'])
                 {{-- All-Time Best --}}
                 <div>
-                    <p class="text-xs font-medium uppercase tracking-wide text-stone-400">All-Time Best {{ $bestMonthBenchmark['month_name'] }}</p>
+                    <p class="text-xs font-medium uppercase tracking-wide text-stone-400">All-Time Best {{ $bestMonthBenchmark['month_name'] }} (full month)</p>
                     <p class="mt-1 text-lg font-semibold text-stone-700">&euro;{{ number_format($bestMonthBenchmark['best_revenue'], 2) }}</p>
                     <p class="text-sm text-stone-500">Set in {{ $bestMonthBenchmark['best_year'] }}</p>
                 </div>
 
-                {{-- Gap Indicator --}}
+                {{-- Full month gap --}}
                 @if ($bestMonthBenchmark['gap_pct'] !== null)
-                    <div class="rounded-lg p-3 {{ $bestMonthBenchmark['gap_pct'] >= 0 ? 'bg-[#4bc0c0]/10' : 'bg-[#ff6384]/10' }}">
-                        <p class="text-sm font-medium {{ $bestMonthBenchmark['gap_pct'] >= 0 ? 'text-[#4bc0c0]' : 'text-[#ff6384]' }}">
+                    <div class="rounded-lg p-3 {{ $bestMonthBenchmark['gap_pct'] >= 0 ? 'bg-[#4bc0c0]/10' : 'bg-stone-100' }}">
+                        <p class="text-sm font-medium {{ $bestMonthBenchmark['gap_pct'] >= 0 ? 'text-[#4bc0c0]' : 'text-stone-500' }}">
                             @if ($bestMonthBenchmark['gap_pct'] >= 0)
-                                ▲ {{ number_format(abs($bestMonthBenchmark['gap_pct']), 1) }}% above record
+                                ▲ {{ number_format(abs($bestMonthBenchmark['gap_pct']), 1) }}% above record (full month)
                             @else
-                                ▼ {{ number_format(abs($bestMonthBenchmark['gap_pct']), 1) }}% below record
+                                {{ number_format(abs($bestMonthBenchmark['gap_pct']), 1) }}% below record — but the month isn't over yet
                             @endif
                         </p>
                     </div>
@@ -216,13 +245,15 @@
                 <p class="text-sm text-stone-500">First {{ $bestMonthBenchmark['month_name'] }} on record — this will become the benchmark.</p>
             @endif
         </div>
+
+        @include('admin.dashboard._contextual-notes', ['context' => 'sales-benchmark', 'label' => 'Monthly Benchmark'])
     </div>
 </div>
 
 {{-- Release-to-Release Benchmarking --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="8">
     <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Release-to-Release Benchmarking</h3>
-    <p class="mb-3 text-[12px] text-stone-400">Compare how two products performed in their first days after launch. Pick two products and a time window to see cumulative revenue side by side.</p>
+    <p class="mb-3 text-[12px] text-stone-400">Compare how two products performed in their first days after launch. Pick two products, optionally set a custom "Start Date" to compare different vinyl drops regardless of their actual publish date, and choose a time window.</p>
 
     {{-- Product Selector --}}
     <form method="GET" action="{{ route('admin.dashboard') }}" class="mb-4 flex flex-wrap items-end gap-3">
@@ -247,6 +278,11 @@
             </select>
         </div>
 
+        <div class="w-36">
+            <label class="mb-1 block text-xs font-medium text-stone-500">Start Date A <span class="text-stone-400">(optional)</span></label>
+            <input type="date" name="benchmark_start_a" value="{{ $benchmarkStartA ?? '' }}" class="w-full rounded-md border border-stone-300 px-3 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]">
+        </div>
+
         <div class="flex-1 min-w-[180px]">
             <label class="mb-1 block text-xs font-medium text-stone-500">Product B</label>
             <select name="benchmark_b" class="w-full rounded-md border border-stone-300 px-3 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]">
@@ -257,6 +293,11 @@
                     </option>
                 @endforeach
             </select>
+        </div>
+
+        <div class="w-36">
+            <label class="mb-1 block text-xs font-medium text-stone-500">Start Date B <span class="text-stone-400">(optional)</span></label>
+            <input type="date" name="benchmark_start_b" value="{{ $benchmarkStartB ?? '' }}" class="w-full rounded-md border border-stone-300 px-3 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]">
         </div>
 
         <div class="w-24">
@@ -272,6 +313,7 @@
             Compare
         </button>
     </form>
+    <p class="mb-3 text-[11px] text-stone-400">Leave "Start Date" empty to use the product's publish date. Set a custom date to compare specific drops (e.g. the first 14 days of the ONYX edition vs. the IVORY edition).</p>
 
     {{-- Benchmark Chart --}}
     @if ($releaseBenchmark && count($releaseBenchmark['products']) === 2)
@@ -287,8 +329,19 @@
 
 {{-- Regional Growth Trend --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="9">
-    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Regional Growth Trend (Quarterly)</h3>
-    <p class="mb-2 text-[12px] text-stone-400">Revenue per quarter for your top countries. Upward lines mean growing markets; flat or dropping lines need attention.</p>
+    <div class="mb-2 flex items-center justify-between">
+        <div>
+            <h3 class="text-sm font-semibold uppercase tracking-wide text-stone-600">Regional Growth Trend (Quarterly)</h3>
+            <p class="text-[12px] text-stone-400">Revenue per quarter for your top countries. Toggle AOV to see average spend per order by region.</p>
+        </div>
+        <div class="flex items-center gap-2" x-data="{ showAov: false }" x-init="$watch('showAov', () => window.dispatchEvent(new CustomEvent('toggle-regional-aov', { detail: showAov })))">
+            <span class="text-xs text-stone-500">Revenue</span>
+            <button @click="showAov = !showAov" class="relative inline-flex h-5 w-9 items-center rounded-full transition" :class="showAov ? 'bg-[#9966ff]' : 'bg-stone-300'">
+                <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition" :class="showAov ? 'translate-x-4' : 'translate-x-0.5'"></span>
+            </button>
+            <span class="text-xs text-stone-500">AOV</span>
+        </div>
+    </div>
     @if (empty($regionalGrowth['countries']))
         <p class="text-[15px] text-stone-500">Not enough order data to show regional trends.</p>
     @else
@@ -296,6 +349,8 @@
             <canvas id="regionalGrowthChart"></canvas>
         </div>
     @endif
+
+    @include('admin.dashboard._contextual-notes', ['context' => 'sales-regional-growth', 'label' => 'Regional Growth Trend'])
 </div>
 
 {{-- Product Decay Tracking --}}
@@ -656,7 +711,8 @@
         // Regional Growth Trend Chart
         if (regionalGrowth && regionalGrowth.countries.length > 0 && document.getElementById('regionalGrowthChart')) {
             const regionColors = ['#36a2eb', '#ff6384', '#4bc0c0', '#ff9f40', '#9966ff', '#c9cbcf'];
-            const regionDatasets = regionalGrowth.countries.map((country, idx) => ({
+
+            const revenueDatasets = regionalGrowth.countries.map((country, idx) => ({
                 label: country,
                 data: regionalGrowth.series[country],
                 borderColor: regionColors[idx % regionColors.length],
@@ -669,21 +725,44 @@
                 pointBorderWidth: 1,
             }));
 
-            new Chart(document.getElementById('regionalGrowthChart'), {
+            const aovDatasets = regionalGrowth.countries.map((country, idx) => ({
+                label: country + ' AOV',
+                data: regionalGrowth.aov_series[country],
+                borderColor: regionColors[idx % regionColors.length],
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                borderDash: [5, 3],
+                tension: 0.35,
+                pointRadius: 3,
+                pointBackgroundColor: regionColors[idx % regionColors.length],
+                pointBorderColor: '#fff',
+                pointBorderWidth: 1,
+            }));
+
+            const regionalChart = new Chart(document.getElementById('regionalGrowthChart'), {
                 type: 'line',
                 data: {
                     labels: regionalGrowth.quarters,
-                    datasets: regionDatasets,
+                    datasets: revenueDatasets,
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom', labels: { padding: 16, font: { size: 11 }, color: '#57534e' } } },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { padding: 16, font: { size: 11 }, color: '#57534e' } },
+                        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': €' + ctx.parsed.y.toLocaleString() } }
+                    },
                     scales: {
                         x: { grid: { display: false }, ticks: { font: { size: 12 }, color: '#78716c' } },
                         y: { beginAtZero: true, ticks: { callback: v => '€' + v.toLocaleString(), font: { size: 12 }, color: '#78716c' }, grid: { color: '#f5f5f4' } }
                     }
                 }
+            });
+
+            window.addEventListener('toggle-regional-aov', function(e) {
+                const showAov = e.detail;
+                regionalChart.data.datasets = showAov ? aovDatasets : revenueDatasets;
+                regionalChart.update();
             });
         }
 

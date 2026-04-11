@@ -18,6 +18,8 @@ class AdminNote extends Model
         'content',
         'is_pinned',
         'color',
+        'context',
+        'context_label',
     ];
 
     /**

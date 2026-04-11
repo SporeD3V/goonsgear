@@ -83,6 +83,10 @@ class DashboardController extends Controller
             $benchmarkDays = 30;
         }
 
+        // Custom launch start dates for release benchmark
+        $benchmarkStartA = $request->query('benchmark_start_a');
+        $benchmarkStartB = $request->query('benchmark_start_b');
+
         $data = [
             'tab' => $tab,
             'period' => $period,
@@ -94,15 +98,18 @@ class DashboardController extends Controller
             'benchmarkA' => $benchmarkA,
             'benchmarkB' => $benchmarkB,
             'benchmarkDays' => $benchmarkDays,
+            'benchmarkStartA' => $benchmarkStartA,
+            'benchmarkStartB' => $benchmarkStartB,
         ];
 
         match ($tab) {
-            'sales' => $data += $this->salesTab($stats, $from, $to, $prevFrom, $prevTo, $compare, $benchmarkA, $benchmarkB, $benchmarkDays),
+            'sales' => $data += $this->salesTab($stats, $from, $to, $prevFrom, $prevTo, $compare, $benchmarkA, $benchmarkB, $benchmarkDays, $benchmarkStartA, $benchmarkStartB),
             'inventory' => $data += [
                 'stockHealth' => $stats->stockHealth(),
                 'stockAlertDemand' => $stats->stockAlertDemand(),
                 'productStatus' => $stats->productStatusBreakdown(),
                 'daysOfStockRemaining' => $stats->daysOfStockRemaining(),
+                'revenueAtRisk' => $stats->revenueAtRisk(),
             ],
             'promotions' => $data += $this->promotionsTab($stats, $from, $to, $prevFrom, $prevTo, $compare),
             'customers' => $data += $this->customersTab($stats, $from, $to, $prevFrom, $prevTo, $compare),
@@ -142,7 +149,7 @@ class DashboardController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function salesTab(DashboardStatsService $stats, ?Carbon $from, ?Carbon $to, ?Carbon $prevFrom, ?Carbon $prevTo, bool $compare, int $benchmarkA, int $benchmarkB, int $benchmarkDays): array
+    private function salesTab(DashboardStatsService $stats, ?Carbon $from, ?Carbon $to, ?Carbon $prevFrom, ?Carbon $prevTo, bool $compare, int $benchmarkA, int $benchmarkB, int $benchmarkDays, ?string $benchmarkStartA = null, ?string $benchmarkStartB = null): array
     {
         $aov = $stats->averageOrderValue($from, $to);
         $repeatRate = $stats->repeatCustomerRate($from, $to);
@@ -160,7 +167,7 @@ class DashboardController extends Controller
             'yearlyRevenue' => $stats->monthlyRevenueByYear(),
             'bestMonthBenchmark' => $stats->bestMonthBenchmark(),
             'benchmarkableProducts' => $stats->benchmarkableProducts(),
-            'releaseBenchmark' => ($benchmarkA && $benchmarkB) ? $stats->releaseBenchmark($benchmarkA, $benchmarkB, $benchmarkDays) : null,
+            'releaseBenchmark' => ($benchmarkA && $benchmarkB) ? $stats->releaseBenchmark($benchmarkA, $benchmarkB, $benchmarkDays, $benchmarkStartA, $benchmarkStartB) : null,
             'regionalGrowth' => $stats->regionalGrowthTrend(),
             'productDecay' => $stats->productDecayTracking(),
             'firstPurchaseHeroes' => $stats->firstPurchaseHeroes(),

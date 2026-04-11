@@ -5,29 +5,111 @@
 {{-- Stock Health Bar --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="1">
     <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Inventory Health</h3>
-    <p class="mb-3 text-[12px] text-stone-400">Active product variants grouped by current stock level. "Critical" means 1–5 units left and could sell out very soon.</p>
+    <p class="mb-3 text-[12px] text-stone-400">Active product variants grouped by current stock level. "Almost Sold Out" means 1–5 units left — could sell out very soon.</p>
     <div class="grid gap-4 sm:grid-cols-5">
         <div class="admin-card-hover rounded-xl border border-red-200 bg-red-50 p-4 text-center" data-delay="1">
             <p class="text-3xl font-bold text-red-700">{{ (int) $health->out_of_stock }}</p>
-            <p class="text-sm font-medium text-red-600">Out of Stock</p>
+            <p class="text-sm font-medium text-red-600">Sold Out</p>
         </div>
         <div class="admin-card-hover rounded-xl border border-amber-200 bg-amber-50 p-4 text-center" data-delay="2">
             <p class="text-3xl font-bold text-amber-700">{{ (int) $health->critical }}</p>
-            <p class="text-sm font-medium text-amber-600">Critical (1–5)</p>
+            <p class="text-sm font-medium text-amber-600">Almost Sold Out (1–5)</p>
         </div>
         <div class="admin-card-hover rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-center" data-delay="3">
             <p class="text-3xl font-bold text-yellow-700">{{ (int) $health->low }}</p>
-            <p class="text-sm font-medium text-yellow-600">Low (6–20)</p>
+            <p class="text-sm font-medium text-yellow-600">Low Stock (6–20)</p>
         </div>
         <div class="admin-card-hover rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center" data-delay="4">
             <p class="text-3xl font-bold text-emerald-700">{{ (int) $health->healthy }}</p>
-            <p class="text-sm font-medium text-emerald-600">Healthy (21–100)</p>
+            <p class="text-sm font-medium text-emerald-600">Healthy Stock (21–100)</p>
         </div>
         <div class="admin-card-hover rounded-xl border border-blue-200 bg-blue-50 p-4 text-center" data-delay="5">
             <p class="text-3xl font-bold text-blue-700">{{ (int) $health->overstocked }}</p>
-            <p class="text-sm font-medium text-blue-600">Over 100</p>
+            <p class="text-sm font-medium text-blue-600">Well Stocked (100+)</p>
         </div>
     </div>
+
+    @include('admin.dashboard._contextual-notes', ['context' => 'inventory-stock-health', 'label' => 'Inventory Health'])
+</div>
+
+{{-- Revenue at Risk --}}
+@php $risk = (object) $revenueAtRisk; @endphp
+<div class="admin-card rounded-xl border border-red-200 bg-red-50/30 p-5 shadow-sm" data-delay="2">
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-red-700">Revenue at Risk — Sold Out Items</h3>
+    <p class="mb-3 text-[12px] text-stone-500">Estimated monthly revenue you're losing because these variants are sold out. Based on 90-day historical sales velocity. <span class="font-medium">Formula: Avg Daily Units × 30 × Avg Price Per Unit</span>.</p>
+
+    <div class="mb-4 grid gap-4 sm:grid-cols-3">
+        <div class="rounded-xl border border-red-200 bg-white p-4 text-center">
+            <p class="text-2xl font-bold text-red-700">&euro;{{ number_format($risk->total_monthly_revenue, 2) }}</p>
+            <p class="text-sm text-stone-500">Potential Monthly Loss</p>
+        </div>
+        <div class="rounded-xl border border-red-200 bg-white p-4 text-center">
+            <p class="text-2xl font-bold text-stone-700">{{ number_format($risk->variant_count) }}</p>
+            <p class="text-sm text-stone-500">Sold-Out Variants</p>
+        </div>
+        <div class="rounded-xl border border-red-200 bg-white p-4 text-center">
+            <p class="text-2xl font-bold text-stone-700">{{ number_format($risk->product_count) }}</p>
+            <p class="text-sm text-stone-500">Affected Products</p>
+        </div>
+    </div>
+
+    @if (! empty($risk->top_items))
+        <div class="overflow-x-auto" x-data="{
+            sortCol: 'monthly_revenue',
+            sortAsc: false,
+            showAll: false,
+            limit: 10,
+            items: {{ Js::from($risk->top_items) }},
+            get sorted() {
+                const col = this.sortCol;
+                const dir = this.sortAsc ? 1 : -1;
+                return [...this.items].sort((a, b) => {
+                    if (typeof a[col] === 'string') return dir * a[col].localeCompare(b[col]);
+                    return dir * (a[col] - b[col]);
+                });
+            },
+            get visible() {
+                return this.showAll ? this.sorted : this.sorted.slice(0, this.limit);
+            },
+            toggleSort(col) {
+                if (this.sortCol === col) { this.sortAsc = !this.sortAsc; } else { this.sortCol = col; this.sortAsc = (col === 'product' || col === 'variant' || col === 'sku'); }
+            },
+            sortIcon(col) {
+                if (this.sortCol !== col) return '↕';
+                return this.sortAsc ? '↑' : '↓';
+            }
+        }">
+            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                <thead class="bg-white/60">
+                    <tr>
+                        <th @click="toggleSort('product')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Product <span class="text-xs" x-text="sortIcon('product')"></span></th>
+                        <th @click="toggleSort('variant')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Variant <span class="text-xs" x-text="sortIcon('variant')"></span></th>
+                        <th @click="toggleSort('avg_daily_units')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Avg Daily Units <span class="text-xs" x-text="sortIcon('avg_daily_units')"></span></th>
+                        <th @click="toggleSort('avg_price')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Avg Price <span class="text-xs" x-text="sortIcon('avg_price')"></span></th>
+                        <th @click="toggleSort('monthly_revenue')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Monthly Loss <span class="text-xs" x-text="sortIcon('monthly_revenue')"></span></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100">
+                    <template x-for="row in visible" :key="row.sku">
+                        <tr class="transition hover:bg-white/80">
+                            <td class="px-4 py-2.5 text-stone-700" x-text="row.product"></td>
+                            <td class="px-4 py-2.5 text-stone-500" x-text="row.variant"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="row.avg_daily_units + '/day'"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="'€' + row.avg_price.toFixed(2)"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right font-semibold text-red-700" x-text="'€' + row.monthly_revenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+            <template x-if="items.length > limit">
+                <button @click="showAll = !showAll" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="showAll ? 'Show less' : 'Show all ' + items.length + ' items'"></button>
+            </template>
+        </div>
+    @else
+        <p class="text-[15px] text-stone-500">No historical sales data for currently sold-out variants — they may be new listings or discontinued items.</p>
+    @endif
+
+    @include('admin.dashboard._contextual-notes', ['context' => 'inventory-revenue-at-risk', 'label' => 'Revenue at Risk'])
 </div>
 
 {{-- Days of Stock Remaining --}}

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Http\Middleware\TrackVisitor;
+use App\Models\AdminNote;
 use App\Models\CartAbandonment;
 use App\Models\DailyVisit;
 use App\Models\Order;
@@ -12,6 +13,7 @@ use App\Models\ProductVariant;
 use App\Models\StockAlertSubscription;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class DashboardControllerTest extends TestCase
@@ -1280,5 +1282,366 @@ class DashboardControllerTest extends TestCase
 
         $daysOfStock = $response->viewData('daysOfStockRemaining');
         $this->assertEmpty($daysOfStock);
+    }
+
+    // ── Revenue at Risk ───────────────────────────────────────
+
+    public function test_inventory_tab_has_revenue_at_risk(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
+        $response->assertOk()
+            ->assertViewHas('revenueAtRisk');
+
+        $risk = $response->viewData('revenueAtRisk');
+        $this->assertArrayHasKey('total_monthly_revenue', $risk);
+        $this->assertArrayHasKey('variant_count', $risk);
+        $this->assertArrayHasKey('product_count', $risk);
+        $this->assertArrayHasKey('top_items', $risk);
+    }
+
+    public function test_revenue_at_risk_calculates_from_sold_out_variants(): void
+    {
+        $this->actingAsAdmin();
+
+        $product = Product::factory()->create(['status' => 'active']);
+        $variant = ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'stock_quantity' => 0,
+            'is_active' => true,
+            'price' => 50.00,
+        ]);
+
+        // Create sales in the last 90 days to build velocity
+        foreach (range(1, 3) as $i) {
+            $order = Order::factory()->create([
+                'payment_status' => 'paid',
+                'placed_at' => now()->subDays($i * 15),
+            ]);
+            OrderItem::factory()->create([
+                'order_id' => $order->id,
+                'product_id' => $product->id,
+                'product_variant_id' => $variant->id,
+                'quantity' => 10,
+                'line_total' => 500.00,
+            ]);
+        }
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
+        $response->assertOk();
+
+        $risk = $response->viewData('revenueAtRisk');
+        $this->assertGreaterThan(0, $risk['total_monthly_revenue']);
+        $this->assertEquals(1, $risk['variant_count']);
+        $this->assertEquals(1, $risk['product_count']);
+        $this->assertNotEmpty($risk['top_items']);
+        $this->assertArrayHasKey('monthly_revenue', $risk['top_items'][0]);
+        $this->assertArrayHasKey('avg_daily_units', $risk['top_items'][0]);
+        $this->assertArrayHasKey('avg_price', $risk['top_items'][0]);
+    }
+
+    public function test_revenue_at_risk_empty_without_sold_out_variants(): void
+    {
+        $this->actingAsAdmin();
+
+        $product = Product::factory()->create(['status' => 'active']);
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'stock_quantity' => 50,
+            'is_active' => true,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
+        $response->assertOk();
+
+        $risk = $response->viewData('revenueAtRisk');
+        $this->assertEquals(0.0, $risk['total_monthly_revenue']);
+        $this->assertEquals(0, $risk['variant_count']);
+        $this->assertEmpty($risk['top_items']);
+    }
+
+    public function test_revenue_at_risk_ignores_variants_without_recent_sales(): void
+    {
+        $this->actingAsAdmin();
+
+        $product = Product::factory()->create(['status' => 'active']);
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'stock_quantity' => 0,
+            'is_active' => true,
+        ]);
+
+        // No sales within 90 days
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
+        $response->assertOk();
+
+        $risk = $response->viewData('revenueAtRisk');
+        $this->assertEquals(1, $risk['variant_count']);
+        $this->assertEmpty($risk['top_items']);
+    }
+
+    // ── MTD Benchmark ─────────────────────────────────────────
+
+    public function test_best_month_benchmark_includes_mtd_fields(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
+        $response->assertOk();
+
+        $benchmark = $response->viewData('bestMonthBenchmark');
+        $this->assertArrayHasKey('mtd_day', $benchmark);
+        $this->assertArrayHasKey('mtd_current', $benchmark);
+        $this->assertArrayHasKey('mtd_best_revenue', $benchmark);
+        $this->assertArrayHasKey('mtd_best_year', $benchmark);
+        $this->assertArrayHasKey('mtd_gap_pct', $benchmark);
+    }
+
+    public function test_mtd_benchmark_compares_same_day_range(): void
+    {
+        $this->actingAsAdmin();
+
+        $currentDay = (int) now()->day;
+        $currentMonth = (int) now()->month;
+
+        // Create an order in the current month on day 1 (guaranteed within mtd range)
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => now()->startOfMonth(),
+            'total' => 200.00,
+        ]);
+
+        // Create an order in the same month last year on day 1
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => now()->subYear()->startOfMonth(),
+            'total' => 150.00,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
+        $response->assertOk();
+
+        $benchmark = $response->viewData('bestMonthBenchmark');
+        $this->assertEquals($currentDay, $benchmark['mtd_day']);
+        $this->assertGreaterThanOrEqual(200.00, $benchmark['mtd_current']);
+        $this->assertGreaterThanOrEqual(150.00, $benchmark['mtd_best_revenue']);
+        $this->assertNotNull($benchmark['mtd_best_year']);
+        $this->assertNotNull($benchmark['mtd_gap_pct']);
+    }
+
+    public function test_mtd_benchmark_null_without_previous_year_data(): void
+    {
+        $this->actingAsAdmin();
+
+        // Only current year data
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => now()->startOfMonth(),
+            'total' => 100.00,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
+        $response->assertOk();
+
+        $benchmark = $response->viewData('bestMonthBenchmark');
+        $this->assertNull($benchmark['mtd_best_year']);
+        $this->assertNull($benchmark['mtd_gap_pct']);
+    }
+
+    // ── Regional Growth AOV Series ────────────────────────────
+
+    public function test_regional_growth_includes_aov_series(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
+        $response->assertOk();
+
+        $regional = $response->viewData('regionalGrowth');
+        $this->assertArrayHasKey('aov_series', $regional);
+    }
+
+    public function test_regional_growth_aov_series_with_data(): void
+    {
+        $this->actingAsAdmin();
+
+        // Create multiple orders in the same country same quarter
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => now()->subMonth(),
+            'total' => 200.00,
+            'country' => 'DE',
+        ]);
+
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => now()->subMonth(),
+            'total' => 100.00,
+            'country' => 'DE',
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
+        $response->assertOk();
+
+        $regional = $response->viewData('regionalGrowth');
+
+        if (! empty($regional['countries'])) {
+            $this->assertArrayHasKey('aov_series', $regional);
+            // AOV for DE should be 150 (300/2)
+            if (isset($regional['aov_series']['DE'])) {
+                $aovValues = array_filter($regional['aov_series']['DE']);
+                $this->assertNotEmpty($aovValues);
+                $this->assertEquals(150.0, array_values($aovValues)[0]);
+            }
+        }
+    }
+
+    // ── Release Benchmark Custom Start Dates ──────────────────
+
+    public function test_release_benchmark_accepts_custom_start_dates(): void
+    {
+        $this->actingAsAdmin();
+
+        $productA = Product::factory()->create(['published_at' => now()->subMonths(6)]);
+        $productB = Product::factory()->create(['published_at' => now()->subMonths(3)]);
+
+        $customStartA = now()->subMonths(4)->format('Y-m-d');
+
+        $order = Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => now()->subMonths(4)->addDays(2),
+        ]);
+        OrderItem::factory()->create([
+            'order_id' => $order->id,
+            'product_id' => $productA->id,
+            'quantity' => 3,
+            'line_total' => 90.00,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', [
+            'tab' => 'sales',
+            'benchmark_a' => $productA->id,
+            'benchmark_b' => $productB->id,
+            'benchmark_days' => 14,
+            'benchmark_start_a' => $customStartA,
+        ]));
+
+        $response->assertOk()
+            ->assertViewHas('releaseBenchmark')
+            ->assertViewHas('benchmarkStartA', $customStartA)
+            ->assertViewHas('benchmarkStartB', null);
+
+        $benchmark = $response->viewData('releaseBenchmark');
+        $this->assertCount(2, $benchmark['products']);
+    }
+
+    public function test_release_benchmark_custom_start_preserved_in_view(): void
+    {
+        $this->actingAsAdmin();
+
+        $productA = Product::factory()->create(['published_at' => now()->subMonths(6)]);
+        $productB = Product::factory()->create(['published_at' => now()->subMonths(3)]);
+
+        $startA = '2025-01-15';
+        $startB = '2025-06-01';
+
+        $response = $this->get(route('admin.dashboard', [
+            'tab' => 'sales',
+            'benchmark_a' => $productA->id,
+            'benchmark_b' => $productB->id,
+            'benchmark_start_a' => $startA,
+            'benchmark_start_b' => $startB,
+        ]));
+
+        $response->assertOk()
+            ->assertViewHas('benchmarkStartA', $startA)
+            ->assertViewHas('benchmarkStartB', $startB);
+    }
+
+    // ── Contextual Notes ──────────────────────────────────────
+
+    public function test_contextual_notes_can_be_created_with_context(): void
+    {
+        $this->actingAsAdmin();
+
+        $user = User::factory()->admin()->create();
+        $this->actingAs($user);
+
+        Livewire::test('admin.dashboard-notes', [
+            'context' => 'sales-benchmark',
+            'contextLabel' => 'Monthly Benchmark',
+        ])
+            ->set('newNote', 'This month looks promising')
+            ->set('showForm', true)
+            ->call('addNote')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('admin_notes', [
+            'user_id' => $user->id,
+            'content' => 'This month looks promising',
+            'context' => 'sales-benchmark',
+            'context_label' => 'Monthly Benchmark',
+        ]);
+    }
+
+    public function test_contextual_notes_filtered_by_context(): void
+    {
+        $user = User::factory()->admin()->create();
+        $this->actingAs($user);
+
+        // Create a general note (no context)
+        AdminNote::factory()->create([
+            'user_id' => $user->id,
+            'content' => 'General dashboard note',
+        ]);
+
+        // Create a contextual note
+        AdminNote::factory()->create([
+            'user_id' => $user->id,
+            'content' => 'Benchmark insight',
+            'context' => 'sales-benchmark',
+            'context_label' => 'Monthly Benchmark',
+        ]);
+
+        // General notes component should not show contextual notes
+        Livewire::test('admin.dashboard-notes')
+            ->assertSee('General dashboard note')
+            ->assertDontSee('Benchmark insight');
+
+        // Contextual component should only show its own notes
+        Livewire::test('admin.dashboard-notes', [
+            'context' => 'sales-benchmark',
+            'contextLabel' => 'Monthly Benchmark',
+        ])
+            ->assertSee('Benchmark insight')
+            ->assertDontSee('General dashboard note');
+    }
+
+    public function test_contextual_notes_different_contexts_isolated(): void
+    {
+        $user = User::factory()->admin()->create();
+        $this->actingAs($user);
+
+        AdminNote::factory()->create([
+            'user_id' => $user->id,
+            'content' => 'Revenue at risk note',
+            'context' => 'inventory-revenue-at-risk',
+        ]);
+
+        AdminNote::factory()->create([
+            'user_id' => $user->id,
+            'content' => 'Regional growth note',
+            'context' => 'sales-regional-growth',
+        ]);
+
+        // Inventory context should not show sales notes
+        Livewire::test('admin.dashboard-notes', [
+            'context' => 'inventory-revenue-at-risk',
+            'contextLabel' => 'Revenue at Risk',
+        ])
+            ->assertSee('Revenue at risk note')
+            ->assertDontSee('Regional growth note');
     }
 }

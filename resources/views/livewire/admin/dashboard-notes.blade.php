@@ -13,8 +13,18 @@ new class extends Component
     public string $editingContent = '';
     public bool $showForm = false;
 
+    /** Optional context key to scope notes to a specific dashboard section */
+    public ?string $context = null;
+    public ?string $contextLabel = null;
+
     /** @var list<string> */
     public array $colorOptions = ['warm', 'sky', 'sage', 'rose', 'lavender'];
+
+    public function mount(?string $context = null, ?string $contextLabel = null): void
+    {
+        $this->context = $context;
+        $this->contextLabel = $contextLabel;
+    }
 
     public function addNote(): void
     {
@@ -24,6 +34,8 @@ new class extends Component
             'user_id' => auth()->id(),
             'content' => $this->newNote,
             'color' => $this->newColor,
+            'context' => $this->context,
+            'context_label' => $this->contextLabel,
         ]);
 
         $this->reset('newNote', 'newColor', 'showForm');
@@ -74,6 +86,8 @@ new class extends Component
     public function notes(): Collection
     {
         return AdminNote::where('user_id', auth()->id())
+            ->when($this->context, fn ($q) => $q->where('context', $this->context))
+            ->when(! $this->context, fn ($q) => $q->whereNull('context'))
             ->orderByDesc('is_pinned')
             ->latest()
             ->take(20)
@@ -83,7 +97,12 @@ new class extends Component
 
 <div>
     <div class="flex items-center justify-between">
-        <h3 class="text-base font-semibold text-stone-700">My Notes</h3>
+        <div>
+            <h3 class="text-base font-semibold text-stone-700">{{ $context ? 'Notes' : 'My Notes' }}</h3>
+            @if ($contextLabel)
+                <p class="text-xs text-stone-400">Attached to: {{ $contextLabel }}</p>
+            @endif
+        </div>
         <button wire:click="$toggle('showForm')"
                 class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-amber-700 transition-all duration-200 hover:bg-amber-50 active:scale-95">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
