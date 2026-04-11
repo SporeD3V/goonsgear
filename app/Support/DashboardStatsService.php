@@ -746,6 +746,176 @@ class DashboardStatsService
         });
     }
 
+    /**
+     * RFM segmentation: group customers by Recency, Frequency, Monetary scores.
+     *
+     * @return array{segments: array<string, array{count: int, avg_revenue: float, avg_orders: float, color: string}>, customers_analyzed: int}
+     */
+    public function rfmSegmentation(): array
+    {
+        /** @var array{segments: array<string, array{count: int, avg_revenue: float, avg_orders: float, color: string}>, customers_analyzed: int} */
+        return Cache::remember('dashboard:rfm-segmentation', 300, function (): array {
+            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+
+            $daysSinceExpr = $isSqlite
+                ? 'cast(julianday(?) - julianday(MAX(placed_at)) as integer)'
+                : 'DATEDIFF(?, MAX(placed_at))';
+
+            $today = Carbon::today()->format('Y-m-d');
+
+            // Get per-customer RFM raw values
+            $customers = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->whereNotNull('placed_at')
+                ->groupBy('email')
+                ->selectRaw("email, {$daysSinceExpr} as days_since_last, COUNT(*) as order_count, SUM(total) as total_spent", [$today])
+                ->get();
+
+            if ($customers->isEmpty()) {
+                return ['segments' => [], 'customers_analyzed' => 0];
+            }
+
+            // Score each customer 1-5 using quintiles
+            $dayValues = $customers->pluck('days_since_last')->sort()->values();
+            $freqValues = $customers->pluck('order_count')->sort()->values();
+            $monValues = $customers->pluck('total_spent')->sort()->values();
+
+            $quintile = function (Collection $sorted, float $value, bool $inverse = false): int {
+                $count = $sorted->count();
+                if ($count === 0) {
+                    return 3;
+                }
+                $position = $sorted->search(function ($v) use ($value) {
+                    return $v >= $value;
+                });
+                if ($position === false) {
+                    $position = $count;
+                }
+                $pct = $position / $count;
+                $score = match (true) {
+                    $pct <= 0.2 => 1,
+                    $pct <= 0.4 => 2,
+                    $pct <= 0.6 => 3,
+                    $pct <= 0.8 => 4,
+                    default => 5,
+                };
+
+                return $inverse ? (6 - $score) : $score;
+            };
+
+            $segmentDefs = [
+                'Champions' => ['color' => '#4bc0c0', 'min_r' => 4, 'max_r' => 5, 'min_f' => 4, 'max_f' => 5, 'min_m' => 4, 'max_m' => 5],
+                'Loyal' => ['color' => '#36a2eb', 'min_r' => 3, 'max_r' => 5, 'min_f' => 3, 'max_f' => 5, 'min_m' => 3, 'max_m' => 5],
+                'At Risk' => ['color' => '#ff6384', 'min_r' => 0, 'max_r' => 2, 'min_f' => 3, 'max_f' => 5, 'min_m' => 3, 'max_m' => 5],
+                'New' => ['color' => '#ff9f40', 'min_r' => 4, 'max_r' => 5, 'min_f' => 0, 'max_f' => 2, 'min_m' => 0, 'max_m' => 5],
+                'Low Value' => ['color' => '#c9cbcf', 'min_r' => 0, 'max_r' => 5, 'min_f' => 0, 'max_f' => 5, 'min_m' => 0, 'max_m' => 5],
+            ];
+
+            $segments = [];
+            foreach (array_keys($segmentDefs) as $name) {
+                $segments[$name] = ['count' => 0, 'total_revenue' => 0.0, 'total_orders' => 0];
+            }
+
+            foreach ($customers as $c) {
+                $r = $quintile($dayValues, (float) $c->days_since_last, true);
+                $f = $quintile($freqValues, (float) $c->order_count);
+                $m = $quintile($monValues, (float) $c->total_spent);
+
+                $assigned = 'Low Value';
+                foreach ($segmentDefs as $name => $def) {
+                    if ($name === 'Low Value') {
+                        continue;
+                    }
+                    $rOk = $r >= $def['min_r'] && $r <= $def['max_r'];
+                    $fOk = $f >= $def['min_f'] && $f <= $def['max_f'];
+                    $mOk = $m >= $def['min_m'] && $m <= $def['max_m']; // @phpstan-ignore smallerOrEqual.alwaysTrue
+                    if ($rOk && $fOk && $mOk) {
+                        $assigned = $name;
+                        break;
+                    }
+                }
+
+                $segments[$assigned]['count']++;
+                $segments[$assigned]['total_revenue'] += (float) $c->total_spent;
+                $segments[$assigned]['total_orders'] += (int) $c->order_count;
+            }
+
+            $result = [];
+            foreach ($segments as $name => $data) {
+                $result[$name] = [
+                    'count' => $data['count'],
+                    'avg_revenue' => $data['count'] > 0 ? round($data['total_revenue'] / $data['count'], 2) : 0.0,
+                    'avg_orders' => $data['count'] > 0 ? round($data['total_orders'] / $data['count'], 1) : 0.0,
+                    'color' => $segmentDefs[$name]['color'],
+                ];
+            }
+
+            return [
+                'segments' => $result,
+                'customers_analyzed' => $customers->count(),
+            ];
+        });
+    }
+
+    /**
+     * Customer Lifetime Value: avg total spend per customer, with trend by acquisition year.
+     *
+     * @return array{overall_clv: float, total_customers: int, total_revenue: float, by_year: list<array{year: int, customers: int, clv: float, avg_orders: float}>}
+     */
+    public function customerLifetimeValue(): array
+    {
+        /** @var array{overall_clv: float, total_customers: int, total_revenue: float, by_year: list<array{year: int, customers: int, clv: float, avg_orders: float}>} */
+        return Cache::remember('dashboard:clv', 300, function (): array {
+            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+
+            // Per-customer aggregates
+            $customers = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->whereNotNull('placed_at')
+                ->groupBy('email')
+                ->selectRaw('email, MIN(placed_at) as first_order, COUNT(*) as order_count, SUM(total) as total_spent')
+                ->get();
+
+            if ($customers->isEmpty()) {
+                return ['overall_clv' => 0.0, 'total_customers' => 0, 'total_revenue' => 0.0, 'by_year' => []];
+            }
+
+            $totalCustomers = $customers->count();
+            $totalRevenue = (float) $customers->sum('total_spent');
+            $overallClv = round($totalRevenue / $totalCustomers, 2);
+
+            // Group by acquisition year
+            $yearBuckets = [];
+            foreach ($customers as $c) {
+                $year = Carbon::parse($c->first_order)->year;
+                if (! isset($yearBuckets[$year])) {
+                    $yearBuckets[$year] = ['customers' => 0, 'total_spent' => 0.0, 'total_orders' => 0];
+                }
+                $yearBuckets[$year]['customers']++;
+                $yearBuckets[$year]['total_spent'] += (float) $c->total_spent;
+                $yearBuckets[$year]['total_orders'] += (int) $c->order_count;
+            }
+
+            ksort($yearBuckets);
+            $byYear = [];
+            foreach ($yearBuckets as $year => $data) {
+                $byYear[] = [
+                    'year' => $year,
+                    'customers' => $data['customers'],
+                    'clv' => round($data['total_spent'] / $data['customers'], 2),
+                    'avg_orders' => round($data['total_orders'] / $data['customers'], 1),
+                ];
+            }
+
+            return [
+                'overall_clv' => $overallClv,
+                'total_customers' => $totalCustomers,
+                'total_revenue' => round($totalRevenue, 2),
+                'by_year' => $byYear,
+            ];
+        });
+    }
+
     // ── Historical / Seasonal ─────────────────────────────────
 
     /**

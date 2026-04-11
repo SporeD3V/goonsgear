@@ -158,6 +158,77 @@
     @endif
 </div>
 
+{{-- RFM Segmentation --}}
+<div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="7">
+    <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Customer Segments (RFM)</h3>
+    <p class="mb-3 text-[13px] text-stone-500">Customers grouped by Recency, Frequency & Monetary value. Based on {{ number_format($rfmSegmentation['customers_analyzed']) }} customers.</p>
+    @if (empty($rfmSegmentation['segments']))
+        <p class="text-[15px] text-stone-500">Not enough order data for segmentation.</p>
+    @else
+        <div class="grid gap-6 lg:grid-cols-2">
+            <div class="h-[260px]">
+                <canvas id="rfmChart"></canvas>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                    <thead class="bg-stone-50">
+                        <tr>
+                            <th class="px-4 py-2.5 text-left font-medium text-stone-600">Segment</th>
+                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Customers</th>
+                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Avg Revenue</th>
+                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Avg Orders</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-stone-100">
+                        @foreach ($rfmSegmentation['segments'] as $segment => $data)
+                            <tr class="transition hover:bg-stone-50">
+                                <td class="px-4 py-2.5">
+                                    <span class="inline-flex items-center gap-1.5">
+                                        <span class="inline-block h-2.5 w-2.5 rounded-full" style="background: {{ $data['color'] }}"></span>
+                                        <span class="font-medium text-stone-700">{{ $segment }}</span>
+                                    </span>
+                                </td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ number_format($data['count']) }}</td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">€{{ number_format($data['avg_revenue'], 2) }}</td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ $data['avg_orders'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+</div>
+
+{{-- Customer Lifetime Value --}}
+<div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="8">
+    <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Customer Lifetime Value</h3>
+    <p class="mb-3 text-[13px] text-stone-500">Average total spend per customer — how much is a customer worth over their lifetime?</p>
+    @if ($clv['total_customers'] === 0)
+        <p class="text-[15px] text-stone-500">No customer purchase data yet.</p>
+    @else
+        <div class="mb-5 grid gap-4 sm:grid-cols-3">
+            <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Avg CLV</div>
+                <div class="mt-1 text-2xl font-bold" style="color: #36a2eb">€{{ number_format($clv['overall_clv'], 2) }}</div>
+            </div>
+            <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Total Customers</div>
+                <div class="mt-1 text-2xl font-bold text-stone-700">{{ number_format($clv['total_customers']) }}</div>
+            </div>
+            <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Total Revenue</div>
+                <div class="mt-1 text-2xl font-bold" style="color: #4bc0c0">€{{ number_format($clv['total_revenue'], 2) }}</div>
+            </div>
+        </div>
+        @if (!empty($clv['by_year']))
+            <div class="h-[260px]">
+                <canvas id="clvByYearChart"></canvas>
+            </div>
+        @endif
+    @endif
+</div>
+
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -289,6 +360,99 @@
                     },
                     scales: {
                         y: { beginAtZero: true, ticks: { font: { size: 12 }, color: '#78716c' }, grid: { color: '#f5f5f4' } },
+                        x: { ticks: { font: { size: 12 }, color: '#57534e' } }
+                    }
+                }
+            });
+        }
+
+        {{-- RFM Segmentation Doughnut --}}
+        const rfmData = @json($rfmSegmentation);
+        if (rfmData.segments && Object.keys(rfmData.segments).length) {
+            const labels = Object.keys(rfmData.segments);
+            const counts = labels.map(s => rfmData.segments[s].count);
+            const colors = labels.map(s => rfmData.segments[s].color);
+
+            new Chart(document.getElementById('rfmChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: counts,
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#fff',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 12 }, color: '#57534e', padding: 12 } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+                                    return ctx.label + ': ' + ctx.parsed + ' (' + pct + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        {{-- CLV by Year Chart --}}
+        const clvData = @json($clv);
+        if (clvData.by_year && clvData.by_year.length) {
+            new Chart(document.getElementById('clvByYearChart'), {
+                type: 'bar',
+                data: {
+                    labels: clvData.by_year.map(r => r.year),
+                    datasets: [
+                        {
+                            label: 'CLV (€)',
+                            data: clvData.by_year.map(r => r.clv),
+                            backgroundColor: '#36a2eb',
+                            borderRadius: 6,
+                            yAxisID: 'y',
+                        },
+                        {
+                            label: 'Avg Orders',
+                            data: clvData.by_year.map(r => r.avg_orders),
+                            backgroundColor: '#ff9f40',
+                            borderRadius: 6,
+                            yAxisID: 'y1',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 12 }, color: '#57534e', padding: 16 } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const prefix = ctx.dataset.label.includes('€') ? '€' : '';
+                                    return ctx.dataset.label + ': ' + prefix + ctx.parsed.y;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { font: { size: 12 }, color: '#78716c', callback: v => '€' + v },
+                            grid: { color: '#f5f5f4' },
+                        },
+                        y1: {
+                            position: 'right',
+                            beginAtZero: true,
+                            ticks: { font: { size: 12 }, color: '#a8a29e' },
+                            grid: { display: false },
+                        },
                         x: { ticks: { font: { size: 12 }, color: '#57534e' } }
                     }
                 }

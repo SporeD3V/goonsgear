@@ -586,4 +586,147 @@ class DashboardControllerTest extends TestCase
         $cohorts = $response->viewData('cohortRetention');
         $this->assertEmpty($cohorts);
     }
+
+    public function test_customers_tab_has_rfm_and_clv_data(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response->assertOk()
+            ->assertViewHas('rfmSegmentation')
+            ->assertViewHas('clv');
+    }
+
+    public function test_rfm_segments_customers_correctly(): void
+    {
+        $this->actingAsAdmin();
+
+        // Champion: recent, frequent, high-spend
+        foreach (range(1, 6) as $i) {
+            Order::factory()->create([
+                'email' => 'champion@example.com',
+                'payment_status' => 'paid',
+                'placed_at' => now()->subDays($i),
+                'total' => 200.00,
+            ]);
+        }
+
+        // At Risk: old orders, but frequent and high-spend
+        foreach (range(1, 5) as $i) {
+            Order::factory()->create([
+                'email' => 'atrisk@example.com',
+                'payment_status' => 'paid',
+                'placed_at' => now()->subMonths(14)->subDays($i),
+                'total' => 180.00,
+            ]);
+        }
+
+        // New: single recent order
+        Order::factory()->create([
+            'email' => 'newcustomer@example.com',
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(2),
+            'total' => 50.00,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response->assertOk();
+
+        $rfm = $response->viewData('rfmSegmentation');
+        $this->assertArrayHasKey('segments', $rfm);
+        $this->assertArrayHasKey('customers_analyzed', $rfm);
+        $this->assertEquals(3, $rfm['customers_analyzed']);
+
+        // At least one segment should have customers
+        $totalInSegments = collect($rfm['segments'])->sum('count');
+        $this->assertEquals(3, $totalInSegments);
+    }
+
+    public function test_rfm_empty_without_orders(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response->assertOk();
+
+        $rfm = $response->viewData('rfmSegmentation');
+        $this->assertEquals(0, $rfm['customers_analyzed']);
+    }
+
+    public function test_clv_calculates_lifetime_value(): void
+    {
+        $this->actingAsAdmin();
+
+        // Customer A: 3 orders, total €300
+        foreach (range(1, 3) as $i) {
+            Order::factory()->create([
+                'email' => 'loyal@example.com',
+                'payment_status' => 'paid',
+                'placed_at' => now()->subMonths($i),
+                'total' => 100.00,
+            ]);
+        }
+
+        // Customer B: 1 order, total €50
+        Order::factory()->create([
+            'email' => 'onetime@example.com',
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(10),
+            'total' => 50.00,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response->assertOk();
+
+        $clv = $response->viewData('clv');
+        $this->assertEquals(2, $clv['total_customers']);
+        $this->assertEquals(350.00, $clv['total_revenue']);
+        // CLV = 350 / 2 = 175
+        $this->assertEquals(175.00, $clv['overall_clv']);
+        $this->assertNotEmpty($clv['by_year']);
+    }
+
+    public function test_clv_empty_without_orders(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response->assertOk();
+
+        $clv = $response->viewData('clv');
+        $this->assertEquals(0, $clv['total_customers']);
+        $this->assertEquals(0, $clv['overall_clv']);
+        $this->assertEmpty($clv['by_year']);
+    }
+
+    public function test_clv_groups_by_acquisition_year(): void
+    {
+        $this->actingAsAdmin();
+
+        // Customer from 2023
+        Order::factory()->create([
+            'email' => 'old@example.com',
+            'payment_status' => 'paid',
+            'placed_at' => now()->subYear()->startOfYear(),
+            'total' => 200.00,
+        ]);
+
+        // Customer from current year
+        Order::factory()->create([
+            'email' => 'new@example.com',
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(5),
+            'total' => 100.00,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response->assertOk();
+
+        $clv = $response->viewData('clv');
+        $this->assertCount(2, $clv['by_year']);
+
+        $years = collect($clv['by_year'])->pluck('year')->toArray();
+        $this->assertContains(now()->subYear()->year, $years);
+        $this->assertContains(now()->year, $years);
+    }
 }

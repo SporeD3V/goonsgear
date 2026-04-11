@@ -215,6 +215,8 @@ class DashboardController extends Controller
             'cohortRetention' => $stats->cohortRetentionHistory(),
             'aovBreakdown' => $stats->aovBreakdown(),
             'waitlistConversion' => $stats->waitlistConversionBenchmark(),
+            'rfmSegmentation' => $stats->rfmSegmentation(),
+            'clv' => $stats->customerLifetimeValue(),
         ];
 
         if ($compare && $prevFrom) {
