@@ -680,20 +680,19 @@ class ImportLegacyData extends Command
                     continue;
                 }
 
-                $user = User::create([
+                // Disable timestamps so created_at preserves the WP registration date
+                $user = new User;
+                $user->timestamps = false;
+                $user->forceFill([
                     'name' => $legacyCust->user_login,
                     'email' => $legacyCust->user_email,
                     'password' => bcrypt(Str::random(32)),
                     'email_verified_at' => now(),
+                    'created_at' => $legacyCust->user_registered ?: now(),
+                    'updated_at' => now(),
                 ]);
-
-                // Preserve original WordPress registration date
-                if ($legacyCust->user_registered) {
-                    $user->timestamps = false;
-                    $user->created_at = $legacyCust->user_registered;
-                    $user->save();
-                    $user->timestamps = true;
-                }
+                $user->save();
+                $user->timestamps = true;
 
                 $this->syncLegacyCustomerMapping($legacyCust->ID, $user->id);
 
@@ -753,7 +752,7 @@ class ImportLegacyData extends Command
                     ->pluck('meta_value', 'meta_key')
                     ->toArray();
 
-                // Map status
+                // Map order status
                 $statusMap = [
                     'wc-completed' => 'completed',
                     'wc-processing' => 'processing',
@@ -766,18 +765,35 @@ class ImportLegacyData extends Command
                 ];
                 $status = $statusMap[$legacyOrder->post_status] ?? 'pending';
 
-                // Find customer
-                $userId = null;
-                if ($legacyOrder->post_author > 0) {
-                    $cusMapping = DB::table('import_legacy_customers')
-                        ->where('legacy_wp_user_id', $legacyOrder->post_author)
-                        ->first();
-                    if ($cusMapping) {
-                        $userId = $cusMapping->user_id;
-                    }
-                }
+                // Map payment status based on WC order status
+                $paymentStatusMap = [
+                    'wc-completed' => 'completed',
+                    'wc-processing' => 'paid',
+                    'wc-on-hold' => 'pending',
+                    'wc-pending' => 'pending',
+                    'wc-cancelled' => 'cancelled',
+                    'wc-refunded' => 'refunded',
+                    'wc-failed' => 'failed',
+                    'wc-pre-ordered' => 'pending',
+                ];
+                $paymentStatus = $paymentStatusMap[$legacyOrder->post_status] ?? 'pending';
 
-                $order = Order::create([
+                // Compute subtotal (total minus shipping and tax)
+                $orderTotal = (float) ($meta['_order_total'] ?? 0);
+                $shippingTotal = (float) ($meta['_order_shipping'] ?? 0);
+                $taxTotal = (float) ($meta['_order_tax'] ?? 0);
+                $subtotal = max(0, $orderTotal - $shippingTotal - $taxTotal);
+
+                // Get coupon code from WC order items
+                $couponItem = $legacy->table('wp_woocommerce_order_items')
+                    ->where('order_id', $legacyOrder->ID)
+                    ->where('order_item_type', 'coupon')
+                    ->first();
+                $couponCode = $couponItem?->order_item_name;
+
+                // forceCreate bypasses $fillable so non-guarded fields
+                // (shipping_total, tax_total, billing_*) are persisted
+                $order = Order::forceCreate([
                     'order_number' => "WC-{$legacyOrder->ID}",
                     'status' => $status,
                     'email' => $meta['_billing_email'] ?? '',
@@ -795,14 +811,14 @@ class ImportLegacyData extends Command
                     'floor' => null,
                     'apartment_number' => null,
                     'currency' => 'EUR',
-                    'subtotal' => (float) ($meta['_order_total'] ?? 0),
-                    'total' => (float) ($meta['_order_total'] ?? 0),
-                    'shipping_total' => (float) ($meta['_order_shipping'] ?? 0),
-                    'tax_total' => (float) ($meta['_order_tax'] ?? 0),
+                    'subtotal' => $subtotal,
+                    'total' => $orderTotal,
+                    'shipping_total' => $shippingTotal,
+                    'tax_total' => $taxTotal,
                     'discount_total' => (float) ($meta['_cart_discount'] ?? 0),
                     'payment_method' => $meta['_payment_method'] ?? 'manual',
-                    'payment_status' => 'completed',
-                    'coupon_code' => null,
+                    'payment_status' => $paymentStatus,
+                    'coupon_code' => $couponCode,
                     'placed_at' => $legacyOrder->post_date,
                     'shipped_at' => in_array($status, ['completed']) && ! empty($meta['_date_completed'])
                         ? Carbon::createFromTimestamp((int) $meta['_date_completed'])
@@ -853,7 +869,10 @@ class ImportLegacyData extends Command
                             $variant = ProductVariant::find($mappedVariantId);
                             $newProductId = $variant?->product_id;
                         }
-                    } elseif ($productId) {
+                    }
+
+                    // Fallback: resolve product even when variant lookup failed or wasn't attempted
+                    if ($newProductId === null && $productId) {
                         $newProductId = $this->resolveMappedModelId(
                             'import_legacy_products',
                             'legacy_wp_post_id',
@@ -911,7 +930,14 @@ class ImportLegacyData extends Command
 
         $mappedId = (int) $mapping->{$mappedColumn};
 
-        return $modelClass::query()->whereKey($mappedId)->exists() ? $mappedId : null;
+        if ($modelClass::query()->whereKey($mappedId)->exists()) {
+            return $mappedId;
+        }
+
+        // Clean up stale mapping — the referenced model no longer exists
+        DB::table($mappingTable)->where($legacyColumn, $legacyId)->delete();
+
+        return null;
     }
 
     private function syncLegacyProductMapping(int $legacyPostId, int $productId): void

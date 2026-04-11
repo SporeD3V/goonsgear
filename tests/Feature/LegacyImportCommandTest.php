@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -465,6 +466,301 @@ class LegacyImportCommandTest extends TestCase
             'product_variant_id' => $variant->id,
             'sku' => 'MAP-BLK-M',
         ]);
+    }
+
+    public function test_completed_order_gets_completed_payment_status(): void
+    {
+        $this->insertLegacyOrder(601, 'wc-completed');
+
+        $this->artisan('import:legacy-data', ['--only' => 'orders'])->assertSuccessful();
+
+        $this->assertDatabaseHas('orders', [
+            'order_number' => 'WC-601',
+            'payment_status' => 'completed',
+        ]);
+    }
+
+    public function test_processing_order_gets_paid_payment_status(): void
+    {
+        $this->insertLegacyOrder(602, 'wc-processing');
+
+        $this->artisan('import:legacy-data', ['--only' => 'orders'])->assertSuccessful();
+
+        $this->assertDatabaseHas('orders', [
+            'order_number' => 'WC-602',
+            'payment_status' => 'paid',
+        ]);
+    }
+
+    public function test_refunded_order_gets_refunded_payment_status(): void
+    {
+        $this->insertLegacyOrder(603, 'wc-refunded');
+
+        $this->artisan('import:legacy-data', ['--only' => 'orders'])->assertSuccessful();
+
+        $this->assertDatabaseHas('orders', [
+            'order_number' => 'WC-603',
+            'payment_status' => 'refunded',
+        ]);
+    }
+
+    public function test_cancelled_order_gets_cancelled_payment_status(): void
+    {
+        $this->insertLegacyOrder(604, 'wc-cancelled');
+
+        $this->artisan('import:legacy-data', ['--only' => 'orders'])->assertSuccessful();
+
+        $this->assertDatabaseHas('orders', [
+            'order_number' => 'WC-604',
+            'payment_status' => 'cancelled',
+        ]);
+    }
+
+    public function test_order_subtotal_excludes_shipping_and_tax(): void
+    {
+        $this->insertLegacyOrder(605, 'wc-completed', [
+            '_order_total' => '59.95',
+            '_order_shipping' => '5.00',
+            '_order_tax' => '4.95',
+        ]);
+
+        $this->artisan('import:legacy-data', ['--only' => 'orders'])->assertSuccessful();
+
+        $order = Order::where('order_number', 'WC-605')->first();
+
+        $this->assertNotNull($order);
+        $this->assertSame('50.00', $order->subtotal);
+        $this->assertSame('59.95', $order->total);
+    }
+
+    public function test_order_shipping_and_tax_totals_are_persisted(): void
+    {
+        $this->insertLegacyOrder(606, 'wc-completed', [
+            '_order_total' => '79.90',
+            '_order_shipping' => '6.50',
+            '_order_tax' => '3.40',
+        ]);
+
+        $this->artisan('import:legacy-data', ['--only' => 'orders'])->assertSuccessful();
+
+        $order = Order::where('order_number', 'WC-606')->first();
+
+        $this->assertNotNull($order);
+        $this->assertEquals(6.50, (float) $order->shipping_total);
+        $this->assertEquals(3.40, (float) $order->tax_total);
+    }
+
+    public function test_order_billing_fields_are_persisted(): void
+    {
+        $this->insertLegacyOrder(607, 'wc-completed', [
+            '_billing_first_name' => 'John',
+            '_billing_last_name' => 'Doe',
+            '_billing_country' => 'DE',
+            '_billing_city' => 'Berlin',
+            '_billing_postcode' => '10115',
+            '_billing_address_1' => 'Hauptstraße',
+            '_billing_address_2' => '42',
+        ]);
+
+        $this->artisan('import:legacy-data', ['--only' => 'orders'])->assertSuccessful();
+
+        $this->assertDatabaseHas('orders', [
+            'order_number' => 'WC-607',
+            'billing_first_name' => 'John',
+            'billing_last_name' => 'Doe',
+            'billing_country' => 'DE',
+            'billing_city' => 'Berlin',
+            'billing_postal_code' => '10115',
+            'billing_street_name' => 'Hauptstraße',
+            'billing_street_number' => '42',
+        ]);
+    }
+
+    public function test_order_coupon_code_is_imported_from_wc_items(): void
+    {
+        $this->insertLegacyOrder(608, 'wc-completed');
+
+        DB::connection('legacy')->table('wp_woocommerce_order_items')->insert([
+            'order_item_id' => 6081,
+            'order_id' => 608,
+            'order_item_name' => 'WELCOME10',
+            'order_item_type' => 'coupon',
+        ]);
+
+        $this->artisan('import:legacy-data', ['--only' => 'orders'])->assertSuccessful();
+
+        $this->assertDatabaseHas('orders', [
+            'order_number' => 'WC-608',
+            'coupon_code' => 'WELCOME10',
+        ]);
+    }
+
+    public function test_order_without_coupon_has_null_coupon_code(): void
+    {
+        $this->insertLegacyOrder(609, 'wc-completed');
+
+        $this->artisan('import:legacy-data', ['--only' => 'orders'])->assertSuccessful();
+
+        $order = Order::where('order_number', 'WC-609')->first();
+
+        $this->assertNotNull($order);
+        $this->assertNull($order->coupon_code);
+    }
+
+    public function test_customer_preserves_wp_registration_date(): void
+    {
+        DB::connection('legacy')->table('wp_users')->insert([
+            'ID' => 42,
+            'user_email' => 'preserved@example.com',
+            'user_login' => 'preserved_user',
+            'user_registered' => '2022-06-15 10:30:00',
+        ]);
+
+        $this->artisan('import:legacy-data', ['--only' => 'customers'])->assertSuccessful();
+
+        $user = User::where('email', 'preserved@example.com')->first();
+
+        $this->assertNotNull($user);
+        $this->assertSame('2022-06-15 10:30:00', $user->created_at->format('Y-m-d H:i:s'));
+    }
+
+    public function test_completed_order_gets_shipped_at_from_date_completed(): void
+    {
+        $completedTimestamp = 1680340800; // 2023-04-01 12:00:00 UTC
+
+        $this->insertLegacyOrder(610, 'wc-completed', [
+            '_date_completed' => (string) $completedTimestamp,
+        ]);
+
+        $this->artisan('import:legacy-data', ['--only' => 'orders'])->assertSuccessful();
+
+        $order = Order::where('order_number', 'WC-610')->first();
+
+        $this->assertNotNull($order);
+        $this->assertNotNull($order->shipped_at);
+        $this->assertSame('2023-04-01', $order->shipped_at->format('Y-m-d'));
+    }
+
+    public function test_non_completed_order_has_null_shipped_at(): void
+    {
+        $this->insertLegacyOrder(611, 'wc-processing', [
+            '_date_completed' => '1680340800',
+        ]);
+
+        $this->artisan('import:legacy-data', ['--only' => 'orders'])->assertSuccessful();
+
+        $order = Order::where('order_number', 'WC-611')->first();
+
+        $this->assertNotNull($order);
+        $this->assertNull($order->shipped_at);
+    }
+
+    public function test_stale_mapping_is_cleaned_and_order_recreated(): void
+    {
+        // Recreate mapping table without FK so we can insert a stale reference.
+        // In production, stale mappings happen when orders are truncated (bypasses FK).
+        Schema::drop('import_legacy_orders');
+        Schema::create('import_legacy_orders', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('legacy_wc_order_id')->unique();
+            $table->unsignedBigInteger('order_id')->index();
+            $table->timestamp('synced_at')->nullable();
+            $table->timestamps();
+        });
+
+        DB::table('import_legacy_orders')->insert([
+            'legacy_wc_order_id' => 700,
+            'order_id' => 999999,
+            'synced_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->insertLegacyOrder(700, 'wc-completed');
+
+        $this->artisan('import:legacy-data', ['--only' => 'orders'])->assertSuccessful();
+
+        $order = Order::where('order_number', 'WC-700')->first();
+
+        $this->assertNotNull($order);
+        $this->assertDatabaseHas('import_legacy_orders', [
+            'legacy_wc_order_id' => 700,
+            'order_id' => $order->id,
+        ]);
+    }
+
+    public function test_order_item_falls_back_to_product_when_variant_lookup_fails(): void
+    {
+        $product = Product::factory()->create(['slug' => 'fallback-tee']);
+
+        DB::table('import_legacy_products')->insert([
+            'legacy_wp_post_id' => 800,
+            'product_id' => $product->id,
+            'synced_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->insertLegacyOrder(801, 'wc-completed');
+
+        DB::connection('legacy')->table('wp_woocommerce_order_items')->insert([
+            'order_item_id' => 8011,
+            'order_id' => 801,
+            'order_item_name' => 'Fallback Tee',
+            'order_item_type' => 'line_item',
+        ]);
+
+        DB::connection('legacy')->table('wp_woocommerce_order_itemmeta')->insert([
+            ['order_item_id' => 8011, 'meta_key' => '_product_id', 'meta_value' => '800'],
+            ['order_item_id' => 8011, 'meta_key' => '_variation_id', 'meta_value' => '99999'],
+            ['order_item_id' => 8011, 'meta_key' => '_qty', 'meta_value' => '1'],
+            ['order_item_id' => 8011, 'meta_key' => '_line_subtotal', 'meta_value' => '29.95'],
+            ['order_item_id' => 8011, 'meta_key' => '_line_total', 'meta_value' => '29.95'],
+        ]);
+
+        $this->artisan('import:legacy-data', ['--only' => 'orders'])->assertSuccessful();
+
+        $this->assertDatabaseHas('order_items', [
+            'product_id' => $product->id,
+            'product_variant_id' => null,
+            'product_name' => 'Fallback Tee',
+        ]);
+    }
+
+    /**
+     * Insert a minimal legacy WC order into the test database.
+     *
+     * @param  array<string, string>  $extraMeta
+     */
+    private function insertLegacyOrder(int $wcOrderId, string $wcStatus, array $extraMeta = []): void
+    {
+        DB::connection('legacy')->table('wp_posts')->insert([
+            'ID' => $wcOrderId,
+            'post_parent' => 0,
+            'post_author' => 0,
+            'post_type' => 'shop_order',
+            'post_status' => $wcStatus,
+            'post_title' => "Order {$wcOrderId}",
+            'post_name' => "order-{$wcOrderId}",
+            'post_excerpt' => '',
+            'post_content' => '',
+            'post_date' => '2024-01-10 12:00:00',
+        ]);
+
+        $meta = array_merge([
+            '_billing_email' => 'test@example.com',
+            '_billing_first_name' => 'Test',
+            '_billing_last_name' => 'User',
+            '_order_total' => '49.95',
+            '_payment_method' => 'paypal',
+        ], $extraMeta);
+
+        $rows = [];
+        foreach ($meta as $key => $value) {
+            $rows[] = ['post_id' => $wcOrderId, 'meta_key' => $key, 'meta_value' => $value];
+        }
+
+        DB::connection('legacy')->table('wp_postmeta')->insert($rows);
     }
 
     private function createLegacySchema(): void
