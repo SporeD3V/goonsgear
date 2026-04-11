@@ -1,9 +1,9 @@
 {{-- KPI Row --}}
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     @include('admin.dashboard._kpi-card', [
-        'label' => 'Total Customers',
-        'value' => number_format($customerStats['total']),
-        'subtitle' => 'All-time — not affected by period filter',
+        'label' => 'Active Customers (' . $periodLabel . ')',
+        'value' => number_format($customerStats['active_in_period']),
+        'delta' => $deltas['active_in_period'] ?? null,
         'delay' => 1,
     ])
 
@@ -24,7 +24,8 @@
 <div class="grid gap-6 lg:grid-cols-2">
     {{-- Customer Geography --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="2">
-        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Customers by Country</h3>
+        <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Customers by Country</h3>
+        <p class="mb-3 text-[13px] text-stone-500">Unique customers by order country — {{ $periodLabel }}</p>
         @if (empty($customerGeo))
             <p class="text-[15px] text-stone-500">No customer data yet.</p>
         @else
@@ -298,6 +299,8 @@
         <div class="overflow-x-auto" x-data="{
             sortCol: 'days_since_last',
             sortAsc: false,
+            page: 1,
+            perPage: 50,
             items: {{ Js::from($vipChurn['churning']) }},
             get sorted() {
                 const col = this.sortCol;
@@ -307,8 +310,15 @@
                     return dir * (a[col] - b[col]);
                 });
             },
+            get visible() {
+                return this.sorted.slice(0, this.page * this.perPage);
+            },
+            get hasMore() {
+                return this.visible.length < this.sorted.length;
+            },
             toggleSort(col) {
                 if (this.sortCol === col) { this.sortAsc = !this.sortAsc; } else { this.sortCol = col; this.sortAsc = col === 'email'; }
+                this.page = 1;
             },
             sortIcon(col) {
                 if (this.sortCol !== col) return '↕';
@@ -326,7 +336,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-stone-100">
-                    <template x-for="vip in sorted" :key="vip.email">
+                    <template x-for="vip in visible" :key="vip.email">
                         <tr class="transition hover:bg-stone-50">
                             <td class="px-4 py-2.5 font-medium text-stone-700" x-text="vip.email"></td>
                             <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="'€' + Number(vip.total_spent).toFixed(2)"></td>
@@ -341,6 +351,9 @@
                     </template>
                 </tbody>
             </table>
+            <template x-if="hasMore">
+                <button @click="page++" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="'Load more (' + (items.length - visible.length) + ' remaining)'"></button>
+            </template>
         </div>
     @endif
 </div>

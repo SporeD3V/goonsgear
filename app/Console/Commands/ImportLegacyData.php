@@ -306,7 +306,7 @@ class ImportLegacyData extends Command
         $products = $legacy->table('wp_posts')
             ->where('post_type', 'product')
             ->where('post_status', 'publish')
-            ->select('ID', 'post_title', 'post_name', 'post_excerpt', 'post_content')
+            ->select('ID', 'post_title', 'post_name', 'post_excerpt', 'post_content', 'post_date')
             ->get();
 
         $count = 0;
@@ -378,7 +378,7 @@ class ImportLegacyData extends Command
                     'meta_title' => $meta['_yoast_wpseo_title'] ?? null,
                     'meta_description' => $meta['_yoast_wpseo_metadesc'] ?? null,
                     'status' => 'active',
-                    'published_at' => now(),
+                    'published_at' => Carbon::parse($legacyProd->post_date),
                     'is_preorder' => $preorderAttributes['is_preorder'],
                     'preorder_available_from' => $preorderAttributes['preorder_available_from'],
                     'expected_ship_at' => $preorderAttributes['expected_ship_at'],

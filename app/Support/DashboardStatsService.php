@@ -781,7 +781,7 @@ class DashboardStatsService
     // ── Customers Tab ─────────────────────────────────────────
 
     /**
-     * @return array{total: int, new_in_period: int, total_newsletter: int}
+     * @return array{total: int, active_in_period: int, new_in_period: int, total_newsletter: int}
      */
     public function customerStats(?Carbon $from = null, ?Carbon $to = null): array
     {
@@ -791,8 +791,13 @@ class DashboardStatsService
             $newQuery = User::where('is_admin', false);
             $this->applyPeriod($newQuery, $from, $to, 'created_at');
 
+            $activeQuery = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES);
+            $this->applyPeriod($activeQuery, $from, $to);
+
             return [
                 'total' => User::where('is_admin', false)->count(),
+                'active_in_period' => (int) $activeQuery->distinct()->count('email'),
                 'new_in_period' => (int) $newQuery->count(),
                 'total_newsletter' => DB::table('newsletter_subscribers')
                     ->whereNull('unsubscribed_at')

@@ -88,6 +88,69 @@ class DashboardControllerTest extends TestCase
             ->assertViewHas('tagFollows');
     }
 
+    public function test_customer_stats_active_in_period_counts_ordering_customers(): void
+    {
+        $this->actingAsAdmin();
+
+        // Order within the default 30d period
+        Order::factory()->create([
+            'email' => 'active@example.com',
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(5),
+        ]);
+
+        // Same customer, second order — should not double-count
+        Order::factory()->create([
+            'email' => 'active@example.com',
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(3),
+        ]);
+
+        // Order outside the 30d period
+        Order::factory()->create([
+            'email' => 'old@example.com',
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(60),
+        ]);
+
+        // Unpaid order inside the period — should not count
+        Order::factory()->create([
+            'email' => 'unpaid@example.com',
+            'payment_status' => 'pending',
+            'placed_at' => now()->subDays(2),
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'customers', 'period' => '30d']));
+
+        $response->assertOk();
+        $stats = $response->viewData('customerStats');
+
+        $this->assertArrayHasKey('active_in_period', $stats);
+        $this->assertEquals(1, $stats['active_in_period']);
+    }
+
+    public function test_customer_stats_compare_includes_active_delta(): void
+    {
+        $this->actingAsAdmin();
+
+        Order::factory()->create([
+            'email' => 'current@example.com',
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(5),
+        ]);
+
+        $response = $this->get(route('admin.dashboard', [
+            'tab' => 'customers',
+            'period' => '30d',
+            'compare' => 1,
+        ]));
+
+        $response->assertOk()->assertViewHas('deltas');
+        $deltas = $response->viewData('deltas');
+        $this->assertArrayHasKey('active_in_period', $deltas);
+        $this->assertArrayHasKey('new_in_period', $deltas);
+    }
+
     public function test_period_presets_change_label(): void
     {
         $this->actingAsAdmin();
@@ -1018,6 +1081,28 @@ class DashboardControllerTest extends TestCase
         $this->assertEquals(0, $conversion['visitors']);
         $this->assertEquals(0.0, $conversion['conversion_pct']);
         $this->assertEquals(0.0, $conversion['revenue_per_visitor']);
+        $this->assertArrayHasKey('revenue', $conversion);
+    }
+
+    public function test_site_conversion_shows_orders_and_revenue_without_visitors(): void
+    {
+        $this->withoutMiddleware(TrackVisitor::class);
+        $this->actingAsAdmin();
+
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(5),
+            'total' => 150.00,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['period' => '30d']));
+        $response->assertOk();
+
+        $conversion = $response->viewData('siteConversion');
+        $this->assertEquals(0, $conversion['visitors']);
+        $this->assertEquals(1, $conversion['orders']);
+        $this->assertEquals(150.0, $conversion['revenue']);
+        $this->assertEquals(0.0, $conversion['conversion_pct']);
     }
 
     public function test_aov_by_country_calculates_correctly(): void

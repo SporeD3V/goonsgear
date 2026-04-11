@@ -236,6 +236,7 @@ class DashboardController extends Controller
         if ($compare && $prevFrom) {
             $prevCust = $stats->customerStats($prevFrom, $prevTo);
             $data['deltas'] = [
+                'active_in_period' => DashboardStatsService::delta($custStats['active_in_period'], $prevCust['active_in_period']),
                 'new_in_period' => DashboardStatsService::delta($custStats['new_in_period'], $prevCust['new_in_period']),
             ];
         }

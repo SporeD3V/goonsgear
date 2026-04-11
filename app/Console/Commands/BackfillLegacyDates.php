@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -12,7 +13,7 @@ class BackfillLegacyDates extends Command
 {
     protected $signature = 'app:backfill-legacy-dates {--dry-run : Preview changes without writing}';
 
-    protected $description = 'Backfill customer registration dates and order shipped_at from WooCommerce legacy database';
+    protected $description = 'Backfill customer registration dates, order shipped_at, and product published_at from WooCommerce legacy database';
 
     public function handle(): int
     {
@@ -24,6 +25,7 @@ class BackfillLegacyDates extends Command
 
         $this->backfillCustomerDates($dryRun);
         $this->backfillOrderShippedAt($dryRun);
+        $this->backfillProductPublishedAt($dryRun);
 
         return self::SUCCESS;
     }
@@ -127,5 +129,51 @@ class BackfillLegacyDates extends Command
 
         $verb = $dryRun ? 'Would update' : 'Updated';
         $this->info("✓ {$verb} {$updated} order shipped_at dates ({$skipped} skipped).");
+    }
+
+    private function backfillProductPublishedAt(bool $dryRun): void
+    {
+        $this->info('Backfilling product published_at dates...');
+
+        $legacy = DB::connection('legacy');
+        $mappings = DB::table('import_legacy_products')->get();
+
+        $updated = 0;
+        $skipped = 0;
+
+        foreach ($mappings as $mapping) {
+            $wpPost = $legacy->table('wp_posts')
+                ->where('ID', $mapping->legacy_wp_post_id)
+                ->select('post_date')
+                ->first();
+
+            if (! $wpPost || ! $wpPost->post_date) {
+                $skipped++;
+
+                continue;
+            }
+
+            $product = Product::find($mapping->product_id);
+
+            if (! $product) {
+                $skipped++;
+
+                continue;
+            }
+
+            $publishedAt = Carbon::parse($wpPost->post_date);
+
+            if ($dryRun) {
+                $this->line("  Would update product #{$product->id} ({$product->name}): published_at {$product->published_at} → {$publishedAt}");
+            } else {
+                $product->published_at = $publishedAt;
+                $product->save();
+            }
+
+            $updated++;
+        }
+
+        $verb = $dryRun ? 'Would update' : 'Updated';
+        $this->info("✓ {$verb} {$updated} product published_at dates ({$skipped} skipped).");
     }
 }
