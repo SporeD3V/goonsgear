@@ -184,7 +184,10 @@ class DashboardStatsService
             }
 
             $daysArr = $orders->map(function ($o) {
-                return max(0, round($o->placed_at->diffInHours($o->shipped_at) / 24, 1));
+                $placed = Carbon::parse($o->placed_at);
+                $shipped = Carbon::parse($o->shipped_at);
+
+                return max(0, round($placed->diffInHours($shipped) / 24, 1));
             })->sort()->values();
 
             $count = $daysArr->count();
