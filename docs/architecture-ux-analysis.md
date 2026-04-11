@@ -578,8 +578,8 @@ SIDEBAR (reorganized)
 3. ~~**All list pages** — Separate filters and data table into distinct containers~~
 4. ~~**Sidebar reorganization** — Collapsible sections with route-aware auto-expand~~
 
-### Phase 2: Admin Dashboard (Basic) ✅ DONE
-4. ~~**Create admin dashboard** — Landing page with quick stats and attention items~~
+### Phase 2: Admin Dashboard (Full) ✅ DONE
+4. ~~**Create admin dashboard** — 5-tab analytics dashboard (Overview, Sales, Inventory, Promotions, Customers) with Chart.js, DashboardStatsService, and cached queries~~
 
 ### Phase 3: Storefront Quick Wins
 5. **Checkout form** — Progressive disclosure, collapse optional apartment fields
@@ -892,11 +892,11 @@ For rendering charts in a Laravel/Livewire app, recommended options:
 
 #### Progressive Build Order
 1. ~~**Phase A:** Expand current dashboard with KPI cards + recent orders~~ ✅ DONE
-2. **Phase B:** Add revenue line chart + orders donut (Chart.js, inline Livewire component)
-3. **Phase C:** Add inventory health section (stock buckets, alert demand)
-4. **Phase D:** Add promotions tab (coupon leaderboard, discount impact)
-5. **Phase E:** Add customer analytics tab (registrations, geography, tag follows)
-6. **Phase F:** Add cart recovery funnel + metrics
+2. ~~**Phase B:** Add revenue line chart + orders donut (Chart.js via CDN, Overview tab)~~ ✅ DONE
+3. ~~**Phase C:** Add inventory health section (stock buckets, alert demand)~~ ✅ DONE
+4. ~~**Phase D:** Add promotions tab (coupon leaderboard, discount impact)~~ ✅ DONE
+5. ~~**Phase E:** Add customer analytics tab (registrations, geography, tag follows)~~ ✅ DONE
+6. ~~**Phase F:** Add cart recovery funnel + metrics~~ ✅ DONE
 
 ---
 
