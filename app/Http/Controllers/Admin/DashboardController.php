@@ -74,6 +74,15 @@ class DashboardController extends Controller
             }
         }
 
+        // Release benchmark params (sales tab only)
+        $benchmarkA = $request->integer('benchmark_a');
+        $benchmarkB = $request->integer('benchmark_b');
+        $benchmarkDays = $request->integer('benchmark_days', 30);
+
+        if ($benchmarkDays < 7 || $benchmarkDays > 90) {
+            $benchmarkDays = 30;
+        }
+
         $data = [
             'tab' => $tab,
             'period' => $period,
@@ -82,10 +91,13 @@ class DashboardController extends Controller
             'customFrom' => $customFrom,
             'customTo' => $customTo,
             'periodLabel' => $this->periodLabel($period, $from, $to),
+            'benchmarkA' => $benchmarkA,
+            'benchmarkB' => $benchmarkB,
+            'benchmarkDays' => $benchmarkDays,
         ];
 
         match ($tab) {
-            'sales' => $data += $this->salesTab($stats, $from, $to, $prevFrom, $prevTo, $compare),
+            'sales' => $data += $this->salesTab($stats, $from, $to, $prevFrom, $prevTo, $compare, $benchmarkA, $benchmarkB, $benchmarkDays),
             'inventory' => $data += [
                 'stockHealth' => $stats->stockHealth(),
                 'stockAlertDemand' => $stats->stockAlertDemand(),
@@ -126,7 +138,7 @@ class DashboardController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function salesTab(DashboardStatsService $stats, ?Carbon $from, ?Carbon $to, ?Carbon $prevFrom, ?Carbon $prevTo, bool $compare): array
+    private function salesTab(DashboardStatsService $stats, ?Carbon $from, ?Carbon $to, ?Carbon $prevFrom, ?Carbon $prevTo, bool $compare, int $benchmarkA, int $benchmarkB, int $benchmarkDays): array
     {
         $aov = $stats->averageOrderValue($from, $to);
         $repeatRate = $stats->repeatCustomerRate($from, $to);
@@ -142,6 +154,10 @@ class DashboardController extends Controller
             'itemsPerOrder' => $itemsPerOrder,
             'yearlyRevenue' => $stats->monthlyRevenueByYear(),
             'bestMonthBenchmark' => $stats->bestMonthBenchmark(),
+            'benchmarkableProducts' => $stats->benchmarkableProducts(),
+            'releaseBenchmark' => ($benchmarkA && $benchmarkB) ? $stats->releaseBenchmark($benchmarkA, $benchmarkB, $benchmarkDays) : null,
+            'regionalGrowth' => $stats->regionalGrowthTrend(),
+            'productDecay' => $stats->productDecayTracking(),
         ];
 
         if ($compare && $prevFrom) {

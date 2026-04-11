@@ -130,6 +130,133 @@
     </div>
 </div>
 
+{{-- Release-to-Release Benchmarking --}}
+<div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="8">
+    <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-stone-600">Release-to-Release Benchmarking</h3>
+
+    {{-- Product Selector --}}
+    <form method="GET" action="{{ route('admin.dashboard') }}" class="mb-4 flex flex-wrap items-end gap-3">
+        <input type="hidden" name="tab" value="sales">
+        <input type="hidden" name="period" value="{{ $period }}">
+        <input type="hidden" name="compare" value="{{ $compare ? 1 : 0 }}">
+        <input type="hidden" name="compare_mode" value="{{ $compareMode }}">
+        @if ($period === 'custom' && $customFrom && $customTo)
+            <input type="hidden" name="custom_from" value="{{ $customFrom }}">
+            <input type="hidden" name="custom_to" value="{{ $customTo }}">
+        @endif
+
+        <div class="flex-1 min-w-[180px]">
+            <label class="mb-1 block text-xs font-medium text-stone-500">Product A</label>
+            <select name="benchmark_a" class="w-full rounded-md border border-stone-300 px-3 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]">
+                <option value="">Select product…</option>
+                @foreach ($benchmarkableProducts as $bp)
+                    <option value="{{ $bp['id'] }}" {{ $benchmarkA == $bp['id'] ? 'selected' : '' }}>
+                        {{ $bp['name'] }} ({{ $bp['published_at'] }})
+                    </option>
+                @endforeach
+            </select>
+        </div>
+
+        <div class="flex-1 min-w-[180px]">
+            <label class="mb-1 block text-xs font-medium text-stone-500">Product B</label>
+            <select name="benchmark_b" class="w-full rounded-md border border-stone-300 px-3 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]">
+                <option value="">Select product…</option>
+                @foreach ($benchmarkableProducts as $bp)
+                    <option value="{{ $bp['id'] }}" {{ $benchmarkB == $bp['id'] ? 'selected' : '' }}>
+                        {{ $bp['name'] }} ({{ $bp['published_at'] }})
+                    </option>
+                @endforeach
+            </select>
+        </div>
+
+        <div class="w-24">
+            <label class="mb-1 block text-xs font-medium text-stone-500">Days</label>
+            <select name="benchmark_days" class="w-full rounded-md border border-stone-300 px-3 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]">
+                @foreach ([7, 14, 30, 60, 90] as $d)
+                    <option value="{{ $d }}" {{ $benchmarkDays == $d ? 'selected' : '' }}>{{ $d }}d</option>
+                @endforeach
+            </select>
+        </div>
+
+        <button type="submit" class="rounded-md bg-[#36a2eb] px-4 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#36a2eb]/90">
+            Compare
+        </button>
+    </form>
+
+    {{-- Benchmark Chart --}}
+    @if ($releaseBenchmark && count($releaseBenchmark['products']) === 2)
+        <div class="h-[280px]">
+            <canvas id="releaseBenchmarkChart"></canvas>
+        </div>
+    @elseif ($benchmarkA && $benchmarkB)
+        <p class="text-[15px] text-stone-500">One or both products don't have a publish date or sales data.</p>
+    @else
+        <p class="text-[15px] text-stone-500">Select two products above to compare their launch performance.</p>
+    @endif
+</div>
+
+{{-- Regional Growth Trend --}}
+<div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="9">
+    <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Regional Growth Trend (Quarterly)</h3>
+    @if (empty($regionalGrowth['countries']))
+        <p class="text-[15px] text-stone-500">Not enough order data to show regional trends.</p>
+    @else
+        <div class="h-[300px]">
+            <canvas id="regionalGrowthChart"></canvas>
+        </div>
+    @endif
+</div>
+
+{{-- Product Decay Tracking --}}
+<div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="10">
+    <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Product Sales Velocity (from Launch)</h3>
+    @if (empty($productDecay))
+        <p class="text-[15px] text-stone-500">No products with a published date more than 2 months old.</p>
+    @else
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                <thead class="bg-stone-50">
+                    <tr>
+                        <th class="px-4 py-2.5 text-left font-medium text-stone-600">Product</th>
+                        <th class="px-4 py-2.5 text-center font-medium text-stone-600">Launch</th>
+                        @for ($m = 1; $m <= 6; $m++)
+                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Mo {{ $m }}</th>
+                        @endfor
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100">
+                    @foreach ($productDecay as $pd)
+                        <tr class="transition hover:bg-stone-50">
+                            <td class="px-4 py-2.5 text-stone-700 max-w-[200px] truncate" title="{{ $pd['name'] }}">{{ $pd['name'] }}</td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-center text-stone-500 text-sm">{{ $pd['published_at'] }}</td>
+                            @for ($m = 0; $m < 6; $m++)
+                                @if (isset($pd['months'][$m]))
+                                    @php
+                                        $vel = $pd['months'][$m]['velocity_pct'];
+                                        $velColor = $vel === null ? 'text-stone-400'
+                                            : ($vel >= 80 ? 'text-[#4bc0c0]'
+                                            : ($vel >= 40 ? 'text-[#ff9f40]'
+                                            : 'text-[#ff6384]'));
+                                    @endphp
+                                    <td class="whitespace-nowrap px-4 py-2.5 text-right">
+                                        <span class="font-medium text-stone-700">{{ $pd['months'][$m]['units'] }}</span>
+                                        @if ($vel !== null && $m > 0)
+                                            <span class="ml-1 text-xs {{ $velColor }}">{{ number_format($vel, 0) }}%</span>
+                                        @endif
+                                    </td>
+                                @else
+                                    <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-300">—</td>
+                                @endif
+                            @endfor
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        <p class="mt-2 text-xs text-stone-400">Percentages are relative to Month 1 units. <span class="text-[#4bc0c0]">≥80%</span> strong, <span class="text-[#ff9f40]">40–79%</span> fading, <span class="text-[#ff6384]">&lt;40%</span> declining.</p>
+    @endif
+</div>
+
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -137,6 +264,8 @@
         const countryData = @json($revenueByCountry);
         const prevRevenueData = @json($prevRevenueOverTime ?? null);
         const yearlyRevenue = @json($yearlyRevenue);
+        const releaseBenchmark = @json($releaseBenchmark ?? null);
+        const regionalGrowth = @json($regionalGrowth);
 
         // Revenue line chart with gross/net/discounts — Chart.js palette
         const salesDatasets = [
@@ -268,6 +397,89 @@
                 data: {
                     labels: yearlyRevenue.months,
                     datasets: yearDatasets,
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { padding: 16, font: { size: 11 }, color: '#57534e' } } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 12 }, color: '#78716c' } },
+                        y: { beginAtZero: true, ticks: { callback: v => '€' + v.toLocaleString(), font: { size: 12 }, color: '#78716c' }, grid: { color: '#f5f5f4' } }
+                    }
+                }
+            });
+        }
+
+        // Release-to-Release Benchmark Chart
+        if (releaseBenchmark && releaseBenchmark.products.length === 2 && document.getElementById('releaseBenchmarkChart')) {
+            const productA = releaseBenchmark.products[0];
+            const productB = releaseBenchmark.products[1];
+            const dataA = releaseBenchmark.comparison[productA.id] || [];
+            const dataB = releaseBenchmark.comparison[productB.id] || [];
+
+            new Chart(document.getElementById('releaseBenchmarkChart'), {
+                type: 'line',
+                data: {
+                    labels: dataA.map(d => 'Day ' + d.day),
+                    datasets: [
+                        {
+                            label: productA.name,
+                            data: dataA.map(d => d.cumulative_revenue),
+                            borderColor: '#36a2eb',
+                            backgroundColor: 'rgba(54, 162, 235, 0.06)',
+                            fill: true,
+                            tension: 0.35,
+                            pointRadius: 0,
+                            borderWidth: 2.5,
+                        },
+                        {
+                            label: productB.name,
+                            data: dataB.map(d => d.cumulative_revenue),
+                            borderColor: '#ff6384',
+                            backgroundColor: 'rgba(255, 99, 132, 0.06)',
+                            fill: true,
+                            tension: 0.35,
+                            pointRadius: 0,
+                            borderWidth: 2.5,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 }, color: '#57534e' } },
+                        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': €' + ctx.parsed.y.toLocaleString() } }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { maxTicksLimit: 10, font: { size: 11 }, color: '#78716c' } },
+                        y: { beginAtZero: true, ticks: { callback: v => '€' + v.toLocaleString(), font: { size: 12 }, color: '#78716c' }, grid: { color: '#f5f5f4' } }
+                    }
+                }
+            });
+        }
+
+        // Regional Growth Trend Chart
+        if (regionalGrowth && regionalGrowth.countries.length > 0 && document.getElementById('regionalGrowthChart')) {
+            const regionColors = ['#36a2eb', '#ff6384', '#4bc0c0', '#ff9f40', '#9966ff', '#c9cbcf'];
+            const regionDatasets = regionalGrowth.countries.map((country, idx) => ({
+                label: country,
+                data: regionalGrowth.series[country],
+                borderColor: regionColors[idx % regionColors.length],
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                tension: 0.35,
+                pointRadius: 3,
+                pointBackgroundColor: regionColors[idx % regionColors.length],
+                pointBorderColor: '#fff',
+                pointBorderWidth: 1,
+            }));
+
+            new Chart(document.getElementById('regionalGrowthChart'), {
+                type: 'line',
+                data: {
+                    labels: regionalGrowth.quarters,
+                    datasets: regionDatasets,
                 },
                 options: {
                     responsive: true,

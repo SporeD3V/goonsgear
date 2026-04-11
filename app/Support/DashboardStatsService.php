@@ -643,4 +643,265 @@ class DashboardStatsService
             ];
         });
     }
+
+    // ── Contextual Sales & Product Performance ────────────────
+
+    /**
+     * Compare the first N days of sales for two products (by published_at).
+     *
+     * @return array<string, mixed>
+     */
+    public function releaseBenchmark(int $productA, int $productB, int $days = 30): array
+    {
+        $cacheKey = "dashboard:release-benchmark:{$productA}:{$productB}:{$days}";
+
+        /** @var array<string, mixed> */
+        return Cache::remember($cacheKey, 300, function () use ($productA, $productB, $days): array {
+            $products = Product::whereIn('id', [$productA, $productB])
+                ->select('id', 'name', 'published_at')
+                ->get()
+                ->keyBy('id');
+
+            $comparison = [];
+
+            foreach ([$productA, $productB] as $pid) {
+                $product = $products->get($pid);
+                if (! $product || ! $product->published_at) {
+                    $comparison[$pid] = [];
+
+                    continue;
+                }
+
+                $releaseDate = Carbon::parse($product->published_at)->startOfDay();
+                $endDate = $releaseDate->copy()->addDays($days - 1)->endOfDay();
+
+                $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+
+                $dayNumExpr = $isSqlite
+                    ? 'cast(julianday(DATE(orders.placed_at)) - julianday(?) as integer)'
+                    : 'DATEDIFF(DATE(orders.placed_at), ?)';
+
+                $rows = DB::table('order_items')
+                    ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                    ->whereIn('orders.payment_status', self::PAID_STATUSES)
+                    ->where('order_items.product_id', $pid)
+                    ->whereBetween('orders.placed_at', [$releaseDate, $endDate])
+                    ->selectRaw("{$dayNumExpr} as day_num, SUM(order_items.quantity) as units, SUM(order_items.line_total) as revenue", [$releaseDate->format('Y-m-d')])
+                    ->groupByRaw('day_num')
+                    ->orderBy('day_num')
+                    ->get()
+                    ->keyBy('day_num');
+
+                $daily = [];
+                $cumUnits = 0;
+                $cumRevenue = 0.0;
+
+                for ($d = 0; $d < $days; $d++) {
+                    $row = $rows->get($d);
+                    $units = (int) ($row->units ?? 0);
+                    $revenue = (float) ($row->revenue ?? 0);
+                    $cumUnits += $units;
+                    $cumRevenue += $revenue;
+
+                    $daily[] = [
+                        'day' => $d + 1,
+                        'units' => $units,
+                        'revenue' => $revenue,
+                        'cumulative_units' => $cumUnits,
+                        'cumulative_revenue' => round($cumRevenue, 2),
+                    ];
+                }
+
+                $comparison[$pid] = $daily;
+            }
+
+            return [
+                'products' => $products->map(fn ($p) => [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'published_at' => $p->published_at ? Carbon::parse($p->published_at)->format('Y-m-d') : null,
+                ])->values()->all(),
+                'comparison' => $comparison,
+            ];
+        });
+    }
+
+    /**
+     * Products available for release benchmarking (have a published_at date and sales).
+     *
+     * @return list<array{id: int, name: string, published_at: string}>
+     */
+    public function benchmarkableProducts(int $limit = 30): array
+    {
+        /** @var list<array{id: int, name: string, published_at: string}> */
+        return Cache::remember('dashboard:benchmarkable-products', 300, function () use ($limit): array {
+            return Product::whereNotNull('published_at')
+                ->whereHas('orderItems', fn ($q) => $q->join('orders', 'orders.id', '=', 'order_items.order_id')
+                    ->whereIn('orders.payment_status', self::PAID_STATUSES))
+                ->orderByDesc('published_at')
+                ->take($limit)
+                ->get(['id', 'name', 'published_at'])
+                ->map(fn ($p) => [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'published_at' => Carbon::parse($p->published_at)->format('Y-m-d'),
+                ])
+                ->all();
+        });
+    }
+
+    /**
+     * Regional revenue trend: quarterly revenue per country to track growth/contraction.
+     *
+     * @return array{countries: list<string>, quarters: list<string>, series: array<string, list<float>>}
+     */
+    public function regionalGrowthTrend(int $topCountries = 6, int $quartersBack = 8): array
+    {
+        $cacheKey = "dashboard:regional-growth:{$topCountries}:{$quartersBack}";
+
+        /** @var array{countries: list<string>, quarters: list<string>, series: array<string, list<float>>} */
+        return Cache::remember($cacheKey, 300, function () use ($topCountries, $quartersBack): array {
+            // Find top countries by total revenue
+            $countries = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->whereNotNull('placed_at')
+                ->selectRaw('country, SUM(total) as total_rev')
+                ->groupBy('country')
+                ->orderByDesc('total_rev')
+                ->take($topCountries)
+                ->pluck('country')
+                ->all();
+
+            if (empty($countries)) {
+                return ['countries' => [], 'quarters' => [], 'series' => []];
+            }
+
+            $now = Carbon::now();
+            $startQuarter = $now->copy()->subQuarters($quartersBack - 1)->startOfQuarter();
+
+            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+            $yearExpr = $isSqlite ? "cast(strftime('%Y', placed_at) as integer)" : 'YEAR(placed_at)';
+            $quarterExpr = $isSqlite
+                ? "cast((cast(strftime('%m', placed_at) as integer) + 2) / 3 as integer)"
+                : 'QUARTER(placed_at)';
+
+            $rows = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->whereIn('country', $countries)
+                ->where('placed_at', '>=', $startQuarter)
+                ->selectRaw("{$yearExpr} as yr, {$quarterExpr} as qtr, country, SUM(total) as revenue")
+                ->groupBy('yr', 'qtr', 'country')
+                ->orderBy('yr')
+                ->orderBy('qtr')
+                ->get();
+
+            // Build quarter labels and per-country series
+            $quarters = [];
+            $current = $startQuarter->copy();
+            while ($current->lte($now)) {
+                $quarters[] = 'Q'.$current->quarter.' '.$current->year;
+                $current->addQuarter();
+            }
+
+            $series = [];
+            foreach ($countries as $country) {
+                $series[$country] = array_fill(0, count($quarters), 0.0);
+            }
+
+            foreach ($rows as $row) {
+                $label = 'Q'.$row->qtr.' '.$row->yr;
+                $idx = array_search($label, $quarters);
+                if ($idx !== false && isset($series[$row->country])) {
+                    $series[$row->country][$idx] = (float) $row->revenue;
+                }
+            }
+
+            return [
+                'countries' => $countries,
+                'quarters' => $quarters,
+                'series' => $series,
+            ];
+        });
+    }
+
+    /**
+     * Product sales velocity decay: compare monthly sales velocity from launch.
+     *
+     * @return list<array{product_id: int, name: string, published_at: string, months: list<array{month: int, units: int, revenue: float, velocity_pct: float|null}>}>
+     */
+    public function productDecayTracking(int $limit = 8, int $monthsToTrack = 6): array
+    {
+        $cacheKey = "dashboard:product-decay:{$limit}:{$monthsToTrack}";
+
+        /** @var list<array{product_id: int, name: string, published_at: string, months: list<array{month: int, units: int, revenue: float, velocity_pct: float|null}>}> */
+        return Cache::remember($cacheKey, 300, function () use ($limit, $monthsToTrack): array {
+            // Get top products that have a published_at date (at least 2 months old)
+            $cutoff = Carbon::now()->subMonths(2);
+            $products = Product::whereNotNull('published_at')
+                ->where('published_at', '<=', $cutoff)
+                ->orderByDesc('published_at')
+                ->take($limit)
+                ->get(['id', 'name', 'published_at']);
+
+            if ($products->isEmpty()) {
+                return [];
+            }
+
+            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+            $result = [];
+
+            foreach ($products as $product) {
+                $releaseDate = Carbon::parse($product->published_at)->startOfDay();
+                $monthsData = [];
+
+                for ($m = 0; $m < $monthsToTrack; $m++) {
+                    $monthStart = $releaseDate->copy()->addMonths($m);
+                    $monthEnd = $monthStart->copy()->addMonth()->subSecond();
+
+                    // Don't query future months
+                    if ($monthStart->isFuture()) {
+                        break;
+                    }
+
+                    $rows = DB::table('order_items')
+                        ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                        ->whereIn('orders.payment_status', self::PAID_STATUSES)
+                        ->where('order_items.product_id', $product->id)
+                        ->whereBetween('orders.placed_at', [$monthStart, $monthEnd])
+                        ->selectRaw('SUM(order_items.quantity) as units, SUM(order_items.line_total) as revenue')
+                        ->first();
+
+                    $units = (int) ($rows->units ?? 0);
+                    $revenue = (float) ($rows->revenue ?? 0);
+
+                    $monthsData[] = [
+                        'month' => $m + 1,
+                        'units' => $units,
+                        'revenue' => $revenue,
+                        'velocity_pct' => null,
+                    ];
+                }
+
+                // Calculate velocity % relative to month 1
+                if (! empty($monthsData) && $monthsData[0]['units'] > 0) {
+                    $baselineUnits = $monthsData[0]['units'];
+                    for ($i = 0; $i < count($monthsData); $i++) {
+                        $monthsData[$i]['velocity_pct'] = round(
+                            ($monthsData[$i]['units'] / $baselineUnits) * 100,
+                            1
+                        );
+                    }
+                }
+
+                $result[] = [
+                    'product_id' => $product->id,
+                    'name' => $product->name,
+                    'published_at' => Carbon::parse($product->published_at)->format('Y-m-d'),
+                    'months' => $monthsData,
+                ];
+            }
+
+            return $result;
+        });
+    }
 }

@@ -3,6 +3,8 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -285,5 +287,146 @@ class DashboardControllerTest extends TestCase
 
         $benchmark = $response->viewData('bestMonthBenchmark');
         $this->assertGreaterThanOrEqual(250.00, $benchmark['current_revenue']);
+    }
+
+    public function test_sales_tab_has_contextual_performance_data(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
+
+        $response->assertOk()
+            ->assertViewHas('benchmarkableProducts')
+            ->assertViewHas('releaseBenchmark', null)
+            ->assertViewHas('regionalGrowth')
+            ->assertViewHas('productDecay');
+
+        $regional = $response->viewData('regionalGrowth');
+        $this->assertArrayHasKey('countries', $regional);
+        $this->assertArrayHasKey('quarters', $regional);
+        $this->assertArrayHasKey('series', $regional);
+    }
+
+    public function test_release_benchmark_with_two_products(): void
+    {
+        $this->actingAsAdmin();
+
+        $productA = Product::factory()->create(['published_at' => now()->subMonths(3)]);
+        $productB = Product::factory()->create(['published_at' => now()->subMonths(6)]);
+
+        $order = Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => $productA->published_at->copy()->addDays(2),
+        ]);
+        OrderItem::factory()->create([
+            'order_id' => $order->id,
+            'product_id' => $productA->id,
+            'quantity' => 5,
+            'line_total' => 150.00,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', [
+            'tab' => 'sales',
+            'benchmark_a' => $productA->id,
+            'benchmark_b' => $productB->id,
+            'benchmark_days' => 30,
+        ]));
+
+        $response->assertOk()
+            ->assertViewHas('releaseBenchmark');
+
+        $benchmark = $response->viewData('releaseBenchmark');
+        $this->assertCount(2, $benchmark['products']);
+        $this->assertArrayHasKey($productA->id, $benchmark['comparison']);
+        $this->assertArrayHasKey($productB->id, $benchmark['comparison']);
+    }
+
+    public function test_release_benchmark_null_when_no_products_selected(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->get(route('admin.dashboard', ['tab' => 'sales']))
+            ->assertOk()
+            ->assertViewHas('releaseBenchmark', null);
+    }
+
+    public function test_benchmark_days_clamps_to_valid_range(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->get(route('admin.dashboard', ['tab' => 'sales', 'benchmark_days' => 999]))
+            ->assertOk()
+            ->assertViewHas('benchmarkDays', 30);
+
+        $this->get(route('admin.dashboard', ['tab' => 'sales', 'benchmark_days' => 3]))
+            ->assertOk()
+            ->assertViewHas('benchmarkDays', 30);
+    }
+
+    public function test_product_decay_tracks_velocity(): void
+    {
+        $this->actingAsAdmin();
+
+        $product = Product::factory()->create(['published_at' => now()->subMonths(3)]);
+
+        // Month 1 sales
+        $orderM1 = Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => $product->published_at->copy()->addDays(5),
+        ]);
+        OrderItem::factory()->create([
+            'order_id' => $orderM1->id,
+            'product_id' => $product->id,
+            'quantity' => 10,
+            'line_total' => 300.00,
+        ]);
+
+        // Month 2 sales (fewer)
+        $orderM2 = Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => $product->published_at->copy()->addMonths(1)->addDays(5),
+        ]);
+        OrderItem::factory()->create([
+            'order_id' => $orderM2->id,
+            'product_id' => $product->id,
+            'quantity' => 4,
+            'line_total' => 120.00,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
+        $response->assertOk();
+
+        $decay = $response->viewData('productDecay');
+        $productDecay = collect($decay)->firstWhere('product_id', $product->id);
+
+        $this->assertNotNull($productDecay);
+        $this->assertEquals(100.0, $productDecay['months'][0]['velocity_pct']);
+        $this->assertEquals(40.0, $productDecay['months'][1]['velocity_pct']);
+    }
+
+    public function test_regional_growth_with_order_data(): void
+    {
+        $this->actingAsAdmin();
+
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => now()->subMonth(),
+            'total' => 500.00,
+            'country' => 'US',
+        ]);
+
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => now()->subMonth(),
+            'total' => 300.00,
+            'country' => 'DE',
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
+        $response->assertOk();
+
+        $regional = $response->viewData('regionalGrowth');
+        $this->assertNotEmpty($regional['countries']);
+        $this->assertNotEmpty($regional['quarters']);
     }
 }
