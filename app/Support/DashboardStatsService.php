@@ -377,7 +377,7 @@ class DashboardStatsService
 
             return $query
                 ->selectRaw('order_coupon_usages.coupon_code as code, COUNT(*) as times_used, SUM(order_coupon_usages.discount_total) as total_discounted, AVG(order_coupon_usages.discount_total) as avg_discount')
-                ->groupBy('order_coupon_usages.coupon_code')
+                ->groupByRaw('order_coupon_usages.coupon_code')
                 ->orderByDesc('total_discounted')
                 ->take($limit)
                 ->get()
@@ -518,6 +518,129 @@ class DashboardStatsService
                     'followers' => (int) $row->followers,
                 ])
                 ->all();
+        });
+    }
+
+    // ── Historical / Seasonal ─────────────────────────────────
+
+    /**
+     * Monthly revenue grouped by year for multi-year overlay chart.
+     *
+     * @return array{years: array<int, array<int, float>>, average: array<int, float>, months: list<string>}
+     */
+    public function monthlyRevenueByYear(int $yearsBack = 4): array
+    {
+        $cacheKey = "dashboard:monthly-revenue-by-year:{$yearsBack}";
+
+        return Cache::remember($cacheKey, 300, function () use ($yearsBack): array {
+            $currentYear = (int) Carbon::now()->year;
+            $startYear = $currentYear - $yearsBack;
+
+            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+            $yearExpr = $isSqlite ? "cast(strftime('%Y', placed_at) as integer)" : 'YEAR(placed_at)';
+            $monthExpr = $isSqlite ? "cast(strftime('%m', placed_at) as integer)" : 'MONTH(placed_at)';
+
+            $rows = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->whereNotNull('placed_at')
+                ->whereRaw("{$yearExpr} >= ?", [$startYear])
+                ->selectRaw("{$yearExpr} as yr, {$monthExpr} as mo, SUM(total) as revenue")
+                ->groupBy('yr', 'mo')
+                ->orderBy('yr')
+                ->orderBy('mo')
+                ->get();
+
+            $years = [];
+            foreach (range($startYear, $currentYear) as $year) {
+                $years[$year] = array_fill(1, 12, 0.0);
+            }
+
+            foreach ($rows as $row) {
+                $years[(int) $row->yr][(int) $row->mo] = (float) $row->revenue;
+            }
+
+            // Compute historical average (previous years only)
+            $average = array_fill(1, 12, 0.0);
+            $pastYears = array_filter(array_keys($years), fn ($y) => $y < $currentYear);
+            $pastCount = count($pastYears);
+
+            if ($pastCount > 0) {
+                for ($m = 1; $m <= 12; $m++) {
+                    $sum = 0;
+                    foreach ($pastYears as $y) {
+                        $sum += $years[$y][$m];
+                    }
+                    $average[$m] = round($sum / $pastCount, 2);
+                }
+            }
+
+            $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+            return [
+                'years' => $years,
+                'average' => $average,
+                'months' => $months,
+            ];
+        });
+    }
+
+    /**
+     * Best-in-class month benchmark: find the all-time best version of a given month.
+     *
+     * @return array{month_name: string, current_year: int, current_revenue: float, best_year: int|null, best_revenue: float, gap_pct: float|null}
+     */
+    public function bestMonthBenchmark(?int $month = null): array
+    {
+        $month = $month ?? (int) Carbon::now()->month;
+        $currentYear = (int) Carbon::now()->year;
+        $cacheKey = "dashboard:best-month-benchmark:{$month}:{$currentYear}";
+
+        return Cache::remember($cacheKey, 300, function () use ($month, $currentYear): array {
+            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+            $yearExpr = $isSqlite ? "cast(strftime('%Y', placed_at) as integer)" : 'YEAR(placed_at)';
+
+            $rows = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->whereNotNull('placed_at')
+                ->whereMonth('placed_at', $month)
+                ->selectRaw("{$yearExpr} as yr, SUM(total) as revenue")
+                ->groupBy('yr')
+                ->orderByDesc('revenue')
+                ->get();
+
+            $currentRevenue = 0.0;
+            $bestYear = null;
+            $bestRevenue = 0.0;
+
+            foreach ($rows as $row) {
+                $yr = (int) $row->yr;
+                $rev = (float) $row->revenue;
+
+                if ($yr === $currentYear) {
+                    $currentRevenue = $rev;
+                }
+
+                if ($rev > $bestRevenue) {
+                    $bestRevenue = $rev;
+                    $bestYear = $yr;
+                }
+            }
+
+            $gapPct = null;
+            if ($bestRevenue > 0 && $bestYear !== $currentYear) {
+                $gapPct = round(($currentRevenue - $bestRevenue) / $bestRevenue * 100, 1);
+            }
+
+            $monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+            return [
+                'month_name' => $monthNames[$month],
+                'current_year' => $currentYear,
+                'current_revenue' => $currentRevenue,
+                'best_year' => $bestYear,
+                'best_revenue' => $bestRevenue,
+                'gap_pct' => $gapPct,
+            ];
         });
     }
 }

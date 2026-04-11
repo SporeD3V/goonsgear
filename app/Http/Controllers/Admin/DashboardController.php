@@ -25,28 +25,61 @@ class DashboardController extends Controller
         $tab = $request->query('tab', 'overview');
         $period = $request->query('period', '30d');
         $compare = $request->boolean('compare', false);
+        $compareMode = $request->query('compare_mode', 'previous_period');
 
-        if (! array_key_exists($period, self::PERIOD_PRESETS)) {
-            $period = '30d';
+        if (! in_array($compareMode, ['previous_period', 'yoy'])) {
+            $compareMode = 'previous_period';
         }
 
-        $days = self::PERIOD_PRESETS[$period];
-        $from = $days ? Carbon::today()->subDays($days) : null;
-        $to = $days ? Carbon::now() : null;
+        // Custom date range
+        $customFrom = $request->query('custom_from');
+        $customTo = $request->query('custom_to');
+
+        if ($customFrom && $customTo) {
+            try {
+                $from = Carbon::parse($customFrom)->startOfDay();
+                $to = Carbon::parse($customTo)->endOfDay();
+                $period = 'custom';
+            } catch (\Exception) {
+                $from = null;
+                $to = null;
+                $customFrom = null;
+                $customTo = null;
+            }
+        }
+
+        if ($period !== 'custom') {
+            if (! array_key_exists($period, self::PERIOD_PRESETS)) {
+                $period = '30d';
+            }
+
+            $days = self::PERIOD_PRESETS[$period];
+            $from = $days ? Carbon::today()->subDays($days) : null;
+            $to = $days ? Carbon::now() : null;
+        }
 
         $prevFrom = null;
         $prevTo = null;
 
         if ($compare && $from) {
-            $prevTo = $from->copy()->subSecond();
-            $prevFrom = $from->copy()->subDays($days);
+            if ($compareMode === 'yoy') {
+                $prevFrom = $from->copy()->subYear();
+                $prevTo = $to->copy()->subYear();
+            } else {
+                $days = (int) $from->diffInDays($to);
+                $prevTo = $from->copy()->subSecond();
+                $prevFrom = $from->copy()->subDays($days);
+            }
         }
 
         $data = [
             'tab' => $tab,
             'period' => $period,
             'compare' => $compare,
-            'periodLabel' => $this->periodLabel($period),
+            'compareMode' => $compareMode,
+            'customFrom' => $customFrom,
+            'customTo' => $customTo,
+            'periodLabel' => $this->periodLabel($period, $from, $to),
         ];
 
         match ($tab) {
@@ -105,6 +138,8 @@ class DashboardController extends Controller
             'aov' => $aov,
             'repeatRate' => $repeatRate,
             'itemsPerOrder' => $itemsPerOrder,
+            'yearlyRevenue' => $stats->monthlyRevenueByYear(),
+            'bestMonthBenchmark' => $stats->bestMonthBenchmark(),
         ];
 
         if ($compare && $prevFrom) {
@@ -171,8 +206,12 @@ class DashboardController extends Controller
         return $data;
     }
 
-    private function periodLabel(string $period): string
+    private function periodLabel(string $period, ?Carbon $from = null, ?Carbon $to = null): string
     {
+        if ($period === 'custom' && $from && $to) {
+            return $from->format('M j, Y').' – '.$to->format('M j, Y');
+        }
+
         return match ($period) {
             '7d' => 'Last 7 Days',
             '14d' => 'Last 14 Days',
