@@ -598,6 +598,412 @@ SIDEBAR (reorganized)
 2. **Proximity** — Group related controls together in containers
 3. **Visual Hierarchy** — Use container boundaries to establish scanning order
 4. **Consistency** — Same patterns across all admin pages (container styling, badge colors, typography)
+
+---
+
+## 10. Dashboard Analytics — Stats & Graphs Roadmap
+
+> What data already exists in the database that can power meaningful business intelligence? This section maps every useful metric, the tables/columns it queries, the best visualization type, and how to group the dashboard for maximum insight at a glance.
+
+### 10.1 Available Data Sources
+
+| Source Table | Key Columns for Analytics | Records Meaning |
+|---|---|---|
+| `orders` | `status`, `payment_status`, `total`, `subtotal`, `discount_total`, `regional_discount_total`, `bundle_discount_total`, `currency`, `country`, `placed_at`, `shipped_at`, `coupon_code`, `bundle_sku` | Every completed/pending/cancelled order |
+| `order_items` | `product_id`, `product_variant_id`, `sku`, `unit_price`, `quantity`, `line_total` | Individual line items per order |
+| `order_coupon_usages` | `coupon_id`, `coupon_code`, `discount_total`, `applied_position` | Which coupons were used, how much they discounted |
+| `products` | `status`, `is_featured`, `is_preorder`, `is_bundle_exclusive`, `published_at`, `created_at` | Catalog lifecycle |
+| `product_variants` | `price`, `compare_at_price`, `stock_quantity`, `is_active`, `variant_type` | Inventory and pricing state |
+| `categories` | `name`, `is_active` | Product taxonomy |
+| `tags` | `name`, `type` (artist/brand/custom), `is_active` | Brand and artist associations |
+| `coupons` | `code`, `type`, `value`, `used_count`, `usage_limit`, `is_active`, `starts_at`, `ends_at` | Promotion performance |
+| `bundle_discounts` | `name`, `bundle_price`, `discount_value`, `is_active` | Bundle deal configuration |
+| `regional_discounts` | `country_code`, `discount_type`, `discount_value`, `is_active` | Geo-pricing rules |
+| `users` | `is_admin`, `delivery_country`, `created_at` | Customer base |
+| `cart_abandonments` | `abandoned_at`, `reminder_sent_at`, `recovered_at` | Recovery funnel |
+| `stock_alert_subscriptions` | `product_variant_id`, `is_active`, `notified_at` | Demand signal |
+| `tag_follows` | `user_id`, `tag_id`, `notify_new_drops`, `notify_discounts` | Brand/artist interest signal |
+| `tag_notification_dispatches` | `notification_type`, `dispatched_at` | Marketing email volume |
+| `newsletter_subscribers` | `subscribed_at`, `unsubscribed_at` | Email list health |
+| `user_cart_items` | `product_variant_id`, `quantity` | Live cart contents |
+| `sessions` | `user_id`, `last_activity` | Active visitors |
+
+---
+
+### 10.2 Revenue & Sales Graphs
+
+#### A. Revenue Over Time (Line Chart)
+- **Query:** `orders` grouped by `placed_at` (day/week/month), `SUM(total)` where `payment_status = 'paid'`
+- **Visualization:** Line chart with selectable period (7d, 30d, 90d, 12mo, all-time)
+- **Variants:** Overlay lines for gross revenue (`SUM(subtotal)`) vs. net revenue (`SUM(total)`) vs. discounts given (`SUM(discount_total + regional_discount_total + bundle_discount_total)`)
+- **Business value:** Spot sales trends, seasonal patterns, impact of promotions
+
+#### B. Average Order Value (KPI + Sparkline)
+- **Query:** `AVG(total)` from `orders` where `payment_status = 'paid'`, grouped by period
+- **Visualization:** Big number with sparkline trend underneath
+- **Compare:** Current period vs. previous period (percentage change arrow)
+
+#### C. Orders by Status (Donut/Pie Chart)
+- **Query:** `COUNT(*)` from `orders` grouped by `status`
+- **Visualization:** Donut chart with: pending (amber), processing (blue), shipped (indigo), delivered (green), cancelled (red), refunded (slate)
+- **Business value:** Quick view of order pipeline health
+
+#### D. Revenue by Country (Horizontal Bar Chart)
+- **Query:** `orders` grouped by `country`, `SUM(total)` where `payment_status = 'paid'`
+- **Visualization:** Horizontal bar chart, top 10 countries, "Other" bucket
+- **Business value:** Identify top markets, validate regional discount strategy
+
+#### E. Revenue by Payment Status (Stacked Bar)
+- **Query:** `orders` grouped by `payment_status` per period
+- **Visualization:** Stacked bar showing paid vs. pending vs. failed over time
+- **Business value:** Track payment failure rates
+
+---
+
+### 10.3 Product & Inventory Graphs
+
+#### F. Top Selling Products (Bar Chart)
+- **Query:** `order_items` → `SUM(quantity)` grouped by `product_id`, joined with `products.name`
+- **Visualization:** Horizontal bar chart, top 15 products by units sold
+- **Period filter:** 7d, 30d, 90d, all-time
+- **Alternative:** Top by revenue (`SUM(line_total)`) instead of units
+
+#### G. Top Selling Variants (Table)
+- **Query:** `order_items` → `SUM(quantity)`, `SUM(line_total)` grouped by `product_variant_id`, joined with variant name + SKU
+- **Visualization:** Sortable table (SKU, Product, Variant, Units, Revenue)
+- **Business value:** Know which sizes/colors drive the most revenue
+
+#### H. Inventory Health (Grouped Bar / Heatmap)
+- **Query:** `product_variants` categorized into stock buckets: 0 (out of stock), 1–5 (critical), 6–20 (low), 21–100 (healthy), 100+ (overstocked)
+- **Visualization:** Stacked horizontal bar or color-coded table
+- **Business value:** Restock planning at a glance
+
+#### I. Stock Alert Demand (Table + Count)
+- **Query:** `stock_alert_subscriptions` where `is_active = 1` grouped by `product_variant_id`, `COUNT(*) as waiting_customers`
+- **Visualization:** Table sorted by waiting count, descending
+- **Business value:** Prioritize restocking by actual customer demand — the variant with the most subscribers should be restocked first
+
+#### J. Product Status Breakdown (Donut Chart)
+- **Query:** `products` grouped by `status` (active, draft, archived)
+- **Visualization:** Donut chart
+- **Business value:** Catalog hygiene — how many drafts sitting unpublished?
+
+#### K. Products Without Media (Alert List)
+- **Query:** `products` LEFT JOIN `product_media` where media is NULL and `status = 'active'`
+- **Visualization:** Warning list / badge count
+- **Business value:** Active products missing images = lost sales
+
+---
+
+### 10.4 Customer & Engagement Graphs
+
+#### L. New Customers Over Time (Area Chart)
+- **Query:** `users` where `is_admin = 0`, grouped by `created_at` (week/month)
+- **Visualization:** Area chart showing registrations over time
+- **Business value:** Track growth, correlate spikes with marketing campaigns
+
+#### M. Customer Geography (Choropleth Map or Bar)
+- **Query:** `users` grouped by `delivery_country`, OR `orders` grouped by `country`
+- **Visualization:** World map heatmap or horizontal bar (top 10 countries)
+- **Business value:** Market distribution, shipping cost planning
+
+#### N. Repeat Customer Rate (KPI + Breakdown)
+- **Query:** `orders` grouped by `email`, count customers with 1 order vs. 2+ orders
+- **Visualization:** Big number (% repeat), with breakdown (1 order, 2, 3, 4+)
+- **Business value:** Retention health — are customers coming back?
+
+#### O. Active Carts Right Now (Live KPI)
+- **Query:** `user_cart_items` joined with `sessions` where `last_activity` > now - 30min, `COUNT(DISTINCT user_id)`
+- **Visualization:** Live number badge
+- **Business value:** Real-time shopping activity
+
+#### P. Tag Follow Popularity (Bar Chart)
+- **Query:** `tag_follows` grouped by `tag_id`, joined with `tags.name`, `COUNT(*)`
+- **Visualization:** Bar chart split by tag type (artist vs. brand)
+- **Business value:** Which artists/brands have the most engaged followers — drives merch acquisition decisions
+
+#### Q. Newsletter Health (KPI Cards)
+- **Query:** `newsletter_subscribers` — total, active (`unsubscribed_at IS NULL`), unsubscribed, new this month
+- **Visualization:** 4 small KPI cards
+- **Business value:** Email marketing reach
+
+---
+
+### 10.5 Discount & Promotion Analytics
+
+#### R. Coupon Usage Leaderboard (Table)
+- **Query:** `order_coupon_usages` grouped by `coupon_code`, `COUNT(*)` as times_used, `SUM(discount_total)` as total_discounted
+- **Visualization:** Sortable table (Code, Times Used, Revenue Discounted, Avg Discount)
+- **Business value:** Which coupons drive sales vs. which are just margin erosion
+
+#### S. Discount Margin Impact (KPI + Trend)
+- **Query:** `orders` → `SUM(discount_total + regional_discount_total + bundle_discount_total) / SUM(subtotal) * 100` = discount percentage
+- **Visualization:** Big percentage with trend line
+- **Business value:** Track if discounts are eating into margins over time
+
+#### T. Bundle Discount Performance (Table)
+- **Query:** `orders` where `bundle_sku IS NOT NULL`, `COUNT(*)`, `SUM(bundle_discount_total)`, joined with `bundle_discounts.name`
+- **Visualization:** Table (Bundle Name, Orders Using It, Total Bundle Discount, Avg Order Value)
+- **Business value:** Are bundles increasing order value or just discounting existing purchases?
+
+#### U. Regional Discount Usage (Bar Chart)
+- **Query:** `orders` where `regional_discount_total > 0`, grouped by `country`, `SUM(regional_discount_total)`
+- **Visualization:** Bar chart by country
+- **Business value:** Which markets depend on regional pricing to convert
+
+---
+
+### 10.6 Cart Recovery & Abandonment
+
+#### V. Abandonment Funnel (Funnel Chart)
+- **Query:** `cart_abandonments` grouped into stages: `COUNT(*)` total, where `reminder_sent_at IS NOT NULL`, where `recovered_at IS NOT NULL`
+- **Visualization:** Funnel: Abandoned → Reminded → Recovered
+- **Math:** Recovery rate = recovered / reminded × 100
+- **Business value:** Is the abandoned cart email system working? What's the ROI?
+
+#### W. Recovery Revenue (KPI)
+- **Query:** Join `cart_abandonments` (where `recovered_at IS NOT NULL`) token → match against `orders` placed within 24h of recovery
+- **Visualization:** Total recovered revenue, count of recovered orders
+- **Business value:** Direct dollar value of the cart recovery system
+
+#### X. Abandonment Timeline (Line Chart)
+- **Query:** `cart_abandonments` grouped by `abandoned_at` (day/week)
+- **Visualization:** Line chart of abandonment volume over time
+- **Business value:** Spot if abandonment rate is growing (possible UX problem)
+
+---
+
+### 10.7 Proposed Dashboard Layout
+
+The expanded dashboard could be organized into **tabs or scrollable sections** to avoid overwhelming the admin:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  OVERVIEW TAB (default view when admin opens /admin)            │
+│                                                                 │
+│  ┌─ KPI Row (4 cards) ─────────────────────────────────────────┐│
+│  │ Total Revenue ▲12%  │  Orders Today  │  AOV  │  Pending     ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                 │
+│  ┌─ Attention Required ────────────────────────────────────────┐│
+│  │ • 5 variants out of stock   • 3 orders pending processing  ││
+│  │ • 28 customers on stock alert wait lists                    ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                 │
+│  ┌─ Revenue (30d) ───────┐  ┌─ Orders by Status ──────────────┐│
+│  │ [Line Chart]          │  │ [Donut Chart]                    ││
+│  └───────────────────────┘  └──────────────────────────────────┘│
+│                                                                 │
+│  ┌─ Recent Orders (table — last 10) ──────────────────────────┐│
+│  │ #GG-001  John D.  Pending  €89.00   Apr 11                 ││
+│  │ ...                                                         ││
+│  └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  SALES TAB                                                      │
+│                                                                 │
+│  ┌─ Revenue Over Time ────────────────────────────────────────┐│
+│  │ [Line Chart — Gross / Net / Discounts] [Period: 7d 30d 90d]││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                 │
+│  ┌─ Revenue by Country ──────┐  ┌─ Top Products ─────────────┐│
+│  │ [Horiz Bar — top 10]      │  │ [Horiz Bar — top 15]       ││
+│  └───────────────────────────┘  └─────────────────────────────┘│
+│                                                                 │
+│  ┌─ Repeat Customer Rate ────┐  ┌─ Avg Order Value Trend ────┐│
+│  │ 34% ▲2%  [1x: 66%]       │  │ [Sparkline]                ││
+│  │            [2x: 22%]      │  │ €74.50 → €81.20            ││
+│  │            [3+: 12%]      │  │                             ││
+│  └───────────────────────────┘  └─────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  INVENTORY TAB                                                  │
+│                                                                 │
+│  ┌─ Stock Health ────────────────────────────────────────────┐ │
+│  │ [Grouped bar: Out of Stock | Critical | Low | OK | Over]  │ │
+│  └───────────────────────────────────────────────────────────┘ │
+│                                                                 │
+│  ┌─ Stock Alert Demand ──────┐  ┌─ Products Missing Media ───┐│
+│  │ [Table: Variant, Waiting] │  │ [Warning list]              ││
+│  └───────────────────────────┘  └─────────────────────────────┘│
+│                                                                 │
+│  ┌─ Product Status Breakdown ┐  ┌─ Top Variants by Units ────┐│
+│  │ [Donut: active/draft/arch]│  │ [Table: SKU, Units, Rev]   ││
+│  └───────────────────────────┘  └─────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  PROMOTIONS TAB                                                 │
+│                                                                 │
+│  ┌─ Discount Margin Impact ──────────────────────────────────┐ │
+│  │ 8.3% of gross revenue   [Trend line over 90d]             │ │
+│  └───────────────────────────────────────────────────────────┘ │
+│                                                                 │
+│  ┌─ Coupon Leaderboard ──────┐  ┌─ Bundle Performance ───────┐│
+│  │ [Table: code, uses, $]    │  │ [Table: name, orders, $]   ││
+│  └───────────────────────────┘  └─────────────────────────────┘│
+│                                                                 │
+│  ┌─ Regional Discount by Country ─┐  ┌─ Cart Recovery ───────┐│
+│  │ [Bar chart]                    │  │ Abandoned: 142         ││
+│  │                                │  │ Reminded:   89         ││
+│  │                                │  │ Recovered:  31 (35%)   ││
+│  │                                │  │ Rev: €2,840            ││
+│  └────────────────────────────────┘  └────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  CUSTOMERS TAB                                                  │
+│                                                                 │
+│  ┌─ KPI Row ───────────────────────────────────────────────────┐│
+│  │ Total Customers │ New This Month │ Newsletter │ Active Carts ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                 │
+│  ┌─ Registrations Over Time ─┐  ┌─ Geography ────────────────┐│
+│  │ [Area chart by week]      │  │ [Bar: top 10 countries]    ││
+│  └───────────────────────────┘  └─────────────────────────────┘│
+│                                                                 │
+│  ┌─ Tag Follow Popularity ───────────────────────────────────┐ │
+│  │ [Bar chart split: artists (blue) vs brands (green)]       │ │
+│  └───────────────────────────────────────────────────────────┘ │
+│                                                                 │
+│  ┌─ Newsletter Health ───────────────────────────────────────┐ │
+│  │ [Area chart: subscribers over time with unsub overlay]    │ │
+│  └───────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 10.8 Implementation Approach
+
+#### Charting Library
+For rendering charts in a Laravel/Livewire app, recommended options:
+- **Chart.js** via Alpine.js — lightweight, no build step required, render `<canvas>` directly
+- **ApexCharts** — richer interactivity (zoom, tooltips), also works well with Alpine.js
+- Avoid heavy JS frameworks (React/D3) — overkill for admin dashboards
+
+#### Querying Strategy
+- Use **Eloquent** with `selectRaw()` / `groupBy()` for aggregations
+- Cache expensive queries (`Cache::remember()` with 5–15 min TTL for dashboard stats)
+- Use **database indexes** on `orders.placed_at`, `orders.status`, `orders.payment_status`, `orders.country`, `order_items.product_id`
+- Consider a `DashboardStatsService` class to encapsulate all query logic
+
+#### Progressive Build Order
+1. **Phase A:** Expand current dashboard with KPI cards + recent orders (already done)
+2. **Phase B:** Add revenue line chart + orders donut (Chart.js, inline Livewire component)
+3. **Phase C:** Add inventory health section (stock buckets, alert demand)
+4. **Phase D:** Add promotions tab (coupon leaderboard, discount impact)
+5. **Phase E:** Add customer analytics tab (registrations, geography, tag follows)
+6. **Phase F:** Add cart recovery funnel + metrics
+
+---
+
+### 10.9 SQL Query Sketches
+
+Quick reference for the key queries (adapt to Eloquent):
+
+```sql
+-- A. Revenue over time (daily, last 30 days)
+SELECT DATE(placed_at) AS day,
+       SUM(total) AS revenue,
+       SUM(subtotal) AS gross,
+       SUM(discount_total + regional_discount_total + bundle_discount_total) AS discounts,
+       COUNT(*) AS order_count
+FROM orders
+WHERE payment_status = 'paid'
+  AND placed_at >= NOW() - INTERVAL 30 DAY
+GROUP BY DATE(placed_at)
+ORDER BY day;
+
+-- B. Average Order Value trend
+SELECT DATE_FORMAT(placed_at, '%Y-%m') AS month,
+       AVG(total) AS aov,
+       COUNT(*) AS orders
+FROM orders
+WHERE payment_status = 'paid'
+GROUP BY month
+ORDER BY month;
+
+-- F. Top selling products (last 30 days)
+SELECT p.name, SUM(oi.quantity) AS units, SUM(oi.line_total) AS revenue
+FROM order_items oi
+JOIN orders o ON o.id = oi.order_id
+JOIN products p ON p.id = oi.product_id
+WHERE o.payment_status = 'paid'
+  AND o.placed_at >= NOW() - INTERVAL 30 DAY
+GROUP BY oi.product_id, p.name
+ORDER BY units DESC
+LIMIT 15;
+
+-- H. Inventory health buckets
+SELECT
+  SUM(stock_quantity = 0) AS out_of_stock,
+  SUM(stock_quantity BETWEEN 1 AND 5) AS critical,
+  SUM(stock_quantity BETWEEN 6 AND 20) AS low,
+  SUM(stock_quantity BETWEEN 21 AND 100) AS healthy,
+  SUM(stock_quantity > 100) AS overstocked
+FROM product_variants
+WHERE is_active = 1;
+
+-- I. Stock alert demand
+SELECT pv.sku, p.name AS product, pv.name AS variant,
+       COUNT(*) AS waiting
+FROM stock_alert_subscriptions sas
+JOIN product_variants pv ON pv.id = sas.product_variant_id
+JOIN products p ON p.id = pv.product_id
+WHERE sas.is_active = 1 AND sas.notified_at IS NULL
+GROUP BY sas.product_variant_id, pv.sku, p.name, pv.name
+ORDER BY waiting DESC;
+
+-- N. Repeat customer rate
+SELECT
+  COUNT(DISTINCT CASE WHEN order_count = 1 THEN email END) AS one_time,
+  COUNT(DISTINCT CASE WHEN order_count = 2 THEN email END) AS two_orders,
+  COUNT(DISTINCT CASE WHEN order_count >= 3 THEN email END) AS three_plus
+FROM (
+  SELECT email, COUNT(*) AS order_count
+  FROM orders
+  WHERE payment_status = 'paid'
+  GROUP BY email
+) sub;
+
+-- R. Coupon leaderboard
+SELECT coupon_code,
+       COUNT(*) AS times_used,
+       SUM(discount_total) AS total_discounted,
+       AVG(discount_total) AS avg_discount
+FROM order_coupon_usages
+GROUP BY coupon_code
+ORDER BY total_discounted DESC;
+
+-- V. Cart abandonment funnel
+SELECT
+  COUNT(*) AS abandoned,
+  SUM(reminder_sent_at IS NOT NULL) AS reminded,
+  SUM(recovered_at IS NOT NULL) AS recovered,
+  ROUND(SUM(recovered_at IS NOT NULL) / NULLIF(SUM(reminder_sent_at IS NOT NULL), 0) * 100, 1) AS recovery_pct
+FROM cart_abandonments;
+```
+
+---
+
+### 10.10 Summary: Metrics by Business Question
+
+| Business Question | Metric(s) | Section |
+|---|---|---|
+| "Are we growing?" | Revenue trend, new customers, order count | A, L |
+| "What's selling?" | Top products, top variants, units moved | F, G |
+| "Do we need to restock?" | Stock health, alert demand, out-of-stock count | H, I |
+| "Where are our customers?" | Country breakdown (orders + users) | D, M |
+| "Are discounts helping or hurting?" | Discount margin %, coupon leaderboard, AOV trend | R, S, B |
+| "Are bundles worth it?" | Bundle order count, bundle discount total, AOV comparison | T |
+| "Is cart recovery working?" | Funnel (abandoned → reminded → recovered), recovery revenue | V, W |
+| "Are customers coming back?" | Repeat rate, order frequency distribution | N |
+| "Which artists/brands have demand?" | Tag follow counts, tag notification volume | P |
+| "Is our email list healthy?" | Subscriber count, growth rate, unsubscribe trend | Q |
+| "What needs attention right now?" | Pending orders, low stock, active stock alerts | Overview KPIs |
 5. **Minimal Steps** — Every unnecessary page load or click is a chance to lose the user
 6. **Dashboard First** — Admin sees the big picture before diving into details
 7. **Mobile First** — Cart and checkout must work without horizontal scroll

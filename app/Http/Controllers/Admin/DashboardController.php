@@ -16,11 +16,11 @@ class DashboardController extends Controller
         $pendingOrders = Order::where('status', 'pending')->count();
         $revenue = Order::where('payment_status', 'paid')->sum('total');
 
-        $lowStockVariants = ProductVariant::where('stock', '>', 0)
-            ->where('stock', '<=', 5)
+        $lowStockVariants = ProductVariant::where('stock_quantity', '>', 0)
+            ->where('stock_quantity', '<=', 5)
             ->count();
 
-        $outOfStockVariants = ProductVariant::where('stock', 0)->count();
+        $outOfStockVariants = ProductVariant::where('stock_quantity', 0)->count();
 
         $recentOrders = Order::latest('placed_at')
             ->take(10)

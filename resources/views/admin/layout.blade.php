@@ -23,7 +23,13 @@
 
                 {{-- Navigation --}}
                 <nav class="flex-1 overflow-y-auto px-3 py-4 text-sm">
-                    @php $currentRoute = Route::currentRouteName() ?? ''; @endphp
+                    @php
+                        $currentRoute = Route::currentRouteName() ?? '';
+                        $inStore = str_starts_with($currentRoute, 'admin.orders') || str_starts_with($currentRoute, 'admin.products') || str_starts_with($currentRoute, 'admin.categories') || str_starts_with($currentRoute, 'admin.tags');
+                        $inPricing = str_starts_with($currentRoute, 'admin.coupons') || str_starts_with($currentRoute, 'admin.bundle-discounts') || str_starts_with($currentRoute, 'admin.regional-discounts');
+                        $inConfig = str_starts_with($currentRoute, 'admin.maintenance.integrations') || str_starts_with($currentRoute, 'admin.maintenance.abandoned-cart') || str_starts_with($currentRoute, 'admin.url-redirects');
+                        $inSystem = str_starts_with($currentRoute, 'admin.activity-log') || str_starts_with($currentRoute, 'admin.maintenance.fallback-media') || str_starts_with($currentRoute, 'admin.maintenance.clear');
+                    @endphp
 
                     {{-- Dashboard --}}
                     <a href="{{ route('admin.dashboard') }}"
@@ -33,98 +39,122 @@
                     </a>
 
                     {{-- Section: Store Management --}}
-                    <p class="mb-2 mt-5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Store</p>
+                    <div x-data="{ open: {{ $inStore || $currentRoute === 'admin.dashboard' ? 'true' : 'false' }} }" class="mt-4">
+                        <button @click="open = !open" class="flex w-full items-center justify-between rounded-md px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500 transition hover:text-slate-300">
+                            <span>Store</span>
+                            <svg class="h-3 w-3 transition-transform" :class="open && 'rotate-90'" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                        </button>
+                        <div x-show="open" x-transition.origin.top>
+                            <a href="{{ route('admin.orders.index') }}"
+                               class="mb-1 mt-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.orders') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
+                                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z"/></svg>
+                                Orders
+                            </a>
 
-                    <a href="{{ route('admin.orders.index') }}"
-                       class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.orders') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
-                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z"/></svg>
-                        Orders
-                    </a>
+                            <a href="{{ route('admin.products.index') }}"
+                               class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.products') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
+                                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25"/></svg>
+                                Products
+                            </a>
 
-                    <a href="{{ route('admin.products.index') }}"
-                       class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.products') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
-                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25"/></svg>
-                        Products
-                    </a>
+                            <a href="{{ route('admin.categories.index') }}"
+                               class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.categories') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
+                                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"/></svg>
+                                Categories
+                            </a>
 
-                    <a href="{{ route('admin.categories.index') }}"
-                       class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.categories') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
-                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z"/></svg>
-                        Categories
-                    </a>
-
-                    <a href="{{ route('admin.tags.index') }}"
-                       class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.tags') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
-                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6Z"/></svg>
-                        Tags
-                    </a>
+                            <a href="{{ route('admin.tags.index') }}"
+                               class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.tags') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
+                                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6Z"/></svg>
+                                Tags
+                            </a>
+                        </div>
+                    </div>
 
                     {{-- Section: Pricing & Promotions --}}
-                    <p class="mb-2 mt-5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Pricing</p>
+                    <div x-data="{ open: {{ $inPricing ? 'true' : 'false' }} }" class="mt-3">
+                        <button @click="open = !open" class="flex w-full items-center justify-between rounded-md px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500 transition hover:text-slate-300">
+                            <span>Pricing</span>
+                            <svg class="h-3 w-3 transition-transform" :class="open && 'rotate-90'" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                        </button>
+                        <div x-show="open" x-transition.origin.top>
+                            <a href="{{ route('admin.coupons.index') }}"
+                               class="mb-1 mt-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.coupons') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
+                                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z"/></svg>
+                                Coupons
+                            </a>
 
-                    <a href="{{ route('admin.coupons.index') }}"
-                       class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.coupons') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
-                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z"/></svg>
-                        Coupons
-                    </a>
+                            <a href="{{ route('admin.bundle-discounts.index') }}"
+                               class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.bundle-discounts') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
+                                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/></svg>
+                                Bundle Deals
+                            </a>
 
-                    <a href="{{ route('admin.bundle-discounts.index') }}"
-                       class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.bundle-discounts') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
-                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"/></svg>
-                        Bundle Deals
-                    </a>
-
-                    <a href="{{ route('admin.regional-discounts.index') }}"
-                       class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.regional-discounts') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
-                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5a17.92 17.92 0 0 1-8.716-2.247m0 0A8.966 8.966 0 0 1 3 12c0-1.264.26-2.467.732-3.559"/></svg>
-                        Regional Pricing
-                    </a>
+                            <a href="{{ route('admin.regional-discounts.index') }}"
+                               class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.regional-discounts') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
+                                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5a17.92 17.92 0 0 1-8.716-2.247m0 0A8.966 8.966 0 0 1 3 12c0-1.264.26-2.467.732-3.559"/></svg>
+                                Regional Pricing
+                            </a>
+                        </div>
+                    </div>
 
                     {{-- Section: Configuration --}}
-                    <p class="mb-2 mt-5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Config</p>
+                    <div x-data="{ open: {{ $inConfig ? 'true' : 'false' }} }" class="mt-3">
+                        <button @click="open = !open" class="flex w-full items-center justify-between rounded-md px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500 transition hover:text-slate-300">
+                            <span>Config</span>
+                            <svg class="h-3 w-3 transition-transform" :class="open && 'rotate-90'" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                        </button>
+                        <div x-show="open" x-transition.origin.top>
+                            <a href="{{ route('admin.maintenance.integrations.edit') }}"
+                               class="mb-1 mt-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.maintenance.integrations') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
+                                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244"/></svg>
+                                Integrations
+                            </a>
 
-                    <a href="{{ route('admin.maintenance.integrations.edit') }}"
-                       class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.maintenance.integrations') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
-                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244"/></svg>
-                        Integrations
-                    </a>
+                            <a href="{{ route('admin.maintenance.abandoned-cart.edit') }}"
+                               class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.maintenance.abandoned-cart') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
+                                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/></svg>
+                                Cart Recovery
+                            </a>
 
-                    <a href="{{ route('admin.maintenance.abandoned-cart.edit') }}"
-                       class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.maintenance.abandoned-cart') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
-                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/></svg>
-                        Cart Recovery
-                    </a>
-
-                    <a href="{{ route('admin.url-redirects.index') }}"
-                       class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.url-redirects') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
-                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
-                        URL Redirects
-                    </a>
+                            <a href="{{ route('admin.url-redirects.index') }}"
+                               class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.url-redirects') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
+                                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
+                                URL Redirects
+                            </a>
+                        </div>
+                    </div>
 
                     {{-- Section: System --}}
-                    <p class="mb-2 mt-5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">System</p>
+                    <div x-data="{ open: {{ $inSystem ? 'true' : 'false' }} }" class="mt-3">
+                        <button @click="open = !open" class="flex w-full items-center justify-between rounded-md px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500 transition hover:text-slate-300">
+                            <span>System</span>
+                            <svg class="h-3 w-3 transition-transform" :class="open && 'rotate-90'" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                        </button>
+                        <div x-show="open" x-transition.origin.top>
+                            <a href="{{ route('admin.activity-log.index') }}"
+                               class="mb-1 mt-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.activity-log') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
+                                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                                Activity Log
+                            </a>
 
-                    <a href="{{ route('admin.activity-log.index') }}"
-                       class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.activity-log') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
-                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
-                        Activity Log
-                    </a>
+                            <a href="{{ route('admin.maintenance.fallback-media.index') }}"
+                               class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.maintenance.fallback-media') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
+                                <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
+                                Media Maintenance
+                            </a>
 
-                    <a href="{{ route('admin.maintenance.fallback-media.index') }}"
-                       class="mb-1 flex items-center gap-3 rounded-md px-3 py-2 transition {{ str_starts_with($currentRoute, 'admin.maintenance.fallback-media') ? 'bg-slate-700 text-white' : 'hover:bg-slate-800 hover:text-white' }}">
-                        <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
-                        Media Maintenance
-                    </a>
-
-                    <div class="mt-1 flex items-center gap-2 px-3">
-                        <form method="POST" action="{{ route('admin.maintenance.clear-caches') }}">
-                            @csrf
-                            <button type="submit" class="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-400 transition hover:border-slate-500 hover:text-white">Clear Caches</button>
-                        </form>
-                        <form method="POST" action="{{ route('admin.maintenance.clear-logs') }}">
-                            @csrf
-                            <button type="submit" class="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-400 transition hover:border-slate-500 hover:text-white" onclick="return confirm('Clear all application log files?')">Clear Logs</button>
-                        </form>
+                            <div class="mt-1 flex items-center gap-2 px-3">
+                                <form method="POST" action="{{ route('admin.maintenance.clear-caches') }}">
+                                    @csrf
+                                    <button type="submit" class="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-400 transition hover:border-slate-500 hover:text-white">Clear Caches</button>
+                                </form>
+                                <form method="POST" action="{{ route('admin.maintenance.clear-logs') }}">
+                                    @csrf
+                                    <button type="submit" class="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-400 transition hover:border-slate-500 hover:text-white" onclick="return confirm('Clear all application log files?')">Clear Logs</button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </nav>
 
