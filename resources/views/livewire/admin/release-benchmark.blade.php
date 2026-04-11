@@ -229,85 +229,97 @@ new class extends Component
 
     {{-- Chart --}}
     @if ($this->benchmark && count($this->benchmark['products']) === 2)
+        @php
+            $bm = $this->benchmark;
+            $pA = $bm['products'][0];
+            $pB = $bm['products'][1];
+            $compA = $bm['comparison'][$pA['id']] ?? [];
+            $compB = $bm['comparison'][$pB['id']] ?? [];
+            $totalUnitsA = end($compA)['cumulative_units'] ?? 0;
+            $totalUnitsB = end($compB)['cumulative_units'] ?? 0;
+            $totalRevenueA = end($compA)['cumulative_revenue'] ?? 0;
+            $totalRevenueB = end($compB)['cumulative_revenue'] ?? 0;
+        @endphp
+
+        {{-- Summary stats --}}
+        <div class="mb-4 grid gap-3 sm:grid-cols-2">
+            <div class="rounded-lg border border-[#36a2eb]/20 bg-[#36a2eb]/5 p-3">
+                <div class="text-xs font-medium text-[#36a2eb]">{{ $pA['name'] }}</div>
+                <div class="mt-1 flex items-baseline gap-3">
+                    <span class="text-lg font-bold text-stone-800">{{ number_format($totalUnitsA) }} units</span>
+                    <span class="text-sm text-stone-500">&euro;{{ number_format($totalRevenueA, 2) }}</span>
+                </div>
+                <div class="text-[11px] text-stone-400">First {{ $days }} days from {{ $pA['custom_start'] ?? $pA['published_at'] }}</div>
+            </div>
+            <div class="rounded-lg border border-[#ff6384]/20 bg-[#ff6384]/5 p-3">
+                <div class="text-xs font-medium text-[#ff6384]">{{ $pB['name'] }}</div>
+                <div class="mt-1 flex items-baseline gap-3">
+                    <span class="text-lg font-bold text-stone-800">{{ number_format($totalUnitsB) }} units</span>
+                    <span class="text-sm text-stone-500">&euro;{{ number_format($totalRevenueB, 2) }}</span>
+                </div>
+                <div class="text-[11px] text-stone-400">First {{ $days }} days from {{ $pB['custom_start'] ?? $pB['published_at'] }}</div>
+            </div>
+        </div>
+
+        {{-- Chart canvas --}}
         <div
             class="h-[280px]"
-            x-data="benchmarkChart(@js($this->benchmark))"
-            x-effect="render()"
             wire:key="benchmark-{{ $selectedA }}-{{ $selectedB }}-{{ $days }}-{{ $startA }}-{{ $startB }}"
+            x-data="{ chart: null }"
+            x-init="
+                $nextTick(() => {
+                    const canvas = $refs.canvas;
+                    if (!canvas || typeof Chart === 'undefined') return;
+                    const bm = {{ Js::from($bm) }};
+                    const products = bm.products;
+                    const dataA = Object.values(bm.comparison)[0] || [];
+                    const dataB = Object.values(bm.comparison)[1] || [];
+                    chart = new Chart(canvas, {
+                        type: 'line',
+                        data: {
+                            labels: dataA.map(d => 'Day ' + d.day),
+                            datasets: [
+                                {
+                                    label: products[0].name,
+                                    data: dataA.map(d => d.cumulative_revenue),
+                                    borderColor: '#36a2eb',
+                                    backgroundColor: 'rgba(54, 162, 235, 0.06)',
+                                    fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2.5,
+                                },
+                                {
+                                    label: products[1].name,
+                                    data: dataB.map(d => d.cumulative_revenue),
+                                    borderColor: '#ff6384',
+                                    backgroundColor: 'rgba(255, 99, 132, 0.06)',
+                                    fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2.5,
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 }, color: '#57534e' } },
+                                tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': \u20ac' + ctx.parsed.y.toLocaleString() } }
+                            },
+                            scales: {
+                                x: { grid: { display: false }, ticks: { maxTicksLimit: 10, font: { size: 11 }, color: '#78716c' } },
+                                y: { beginAtZero: true, ticks: { callback: v => '\u20ac' + v.toLocaleString(), font: { size: 12 }, color: '#78716c' }, grid: { color: '#f5f5f4' } }
+                            }
+                        }
+                    });
+                });
+            "
+            x-on:destroy.window="chart && chart.destroy()"
         >
             <canvas x-ref="canvas"></canvas>
         </div>
     @elseif ($selectedA && $selectedB)
-        <p class="text-[15px] text-stone-500">One or both products don't have a publish date or sales data.</p>
+        <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+            <p class="text-[15px] text-stone-500">No sales data found for this comparison.</p>
+            <p class="mt-1 text-[12px] text-stone-400">Both products need a publish date and at least some orders within the selected time window.</p>
+        </div>
     @else
         <p class="text-[15px] text-stone-500">Select two products above to compare their launch performance.</p>
     @endif
 </div>
-
-@script
-<script>
-    Alpine.data('benchmarkChart', (data) => ({
-        chart: null,
-        data: data,
-
-        render() {
-            if (!this.$refs.canvas) return;
-
-            if (this.chart) {
-                this.chart.destroy();
-            }
-
-            const products = this.data.products;
-            const dataA = this.data.comparison[products[0].id] || [];
-            const dataB = this.data.comparison[products[1].id] || [];
-
-            this.chart = new Chart(this.$refs.canvas, {
-                type: 'line',
-                data: {
-                    labels: dataA.map(d => 'Day ' + d.day),
-                    datasets: [
-                        {
-                            label: products[0].name,
-                            data: dataA.map(d => d.cumulative_revenue),
-                            borderColor: '#36a2eb',
-                            backgroundColor: 'rgba(54, 162, 235, 0.06)',
-                            fill: true,
-                            tension: 0.35,
-                            pointRadius: 0,
-                            borderWidth: 2.5,
-                        },
-                        {
-                            label: products[1].name,
-                            data: dataB.map(d => d.cumulative_revenue),
-                            borderColor: '#ff6384',
-                            backgroundColor: 'rgba(255, 99, 132, 0.06)',
-                            fill: true,
-                            tension: 0.35,
-                            pointRadius: 0,
-                            borderWidth: 2.5,
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 }, color: '#57534e' } },
-                        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': €' + ctx.parsed.y.toLocaleString() } }
-                    },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { maxTicksLimit: 10, font: { size: 11 }, color: '#78716c' } },
-                        y: { beginAtZero: true, ticks: { callback: v => '€' + v.toLocaleString(), font: { size: 12 }, color: '#78716c' }, grid: { color: '#f5f5f4' } }
-                    }
-                }
-            });
-        },
-
-        destroy() {
-            if (this.chart) {
-                this.chart.destroy();
-            }
-        }
-    }));
-</script>
-@endscript

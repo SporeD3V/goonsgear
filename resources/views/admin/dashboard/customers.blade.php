@@ -3,6 +3,7 @@
     @include('admin.dashboard._kpi-card', [
         'label' => 'Total Customers',
         'value' => number_format($customerStats['total']),
+        'subtitle' => 'All-time — not affected by period filter',
         'delay' => 1,
     ])
 
@@ -39,35 +40,60 @@
         @if (empty($tagFollows))
             <p class="text-[15px] text-stone-500">No tag follow data yet.</p>
         @else
-            <div class="overflow-x-auto" x-data="{ showAll: false, limit: 10 }">
+            <div class="overflow-x-auto" x-data="{
+                sortCol: 'followers',
+                sortAsc: false,
+                showAll: false,
+                limit: 10,
+                items: {{ Js::from($tagFollows) }},
+                get sorted() {
+                    const col = this.sortCol;
+                    const dir = this.sortAsc ? 1 : -1;
+                    return [...this.items].sort((a, b) => {
+                        if (typeof a[col] === 'string') return dir * a[col].localeCompare(b[col]);
+                        return dir * (a[col] - b[col]);
+                    });
+                },
+                get visible() {
+                    return this.showAll ? this.sorted : this.sorted.slice(0, this.limit);
+                },
+                toggleSort(col) {
+                    if (this.sortCol === col) { this.sortAsc = !this.sortAsc; } else { this.sortCol = col; this.sortAsc = (col === 'name' || col === 'type'); }
+                },
+                sortIcon(col) {
+                    if (this.sortCol !== col) return '↕';
+                    return this.sortAsc ? '↑' : '↓';
+                }
+            }">
+                @php
+                    $typeColors = ['artist' => 'bg-[#ff9f40]/15 text-[#ff9f40]', 'brand' => 'bg-[#4bc0c0]/15 text-[#4bc0c0]', 'custom' => 'bg-stone-100 text-stone-700'];
+                    $typeColorsJs = Js::from($typeColors);
+                @endphp
                 <table class="min-w-full divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
-                            <th class="px-4 py-2.5 text-left font-medium text-stone-600">Tag</th>
-                            <th class="px-4 py-2.5 text-left font-medium text-stone-600">Type</th>
-                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Followers</th>
+                            <th @click="toggleSort('name')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Tag <span class="text-xs" x-text="sortIcon('name')"></span></th>
+                            <th @click="toggleSort('type')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Type <span class="text-xs" x-text="sortIcon('type')"></span></th>
+                            <th @click="toggleSort('followers')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Followers <span class="text-xs" x-text="sortIcon('followers')"></span></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-stone-100">
-                        @foreach ($tagFollows as $idx => $tag)
-                            <tr class="transition hover:bg-stone-50" x-show="showAll || {{ $idx }} < limit">
-                                <td class="px-4 py-2.5 font-medium text-stone-700">{{ $tag['name'] }}</td>
+                        <template x-for="tag in visible" :key="tag.name">
+                            <tr class="transition hover:bg-stone-50">
+                                <td class="px-4 py-2.5 font-medium text-stone-700" x-text="tag.name"></td>
                                 <td class="whitespace-nowrap px-4 py-2.5">
-                                    @php
-                                        $typeColors = ['artist' => 'bg-[#ff9f40]/15 text-[#ff9f40]', 'brand' => 'bg-[#4bc0c0]/15 text-[#4bc0c0]', 'custom' => 'bg-stone-100 text-stone-700'];
-                                    @endphp
-                                    <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium {{ $typeColors[$tag['type']] ?? 'bg-stone-100 text-stone-700' }}">
-                                        {{ ucfirst($tag['type']) }}
-                                    </span>
+                                    <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium"
+                                        :class="({{ $typeColorsJs }})[tag.type] || 'bg-stone-100 text-stone-700'"
+                                        x-text="tag.type.charAt(0).toUpperCase() + tag.type.slice(1)"></span>
                                 </td>
-                                <td class="whitespace-nowrap px-4 py-2.5 text-right font-medium text-stone-700">{{ $tag['followers'] }}</td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right font-medium text-stone-700" x-text="tag.followers"></td>
                             </tr>
-                        @endforeach
+                        </template>
                     </tbody>
                 </table>
-                @if (count($tagFollows) > 10)
-                    <button @click="showAll = !showAll" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="showAll ? 'Show less' : 'Show all {{ count($tagFollows) }} tags'"></button>
-                @endif
+                <template x-if="items.length > limit">
+                    <button @click="showAll = !showAll" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="showAll ? 'Show less' : 'Show all ' + items.length + ' tags'"></button>
+                </template>
             </div>
         @endif
     </div>
@@ -172,30 +198,49 @@
             <div class="h-[260px]">
                 <canvas id="rfmChart"></canvas>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" x-data="{
+                sortCol: 'count',
+                sortAsc: false,
+                items: {{ Js::from(collect($rfmSegmentation['segments'])->map(fn ($data, $segment) => array_merge($data, ['segment' => $segment]))->values()->all()) }},
+                get sorted() {
+                    const col = this.sortCol;
+                    const dir = this.sortAsc ? 1 : -1;
+                    return [...this.items].sort((a, b) => {
+                        if (typeof a[col] === 'string') return dir * a[col].localeCompare(b[col]);
+                        return dir * (a[col] - b[col]);
+                    });
+                },
+                toggleSort(col) {
+                    if (this.sortCol === col) { this.sortAsc = !this.sortAsc; } else { this.sortCol = col; this.sortAsc = col === 'segment'; }
+                },
+                sortIcon(col) {
+                    if (this.sortCol !== col) return '↕';
+                    return this.sortAsc ? '↑' : '↓';
+                }
+            }">
                 <table class="min-w-full divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
-                            <th class="px-4 py-2.5 text-left font-medium text-stone-600">Segment</th>
-                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Customers</th>
-                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Avg Revenue</th>
-                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Avg Orders</th>
+                            <th @click="toggleSort('segment')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Segment <span class="text-xs" x-text="sortIcon('segment')"></span></th>
+                            <th @click="toggleSort('count')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Customers <span class="text-xs" x-text="sortIcon('count')"></span></th>
+                            <th @click="toggleSort('avg_revenue')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Avg Revenue <span class="text-xs" x-text="sortIcon('avg_revenue')"></span></th>
+                            <th @click="toggleSort('avg_orders')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Avg Orders <span class="text-xs" x-text="sortIcon('avg_orders')"></span></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-stone-100">
-                        @foreach ($rfmSegmentation['segments'] as $segment => $data)
+                        <template x-for="row in sorted" :key="row.segment">
                             <tr class="transition hover:bg-stone-50">
                                 <td class="px-4 py-2.5">
                                     <span class="inline-flex items-center gap-1.5">
-                                        <span class="inline-block h-2.5 w-2.5 rounded-full" style="background: {{ $data['color'] }}"></span>
-                                        <span class="font-medium text-stone-700">{{ $segment }}</span>
+                                        <span class="inline-block h-2.5 w-2.5 rounded-full" :style="'background:' + row.color"></span>
+                                        <span class="font-medium text-stone-700" x-text="row.segment"></span>
                                     </span>
                                 </td>
-                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ number_format($data['count']) }}</td>
-                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">€{{ number_format($data['avg_revenue'], 2) }}</td>
-                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ $data['avg_orders'] }}</td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="Number(row.count).toLocaleString()"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="'€' + Number(row.avg_revenue).toFixed(2)"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="row.avg_orders"></td>
                             </tr>
-                        @endforeach
+                        </template>
                     </tbody>
                 </table>
             </div>
@@ -250,31 +295,50 @@
             </span>
             <span class="text-[13px] text-stone-500">of {{ $vipChurn['vip_total'] }} VIPs (threshold: &euro;{{ number_format($vipChurn['vip_threshold'], 2) }})</span>
         </div>
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto" x-data="{
+            sortCol: 'days_since_last',
+            sortAsc: false,
+            items: {{ Js::from($vipChurn['churning']) }},
+            get sorted() {
+                const col = this.sortCol;
+                const dir = this.sortAsc ? 1 : -1;
+                return [...this.items].sort((a, b) => {
+                    if (typeof a[col] === 'string') return dir * a[col].localeCompare(b[col]);
+                    return dir * (a[col] - b[col]);
+                });
+            },
+            toggleSort(col) {
+                if (this.sortCol === col) { this.sortAsc = !this.sortAsc; } else { this.sortCol = col; this.sortAsc = col === 'email'; }
+            },
+            sortIcon(col) {
+                if (this.sortCol !== col) return '↕';
+                return this.sortAsc ? '↑' : '↓';
+            }
+        }">
             <table class="min-w-full divide-y divide-stone-200 text-[15px]">
                 <thead class="bg-stone-50">
                     <tr>
-                        <th class="px-4 py-2.5 text-left font-medium text-stone-600">Customer</th>
-                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Total Spent</th>
-                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Orders</th>
-                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Days Silent</th>
-                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Last Order</th>
+                        <th @click="toggleSort('email')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Customer <span class="text-xs" x-text="sortIcon('email')"></span></th>
+                        <th @click="toggleSort('total_spent')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Total Spent <span class="text-xs" x-text="sortIcon('total_spent')"></span></th>
+                        <th @click="toggleSort('order_count')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Orders <span class="text-xs" x-text="sortIcon('order_count')"></span></th>
+                        <th @click="toggleSort('days_since_last')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Days Silent <span class="text-xs" x-text="sortIcon('days_since_last')"></span></th>
+                        <th @click="toggleSort('last_order')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Last Order <span class="text-xs" x-text="sortIcon('last_order')"></span></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-stone-100">
-                    @foreach ($vipChurn['churning'] as $vip)
+                    <template x-for="vip in sorted" :key="vip.email">
                         <tr class="transition hover:bg-stone-50">
-                            <td class="px-4 py-2.5 font-medium text-stone-700">{{ $vip['email'] }}</td>
-                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">&euro;{{ number_format($vip['total_spent'], 2) }}</td>
-                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ $vip['order_count'] }}</td>
+                            <td class="px-4 py-2.5 font-medium text-stone-700" x-text="vip.email"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="'€' + Number(vip.total_spent).toFixed(2)"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="vip.order_count"></td>
                             <td class="whitespace-nowrap px-4 py-2.5 text-right">
-                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold {{ $vip['days_since_last'] >= 180 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700' }}">
-                                    {{ $vip['days_since_last'] }}d
-                                </span>
+                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
+                                    :class="vip.days_since_last >= 180 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'"
+                                    x-text="vip.days_since_last + 'd'"></span>
                             </td>
-                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500">{{ $vip['last_order'] }}</td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="vip.last_order"></td>
                         </tr>
-                    @endforeach
+                    </template>
                 </tbody>
             </table>
         </div>
@@ -285,14 +349,15 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const geoData = @json($customerGeo);
-        if (geoData.length) {
+        const geoChartData = geoData.slice(0, 10);
+        if (geoChartData.length) {
             new Chart(document.getElementById('customerGeoChart'), {
                 type: 'bar',
                 data: {
-                    labels: geoData.map(c => c.country || 'Unknown'),
+                    labels: geoChartData.map(c => c.country || 'Unknown'),
                     datasets: [{
                         label: 'Customers',
-                        data: geoData.map(c => c.count),
+                        data: geoChartData.map(c => c.count),
                         backgroundColor: '#9966ff',
                         borderRadius: 6,
                     }]

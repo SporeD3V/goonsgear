@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StockAlertSubscription;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -1513,6 +1514,45 @@ class DashboardControllerTest extends TestCase
             ->assertSet('selectedB', $productB->id)
             ->assertSet('selectedNameA', $productA->name)
             ->assertSet('selectedNameB', $productB->name);
+    }
+
+    public function test_release_benchmark_renders_comparison_data_with_orders(): void
+    {
+        $productA = Product::factory()->create(['published_at' => now()->subMonths(6)]);
+        $productB = Product::factory()->create(['published_at' => now()->subMonths(3)]);
+
+        // Create orders for product A within 30 days of publish
+        $orderA = Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => Carbon::parse($productA->published_at)->addDays(5),
+        ]);
+        OrderItem::factory()->create([
+            'order_id' => $orderA->id,
+            'product_id' => $productA->id,
+            'quantity' => 2,
+            'line_total' => 50.00,
+        ]);
+
+        // Create orders for product B within 30 days of publish
+        $orderB = Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => Carbon::parse($productB->published_at)->addDays(3),
+        ]);
+        OrderItem::factory()->create([
+            'order_id' => $orderB->id,
+            'product_id' => $productB->id,
+            'quantity' => 1,
+            'line_total' => 75.00,
+        ]);
+
+        Livewire::test('admin.release-benchmark')
+            ->call('selectProduct', 'a', $productA->id, $productA->name)
+            ->call('selectProduct', 'b', $productB->id, $productB->name)
+            ->assertSee($productA->name)
+            ->assertSee($productB->name)
+            ->assertSee('2 units')
+            ->assertSee('1 units')
+            ->assertSeeHtml('canvas');
     }
 
     // ── Contextual Notes ──────────────────────────────────────

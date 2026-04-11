@@ -120,30 +120,54 @@
             <div class="h-[260px]">
                 <canvas id="abandonedProductsChart"></canvas>
             </div>
-            <div class="overflow-x-auto" x-data="{ showAll: false, limit: 10 }">
+            <div class="overflow-x-auto" x-data="{
+                sortCol: 'times_abandoned',
+                sortAsc: false,
+                showAll: false,
+                limit: 10,
+                items: {{ Js::from($topAbandonedProducts) }},
+                get sorted() {
+                    const col = this.sortCol;
+                    const dir = this.sortAsc ? 1 : -1;
+                    return [...this.items].sort((a, b) => {
+                        if (typeof a[col] === 'string') return dir * a[col].localeCompare(b[col]);
+                        return dir * (a[col] - b[col]);
+                    });
+                },
+                get visible() {
+                    return this.showAll ? this.sorted : this.sorted.slice(0, this.limit);
+                },
+                toggleSort(col) {
+                    if (this.sortCol === col) { this.sortAsc = !this.sortAsc; } else { this.sortCol = col; this.sortAsc = col === 'product_name'; }
+                },
+                sortIcon(col) {
+                    if (this.sortCol !== col) return '↕';
+                    return this.sortAsc ? '↑' : '↓';
+                }
+            }">
                 <table class="min-w-full divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
-                            <th class="px-4 py-2.5 text-left font-medium text-stone-600">Product</th>
-                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Abandoned</th>
-                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Total Qty</th>
-                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Avg Price</th>
+                            <th @click="toggleSort('product_name')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Product <span class="text-xs" x-text="sortIcon('product_name')"></span></th>
+                            <th @click="toggleSort('times_abandoned')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Abandoned <span class="text-xs" x-text="sortIcon('times_abandoned')"></span></th>
+                            <th @click="toggleSort('total_qty')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Total Qty <span class="text-xs" x-text="sortIcon('total_qty')"></span></th>
+                            <th @click="toggleSort('avg_price')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Avg Price <span class="text-xs" x-text="sortIcon('avg_price')"></span></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-stone-100">
-                        @foreach ($topAbandonedProducts as $idx => $item)
-                            <tr class="transition hover:bg-stone-50" x-show="showAll || {{ $idx }} < limit">
-                                <td class="px-4 py-2.5 font-medium text-stone-700">{{ $item['product_name'] }}</td>
-                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ $item['times_abandoned'] }}×</td>
-                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ $item['total_qty'] }}</td>
-                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500">&euro;{{ number_format($item['avg_price'], 2) }}</td>
+                        <template x-for="item in visible" :key="item.product_name">
+                            <tr class="transition hover:bg-stone-50">
+                                <td class="px-4 py-2.5 font-medium text-stone-700" x-text="item.product_name"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="item.times_abandoned + '×'"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="item.total_qty"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="'€' + Number(item.avg_price).toFixed(2)"></td>
                             </tr>
-                        @endforeach
+                        </template>
                     </tbody>
                 </table>
-                @if (count($topAbandonedProducts) > 10)
-                    <button @click="showAll = !showAll" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="showAll ? 'Show less' : 'Show all {{ count($topAbandonedProducts) }} products'"></button>
-                @endif
+                <template x-if="items.length > limit">
+                    <button @click="showAll = !showAll" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="showAll ? 'Show less' : 'Show all ' + items.length + ' products'"></button>
+                </template>
             </div>
         </div>
     @endif
@@ -153,14 +177,15 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const abandonedData = @json($topAbandonedProducts);
-        if (abandonedData.length && document.getElementById('abandonedProductsChart')) {
+        const abandonedChartData = abandonedData.slice(0, 10);
+        if (abandonedChartData.length && document.getElementById('abandonedProductsChart')) {
             new Chart(document.getElementById('abandonedProductsChart'), {
                 type: 'bar',
                 data: {
-                    labels: abandonedData.map(p => p.product_name),
+                    labels: abandonedChartData.map(p => p.product_name),
                     datasets: [{
                         label: 'Times Abandoned',
-                        data: abandonedData.map(p => p.times_abandoned),
+                        data: abandonedChartData.map(p => p.times_abandoned),
                         backgroundColor: '#ff6384',
                         borderRadius: 6,
                     }]

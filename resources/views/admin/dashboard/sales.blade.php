@@ -517,14 +517,15 @@
             }
         });
 
-        // Revenue by country horizontal bar — Chart.js orange
+        // Revenue by country horizontal bar — Chart.js orange (top 10 for chart readability)
+        const countryChartData = countryData.slice(0, 10);
         new Chart(document.getElementById('countryRevenueChart'), {
             type: 'bar',
             data: {
-                labels: countryData.map(c => c.country || 'Unknown'),
+                labels: countryChartData.map(c => c.country || 'Unknown'),
                 datasets: [{
                     label: 'Revenue',
-                    data: countryData.map(c => c.revenue),
+                    data: countryChartData.map(c => c.revenue),
                     backgroundColor: '#ff9f40',
                     borderRadius: 6,
                 }]
@@ -658,16 +659,17 @@
             });
         }
 
-        // AOV by Country Chart
+        // AOV by Country Chart (top 10 for chart readability)
         const aovCountryData = @json($aovByCountry);
-        if (aovCountryData.length && document.getElementById('aovByCountryChart')) {
+        const aovChartData = aovCountryData.slice(0, 10);
+        if (aovChartData.length && document.getElementById('aovByCountryChart')) {
             new Chart(document.getElementById('aovByCountryChart'), {
                 type: 'bar',
                 data: {
-                    labels: aovCountryData.map(r => r.country || 'Unknown'),
+                    labels: aovChartData.map(r => r.country || 'Unknown'),
                     datasets: [{
                         label: 'AOV (€)',
-                        data: aovCountryData.map(r => r.aov),
+                        data: aovChartData.map(r => r.aov),
                         backgroundColor: '#36a2eb',
                         borderRadius: 6,
                     }]
@@ -693,17 +695,18 @@
             });
         }
 
-        // First-Purchase Heroes Chart
+        // First-Purchase Heroes Chart (top 10 for chart readability)
         const heroData = @json($firstPurchaseHeroes);
-        if (heroData.length && document.getElementById('firstPurchaseChart')) {
+        const heroChartData = heroData.slice(0, 10);
+        if (heroChartData.length && document.getElementById('firstPurchaseChart')) {
             const heroColors = ['#36a2eb', '#ff6384', '#4bc0c0', '#ff9f40', '#9966ff', '#c9cbcf', '#e7e5e4', '#57534e', '#78716c', '#a8a29e'];
             new Chart(document.getElementById('firstPurchaseChart'), {
                 type: 'doughnut',
                 data: {
-                    labels: heroData.map(h => h.product_name),
+                    labels: heroChartData.map(h => h.product_name),
                     datasets: [{
-                        data: heroData.map(h => h.first_purchases),
-                        backgroundColor: heroData.map((_, i) => heroColors[i % heroColors.length]),
+                        data: heroChartData.map(h => h.first_purchases),
+                        backgroundColor: heroChartData.map((_, i) => heroColors[i % heroColors.length]),
                         borderWidth: 2,
                         borderColor: '#fff',
                     }]

@@ -36,6 +36,13 @@
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="2">
     <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Site Conversion ({{ $periodLabel }})</h3>
     <p class="mb-3 text-[13px] text-stone-500">How efficiently are visitors turning into paying customers?</p>
+    <div class="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+        <p class="text-[13px] font-medium text-amber-800">
+            <svg class="mr-1 inline h-4 w-4 align-text-bottom text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
+            Visitor tracking started on April 11, 2026. Data from the previous WordPress site is not available.
+        </p>
+        <p class="mt-1 text-[12px] text-amber-700">Conversion rates, visitor counts, and revenue-per-visitor are only accurate for periods after this date. Orders and revenue data is unaffected.</p>
+    </div>
     @if ($siteConversion['visitors'] === 0)
         <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
             <p class="text-[15px] text-stone-500">No visitor data recorded yet.</p>
