@@ -1119,4 +1119,166 @@ class DashboardControllerTest extends TestCase
         $visit->refresh();
         $this->assertEquals(1, $visit->visitor_count);
     }
+
+    public function test_overview_has_preorder_liability_data(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard'));
+        $response->assertOk()
+            ->assertViewHas('preorderLiability');
+    }
+
+    public function test_preorder_liability_calculates_correctly(): void
+    {
+        $this->actingAsAdmin();
+
+        Order::factory()->create([
+            'status' => 'pre-ordered',
+            'payment_status' => 'paid',
+            'total' => 150.00,
+            'placed_at' => now()->subDays(5),
+        ]);
+        Order::factory()->create([
+            'status' => 'pre-ordered',
+            'payment_status' => 'paid',
+            'total' => 250.00,
+            'placed_at' => now()->subDays(3),
+        ]);
+        // This one should NOT count (not paid)
+        Order::factory()->create([
+            'status' => 'pre-ordered',
+            'payment_status' => 'pending',
+            'total' => 100.00,
+            'placed_at' => now()->subDays(2),
+        ]);
+
+        $response = $this->get(route('admin.dashboard'));
+        $response->assertOk();
+
+        $liability = $response->viewData('preorderLiability');
+        $this->assertEquals(400.0, $liability['total_liability']);
+        $this->assertEquals(2, $liability['order_count']);
+    }
+
+    public function test_preorder_liability_zero_without_preorders(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard'));
+        $response->assertOk();
+
+        $liability = $response->viewData('preorderLiability');
+        $this->assertEquals(0, $liability['order_count']);
+        $this->assertEquals(0.0, $liability['total_liability']);
+    }
+
+    public function test_overview_has_fulfillment_speed_data(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard'));
+        $response->assertOk()
+            ->assertViewHas('fulfillmentSpeed');
+    }
+
+    public function test_fulfillment_speed_calculates_correctly(): void
+    {
+        $this->actingAsAdmin();
+
+        Order::factory()->create([
+            'status' => 'shipped',
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(5),
+            'shipped_at' => now()->subDays(3),
+        ]);
+        Order::factory()->create([
+            'status' => 'delivered',
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(10),
+            'shipped_at' => now()->subDays(6),
+        ]);
+
+        $response = $this->get(route('admin.dashboard'));
+        $response->assertOk();
+
+        $speed = $response->viewData('fulfillmentSpeed');
+        $this->assertEquals(2, $speed['shipped_count']);
+        $this->assertGreaterThan(0, $speed['avg_days']);
+        $this->assertGreaterThan(0, $speed['median_days']);
+    }
+
+    public function test_fulfillment_speed_zero_without_shipped_orders(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard'));
+        $response->assertOk();
+
+        $speed = $response->viewData('fulfillmentSpeed');
+        $this->assertEquals(0, $speed['shipped_count']);
+        $this->assertEquals(0.0, $speed['avg_days']);
+    }
+
+    public function test_inventory_has_days_of_stock_remaining(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
+        $response->assertOk()
+            ->assertViewHas('daysOfStockRemaining');
+    }
+
+    public function test_days_of_stock_remaining_calculates_velocity(): void
+    {
+        $this->actingAsAdmin();
+
+        $product = Product::factory()->create(['status' => 'active']);
+        $variant = ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'stock_quantity' => 10,
+            'is_active' => true,
+        ]);
+
+        // Simulate 30 units sold in last 30 days → 1/day → 10 days remaining
+        $order = Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(15),
+        ]);
+        OrderItem::factory()->create([
+            'order_id' => $order->id,
+            'product_variant_id' => $variant->id,
+            'quantity' => 30,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
+        $response->assertOk();
+
+        $daysOfStock = $response->viewData('daysOfStockRemaining');
+        $this->assertNotEmpty($daysOfStock);
+
+        $found = collect($daysOfStock)->firstWhere('sku', $variant->sku);
+        $this->assertNotNull($found);
+        $this->assertEquals(10.0, $found['days_remaining']);
+        $this->assertEquals(1.0, $found['daily_velocity']);
+    }
+
+    public function test_days_of_stock_remaining_empty_when_healthy(): void
+    {
+        $this->actingAsAdmin();
+
+        // Create a variant with stock > 20 (healthy) → should NOT appear
+        $product = Product::factory()->create(['status' => 'active']);
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'stock_quantity' => 50,
+            'is_active' => true,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
+        $response->assertOk();
+
+        $daysOfStock = $response->viewData('daysOfStockRemaining');
+        $this->assertEmpty($daysOfStock);
+    }
 }

@@ -126,6 +126,83 @@ class DashboardStatsService
         });
     }
 
+    /**
+     * Total liability from pre-ordered items: cash collected for items not yet shipped.
+     *
+     * @return array{total_liability: float, order_count: int, item_count: int}
+     */
+    public function preorderLiability(): array
+    {
+        return Cache::remember('dashboard:preorder-liability', 300, function (): array {
+            $row = DB::table('orders')
+                ->where('status', 'pre-ordered')
+                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->selectRaw('COALESCE(SUM(total), 0) as total_liability')
+                ->selectRaw('COUNT(*) as order_count')
+                ->first();
+
+            $itemCount = (int) DB::table('order_items')
+                ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                ->where('orders.status', 'pre-ordered')
+                ->whereIn('orders.payment_status', self::PAID_STATUSES)
+                ->sum('order_items.quantity');
+
+            return [
+                'total_liability' => round((float) ($row->total_liability ?? 0), 2),
+                'order_count' => (int) ($row->order_count ?? 0),
+                'item_count' => $itemCount,
+            ];
+        });
+    }
+
+    /**
+     * Fulfillment speed: average days from placed_at to shipped_at for completed orders.
+     *
+     * @return array{avg_days: float, median_days: float, fastest_days: float, slowest_days: float, shipped_count: int}
+     */
+    public function fulfillmentSpeed(?Carbon $from = null, ?Carbon $to = null): array
+    {
+        $key = $this->periodCacheKey('fulfillment-speed', $from, $to);
+
+        return Cache::remember($key, 300, function () use ($from, $to): array {
+            $query = Order::whereNotNull('shipped_at')
+                ->whereNotNull('placed_at')
+                ->whereIn('status', ['shipped', 'delivered', 'completed']);
+
+            $this->applyPeriod($query, $from, $to);
+
+            $orders = $query->get(['placed_at', 'shipped_at']);
+
+            if ($orders->isEmpty()) {
+                return [
+                    'avg_days' => 0.0,
+                    'median_days' => 0.0,
+                    'fastest_days' => 0.0,
+                    'slowest_days' => 0.0,
+                    'shipped_count' => 0,
+                ];
+            }
+
+            $daysArr = $orders->map(function ($o) {
+                return max(0, round($o->placed_at->diffInHours($o->shipped_at) / 24, 1));
+            })->sort()->values();
+
+            $count = $daysArr->count();
+            $mid = intdiv($count, 2);
+            $median = $count % 2 === 0
+                ? round(($daysArr[$mid - 1] + $daysArr[$mid]) / 2, 1)
+                : $daysArr[$mid];
+
+            return [
+                'avg_days' => round($daysArr->avg(), 1),
+                'median_days' => $median,
+                'fastest_days' => $daysArr->first(),
+                'slowest_days' => $daysArr->last(),
+                'shipped_count' => $count,
+            ];
+        });
+    }
+
     // ── Sales Tab ─────────────────────────────────────────────
 
     /**
@@ -380,6 +457,58 @@ class DashboardStatsService
                 'healthy' => (int) ($row->healthy ?? 0),
                 'overstocked' => (int) ($row->overstocked ?? 0),
             ];
+        });
+    }
+
+    /**
+     * Days of stock remaining for low-stock variants based on 30-day sales velocity.
+     *
+     * @return array<int, array{product: string, variant: string, sku: string, stock: int, daily_velocity: float, days_remaining: float|null}>
+     */
+    public function daysOfStockRemaining(int $limit = 20): array
+    {
+        return Cache::remember('dashboard:days-of-stock', 300, function () use ($limit): array {
+            // Get variants with stock between 1 and 20 (critical + low)
+            $variants = DB::table('product_variants as pv')
+                ->join('products as p', 'p.id', '=', 'pv.product_id')
+                ->where('pv.is_active', true)
+                ->where('pv.stock_quantity', '>', 0)
+                ->where('pv.stock_quantity', '<=', 20)
+                ->select('pv.id', 'pv.sku', 'pv.name as variant', 'p.name as product', 'pv.stock_quantity as stock')
+                ->get();
+
+            if ($variants->isEmpty()) {
+                return [];
+            }
+
+            // Get 30-day sales velocity per variant
+            $thirtyDaysAgo = Carbon::now()->subDays(30);
+            $sales = DB::table('order_items')
+                ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                ->whereIn('orders.payment_status', self::PAID_STATUSES)
+                ->where('orders.placed_at', '>=', $thirtyDaysAgo)
+                ->whereIn('order_items.product_variant_id', $variants->pluck('id'))
+                ->groupBy('order_items.product_variant_id')
+                ->selectRaw('order_items.product_variant_id, SUM(order_items.quantity) as total_sold')
+                ->pluck('total_sold', 'product_variant_id');
+
+            return $variants->map(function ($v) use ($sales) {
+                $sold = (int) ($sales[$v->id] ?? 0);
+                $dailyVelocity = $sold / 30;
+
+                return [
+                    'product' => $v->product,
+                    'variant' => $v->variant,
+                    'sku' => $v->sku,
+                    'stock' => (int) $v->stock,
+                    'daily_velocity' => round($dailyVelocity, 2),
+                    'days_remaining' => $dailyVelocity > 0 ? round($v->stock / $dailyVelocity, 1) : null,
+                ];
+            })
+                ->sortBy('days_remaining')
+                ->take($limit)
+                ->values()
+                ->all();
         });
     }
 

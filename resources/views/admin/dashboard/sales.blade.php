@@ -1,9 +1,10 @@
 {{-- KPI Row --}}
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
     @include('admin.dashboard._kpi-card', [
-        'label' => 'Avg Order Value',
+        'label' => 'AOV — Avg Order Value',
         'value' => '&euro;' . number_format($aov, 2),
         'delta' => $deltas['aov'] ?? null,
+        'subtitle' => 'Total Revenue ÷ Number of Paid Orders',
         'delay' => 1,
     ])
 
@@ -11,7 +12,7 @@
         'label' => 'Repeat Customer Rate',
         'value' => $repeatRate['repeat_pct'] . '%',
         'delta' => $deltas['repeat_pct'] ?? null,
-        'subtitle' => $repeatRate['total'] . ' unique customers',
+        'subtitle' => $repeatRate['total'] . ' unique customers · Buyers with 2+ orders ÷ All buyers × 100',
         'delay' => 2,
     ])
 
@@ -19,6 +20,7 @@
         'label' => 'Items per Order',
         'value' => number_format($itemsPerOrder, 1),
         'delta' => $deltas['items_per_order'] ?? null,
+        'subtitle' => 'Avg number of products in each order',
         'delay' => 3,
     ])
 
@@ -53,8 +55,8 @@
 
 {{-- AOV by Country --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="5">
-    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">AOV by Country ({{ $periodLabel }})</h3>
-    <p class="mb-3 text-[13px] text-stone-500">Do customers in some countries spend more per order? Use this to justify marketing spend allocation.</p>
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">AOV by Country — Average Order Value per Country ({{ $periodLabel }})</h3>
+    <p class="mb-3 text-[13px] text-stone-500">Do customers in some countries spend more per order? <span class="font-medium">AOV = Total Revenue ÷ Number of Orders</span> for each country.</p>
     @if (empty($aovByCountry))
         <p class="text-[15px] text-stone-500">No order data yet.</p>
     @else
@@ -62,25 +64,44 @@
             <div class="h-[260px]">
                 <canvas id="aovByCountryChart"></canvas>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" x-data="{
+                sortCol: 'aov',
+                sortAsc: false,
+                items: {{ Js::from($aovByCountry) }},
+                get sorted() {
+                    const col = this.sortCol;
+                    const dir = this.sortAsc ? 1 : -1;
+                    return [...this.items].sort((a, b) => {
+                        if (typeof a[col] === 'string') return dir * a[col].localeCompare(b[col]);
+                        return dir * (a[col] - b[col]);
+                    });
+                },
+                toggleSort(col) {
+                    if (this.sortCol === col) { this.sortAsc = !this.sortAsc; } else { this.sortCol = col; this.sortAsc = col === 'country'; }
+                },
+                sortIcon(col) {
+                    if (this.sortCol !== col) return '↕';
+                    return this.sortAsc ? '↑' : '↓';
+                }
+            }">
                 <table class="min-w-full divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
-                            <th class="px-4 py-2.5 text-left font-medium text-stone-600">Country</th>
-                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">AOV</th>
-                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Orders</th>
-                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Revenue</th>
+                            <th @click="toggleSort('country')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Country <span class="text-xs" x-text="sortIcon('country')"></span></th>
+                            <th @click="toggleSort('aov')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">AOV <span class="text-xs" x-text="sortIcon('aov')"></span></th>
+                            <th @click="toggleSort('orders')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Orders <span class="text-xs" x-text="sortIcon('orders')"></span></th>
+                            <th @click="toggleSort('revenue')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Revenue <span class="text-xs" x-text="sortIcon('revenue')"></span></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-stone-100">
-                        @foreach ($aovByCountry as $row)
+                        <template x-for="row in sorted" :key="row.country">
                             <tr class="transition hover:bg-stone-50">
-                                <td class="whitespace-nowrap px-4 py-2.5 font-medium text-stone-700">{{ $row['country'] ?: 'Unknown' }}</td>
-                                <td class="whitespace-nowrap px-4 py-2.5 text-right font-semibold" style="color: #36a2eb">&euro;{{ number_format($row['aov'], 2) }}</td>
-                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ number_format($row['orders']) }}</td>
-                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500">&euro;{{ number_format($row['revenue'], 2) }}</td>
+                                <td class="whitespace-nowrap px-4 py-2.5 font-medium text-stone-700" x-text="row.country || 'Unknown'"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right font-semibold" style="color: #36a2eb" x-text="'€' + Number(row.aov).toFixed(2)"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="Number(row.orders).toLocaleString()"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="'€' + Number(row.revenue).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></td>
                             </tr>
-                        @endforeach
+                        </template>
                     </tbody>
                 </table>
             </div>
@@ -90,31 +111,61 @@
 
 {{-- Top Products --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="5">
-    <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Top Selling Products ({{ $periodLabel }})</h3>
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Top Selling Products ({{ $periodLabel }})</h3>
+    <p class="mb-2 text-[12px] text-stone-400">Ranked by total revenue. Click any column header to sort. Shows top 10 by default.</p>
     @if (empty($topProducts))
         <p class="text-[15px] text-stone-500">No sales data yet.</p>
     @else
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
-                <thead class="bg-stone-50">
-                    <tr>
-                        <th class="px-4 py-2.5 text-left font-medium text-stone-600">#</th>
-                        <th class="px-4 py-2.5 text-left font-medium text-stone-600">Product</th>
-                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Units</th>
-                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Revenue</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-stone-100">
-                    @foreach ($topProducts as $i => $product)
-                        <tr class="transition hover:bg-stone-50">
-                            <td class="whitespace-nowrap px-4 py-2.5 text-stone-400">{{ $i + 1 }}</td>
-                            <td class="px-4 py-2.5 text-stone-700">{{ $product['name'] }}</td>
-                            <td class="whitespace-nowrap px-4 py-2.5 text-right font-medium text-stone-700">{{ $product['units'] }}</td>
-                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">&euro;{{ number_format($product['revenue'], 2) }}</td>
+        <div x-data="{
+            sortCol: 'revenue',
+            sortAsc: false,
+            showAll: false,
+            limit: 10,
+            items: {{ Js::from($topProducts) }},
+            get sorted() {
+                const col = this.sortCol;
+                const dir = this.sortAsc ? 1 : -1;
+                return [...this.items].sort((a, b) => {
+                    if (typeof a[col] === 'string') return dir * a[col].localeCompare(b[col]);
+                    return dir * (a[col] - b[col]);
+                });
+            },
+            get visible() {
+                return this.showAll ? this.sorted : this.sorted.slice(0, this.limit);
+            },
+            toggleSort(col) {
+                if (this.sortCol === col) { this.sortAsc = !this.sortAsc; } else { this.sortCol = col; this.sortAsc = col === 'name'; }
+            },
+            sortIcon(col) {
+                if (this.sortCol !== col) return '↕';
+                return this.sortAsc ? '↑' : '↓';
+            }
+        }">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                    <thead class="bg-stone-50">
+                        <tr>
+                            <th class="px-4 py-2.5 text-left font-medium text-stone-600">#</th>
+                            <th @click="toggleSort('name')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Product <span class="text-xs" x-text="sortIcon('name')"></span></th>
+                            <th @click="toggleSort('units')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Units <span class="text-xs" x-text="sortIcon('units')"></span></th>
+                            <th @click="toggleSort('revenue')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Revenue <span class="text-xs" x-text="sortIcon('revenue')"></span></th>
                         </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="divide-y divide-stone-100">
+                        <template x-for="(product, i) in visible" :key="i">
+                            <tr class="transition hover:bg-stone-50">
+                                <td class="whitespace-nowrap px-4 py-2.5 text-stone-400" x-text="i + 1"></td>
+                                <td class="px-4 py-2.5 text-stone-700" x-text="product.name"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right font-medium text-stone-700" x-text="product.units"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="'€' + Number(product.revenue).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+            <template x-if="items.length > limit">
+                <button @click="showAll = !showAll" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="showAll ? 'Show less' : 'Show all ' + items.length + ' products'"></button>
+            </template>
         </div>
     @endif
 </div>
@@ -123,7 +174,8 @@
 <div class="grid gap-6 lg:grid-cols-3">
     {{-- Multi-Year Line Overlay --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm lg:col-span-2" data-delay="6">
-        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Monthly Revenue — Multi-Year Overlay</h3>
+        <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Monthly Revenue — Multi-Year Overlay</h3>
+        <p class="mb-2 text-[12px] text-stone-400">Each line is one year's monthly revenue. Hover over any point to see the exact amount. The dashed line shows the historical average across all years.</p>
         <div class="h-[300px]">
             <canvas id="yearlyRevenueChart"></canvas>
         </div>
@@ -169,7 +221,8 @@
 
 {{-- Release-to-Release Benchmarking --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="8">
-    <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-stone-600">Release-to-Release Benchmarking</h3>
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Release-to-Release Benchmarking</h3>
+    <p class="mb-3 text-[12px] text-stone-400">Compare how two products performed in their first days after launch. Pick two products and a time window to see cumulative revenue side by side.</p>
 
     {{-- Product Selector --}}
     <form method="GET" action="{{ route('admin.dashboard') }}" class="mb-4 flex flex-wrap items-end gap-3">
@@ -234,7 +287,8 @@
 
 {{-- Regional Growth Trend --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="9">
-    <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Regional Growth Trend (Quarterly)</h3>
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Regional Growth Trend (Quarterly)</h3>
+    <p class="mb-2 text-[12px] text-stone-400">Revenue per quarter for your top countries. Upward lines mean growing markets; flat or dropping lines need attention.</p>
     @if (empty($regionalGrowth['countries']))
         <p class="text-[15px] text-stone-500">Not enough order data to show regional trends.</p>
     @else
@@ -246,7 +300,8 @@
 
 {{-- Product Decay Tracking --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="10">
-    <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Product Sales Velocity (from Launch)</h3>
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Product Sales Velocity (from Launch)</h3>
+    <p class="mb-2 text-[12px] text-stone-400">Units sold per month after launch. Percentages show each month's sales relative to Month 1 — a drop means the product is losing momentum.</p>
     @if (empty($productDecay))
         <p class="text-[15px] text-stone-500">No products with a published date more than 2 months old.</p>
     @else
@@ -331,36 +386,63 @@
 
 {{-- Product Affinity (Market Basket) --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="11">
-    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Product Affinity</h3>
-    <p class="mb-3 text-[13px] text-stone-500">"Customers who bought X also bought Y" — use this for "Complete the Look" upsells.</p>
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Product Affinity (Market Basket)</h3>
+    <p class="mb-3 text-[13px] text-stone-500">"Customers who bought X also bought Y" — use this for "Complete the Look" upsells. <span class="font-medium">Affinity % = Co-purchases ÷ Total purchases of Product A × 100</span>.</p>
     @if (empty($productAffinity))
         <p class="text-[15px] text-stone-500">No multi-product order data yet. Affinity appears once customers start buying 2+ products together.</p>
     @else
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto" x-data="{
+            sortCol: 'affinity_pct',
+            sortAsc: false,
+            showAll: false,
+            limit: 10,
+            items: {{ Js::from($productAffinity) }},
+            get sorted() {
+                const col = this.sortCol;
+                const dir = this.sortAsc ? 1 : -1;
+                return [...this.items].sort((a, b) => {
+                    if (typeof a[col] === 'string') return dir * a[col].localeCompare(b[col]);
+                    return dir * (a[col] - b[col]);
+                });
+            },
+            get visible() {
+                return this.showAll ? this.sorted : this.sorted.slice(0, this.limit);
+            },
+            toggleSort(col) {
+                if (this.sortCol === col) { this.sortAsc = !this.sortAsc; } else { this.sortCol = col; this.sortAsc = (col === 'product_a' || col === 'product_b'); }
+            },
+            sortIcon(col) {
+                if (this.sortCol !== col) return '↕';
+                return this.sortAsc ? '↑' : '↓';
+            }
+        }">
             <table class="min-w-full divide-y divide-stone-200 text-[15px]">
                 <thead class="bg-stone-50">
                     <tr>
-                        <th class="px-4 py-2.5 text-left font-medium text-stone-600">Product A</th>
-                        <th class="px-4 py-2.5 text-left font-medium text-stone-600">Product B</th>
-                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Bought Together</th>
-                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Affinity</th>
+                        <th @click="toggleSort('product_a')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Product A <span class="text-xs" x-text="sortIcon('product_a')"></span></th>
+                        <th @click="toggleSort('product_b')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Product B <span class="text-xs" x-text="sortIcon('product_b')"></span></th>
+                        <th @click="toggleSort('co_purchases')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Bought Together <span class="text-xs" x-text="sortIcon('co_purchases')"></span></th>
+                        <th @click="toggleSort('affinity_pct')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Affinity <span class="text-xs" x-text="sortIcon('affinity_pct')"></span></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-stone-100">
-                    @foreach ($productAffinity as $pair)
+                    <template x-for="pair in visible" :key="pair.product_a + pair.product_b">
                         <tr class="transition hover:bg-stone-50">
-                            <td class="px-4 py-2.5 font-medium text-stone-700">{{ $pair['product_a'] }}</td>
-                            <td class="px-4 py-2.5 font-medium text-stone-700">{{ $pair['product_b'] }}</td>
-                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ $pair['co_purchases'] }}×</td>
+                            <td class="px-4 py-2.5 font-medium text-stone-700" x-text="pair.product_a"></td>
+                            <td class="px-4 py-2.5 font-medium text-stone-700" x-text="pair.product_b"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="pair.co_purchases + '×'"></td>
                             <td class="whitespace-nowrap px-4 py-2.5 text-right">
-                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold {{ $pair['affinity_pct'] >= 50 ? 'bg-[#4bc0c0]/15 text-[#4bc0c0]' : ($pair['affinity_pct'] >= 25 ? 'bg-[#ff9f40]/15 text-[#ff9f40]' : 'bg-stone-100 text-stone-500') }}">
-                                    {{ $pair['affinity_pct'] }}%
-                                </span>
+                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
+                                    :class="pair.affinity_pct >= 50 ? 'bg-[#4bc0c0]/15 text-[#4bc0c0]' : (pair.affinity_pct >= 25 ? 'bg-[#ff9f40]/15 text-[#ff9f40]' : 'bg-stone-100 text-stone-500')"
+                                    x-text="pair.affinity_pct + '%'"></span>
                             </td>
                         </tr>
-                    @endforeach
+                    </template>
                 </tbody>
             </table>
+            <template x-if="items.length > limit">
+                <button @click="showAll = !showAll" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="showAll ? 'Show less' : 'Show all ' + items.length + ' pairs'"></button>
+            </template>
         </div>
     @endif
 </div>
@@ -480,10 +562,11 @@
                     borderWidth: isCurrent ? 3 : 1.5,
                     borderDash: isCurrent ? [] : [4, 3],
                     tension: 0.35,
-                    pointRadius: isCurrent ? 4 : 0,
-                    pointBackgroundColor: isCurrent ? yearColors[idx % yearColors.length] : undefined,
-                    pointBorderColor: isCurrent ? '#fff' : undefined,
-                    pointBorderWidth: isCurrent ? 2 : 0,
+                    pointRadius: isCurrent ? 4 : 3,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: yearColors[idx % yearColors.length],
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: isCurrent ? 2 : 1,
                 });
             });
 
@@ -509,7 +592,10 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom', labels: { padding: 16, font: { size: 11 }, color: '#57534e' } } },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { padding: 16, font: { size: 11 }, color: '#57534e' } },
+                        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': €' + (ctx.parsed.y ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) } }
+                    },
                     scales: {
                         x: { grid: { display: false }, ticks: { font: { size: 12 }, color: '#78716c' } },
                         y: { beginAtZero: true, ticks: { callback: v => '€' + v.toLocaleString(), font: { size: 12 }, color: '#78716c' }, grid: { color: '#f5f5f4' } }

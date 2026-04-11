@@ -13,43 +13,73 @@
     <p class="mt-2 text-sm text-stone-400">
         &euro;{{ number_format($discountImpact['total_discounts'], 2) }} discounted out of &euro;{{ number_format($discountImpact['total_gross'], 2) }} gross
     </p>
+    <p class="mt-1 text-[11px] text-stone-400">Formula: Total Discounts ÷ Gross Revenue × 100. Lower is better — a rising % means discounts are eating into your margins.</p>
 </div>
 
 <div class="grid gap-6 lg:grid-cols-2">
     {{-- Coupon Leaderboard --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="2">
-        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Coupon Leaderboard</h3>
+        <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Coupon Leaderboard</h3>
+        <p class="mb-2 text-[12px] text-stone-400">Which discount codes are used most? Click column headers to sort.</p>
         @if (empty($couponLeaderboard))
             <p class="text-[15px] text-stone-500">No coupon usage data.</p>
         @else
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" x-data="{
+                sortCol: 'total_discounted',
+                sortAsc: false,
+                showAll: false,
+                limit: 10,
+                items: {{ Js::from($couponLeaderboard) }},
+                get sorted() {
+                    const col = this.sortCol;
+                    const dir = this.sortAsc ? 1 : -1;
+                    return [...this.items].sort((a, b) => {
+                        if (typeof a[col] === 'string') return dir * a[col].localeCompare(b[col]);
+                        return dir * (a[col] - b[col]);
+                    });
+                },
+                get visible() {
+                    return this.showAll ? this.sorted : this.sorted.slice(0, this.limit);
+                },
+                toggleSort(col) {
+                    if (this.sortCol === col) { this.sortAsc = !this.sortAsc; } else { this.sortCol = col; this.sortAsc = col === 'code'; }
+                },
+                sortIcon(col) {
+                    if (this.sortCol !== col) return '↕';
+                    return this.sortAsc ? '↑' : '↓';
+                }
+            }">
                 <table class="min-w-full divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
-                            <th class="px-4 py-2.5 text-left font-medium text-stone-600">Code</th>
-                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Uses</th>
-                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Total Discounted</th>
-                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Avg Discount</th>
+                            <th @click="toggleSort('code')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Code <span class="text-xs" x-text="sortIcon('code')"></span></th>
+                            <th @click="toggleSort('times_used')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Uses <span class="text-xs" x-text="sortIcon('times_used')"></span></th>
+                            <th @click="toggleSort('total_discounted')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Total Discounted <span class="text-xs" x-text="sortIcon('total_discounted')"></span></th>
+                            <th @click="toggleSort('avg_discount')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Avg Discount <span class="text-xs" x-text="sortIcon('avg_discount')"></span></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-stone-100">
-                        @foreach ($couponLeaderboard as $coupon)
+                        <template x-for="coupon in visible" :key="coupon.code">
                             <tr class="transition hover:bg-stone-50">
-                                <td class="whitespace-nowrap px-4 py-2.5 font-mono text-xs font-medium text-stone-700">{{ $coupon['code'] }}</td>
-                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ $coupon['times_used'] }}</td>
-                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">&euro;{{ number_format($coupon['total_discounted'], 2) }}</td>
-                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500">&euro;{{ number_format($coupon['avg_discount'], 2) }}</td>
+                                <td class="whitespace-nowrap px-4 py-2.5 font-mono text-xs font-medium text-stone-700" x-text="coupon.code"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="coupon.times_used"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="'€' + Number(coupon.total_discounted).toFixed(2)"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="'€' + Number(coupon.avg_discount).toFixed(2)"></td>
                             </tr>
-                        @endforeach
+                        </template>
                     </tbody>
                 </table>
+                <template x-if="items.length > limit">
+                    <button @click="showAll = !showAll" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="showAll ? 'Show less' : 'Show all ' + items.length + ' coupons'"></button>
+                </template>
             </div>
         @endif
     </div>
 
     {{-- Cart Recovery Funnel --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
-        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Cart Recovery</h3>
+        <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Cart Recovery</h3>
+        <p class="mb-2 text-[12px] text-stone-400">Abandoned → Reminded → Recovered funnel. Recovery Rate = Recovered ÷ Abandoned × 100.</p>
         <div class="space-y-3">
             @php
                 $funnel = [

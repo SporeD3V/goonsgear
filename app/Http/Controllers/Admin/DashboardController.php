@@ -102,6 +102,7 @@ class DashboardController extends Controller
                 'stockHealth' => $stats->stockHealth(),
                 'stockAlertDemand' => $stats->stockAlertDemand(),
                 'productStatus' => $stats->productStatusBreakdown(),
+                'daysOfStockRemaining' => $stats->daysOfStockRemaining(),
             ],
             'promotions' => $data += $this->promotionsTab($stats, $from, $to, $prevFrom, $prevTo, $compare),
             'customers' => $data += $this->customersTab($stats, $from, $to, $prevFrom, $prevTo, $compare),
@@ -122,6 +123,8 @@ class DashboardController extends Controller
             'revenueOverTime' => $stats->revenueOverTime($from, $to),
             'ordersByStatus' => $stats->ordersByStatus($from, $to),
             'siteConversion' => $stats->siteConversionRate($from, $to),
+            'preorderLiability' => $stats->preorderLiability(),
+            'fulfillmentSpeed' => $stats->fulfillmentSpeed($from, $to),
         ];
 
         if ($compare && $prevFrom) {

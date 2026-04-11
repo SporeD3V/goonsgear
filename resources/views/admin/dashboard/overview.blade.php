@@ -4,6 +4,7 @@
         'label' => 'Revenue (' . $periodLabel . ')',
         'value' => '&euro;' . number_format($overview['revenue'], 2),
         'delta' => $deltas['revenue'] ?? null,
+        'subtitle' => 'Total paid order value after discounts',
         'delay' => 1,
     ])
 
@@ -11,12 +12,14 @@
         'label' => 'Orders (' . $periodLabel . ')',
         'value' => number_format($overview['total_orders']),
         'delta' => $deltas['total_orders'] ?? null,
+        'subtitle' => 'All orders placed (any status)',
         'delay' => 2,
     ])
 
     @include('admin.dashboard._kpi-card', [
         'label' => 'Products',
         'value' => $overview['active_products'] . ' <span class="text-base font-normal text-stone-400">/ ' . $overview['total_products'] . '</span>',
+        'subtitle' => 'Active products / Total products',
         'delay' => 3,
     ])
 
@@ -24,6 +27,7 @@
         'label' => 'Pending Orders',
         'value' => $overview['pending_orders'],
         'href' => $overview['pending_orders'] > 0 ? route('admin.orders.index', ['status' => 'pending']) : null,
+        'subtitle' => 'Orders waiting to be processed',
         'delay' => 4,
     ])
 </div>
@@ -42,19 +46,26 @@
             <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
                 <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Visitors</div>
                 <div class="mt-1 text-2xl font-bold" style="color: #9966ff">{{ number_format($siteConversion['visitors']) }}</div>
+                <div class="mt-1 text-[11px] text-stone-400">Unique sessions per day</div>
             </div>
             <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
-                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Orders</div>
+                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Paid Orders</div>
                 <div class="mt-1 text-2xl font-bold" style="color: #36a2eb">{{ number_format($siteConversion['orders']) }}</div>
+                <div class="mt-1 text-[11px] text-stone-400">Orders with payment confirmed</div>
             </div>
             <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
-                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Conversion Rate</div>
+                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">CR% <span class="normal-case font-normal">(Conversion Rate)</span></div>
                 <div class="mt-1 text-2xl font-bold {{ $siteConversion['conversion_pct'] >= 3 ? 'text-[#4bc0c0]' : ($siteConversion['conversion_pct'] >= 1 ? 'text-[#ff9f40]' : 'text-[#ff6384]') }}">{{ $siteConversion['conversion_pct'] }}%</div>
+                <div class="mt-1 text-[11px] text-stone-400">Orders ÷ Visitors × 100</div>
             </div>
             <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
                 <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Rev / Visitor</div>
                 <div class="mt-1 text-2xl font-bold" style="color: #4bc0c0">&euro;{{ number_format($siteConversion['revenue_per_visitor'], 2) }}</div>
+                <div class="mt-1 text-[11px] text-stone-400">Revenue ÷ Visitors</div>
             </div>
+        </div>
+        <div class="mt-2 text-[11px] text-stone-400">
+            Industry benchmark: 1–3% CR is typical for e-commerce. Above 3% is excellent.
         </div>
     @endif
 </div>
@@ -91,6 +102,63 @@
         </div>
     </div>
 @endif
+
+{{-- Operational Metrics: Pre-order Liability + Fulfillment Speed --}}
+<div class="grid gap-6 lg:grid-cols-2">
+    {{-- Pre-order Liability --}}
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
+        <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Pre-order Liability</h3>
+        <p class="mb-3 text-[12px] text-stone-400">Cash already collected for pre-ordered items that haven't shipped yet. This is money you owe in goods until the order is fulfilled.</p>
+        @if ($preorderLiability['order_count'] === 0)
+            <p class="text-[15px] text-stone-500">No active pre-orders with payment confirmed.</p>
+        @else
+            <div class="flex items-baseline gap-3">
+                <p class="text-3xl font-bold text-[#ff9f40]">&euro;{{ number_format($preorderLiability['total_liability'], 2) }}</p>
+                <span class="text-[15px] text-stone-500">outstanding</span>
+            </div>
+            <div class="mt-3 grid grid-cols-2 gap-3">
+                <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 text-center">
+                    <div class="text-[13px] text-stone-500">Orders</div>
+                    <div class="text-lg font-bold text-stone-700">{{ $preorderLiability['order_count'] }}</div>
+                </div>
+                <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 text-center">
+                    <div class="text-[13px] text-stone-500">Total Items</div>
+                    <div class="text-lg font-bold text-stone-700">{{ $preorderLiability['item_count'] }}</div>
+                </div>
+            </div>
+            <p class="mt-2 text-[11px] text-stone-400">Formula: SUM(order total) where status = "pre-ordered" and payment is confirmed.</p>
+        @endif
+    </div>
+
+    {{-- Fulfillment Speed --}}
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
+        <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Fulfillment Speed ({{ $periodLabel }})</h3>
+        <p class="mb-3 text-[12px] text-stone-400">How long from when an order is placed until it's shipped? Faster = happier customers.</p>
+        @if ($fulfillmentSpeed['shipped_count'] === 0)
+            <p class="text-[15px] text-stone-500">No shipped orders with both placed and shipped dates in this period.</p>
+        @else
+            <div class="flex items-baseline gap-3">
+                <p class="text-3xl font-bold" style="color: #36a2eb">{{ $fulfillmentSpeed['avg_days'] }}</p>
+                <span class="text-[15px] text-stone-500">avg days to ship</span>
+            </div>
+            <div class="mt-3 grid grid-cols-3 gap-3">
+                <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 text-center">
+                    <div class="text-[13px] text-stone-500">Median</div>
+                    <div class="text-lg font-bold text-stone-700">{{ $fulfillmentSpeed['median_days'] }}d</div>
+                </div>
+                <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 text-center">
+                    <div class="text-[13px] text-stone-500">Fastest</div>
+                    <div class="text-lg font-bold text-[#4bc0c0]">{{ $fulfillmentSpeed['fastest_days'] }}d</div>
+                </div>
+                <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 text-center">
+                    <div class="text-[13px] text-stone-500">Slowest</div>
+                    <div class="text-lg font-bold text-[#ff6384]">{{ $fulfillmentSpeed['slowest_days'] }}d</div>
+                </div>
+            </div>
+            <p class="mt-2 text-[11px] text-stone-400">Based on {{ $fulfillmentSpeed['shipped_count'] }} shipped orders. Formula: shipped_at − placed_at in days.</p>
+        @endif
+    </div>
+</div>
 
 {{-- Charts Row --}}
 <div class="grid gap-6 lg:grid-cols-2">
