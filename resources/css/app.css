@@ -50,3 +50,59 @@
 .no-scrollbar::-webkit-scrollbar {
     display: none;
 }
+
+/* ── Admin Dashboard Microanimations ── */
+@keyframes fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-scale {
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slide-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.animate-fade-in {
+    animation: fade-in 300ms ease-out both;
+}
+
+.animate-fade-in-scale {
+    animation: fade-in-scale 350ms ease-out both;
+}
+
+.animate-slide-up {
+    animation: slide-up 400ms ease-out both;
+}
+
+/* Staggered card entrance — apply data-delay="N" */
+.admin-card {
+    animation: fade-in 350ms ease-out both;
+}
+.admin-card[data-delay="1"] { animation-delay: 50ms; }
+.admin-card[data-delay="2"] { animation-delay: 100ms; }
+.admin-card[data-delay="3"] { animation-delay: 150ms; }
+.admin-card[data-delay="4"] { animation-delay: 200ms; }
+.admin-card[data-delay="5"] { animation-delay: 250ms; }
+
+/* Hover lift for dashboard cards */
+.admin-card-hover {
+    transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.admin-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(120, 113, 108, 0.1);
+}
+.admin-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
