@@ -1,8 +1,13 @@
 {{-- Discount Margin Impact --}}
 <div class="admin-card admin-card-hover rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="1">
-    <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Discount Margin Impact</h3>
+    <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Discount Margin Impact ({{ $periodLabel }})</h3>
     <div class="flex items-baseline gap-3">
         <p class="text-3xl font-bold text-stone-800">{{ $discountImpact['discount_pct'] }}%</p>
+        @if (isset($deltas['discount_pct']) && $deltas['discount_pct'] !== null)
+            <span class="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold {{ $deltas['discount_pct'] > 0 ? 'bg-[#ff6384]/15 text-[#ff6384]' : ($deltas['discount_pct'] < 0 ? 'bg-[#4bc0c0]/15 text-[#4bc0c0]' : 'bg-stone-100 text-stone-500') }}">
+                {{ $deltas['discount_pct'] > 0 ? '+' : '' }}{{ $deltas['discount_pct'] }}%
+            </span>
+        @endif
         <p class="text-[15px] text-stone-500">of gross revenue goes to discounts</p>
     </div>
     <p class="mt-2 text-sm text-stone-400">
@@ -61,7 +66,14 @@
             @endforeach
             <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-center">
                 <p class="text-sm font-medium text-blue-600">Recovery Rate</p>
-                <p class="text-3xl font-bold text-blue-700">{{ $cartRecovery['recovery_pct'] }}%</p>
+                <div class="flex items-center justify-center gap-2">
+                    <p class="text-3xl font-bold text-blue-700">{{ $cartRecovery['recovery_pct'] }}%</p>
+                    @if (isset($deltas['recovery_pct']) && $deltas['recovery_pct'] !== null)
+                        <span class="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-semibold {{ $deltas['recovery_pct'] > 0 ? 'bg-[#4bc0c0]/15 text-[#4bc0c0]' : ($deltas['recovery_pct'] < 0 ? 'bg-[#ff6384]/15 text-[#ff6384]' : 'bg-stone-100 text-stone-500') }}">
+                            {{ $deltas['recovery_pct'] > 0 ? '+' : '' }}{{ $deltas['recovery_pct'] }}%
+                        </span>
+                    @endif
+                </div>
             </div>
         </div>
     </div>

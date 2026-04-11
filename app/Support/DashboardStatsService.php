@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StockAlertSubscription;
 use App\Models\User;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -17,25 +18,62 @@ class DashboardStatsService
     /** @var list<string> */
     private const PAID_STATUSES = ['paid', 'completed'];
 
+    // ── Helpers ────────────────────────────────────────────────
+
+    private function periodCacheKey(string $base, ?Carbon $from, ?Carbon $to): string
+    {
+        if ($from === null && $to === null) {
+            return "dashboard:{$base}:all";
+        }
+
+        return "dashboard:{$base}:{$from->format('Ymd')}:{$to->format('Ymd')}";
+    }
+
+    /**
+     * @param  Builder|\Illuminate\Database\Eloquent\Builder  $query
+     * @return Builder|\Illuminate\Database\Eloquent\Builder
+     */
+    private function applyPeriod($query, ?Carbon $from, ?Carbon $to, string $column = 'placed_at')
+    {
+        if ($from !== null) {
+            $query->where($column, '>=', $from);
+        }
+        if ($to !== null) {
+            $query->where($column, '<=', $to);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Compute percentage delta between current and previous values.
+     */
+    public static function delta(float $current, float $previous): ?float
+    {
+        if ($previous == 0) {
+            return $current > 0 ? 100.0 : null;
+        }
+
+        return round(($current - $previous) / $previous * 100, 1);
+    }
+
     // ── Overview Tab ──────────────────────────────────────────
 
     /**
-     * @return array{total_orders: int, pending_orders: int, revenue: float, orders_today: int, revenue_week: float, low_stock: int, out_of_stock: int, stock_alert_waiting: int, total_products: int, active_products: int}
+     * @return array{total_orders: int, pending_orders: int, revenue: float, orders_today: int, low_stock: int, out_of_stock: int, stock_alert_waiting: int, total_products: int, active_products: int}
      */
-    public function overviewStats(): array
+    public function overviewStats(?Carbon $from = null, ?Carbon $to = null): array
     {
-        return Cache::remember('dashboard:overview', 300, function (): array {
-            $today = Carbon::today();
-            $weekStart = Carbon::now()->subDays(7);
+        $key = $this->periodCacheKey('overview', $from, $to);
 
+        return Cache::remember($key, 300, function () use ($from, $to): array {
             return [
-                'total_orders' => Order::count(),
+                'total_orders' => (int) $this->applyPeriod(Order::query(), $from, $to)->count(),
                 'pending_orders' => Order::where('status', 'pending')->count(),
-                'revenue' => (float) Order::whereIn('payment_status', self::PAID_STATUSES)->sum('total'),
-                'orders_today' => Order::whereDate('placed_at', $today)->count(),
-                'revenue_week' => (float) Order::whereIn('payment_status', self::PAID_STATUSES)
-                    ->where('placed_at', '>=', $weekStart)
-                    ->sum('total'),
+                'revenue' => (float) $this->applyPeriod(
+                    Order::whereIn('payment_status', self::PAID_STATUSES), $from, $to
+                )->sum('total'),
+                'orders_today' => Order::whereDate('placed_at', Carbon::today())->count(),
                 'low_stock' => ProductVariant::where('stock_quantity', '>', 0)
                     ->where('stock_quantity', '<=', 5)
                     ->count(),
@@ -59,12 +97,17 @@ class DashboardStatsService
     /**
      * @return array<int, array{day: string, revenue: float, gross: float, discounts: float, order_count: int}>
      */
-    public function revenueOverTime(int $days = 30): array
+    public function revenueOverTime(?Carbon $from = null, ?Carbon $to = null): array
     {
-        return Cache::remember("dashboard:revenue:{$days}", 300, function () use ($days): array {
-            return DB::table('orders')
-                ->whereIn('payment_status', self::PAID_STATUSES)
-                ->where('placed_at', '>=', Carbon::now()->subDays($days))
+        $key = $this->periodCacheKey('revenue', $from, $to);
+
+        return Cache::remember($key, 300, function () use ($from, $to): array {
+            $query = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES);
+
+            $this->applyPeriod($query, $from, $to);
+
+            $data = $query
                 ->selectRaw('DATE(placed_at) as day')
                 ->selectRaw('SUM(total) as revenue')
                 ->selectRaw('SUM(subtotal) as gross')
@@ -73,24 +116,51 @@ class DashboardStatsService
                 ->groupBy('day')
                 ->orderBy('day')
                 ->get()
-                ->map(fn ($row) => [
-                    'day' => $row->day,
-                    'revenue' => (float) $row->revenue,
-                    'gross' => (float) $row->gross,
-                    'discounts' => (float) $row->discounts,
-                    'order_count' => (int) $row->order_count,
-                ])
-                ->all();
+                ->keyBy('day');
+
+            if ($from && $to) {
+                $result = [];
+                $current = $from->copy()->startOfDay();
+                $end = $to->copy()->startOfDay();
+
+                while ($current->lte($end)) {
+                    $dayKey = $current->format('Y-m-d');
+                    $row = $data->get($dayKey);
+                    $result[] = [
+                        'day' => $dayKey,
+                        'revenue' => (float) ($row->revenue ?? 0),
+                        'gross' => (float) ($row->gross ?? 0),
+                        'discounts' => (float) ($row->discounts ?? 0),
+                        'order_count' => (int) ($row->order_count ?? 0),
+                    ];
+                    $current->addDay();
+                }
+
+                return $result;
+            }
+
+            return $data->values()->map(fn ($row) => [
+                'day' => $row->day,
+                'revenue' => (float) $row->revenue,
+                'gross' => (float) $row->gross,
+                'discounts' => (float) $row->discounts,
+                'order_count' => (int) $row->order_count,
+            ])->all();
         });
     }
 
     /**
      * @return array<string, int>
      */
-    public function ordersByStatus(): array
+    public function ordersByStatus(?Carbon $from = null, ?Carbon $to = null): array
     {
-        return Cache::remember('dashboard:orders-by-status', 300, function (): array {
-            return DB::table('orders')
+        $key = $this->periodCacheKey('orders-by-status', $from, $to);
+
+        return Cache::remember($key, 300, function () use ($from, $to): array {
+            $query = DB::table('orders');
+            $this->applyPeriod($query, $from, $to);
+
+            return $query
                 ->selectRaw('status, COUNT(*) as count')
                 ->groupBy('status')
                 ->pluck('count', 'status')
@@ -101,11 +171,17 @@ class DashboardStatsService
     /**
      * @return array<int, array{country: string, revenue: float, count: int}>
      */
-    public function revenueByCountry(int $limit = 10): array
+    public function revenueByCountry(int $limit = 10, ?Carbon $from = null, ?Carbon $to = null): array
     {
-        return Cache::remember('dashboard:revenue-by-country', 300, function () use ($limit): array {
-            return DB::table('orders')
-                ->whereIn('payment_status', self::PAID_STATUSES)
+        $key = $this->periodCacheKey('revenue-by-country', $from, $to);
+
+        return Cache::remember($key, 300, function () use ($limit, $from, $to): array {
+            $query = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES);
+
+            $this->applyPeriod($query, $from, $to);
+
+            return $query
                 ->selectRaw('country, SUM(total) as revenue, COUNT(*) as count')
                 ->groupBy('country')
                 ->orderByDesc('revenue')
@@ -123,13 +199,18 @@ class DashboardStatsService
     /**
      * @return array<int, array{name: string, units: int, revenue: float}>
      */
-    public function topSellingProducts(int $days = 30, int $limit = 10): array
+    public function topSellingProducts(int $limit = 10, ?Carbon $from = null, ?Carbon $to = null): array
     {
-        return Cache::remember("dashboard:top-products:{$days}", 300, function () use ($days, $limit): array {
-            return DB::table('order_items')
+        $key = $this->periodCacheKey('top-products', $from, $to);
+
+        return Cache::remember($key, 300, function () use ($limit, $from, $to): array {
+            $query = DB::table('order_items')
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
-                ->whereIn('orders.payment_status', self::PAID_STATUSES)
-                ->where('orders.placed_at', '>=', Carbon::now()->subDays($days))
+                ->whereIn('orders.payment_status', self::PAID_STATUSES);
+
+            $this->applyPeriod($query, $from, $to, 'orders.placed_at');
+
+            return $query
                 ->selectRaw('order_items.product_name as name, SUM(order_items.quantity) as units, SUM(order_items.line_total) as revenue')
                 ->groupBy('order_items.product_id', 'order_items.product_name')
                 ->orderByDesc('units')
@@ -144,21 +225,31 @@ class DashboardStatsService
         });
     }
 
-    public function averageOrderValue(): float
+    public function averageOrderValue(?Carbon $from = null, ?Carbon $to = null): float
     {
-        return Cache::remember('dashboard:aov', 300, function (): float {
-            return (float) Order::whereIn('payment_status', self::PAID_STATUSES)->avg('total');
+        $key = $this->periodCacheKey('aov', $from, $to);
+
+        return Cache::remember($key, 300, function () use ($from, $to): float {
+            return (float) $this->applyPeriod(
+                Order::whereIn('payment_status', self::PAID_STATUSES), $from, $to
+            )->avg('total');
         });
     }
 
     /**
      * @return array{one_time: int, two_orders: int, three_plus: int, total: int, repeat_pct: float}
      */
-    public function repeatCustomerRate(): array
+    public function repeatCustomerRate(?Carbon $from = null, ?Carbon $to = null): array
     {
-        return Cache::remember('dashboard:repeat-rate', 300, function (): array {
-            $counts = DB::table('orders')
-                ->whereIn('payment_status', self::PAID_STATUSES)
+        $key = $this->periodCacheKey('repeat-rate', $from, $to);
+
+        return Cache::remember($key, 300, function () use ($from, $to): array {
+            $query = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES);
+
+            $this->applyPeriod($query, $from, $to);
+
+            $counts = $query
                 ->selectRaw('email, COUNT(*) as order_count')
                 ->groupBy('email')
                 ->get();
@@ -175,6 +266,28 @@ class DashboardStatsService
                 'total' => $total,
                 'repeat_pct' => $total > 0 ? round(($twoOrders + $threePlus) / $total * 100, 1) : 0,
             ];
+        });
+    }
+
+    public function itemsPerOrder(?Carbon $from = null, ?Carbon $to = null): float
+    {
+        $key = $this->periodCacheKey('items-per-order', $from, $to);
+
+        return Cache::remember($key, 300, function () use ($from, $to): float {
+            $query = DB::table('order_items')
+                ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                ->whereIn('orders.payment_status', self::PAID_STATUSES);
+
+            $this->applyPeriod($query, $from, $to, 'orders.placed_at');
+
+            $row = $query
+                ->selectRaw('SUM(order_items.quantity) as total_items')
+                ->selectRaw('COUNT(DISTINCT order_items.order_id) as total_orders')
+                ->first();
+
+            $totalOrders = (int) ($row->total_orders ?? 0);
+
+            return $totalOrders > 0 ? round((float) $row->total_items / $totalOrders, 1) : 0;
         });
     }
 
@@ -250,12 +363,21 @@ class DashboardStatsService
     /**
      * @return array<int, array{code: string, times_used: int, total_discounted: float, avg_discount: float}>
      */
-    public function couponLeaderboard(int $limit = 10): array
+    public function couponLeaderboard(int $limit = 10, ?Carbon $from = null, ?Carbon $to = null): array
     {
-        return Cache::remember('dashboard:coupon-leaderboard', 300, function () use ($limit): array {
-            return DB::table('order_coupon_usages')
-                ->selectRaw('coupon_code as code, COUNT(*) as times_used, SUM(discount_total) as total_discounted, AVG(discount_total) as avg_discount')
-                ->groupBy('coupon_code')
+        $key = $this->periodCacheKey('coupon-leaderboard', $from, $to);
+
+        return Cache::remember($key, 300, function () use ($limit, $from, $to): array {
+            $query = DB::table('order_coupon_usages');
+
+            if ($from || $to) {
+                $query->join('orders', 'orders.id', '=', 'order_coupon_usages.order_id');
+                $this->applyPeriod($query, $from, $to, 'orders.placed_at');
+            }
+
+            return $query
+                ->selectRaw('order_coupon_usages.coupon_code as code, COUNT(*) as times_used, SUM(order_coupon_usages.discount_total) as total_discounted, AVG(order_coupon_usages.discount_total) as avg_discount')
+                ->groupBy('order_coupon_usages.coupon_code')
                 ->orderByDesc('total_discounted')
                 ->take($limit)
                 ->get()
@@ -272,11 +394,17 @@ class DashboardStatsService
     /**
      * @return array{discount_pct: float, total_discounts: float, total_gross: float}
      */
-    public function discountMarginImpact(): array
+    public function discountMarginImpact(?Carbon $from = null, ?Carbon $to = null): array
     {
-        return Cache::remember('dashboard:discount-impact', 300, function (): array {
-            $row = DB::table('orders')
-                ->whereIn('payment_status', self::PAID_STATUSES)
+        $key = $this->periodCacheKey('discount-impact', $from, $to);
+
+        return Cache::remember($key, 300, function () use ($from, $to): array {
+            $query = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES);
+
+            $this->applyPeriod($query, $from, $to);
+
+            $row = $query
                 ->selectRaw('SUM(discount_total + regional_discount_total + bundle_discount_total) as total_discounts')
                 ->selectRaw('SUM(subtotal) as total_gross')
                 ->first();
@@ -295,10 +423,15 @@ class DashboardStatsService
     /**
      * @return array{abandoned: int, reminded: int, recovered: int, recovery_pct: float}
      */
-    public function cartRecoveryFunnel(): array
+    public function cartRecoveryFunnel(?Carbon $from = null, ?Carbon $to = null): array
     {
-        return Cache::remember('dashboard:cart-recovery', 300, function (): array {
-            $row = DB::table('cart_abandonments')
+        $key = $this->periodCacheKey('cart-recovery', $from, $to);
+
+        return Cache::remember($key, 300, function () use ($from, $to): array {
+            $query = DB::table('cart_abandonments');
+            $this->applyPeriod($query, $from, $to, 'abandoned_at');
+
+            $row = $query
                 ->selectRaw('COUNT(*) as abandoned')
                 ->selectRaw('SUM(reminder_sent_at IS NOT NULL) as reminded')
                 ->selectRaw('SUM(recovered_at IS NOT NULL) as recovered')
@@ -319,16 +452,19 @@ class DashboardStatsService
     // ── Customers Tab ─────────────────────────────────────────
 
     /**
-     * @return array{total: int, new_this_month: int, total_newsletter: int}
+     * @return array{total: int, new_in_period: int, total_newsletter: int}
      */
-    public function customerStats(): array
+    public function customerStats(?Carbon $from = null, ?Carbon $to = null): array
     {
-        return Cache::remember('dashboard:customer-stats', 300, function (): array {
+        $key = $this->periodCacheKey('customer-stats', $from, $to);
+
+        return Cache::remember($key, 300, function () use ($from, $to): array {
+            $newQuery = User::where('is_admin', false);
+            $this->applyPeriod($newQuery, $from, $to, 'created_at');
+
             return [
                 'total' => User::where('is_admin', false)->count(),
-                'new_this_month' => User::where('is_admin', false)
-                    ->where('created_at', '>=', Carbon::now()->startOfMonth())
-                    ->count(),
+                'new_in_period' => (int) $newQuery->count(),
                 'total_newsletter' => DB::table('newsletter_subscribers')
                     ->whereNull('unsubscribed_at')
                     ->count(),
@@ -339,11 +475,17 @@ class DashboardStatsService
     /**
      * @return array<int, array{country: string, count: int}>
      */
-    public function customerGeography(int $limit = 10): array
+    public function customerGeography(int $limit = 10, ?Carbon $from = null, ?Carbon $to = null): array
     {
-        return Cache::remember('dashboard:customer-geography', 300, function () use ($limit): array {
-            return DB::table('orders')
-                ->whereIn('payment_status', self::PAID_STATUSES)
+        $key = $this->periodCacheKey('customer-geography', $from, $to);
+
+        return Cache::remember($key, 300, function () use ($limit, $from, $to): array {
+            $query = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES);
+
+            $this->applyPeriod($query, $from, $to);
+
+            return $query
                 ->selectRaw('country, COUNT(DISTINCT email) as count')
                 ->groupBy('country')
                 ->orderByDesc('count')

@@ -1,19 +1,23 @@
 {{-- KPI Row --}}
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-    <div class="admin-card admin-card-hover rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="1">
-        <p class="text-sm font-semibold uppercase tracking-wide text-stone-500">Total Customers</p>
-        <p class="mt-1 text-3xl font-bold text-stone-800">{{ number_format($customerStats['total']) }}</p>
-    </div>
+    @include('admin.dashboard._kpi-card', [
+        'label' => 'Total Customers',
+        'value' => number_format($customerStats['total']),
+        'delay' => 1,
+    ])
 
-    <div class="admin-card admin-card-hover rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="2">
-        <p class="text-sm font-semibold uppercase tracking-wide text-stone-500">New This Month</p>
-        <p class="mt-1 text-3xl font-bold text-stone-800">{{ number_format($customerStats['new_this_month']) }}</p>
-    </div>
+    @include('admin.dashboard._kpi-card', [
+        'label' => 'New (' . $periodLabel . ')',
+        'value' => number_format($customerStats['new_in_period']),
+        'delta' => $deltas['new_in_period'] ?? null,
+        'delay' => 2,
+    ])
 
-    <div class="admin-card admin-card-hover rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
-        <p class="text-sm font-semibold uppercase tracking-wide text-stone-500">Newsletter Subscribers</p>
-        <p class="mt-1 text-3xl font-bold text-stone-800">{{ number_format($customerStats['total_newsletter']) }}</p>
-    </div>
+    @include('admin.dashboard._kpi-card', [
+        'label' => 'Newsletter Subscribers',
+        'value' => number_format($customerStats['total_newsletter']),
+        'delay' => 3,
+    ])
 </div>
 
 <div class="grid gap-6 lg:grid-cols-2">

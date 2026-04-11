@@ -1,27 +1,31 @@
 {{-- KPI Row --}}
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-    <div class="admin-card admin-card-hover rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="1">
-        <p class="text-sm font-semibold uppercase tracking-wide text-stone-500">Total Revenue</p>
-        <p class="mt-1 text-3xl font-bold text-stone-800">&euro;{{ number_format($overview['revenue'], 2) }}</p>
-    </div>
+    @include('admin.dashboard._kpi-card', [
+        'label' => 'Revenue (' . $periodLabel . ')',
+        'value' => '&euro;' . number_format($overview['revenue'], 2),
+        'delta' => $deltas['revenue'] ?? null,
+        'delay' => 1,
+    ])
 
-    <div class="admin-card admin-card-hover rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="2">
-        <p class="text-sm font-semibold uppercase tracking-wide text-stone-500">Orders Today</p>
-        <p class="mt-1 text-3xl font-bold text-stone-800">{{ $overview['orders_today'] }}</p>
-    </div>
+    @include('admin.dashboard._kpi-card', [
+        'label' => 'Orders (' . $periodLabel . ')',
+        'value' => number_format($overview['total_orders']),
+        'delta' => $deltas['total_orders'] ?? null,
+        'delay' => 2,
+    ])
 
-    <div class="admin-card admin-card-hover rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
-        <p class="text-sm font-semibold uppercase tracking-wide text-stone-500">Products</p>
-        <p class="mt-1 text-3xl font-bold text-stone-800">{{ $overview['active_products'] }} <span class="text-base font-normal text-stone-400">/ {{ $overview['total_products'] }}</span></p>
-    </div>
+    @include('admin.dashboard._kpi-card', [
+        'label' => 'Products',
+        'value' => $overview['active_products'] . ' <span class="text-base font-normal text-stone-400">/ ' . $overview['total_products'] . '</span>',
+        'delay' => 3,
+    ])
 
-    <a href="{{ route('admin.orders.index', ['status' => 'pending']) }}" class="admin-card admin-card-hover group rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="4">
-        <p class="text-sm font-semibold uppercase tracking-wide text-stone-500 group-hover:text-[#36a2eb]">Pending Orders</p>
-        <p class="mt-1 text-3xl font-bold {{ $overview['pending_orders'] > 0 ? 'text-[#ff9f40]' : 'text-stone-800' }}">{{ $overview['pending_orders'] }}</p>
-        @if ($overview['pending_orders'] > 0)
-            <p class="mt-1 text-sm text-[#ff9f40] opacity-0 transition group-hover:opacity-100">View orders &rarr;</p>
-        @endif
-    </a>
+    @include('admin.dashboard._kpi-card', [
+        'label' => 'Pending Orders',
+        'value' => $overview['pending_orders'],
+        'href' => $overview['pending_orders'] > 0 ? route('admin.orders.index', ['status' => 'pending']) : null,
+        'delay' => 4,
+    ])
 </div>
 
 {{-- Attention Items with Quick Links --}}
@@ -61,7 +65,7 @@
 <div class="grid gap-6 lg:grid-cols-2">
     {{-- Revenue (30d) --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
-        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Revenue (30 days)</h3>
+        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Revenue ({{ $periodLabel }})</h3>
         <div class="h-[280px]">
             <canvas id="revenueChart"></canvas>
         </div>
@@ -152,29 +156,45 @@
     document.addEventListener('DOMContentLoaded', function () {
         const revenueData = @json($revenueOverTime);
         const statusData = @json($ordersByStatus);
+        const prevRevenueData = @json($prevRevenueOverTime ?? null);
 
-        // Revenue Line Chart — Chart.js blue
+        // Revenue Line Chart — with optional comparison overlay
+        const revenueDatasets = [{
+            label: 'Revenue',
+            data: revenueData.map(r => r.revenue),
+            borderColor: '#36a2eb',
+            backgroundColor: 'rgba(54, 162, 235, 0.08)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 3,
+            pointBackgroundColor: '#36a2eb',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+        }];
+
+        if (prevRevenueData) {
+            revenueDatasets.push({
+                label: 'Previous Period',
+                data: prevRevenueData.map(r => r.revenue),
+                borderColor: '#9966ff',
+                borderDash: [5, 5],
+                backgroundColor: 'transparent',
+                fill: false,
+                tension: 0.35,
+                pointRadius: 0,
+            });
+        }
+
         new Chart(document.getElementById('revenueChart'), {
             type: 'line',
             data: {
                 labels: revenueData.map(r => r.day),
-                datasets: [{
-                    label: 'Revenue',
-                    data: revenueData.map(r => r.revenue),
-                    borderColor: '#36a2eb',
-                    backgroundColor: 'rgba(54, 162, 235, 0.08)',
-                    fill: true,
-                    tension: 0.35,
-                    pointRadius: 3,
-                    pointBackgroundColor: '#36a2eb',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                }]
+                datasets: revenueDatasets
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
+                plugins: { legend: { display: !!prevRevenueData, position: 'bottom', labels: { padding: 16, font: { size: 12 }, color: '#57534e' } } },
                 scales: {
                     x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 12 }, color: '#78716c' } },
                     y: { beginAtZero: true, ticks: { callback: v => '€' + v.toLocaleString(), font: { size: 12 }, color: '#78716c' }, grid: { color: '#f5f5f4' } }

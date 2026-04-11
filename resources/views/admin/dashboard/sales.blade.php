@@ -1,31 +1,33 @@
 {{-- KPI Row --}}
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-    <div class="admin-card admin-card-hover rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="1">
-        <p class="text-sm font-semibold uppercase tracking-wide text-stone-500">Avg Order Value</p>
-        <p class="mt-1 text-3xl font-bold text-stone-800">&euro;{{ number_format($aov, 2) }}</p>
-    </div>
+    @include('admin.dashboard._kpi-card', [
+        'label' => 'Avg Order Value',
+        'value' => '&euro;' . number_format($aov, 2),
+        'delta' => $deltas['aov'] ?? null,
+        'delay' => 1,
+    ])
 
-    <div class="admin-card admin-card-hover rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="2">
-        <p class="text-sm font-semibold uppercase tracking-wide text-stone-500">Repeat Customer Rate</p>
-        <p class="mt-1 text-3xl font-bold text-stone-800">{{ $repeatRate['repeat_pct'] }}%</p>
-        <p class="mt-1 text-sm text-stone-400">{{ $repeatRate['total'] }} unique customers</p>
-    </div>
+    @include('admin.dashboard._kpi-card', [
+        'label' => 'Repeat Customer Rate',
+        'value' => $repeatRate['repeat_pct'] . '%',
+        'delta' => $deltas['repeat_pct'] ?? null,
+        'subtitle' => $repeatRate['total'] . ' unique customers',
+        'delay' => 2,
+    ])
 
-    <div class="admin-card admin-card-hover rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
+    @include('admin.dashboard._kpi-card', [
+        'label' => 'Items per Order',
+        'value' => number_format($itemsPerOrder, 1),
+        'delta' => $deltas['items_per_order'] ?? null,
+        'delay' => 3,
+    ])
+
+    <div class="admin-card admin-card-hover rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="4">
         <p class="text-sm font-semibold uppercase tracking-wide text-stone-500">Customer Breakdown</p>
         <div class="mt-2 space-y-1 text-[15px]">
             <div class="flex justify-between"><span class="text-stone-500">1 order</span><span class="font-medium text-stone-700">{{ $repeatRate['one_time'] }}</span></div>
             <div class="flex justify-between"><span class="text-stone-500">2 orders</span><span class="font-medium text-stone-700">{{ $repeatRate['two_orders'] }}</span></div>
             <div class="flex justify-between"><span class="text-stone-500">3+ orders</span><span class="font-medium text-stone-700">{{ $repeatRate['three_plus'] }}</span></div>
-        </div>
-    </div>
-
-    <div class="admin-card admin-card-hover rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="4">
-        <p class="text-sm font-semibold uppercase tracking-wide text-stone-500">Orders by Status</p>
-        <div class="mt-2 space-y-1 text-[15px]">
-            @foreach ($ordersByStatus as $status => $count)
-                <div class="flex justify-between"><span class="text-stone-500">{{ ucfirst($status) }}</span><span class="font-medium text-stone-700">{{ $count }}</span></div>
-            @endforeach
         </div>
     </div>
 </div>
@@ -34,7 +36,7 @@
 <div class="grid gap-6 lg:grid-cols-2">
     {{-- Revenue Over Time --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
-        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Revenue Over Time (30d)</h3>
+        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Revenue Over Time ({{ $periodLabel }})</h3>
         <div class="h-[280px]">
             <canvas id="salesRevenueChart"></canvas>
         </div>
@@ -51,7 +53,7 @@
 
 {{-- Top Products --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="5">
-    <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Top Selling Products (30d)</h3>
+    <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Top Selling Products ({{ $periodLabel }})</h3>
     @if (empty($topProducts))
         <p class="text-[15px] text-stone-500">No sales data yet.</p>
     @else
@@ -85,44 +87,60 @@
     document.addEventListener('DOMContentLoaded', function () {
         const revenueData = @json($revenueOverTime);
         const countryData = @json($revenueByCountry);
+        const prevRevenueData = @json($prevRevenueOverTime ?? null);
 
         // Revenue line chart with gross/net/discounts — Chart.js palette
+        const salesDatasets = [
+            {
+                label: 'Net Revenue',
+                data: revenueData.map(r => r.revenue),
+                borderColor: '#36a2eb',
+                backgroundColor: 'rgba(54, 162, 235, 0.08)',
+                fill: true,
+                tension: 0.35,
+                pointRadius: 3,
+                pointBackgroundColor: '#36a2eb',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+            },
+            {
+                label: 'Gross',
+                data: revenueData.map(r => r.gross),
+                borderColor: '#4bc0c0',
+                borderDash: [5, 5],
+                fill: false,
+                tension: 0.35,
+                pointRadius: 0,
+            },
+            {
+                label: 'Discounts',
+                data: revenueData.map(r => r.discounts),
+                borderColor: '#ff6384',
+                borderDash: [3, 3],
+                fill: false,
+                tension: 0.35,
+                pointRadius: 0,
+            }
+        ];
+
+        if (prevRevenueData) {
+            salesDatasets.push({
+                label: 'Prev. Net Revenue',
+                data: prevRevenueData.map(r => r.revenue),
+                borderColor: '#9966ff',
+                borderDash: [6, 4],
+                backgroundColor: 'transparent',
+                fill: false,
+                tension: 0.35,
+                pointRadius: 0,
+            });
+        }
+
         new Chart(document.getElementById('salesRevenueChart'), {
             type: 'line',
             data: {
                 labels: revenueData.map(r => r.day),
-                datasets: [
-                    {
-                        label: 'Net Revenue',
-                        data: revenueData.map(r => r.revenue),
-                        borderColor: '#36a2eb',
-                        backgroundColor: 'rgba(54, 162, 235, 0.08)',
-                        fill: true,
-                        tension: 0.35,
-                        pointRadius: 3,
-                        pointBackgroundColor: '#36a2eb',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2,
-                    },
-                    {
-                        label: 'Gross',
-                        data: revenueData.map(r => r.gross),
-                        borderColor: '#4bc0c0',
-                        borderDash: [5, 5],
-                        fill: false,
-                        tension: 0.35,
-                        pointRadius: 0,
-                    },
-                    {
-                        label: 'Discounts',
-                        data: revenueData.map(r => r.discounts),
-                        borderColor: '#ff6384',
-                        borderDash: [3, 3],
-                        fill: false,
-                        tension: 0.35,
-                        pointRadius: 0,
-                    }
-                ]
+                datasets: salesDatasets
             },
             options: {
                 responsive: true,
