@@ -34,6 +34,8 @@ class DashboardController extends Controller
         // Custom date range
         $customFrom = $request->query('custom_from');
         $customTo = $request->query('custom_to');
+        $from = null;
+        $to = null;
 
         if ($customFrom && $customTo) {
             try {
