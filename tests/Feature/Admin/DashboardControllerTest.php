@@ -5,6 +5,9 @@ namespace Tests\Feature\Admin;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\StockAlertSubscription;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -428,5 +431,159 @@ class DashboardControllerTest extends TestCase
         $regional = $response->viewData('regionalGrowth');
         $this->assertNotEmpty($regional['countries']);
         $this->assertNotEmpty($regional['quarters']);
+    }
+
+    public function test_customers_tab_has_advanced_context_data(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+
+        $response->assertOk()
+            ->assertViewHas('cohortRetention')
+            ->assertViewHas('aovBreakdown')
+            ->assertViewHas('waitlistConversion');
+
+        $waitlist = $response->viewData('waitlistConversion');
+        $this->assertArrayHasKey('first_release', $waitlist);
+        $this->assertArrayHasKey('restock', $waitlist);
+    }
+
+    public function test_cohort_retention_with_returning_customer(): void
+    {
+        $this->actingAsAdmin();
+
+        // Customer who ordered twice within 12 months
+        $firstDate = now()->subYear()->subMonths(2);
+        Order::factory()->create([
+            'email' => 'loyal@example.com',
+            'payment_status' => 'paid',
+            'placed_at' => $firstDate,
+        ]);
+        Order::factory()->create([
+            'email' => 'loyal@example.com',
+            'payment_status' => 'paid',
+            'placed_at' => $firstDate->copy()->addMonths(3),
+        ]);
+
+        // One-time customer
+        Order::factory()->create([
+            'email' => 'onetime@example.com',
+            'payment_status' => 'paid',
+            'placed_at' => $firstDate,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response->assertOk();
+
+        $cohorts = $response->viewData('cohortRetention');
+        $this->assertNotEmpty($cohorts);
+
+        $cohort = collect($cohorts)->firstWhere('year', $firstDate->year);
+        $this->assertNotNull($cohort);
+        $this->assertEquals(2, $cohort['total_customers']);
+        $this->assertEquals(1, $cohort['retained']);
+        $this->assertEquals(50.0, $cohort['retention_pct']);
+    }
+
+    public function test_aov_breakdown_returns_yearly_data(): void
+    {
+        $this->actingAsAdmin();
+
+        $order = Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => now()->subMonth(),
+            'total' => 80.00,
+        ]);
+        OrderItem::factory()->create([
+            'order_id' => $order->id,
+            'quantity' => 2,
+            'line_total' => 80.00,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response->assertOk();
+
+        $aov = $response->viewData('aovBreakdown');
+        $this->assertNotEmpty($aov);
+
+        $thisYear = collect($aov)->firstWhere('year', now()->year);
+        $this->assertNotNull($thisYear);
+        $this->assertEquals(80.0, $thisYear['aov']);
+        $this->assertEquals(2.0, $thisYear['avg_items_per_order']);
+        $this->assertEquals(40.0, $thisYear['avg_price_per_item']);
+    }
+
+    public function test_waitlist_conversion_with_converted_subscriber(): void
+    {
+        $this->actingAsAdmin();
+
+        $product = Product::factory()->create(['published_at' => now()->subMonths(6)]);
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id]);
+        $user = User::factory()->create(['email' => 'subscriber@example.com']);
+
+        // Restock subscription (>90 days after publish)
+        StockAlertSubscription::factory()->create([
+            'user_id' => $user->id,
+            'product_variant_id' => $variant->id,
+            'notified_at' => now()->subWeek(),
+            'created_at' => now()->subWeeks(2),
+        ]);
+
+        // Subscriber then bought the product
+        $order = Order::factory()->create([
+            'email' => 'subscriber@example.com',
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(3),
+        ]);
+        OrderItem::factory()->create([
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'quantity' => 1,
+            'line_total' => 30.00,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response->assertOk();
+
+        $waitlist = $response->viewData('waitlistConversion');
+        $this->assertEquals(1, $waitlist['restock']['notified']);
+        $this->assertEquals(1, $waitlist['restock']['converted']);
+        $this->assertEquals(100.0, $waitlist['restock']['conversion_pct']);
+    }
+
+    public function test_waitlist_first_release_classification(): void
+    {
+        $this->actingAsAdmin();
+
+        $product = Product::factory()->create(['published_at' => now()->subMonths(1)]);
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id]);
+        $user = User::factory()->create(['email' => 'early@example.com']);
+
+        // First-release subscription (within 90 days of publish)
+        StockAlertSubscription::factory()->create([
+            'user_id' => $user->id,
+            'product_variant_id' => $variant->id,
+            'notified_at' => now()->subDays(5),
+            'created_at' => now()->subWeeks(2),
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response->assertOk();
+
+        $waitlist = $response->viewData('waitlistConversion');
+        $this->assertEquals(1, $waitlist['first_release']['notified']);
+        $this->assertEquals(0, $waitlist['first_release']['converted']);
+    }
+
+    public function test_cohort_retention_empty_without_orders(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response->assertOk();
+
+        $cohorts = $response->viewData('cohortRetention');
+        $this->assertEmpty($cohorts);
     }
 }

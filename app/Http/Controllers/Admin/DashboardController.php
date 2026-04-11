@@ -212,6 +212,9 @@ class DashboardController extends Controller
             'customerStats' => $custStats,
             'customerGeo' => $stats->customerGeography(10, $from, $to),
             'tagFollows' => $stats->tagFollowPopularity(),
+            'cohortRetention' => $stats->cohortRetentionHistory(),
+            'aovBreakdown' => $stats->aovBreakdown(),
+            'waitlistConversion' => $stats->waitlistConversionBenchmark(),
         ];
 
         if ($compare && $prevFrom) {

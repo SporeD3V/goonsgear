@@ -521,6 +521,231 @@ class DashboardStatsService
         });
     }
 
+    // ── Advanced Customer Context ─────────────────────────────
+
+    /**
+     * Cohort retention: for each acquisition year, what % of customers returned within 12 months.
+     *
+     * @return list<array{year: int, total_customers: int, retained: int, retention_pct: float, is_complete: bool}>
+     */
+    public function cohortRetentionHistory(): array
+    {
+        /** @var list<array{year: int, total_customers: int, retained: int, retention_pct: float, is_complete: bool}> */
+        return Cache::remember('dashboard:cohort-retention', 300, function (): array {
+            // Step 1: Get first order date per email
+            $firstOrders = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->whereNotNull('placed_at')
+                ->selectRaw('email, MIN(placed_at) as first_placed_at')
+                ->groupBy('email')
+                ->get();
+
+            if ($firstOrders->isEmpty()) {
+                return [];
+            }
+
+            // Step 2: Get all orders grouped by email for return checking
+            $allOrders = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->whereNotNull('placed_at')
+                ->select('email', 'placed_at')
+                ->orderBy('placed_at')
+                ->get()
+                ->groupBy('email');
+
+            // Step 3: Process cohorts in PHP
+            $cohorts = [];
+            $now = Carbon::now();
+
+            foreach ($firstOrders as $row) {
+                $firstDate = Carbon::parse($row->first_placed_at);
+                $year = $firstDate->year;
+
+                if (! isset($cohorts[$year])) {
+                    $cohorts[$year] = ['total' => 0, 'retained' => 0];
+                }
+                $cohorts[$year]['total']++;
+
+                // Check for return order within 12 months of first order
+                $cutoff = $firstDate->copy()->addYear();
+                $customerOrders = $allOrders->get($row->email, collect());
+                $hasReturn = $customerOrders->contains(function ($order) use ($firstDate, $cutoff) {
+                    $orderDate = Carbon::parse($order->placed_at);
+
+                    return $orderDate->gt($firstDate) && $orderDate->lte($cutoff);
+                });
+
+                if ($hasReturn) {
+                    $cohorts[$year]['retained']++;
+                }
+            }
+
+            // Build sorted result
+            ksort($cohorts);
+            $result = [];
+
+            foreach ($cohorts as $year => $data) {
+                // A cohort is "complete" if 12 months have passed since year end
+                $yearEnd = Carbon::createFromDate($year, 12, 31)->endOfDay();
+
+                $result[] = [
+                    'year' => $year,
+                    'total_customers' => $data['total'],
+                    'retained' => $data['retained'],
+                    'retention_pct' => round($data['retained'] / $data['total'] * 100, 1),
+                    'is_complete' => $yearEnd->copy()->addYear()->lte($now),
+                ];
+            }
+
+            return $result;
+        });
+    }
+
+    /**
+     * AOV breakdown by year: decompose into avg items/order × avg price/item.
+     *
+     * @return list<array{year: int, total_orders: int, aov: float, avg_items_per_order: float, avg_price_per_item: float}>
+     */
+    public function aovBreakdown(int $yearsBack = 4): array
+    {
+        $cacheKey = "dashboard:aov-breakdown:{$yearsBack}";
+
+        /** @var list<array{year: int, total_orders: int, aov: float, avg_items_per_order: float, avg_price_per_item: float}> */
+        return Cache::remember($cacheKey, 300, function () use ($yearsBack): array {
+            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+            $yearExpr = $isSqlite
+                ? "cast(strftime('%Y', orders.placed_at) as integer)"
+                : 'YEAR(orders.placed_at)';
+
+            $startYear = (int) Carbon::now()->year - $yearsBack + 1;
+
+            $rows = DB::table('order_items')
+                ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                ->whereIn('orders.payment_status', self::PAID_STATUSES)
+                ->whereNotNull('orders.placed_at')
+                ->where('orders.placed_at', '>=', Carbon::createFromDate($startYear, 1, 1))
+                ->selectRaw("{$yearExpr} as yr")
+                ->selectRaw('COUNT(DISTINCT orders.id) as total_orders')
+                ->selectRaw('SUM(order_items.quantity) as total_items')
+                ->selectRaw('SUM(order_items.line_total) as total_revenue')
+                ->groupBy('yr')
+                ->orderBy('yr')
+                ->get();
+
+            return $rows->map(function ($row): array {
+                $totalOrders = (int) $row->total_orders;
+                $totalItems = (int) $row->total_items;
+                $totalRevenue = (float) $row->total_revenue;
+
+                return [
+                    'year' => (int) $row->yr,
+                    'total_orders' => $totalOrders,
+                    'aov' => $totalOrders > 0 ? round($totalRevenue / $totalOrders, 2) : 0,
+                    'avg_items_per_order' => $totalOrders > 0 ? round($totalItems / $totalOrders, 1) : 0,
+                    'avg_price_per_item' => $totalItems > 0 ? round($totalRevenue / $totalItems, 2) : 0,
+                ];
+            })->all();
+        });
+    }
+
+    /**
+     * Waitlist conversion benchmark: back-in-stock alert conversion for new products vs restocks.
+     * New = subscription created within 90 days of product publish. Restock = older products.
+     *
+     * @return array{first_release: array{notified: int, converted: int, conversion_pct: float}, restock: array{notified: int, converted: int, conversion_pct: float}}
+     */
+    public function waitlistConversionBenchmark(): array
+    {
+        /** @var array{first_release: array{notified: int, converted: int, conversion_pct: float}, restock: array{notified: int, converted: int, conversion_pct: float}} */
+        return Cache::remember('dashboard:waitlist-conversion', 300, function (): array {
+            $empty = ['notified' => 0, 'converted' => 0, 'conversion_pct' => 0.0];
+
+            // Step 1: Get all notified subscriptions with product/email info
+            $subscriptions = DB::table('stock_alert_subscriptions as sas')
+                ->join('product_variants as pv', 'pv.id', '=', 'sas.product_variant_id')
+                ->join('products as p', 'p.id', '=', 'pv.product_id')
+                ->leftJoin('users as u', 'u.id', '=', 'sas.user_id')
+                ->whereNotNull('sas.notified_at')
+                ->select([
+                    'sas.id',
+                    'sas.notified_at',
+                    'sas.created_at as sub_created_at',
+                    'pv.product_id',
+                    'p.published_at',
+                    DB::raw('COALESCE(sas.email, u.email) as subscriber_email'),
+                ])
+                ->get();
+
+            if ($subscriptions->isEmpty()) {
+                return ['first_release' => $empty, 'restock' => $empty];
+            }
+
+            // Step 2: Get all potential conversion orders (matching emails + products)
+            $emails = $subscriptions->pluck('subscriber_email')->filter()->unique()->values()->all();
+            $productIds = $subscriptions->pluck('product_id')->unique()->values()->all();
+
+            $conversionOrders = DB::table('orders')
+                ->join('order_items', 'orders.id', '=', 'order_items.order_id')
+                ->whereIn('orders.payment_status', self::PAID_STATUSES)
+                ->whereIn('orders.email', $emails)
+                ->whereIn('order_items.product_id', $productIds)
+                ->select('orders.email', 'order_items.product_id', 'orders.placed_at')
+                ->get();
+
+            // Step 3: Match subscriptions to conversions in PHP
+            $buckets = [
+                'first_release' => ['notified' => 0, 'converted' => 0],
+                'restock' => ['notified' => 0, 'converted' => 0],
+            ];
+
+            foreach ($subscriptions as $sub) {
+                if (! $sub->subscriber_email) {
+                    continue;
+                }
+
+                // Classify: new product (<= 90 days from publish) vs restock
+                $isNew = false;
+                if ($sub->published_at) {
+                    $daysSincePublish = Carbon::parse($sub->published_at)
+                        ->diffInDays(Carbon::parse($sub->sub_created_at));
+                    $isNew = $daysSincePublish <= 90;
+                }
+
+                $key = $isNew ? 'first_release' : 'restock';
+                $buckets[$key]['notified']++;
+
+                // Check if subscriber bought this product after notification
+                $notifiedAt = Carbon::parse($sub->notified_at);
+                $converted = $conversionOrders->contains(function ($order) use ($sub, $notifiedAt) {
+                    return $order->email === $sub->subscriber_email
+                        && (int) $order->product_id === (int) $sub->product_id
+                        && Carbon::parse($order->placed_at)->gte($notifiedAt);
+                });
+
+                if ($converted) {
+                    $buckets[$key]['converted']++;
+                }
+            }
+
+            return [
+                'first_release' => [
+                    'notified' => $buckets['first_release']['notified'],
+                    'converted' => $buckets['first_release']['converted'],
+                    'conversion_pct' => $buckets['first_release']['notified'] > 0
+                        ? round($buckets['first_release']['converted'] / $buckets['first_release']['notified'] * 100, 1)
+                        : 0.0,
+                ],
+                'restock' => [
+                    'notified' => $buckets['restock']['notified'],
+                    'converted' => $buckets['restock']['converted'],
+                    'conversion_pct' => $buckets['restock']['notified'] > 0
+                        ? round($buckets['restock']['converted'] / $buckets['restock']['notified'] * 100, 1)
+                        : 0.0,
+                ],
+            ];
+        });
+    }
+
     // ── Historical / Seasonal ─────────────────────────────────
 
     /**
