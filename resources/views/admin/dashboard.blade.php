@@ -14,7 +14,7 @@
                         $tabParams['custom_to'] = $customTo;
                     }
                 @endphp
-                @foreach (['overview' => 'Overview', 'sales' => 'Sales', 'inventory' => 'Inventory', 'promotions' => 'Promotions', 'customers' => 'Customers'] as $key => $label)
+                @foreach (['overview' => 'Overview', 'sales' => 'Sales & Revenue', 'audience' => 'Audience & CRM', 'inventory' => 'Inventory & Ops', 'marketing' => 'Marketing & Funnel'] as $key => $label)
                     <a href="{{ route('admin.dashboard', array_merge($tabParams, ['tab' => $key])) }}"
                        class="whitespace-nowrap rounded-t-lg border-b-2 px-4 py-3 transition {{ $tab === $key ? 'border-[#36a2eb] bg-[#36a2eb]/10 text-[#36a2eb]' : 'border-transparent text-stone-500 hover:border-stone-300 hover:bg-stone-50 hover:text-stone-700' }}">
                         {{ $label }}

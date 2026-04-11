@@ -49,8 +49,10 @@ class DashboardControllerTest extends TestCase
             ->assertOk()
             ->assertViewHas('tab', 'sales')
             ->assertViewHas('aov')
-            ->assertViewHas('repeatRate')
             ->assertViewHas('itemsPerOrder')
+            ->assertViewHas('discountImpact')
+            ->assertViewHas('aovBreakdown')
+            ->assertViewHas('customerGeo')
             ->assertViewHas('topProducts')
             ->assertViewHas('revenueByCountry');
     }
@@ -63,29 +65,35 @@ class DashboardControllerTest extends TestCase
             ->assertOk()
             ->assertViewHas('stockHealth')
             ->assertViewHas('stockAlertDemand')
-            ->assertViewHas('productStatus');
+            ->assertViewHas('productStatus')
+            ->assertViewHas('preorderLiability')
+            ->assertViewHas('fulfillmentSpeed');
     }
 
-    public function test_dashboard_loads_promotions_tab(): void
+    public function test_dashboard_loads_marketing_tab(): void
     {
         $this->actingAsAdmin();
 
-        $this->get(route('admin.dashboard', ['tab' => 'promotions']))
+        $this->get(route('admin.dashboard', ['tab' => 'marketing']))
             ->assertOk()
             ->assertViewHas('couponLeaderboard')
-            ->assertViewHas('discountImpact')
-            ->assertViewHas('cartRecovery');
+            ->assertViewHas('cartRecovery')
+            ->assertViewHas('waitlistConversion')
+            ->assertViewHas('newsletterCount');
     }
 
-    public function test_dashboard_loads_customers_tab(): void
+    public function test_dashboard_loads_audience_tab(): void
     {
         $this->actingAsAdmin();
 
-        $this->get(route('admin.dashboard', ['tab' => 'customers']))
+        $this->get(route('admin.dashboard', ['tab' => 'audience']))
             ->assertOk()
             ->assertViewHas('customerStats')
-            ->assertViewHas('customerGeo')
-            ->assertViewHas('tagFollows');
+            ->assertViewHas('repeatRate')
+            ->assertViewHas('tagFollows')
+            ->assertViewHas('rfmSegmentation')
+            ->assertViewHas('clv')
+            ->assertViewHas('vipChurn');
     }
 
     public function test_customer_stats_active_in_period_counts_ordering_customers(): void
@@ -120,7 +128,7 @@ class DashboardControllerTest extends TestCase
             'placed_at' => now()->subDays(2),
         ]);
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'customers', 'period' => '30d']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'audience', 'period' => '30d']));
 
         $response->assertOk();
         $stats = $response->viewData('customerStats');
@@ -140,7 +148,7 @@ class DashboardControllerTest extends TestCase
         ]);
 
         $response = $this->get(route('admin.dashboard', [
-            'tab' => 'customers',
+            'tab' => 'audience',
             'period' => '30d',
             'compare' => 1,
         ]));
@@ -475,20 +483,16 @@ class DashboardControllerTest extends TestCase
         $this->assertNotEmpty($regional['quarters']);
     }
 
-    public function test_customers_tab_has_advanced_context_data(): void
+    public function test_audience_tab_has_advanced_context_data(): void
     {
         $this->actingAsAdmin();
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'audience']));
 
         $response->assertOk()
             ->assertViewHas('cohortRetention')
-            ->assertViewHas('aovBreakdown')
-            ->assertViewHas('waitlistConversion');
-
-        $waitlist = $response->viewData('waitlistConversion');
-        $this->assertArrayHasKey('first_release', $waitlist);
-        $this->assertArrayHasKey('restock', $waitlist);
+            ->assertViewHas('repeatRate')
+            ->assertViewHas('vipChurn');
     }
 
     public function test_cohort_retention_with_returning_customer(): void
@@ -515,7 +519,7 @@ class DashboardControllerTest extends TestCase
             'placed_at' => $firstDate,
         ]);
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'audience']));
         $response->assertOk();
 
         $cohorts = $response->viewData('cohortRetention');
@@ -543,7 +547,7 @@ class DashboardControllerTest extends TestCase
             'line_total' => 80.00,
         ]);
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
         $response->assertOk();
 
         $aov = $response->viewData('aovBreakdown');
@@ -585,7 +589,7 @@ class DashboardControllerTest extends TestCase
             'line_total' => 30.00,
         ]);
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'marketing']));
         $response->assertOk();
 
         $waitlist = $response->viewData('waitlistConversion');
@@ -610,7 +614,7 @@ class DashboardControllerTest extends TestCase
             'created_at' => now()->subWeeks(2),
         ]);
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'marketing']));
         $response->assertOk();
 
         $waitlist = $response->viewData('waitlistConversion');
@@ -622,18 +626,18 @@ class DashboardControllerTest extends TestCase
     {
         $this->actingAsAdmin();
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'audience']));
         $response->assertOk();
 
         $cohorts = $response->viewData('cohortRetention');
         $this->assertEmpty($cohorts);
     }
 
-    public function test_customers_tab_has_rfm_and_clv_data(): void
+    public function test_audience_tab_has_rfm_and_clv_data(): void
     {
         $this->actingAsAdmin();
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'audience']));
         $response->assertOk()
             ->assertViewHas('rfmSegmentation')
             ->assertViewHas('clv');
@@ -671,7 +675,7 @@ class DashboardControllerTest extends TestCase
             'total' => 50.00,
         ]);
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'audience']));
         $response->assertOk();
 
         $rfm = $response->viewData('rfmSegmentation');
@@ -688,7 +692,7 @@ class DashboardControllerTest extends TestCase
     {
         $this->actingAsAdmin();
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'audience']));
         $response->assertOk();
 
         $rfm = $response->viewData('rfmSegmentation');
@@ -717,7 +721,7 @@ class DashboardControllerTest extends TestCase
             'total' => 50.00,
         ]);
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'audience']));
         $response->assertOk();
 
         $clv = $response->viewData('clv');
@@ -732,7 +736,7 @@ class DashboardControllerTest extends TestCase
     {
         $this->actingAsAdmin();
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'audience']));
         $response->assertOk();
 
         $clv = $response->viewData('clv');
@@ -761,7 +765,7 @@ class DashboardControllerTest extends TestCase
             'total' => 100.00,
         ]);
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'audience']));
         $response->assertOk();
 
         $clv = $response->viewData('clv');
@@ -796,7 +800,7 @@ class DashboardControllerTest extends TestCase
             ]);
         }
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'audience']));
         $response->assertOk();
 
         $churn = $response->viewData('vipChurn');
@@ -809,7 +813,7 @@ class DashboardControllerTest extends TestCase
     {
         $this->actingAsAdmin();
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'audience']));
         $response->assertOk();
 
         $churn = $response->viewData('vipChurn');
@@ -976,7 +980,7 @@ class DashboardControllerTest extends TestCase
             'recovered_at' => null,
         ]);
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'promotions']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'marketing']));
         $response->assertOk();
 
         $abandoned = $response->viewData('topAbandonedProducts');
@@ -1003,7 +1007,7 @@ class DashboardControllerTest extends TestCase
             'recovered_at' => now()->subDay(),
         ]);
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'promotions']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'marketing']));
         $response->assertOk();
 
         $abandoned = $response->viewData('topAbandonedProducts');
@@ -1020,11 +1024,11 @@ class DashboardControllerTest extends TestCase
             ->assertViewHas('productAffinity');
     }
 
-    public function test_promotions_tab_has_abandoned_products_data(): void
+    public function test_marketing_tab_has_abandoned_products_data(): void
     {
         $this->actingAsAdmin();
 
-        $response = $this->get(route('admin.dashboard', ['tab' => 'promotions']));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'marketing']));
         $response->assertOk()
             ->assertViewHas('topAbandonedProducts');
     }
@@ -1181,11 +1185,11 @@ class DashboardControllerTest extends TestCase
         $this->assertEquals(1, $visit->visitor_count);
     }
 
-    public function test_overview_has_preorder_liability_data(): void
+    public function test_inventory_has_preorder_liability_data(): void
     {
         $this->actingAsAdmin();
 
-        $response = $this->get(route('admin.dashboard'));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
         $response->assertOk()
             ->assertViewHas('preorderLiability');
     }
@@ -1214,7 +1218,7 @@ class DashboardControllerTest extends TestCase
             'placed_at' => now()->subDays(2),
         ]);
 
-        $response = $this->get(route('admin.dashboard'));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
         $response->assertOk();
 
         $liability = $response->viewData('preorderLiability');
@@ -1226,7 +1230,7 @@ class DashboardControllerTest extends TestCase
     {
         $this->actingAsAdmin();
 
-        $response = $this->get(route('admin.dashboard'));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
         $response->assertOk();
 
         $liability = $response->viewData('preorderLiability');
@@ -1234,11 +1238,11 @@ class DashboardControllerTest extends TestCase
         $this->assertEquals(0.0, $liability['total_liability']);
     }
 
-    public function test_overview_has_fulfillment_speed_data(): void
+    public function test_inventory_has_fulfillment_speed_data(): void
     {
         $this->actingAsAdmin();
 
-        $response = $this->get(route('admin.dashboard'));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
         $response->assertOk()
             ->assertViewHas('fulfillmentSpeed');
     }
@@ -1260,7 +1264,7 @@ class DashboardControllerTest extends TestCase
             'shipped_at' => now()->subDays(6),
         ]);
 
-        $response = $this->get(route('admin.dashboard'));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
         $response->assertOk();
 
         $speed = $response->viewData('fulfillmentSpeed');
@@ -1273,7 +1277,7 @@ class DashboardControllerTest extends TestCase
     {
         $this->actingAsAdmin();
 
-        $response = $this->get(route('admin.dashboard'));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
         $response->assertOk();
 
         $speed = $response->viewData('fulfillmentSpeed');

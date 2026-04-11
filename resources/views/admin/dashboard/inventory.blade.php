@@ -2,6 +2,63 @@
     $health = (object) $stockHealth;
 @endphp
 
+{{-- Operational Metrics: Pre-order Liability + Fulfillment Speed --}}
+<div class="grid gap-6 lg:grid-cols-2">
+    {{-- Pre-order Liability --}}
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="1">
+        <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Pre-order Liability</h3>
+        <p class="mb-3 text-[12px] text-stone-400">Cash already collected for pre-ordered items that haven't shipped yet. This is money you owe in goods until the order is fulfilled.</p>
+        @if ($preorderLiability['order_count'] === 0)
+            <p class="text-[15px] text-stone-500">No active pre-orders with payment confirmed.</p>
+        @else
+            <div class="flex items-baseline gap-3">
+                <p class="text-3xl font-bold text-[#ff9f40]">&euro;{{ number_format($preorderLiability['total_liability'], 2) }}</p>
+                <span class="text-[15px] text-stone-500">outstanding</span>
+            </div>
+            <div class="mt-3 grid grid-cols-2 gap-3">
+                <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 text-center">
+                    <div class="text-[13px] text-stone-500">Orders</div>
+                    <div class="text-lg font-bold text-stone-700">{{ $preorderLiability['order_count'] }}</div>
+                </div>
+                <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 text-center">
+                    <div class="text-[13px] text-stone-500">Total Items</div>
+                    <div class="text-lg font-bold text-stone-700">{{ $preorderLiability['item_count'] }}</div>
+                </div>
+            </div>
+            <p class="mt-2 text-[11px] text-stone-400">Formula: SUM(order total) where status = "pre-ordered" and payment is confirmed.</p>
+        @endif
+    </div>
+
+    {{-- Fulfillment Speed --}}
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="1">
+        <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Fulfillment Speed ({{ $periodLabel }})</h3>
+        <p class="mb-3 text-[12px] text-stone-400">How long from when an order is placed until it's shipped? Faster = happier customers.</p>
+        @if ($fulfillmentSpeed['shipped_count'] === 0)
+            <p class="text-[15px] text-stone-500">No shipped orders with both placed and shipped dates in this period.</p>
+        @else
+            <div class="flex items-baseline gap-3">
+                <p class="text-3xl font-bold" style="color: #36a2eb">{{ $fulfillmentSpeed['median_days'] }}</p>
+                <span class="text-[15px] text-stone-500">median days to ship</span>
+            </div>
+            <div class="mt-3 grid grid-cols-3 gap-3">
+                <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 text-center">
+                    <div class="text-[13px] text-stone-500">Average</div>
+                    <div class="text-lg font-bold text-stone-700">{{ $fulfillmentSpeed['avg_days'] }}d</div>
+                </div>
+                <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 text-center">
+                    <div class="text-[13px] text-stone-500">Fastest</div>
+                    <div class="text-lg font-bold text-[#4bc0c0]">{{ $fulfillmentSpeed['fastest_days'] }}d</div>
+                </div>
+                <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 text-center">
+                    <div class="text-[13px] text-stone-500">Slowest</div>
+                    <div class="text-lg font-bold text-[#ff6384]">{{ $fulfillmentSpeed['slowest_days'] }}d</div>
+                </div>
+            </div>
+            <p class="mt-2 text-[11px] text-stone-400">Based on {{ $fulfillmentSpeed['shipped_count'] }} shipped orders. Formula: shipped_at − placed_at in days.</p>
+        @endif
+    </div>
+</div>
+
 {{-- Stock Health Bar --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="1">
     <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Inventory Health</h3>

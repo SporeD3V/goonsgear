@@ -1,5 +1,5 @@
 {{-- KPI Row --}}
-<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     @include('admin.dashboard._kpi-card', [
         'label' => 'AOV — Avg Order Value',
         'value' => '&euro;' . number_format($aov, 2),
@@ -9,29 +9,20 @@
     ])
 
     @include('admin.dashboard._kpi-card', [
-        'label' => 'Repeat Customer Rate',
-        'value' => $repeatRate['repeat_pct'] . '%',
-        'delta' => $deltas['repeat_pct'] ?? null,
-        'subtitle' => $repeatRate['total'] . ' unique customers · Buyers with 2+ orders ÷ All buyers × 100',
-        'delay' => 2,
-    ])
-
-    @include('admin.dashboard._kpi-card', [
         'label' => 'Items per Order',
         'value' => number_format($itemsPerOrder, 1),
         'delta' => $deltas['items_per_order'] ?? null,
         'subtitle' => 'Avg number of products in each order',
-        'delay' => 3,
+        'delay' => 2,
     ])
 
-    <div class="admin-card admin-card-hover rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="4">
-        <p class="text-sm font-semibold uppercase tracking-wide text-stone-500">Customer Breakdown</p>
-        <div class="mt-2 space-y-1 text-[15px]">
-            <div class="flex justify-between"><span class="text-stone-500">1 order</span><span class="font-medium text-stone-700">{{ $repeatRate['one_time'] }}</span></div>
-            <div class="flex justify-between"><span class="text-stone-500">2 orders</span><span class="font-medium text-stone-700">{{ $repeatRate['two_orders'] }}</span></div>
-            <div class="flex justify-between"><span class="text-stone-500">3+ orders</span><span class="font-medium text-stone-700">{{ $repeatRate['three_plus'] }}</span></div>
-        </div>
-    </div>
+    @include('admin.dashboard._kpi-card', [
+        'label' => 'Discount Margin',
+        'value' => $discountImpact['discount_pct'] . '%',
+        'delta' => $deltas['discount_pct'] ?? null,
+        'subtitle' => '&euro;' . number_format($discountImpact['total_discounts'], 2) . ' of &euro;' . number_format($discountImpact['total_gross'], 2) . ' gross goes to discounts',
+        'delay' => 3,
+    ])
 </div>
 
 {{-- Charts Row --}}
@@ -44,32 +35,40 @@
         </div>
     </div>
 
-    {{-- Revenue by Country --}}
+    {{-- Geography Hub --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="4">
-        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Revenue by Country</h3>
+        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Geography Hub</h3>
         <div class="h-[280px]">
             <canvas id="countryRevenueChart"></canvas>
         </div>
     </div>
 </div>
 
-{{-- AOV by Country --}}
+{{-- Geography Hub — Unified Country Table --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="5">
-    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">AOV by Country — Average Order Value per Country ({{ $periodLabel }})</h3>
-    <p class="mb-3 text-[13px] text-stone-500">Do customers in some countries spend more per order? <span class="font-medium">AOV = Total Revenue ÷ Number of Orders</span> for each country.</p>
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Revenue, AOV & Customers by Country ({{ $periodLabel }})</h3>
+    <p class="mb-3 text-[13px] text-stone-500">Revenue, average order value, and unique customer count per country in one view.</p>
     @if (empty($aovByCountry))
         <p class="text-[15px] text-stone-500">No order data yet.</p>
     @else
+        @php
+            // Merge customer counts into AOV-by-country rows
+            $customerCountMap = collect($customerGeo)->pluck('count', 'country')->all();
+            $geoRows = collect($aovByCountry)->map(function ($row) use ($customerCountMap) {
+                $row['customers'] = $customerCountMap[$row['country'] ?? ''] ?? $customerCountMap[$row['country']] ?? 0;
+                return $row;
+            })->all();
+        @endphp
         <div class="grid gap-5 lg:grid-cols-2">
             <div class="h-[260px]">
                 <canvas id="aovByCountryChart"></canvas>
             </div>
             <div class="overflow-x-auto" x-data="{
-                sortCol: 'aov',
+                sortCol: 'revenue',
                 sortAsc: false,
                 showAll: false,
                 limit: 10,
-                items: {{ Js::from($aovByCountry) }},
+                items: {{ Js::from($geoRows) }},
                 get sorted() {
                     const col = this.sortCol;
                     const dir = this.sortAsc ? 1 : -1;
@@ -93,18 +92,20 @@
                     <thead class="bg-stone-50">
                         <tr>
                             <th @click="toggleSort('country')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Country <span class="text-xs" x-text="sortIcon('country')"></span></th>
-                            <th @click="toggleSort('aov')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">AOV <span class="text-xs" x-text="sortIcon('aov')"></span></th>
-                            <th @click="toggleSort('orders')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Orders <span class="text-xs" x-text="sortIcon('orders')"></span></th>
                             <th @click="toggleSort('revenue')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Revenue <span class="text-xs" x-text="sortIcon('revenue')"></span></th>
+                            <th @click="toggleSort('orders')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Orders <span class="text-xs" x-text="sortIcon('orders')"></span></th>
+                            <th @click="toggleSort('aov')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">AOV <span class="text-xs" x-text="sortIcon('aov')"></span></th>
+                            <th @click="toggleSort('customers')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Customers <span class="text-xs" x-text="sortIcon('customers')"></span></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-stone-100">
                         <template x-for="row in visible" :key="row.country">
                             <tr class="transition hover:bg-stone-50">
                                 <td class="whitespace-nowrap px-4 py-2.5 font-medium text-stone-700" x-text="row.country || 'Unknown'"></td>
-                                <td class="whitespace-nowrap px-4 py-2.5 text-right font-semibold" style="color: #36a2eb" x-text="'€' + Number(row.aov).toFixed(2)"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="'€' + Number(row.revenue).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></td>
                                 <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="Number(row.orders).toLocaleString()"></td>
-                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="'€' + Number(row.revenue).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right font-semibold" style="color: #36a2eb" x-text="'€' + Number(row.aov).toFixed(2)"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="Number(row.customers).toLocaleString()"></td>
                             </tr>
                         </template>
                     </tbody>
@@ -450,6 +451,43 @@
     @endif
 </div>
 
+{{-- AOV Inflation Adjuster --}}
+<div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="12">
+    <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">AOV Inflation Adjuster</h3>
+    <p class="mb-3 text-[13px] text-stone-500">Are customers buying more items per order, or are price increases driving AOV?</p>
+    @if (empty($aovBreakdown))
+        <p class="text-[15px] text-stone-500">Not enough order data yet.</p>
+    @else
+        <div class="mb-4 h-[260px]">
+            <canvas id="aovBreakdownChart"></canvas>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                <thead class="bg-stone-50">
+                    <tr>
+                        <th class="px-4 py-2.5 text-left font-medium text-stone-600">Year</th>
+                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Orders</th>
+                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">AOV</th>
+                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Avg Items / Order</th>
+                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Avg Price / Item</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100">
+                    @foreach ($aovBreakdown as $row)
+                        <tr class="transition hover:bg-stone-50">
+                            <td class="px-4 py-2.5 font-medium text-stone-700">{{ $row['year'] }}</td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ number_format($row['total_orders']) }}</td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right font-medium text-stone-700">€{{ number_format($row['aov'], 2) }}</td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ $row['avg_items_per_order'] }}</td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">€{{ number_format($row['avg_price_per_item'], 2) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+</div>
+
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -731,6 +769,48 @@
                                 }
                             }
                         }
+                    }
+                }
+            });
+        }
+
+        // AOV Breakdown Chart
+        const aovData = @json($aovBreakdown);
+        if (aovData.length && document.getElementById('aovBreakdownChart')) {
+            new Chart(document.getElementById('aovBreakdownChart'), {
+                type: 'bar',
+                data: {
+                    labels: aovData.map(r => r.year),
+                    datasets: [
+                        {
+                            label: 'AOV (€)',
+                            data: aovData.map(r => r.aov),
+                            backgroundColor: '#36a2eb',
+                            borderRadius: 6,
+                        },
+                        {
+                            label: 'Avg Price / Item (€)',
+                            data: aovData.map(r => r.avg_price_per_item),
+                            backgroundColor: '#ff6384',
+                            borderRadius: 6,
+                        },
+                        {
+                            label: 'Avg Items / Order',
+                            data: aovData.map(r => r.avg_items_per_order),
+                            backgroundColor: '#ff9f40',
+                            borderRadius: 6,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 12 }, color: '#57534e', padding: 16 } },
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { font: { size: 12 }, color: '#78716c' }, grid: { color: '#f5f5f4' } },
+                        x: { ticks: { font: { size: 12 }, color: '#57534e' } }
                     }
                 }
             });

@@ -104,15 +104,9 @@ class DashboardController extends Controller
 
         match ($tab) {
             'sales' => $data += $this->salesTab($stats, $from, $to, $prevFrom, $prevTo, $compare, $benchmarkA, $benchmarkB, $benchmarkDays, $benchmarkStartA, $benchmarkStartB),
-            'inventory' => $data += [
-                'stockHealth' => $stats->stockHealth(),
-                'stockAlertDemand' => $stats->stockAlertDemand(30),
-                'productStatus' => $stats->productStatusBreakdown(),
-                'daysOfStockRemaining' => $stats->daysOfStockRemaining(50),
-                'revenueAtRisk' => $stats->revenueAtRisk(50),
-            ],
-            'promotions' => $data += $this->promotionsTab($stats, $from, $to, $prevFrom, $prevTo, $compare),
-            'customers' => $data += $this->customersTab($stats, $from, $to, $prevFrom, $prevTo, $compare),
+            'audience' => $data += $this->audienceTab($stats, $from, $to, $prevFrom, $prevTo, $compare),
+            'inventory' => $data += $this->inventoryTab($stats, $from, $to),
+            'marketing' => $data += $this->marketingTab($stats, $from, $to, $prevFrom, $prevTo, $compare),
             default => $data += $this->overviewTab($stats, $from, $to, $prevFrom, $prevTo, $compare),
         };
 
@@ -130,8 +124,6 @@ class DashboardController extends Controller
             'revenueOverTime' => $stats->revenueOverTime($from, $to),
             'ordersByStatus' => $stats->ordersByStatus($from, $to),
             'siteConversion' => $stats->siteConversionRate($from, $to),
-            'preorderLiability' => $stats->preorderLiability(),
-            'fulfillmentSpeed' => $stats->fulfillmentSpeed($from, $to),
         ];
 
         if ($compare && $prevFrom) {
@@ -153,18 +145,20 @@ class DashboardController extends Controller
     private function salesTab(DashboardStatsService $stats, ?Carbon $from, ?Carbon $to, ?Carbon $prevFrom, ?Carbon $prevTo, bool $compare, int $benchmarkA, int $benchmarkB, int $benchmarkDays, ?string $benchmarkStartA = null, ?string $benchmarkStartB = null): array
     {
         $aov = $stats->averageOrderValue($from, $to);
-        $repeatRate = $stats->repeatCustomerRate($from, $to);
         $itemsPerOrder = $stats->itemsPerOrder($from, $to);
+        $discountImpact = $stats->discountMarginImpact($from, $to);
 
         $data = [
             'revenueOverTime' => $stats->revenueOverTime($from, $to),
             'ordersByStatus' => $stats->ordersByStatus($from, $to),
             'revenueByCountry' => $stats->revenueByCountry(50, $from, $to),
             'aovByCountry' => $stats->aovByCountry(50, $from, $to),
+            'customerGeo' => $stats->customerGeography(30, $from, $to),
             'topProducts' => $stats->topSellingProducts(50, $from, $to),
             'aov' => $aov,
-            'repeatRate' => $repeatRate,
             'itemsPerOrder' => $itemsPerOrder,
+            'discountImpact' => $discountImpact,
+            'aovBreakdown' => $stats->aovBreakdown(),
             'yearlyRevenue' => $stats->monthlyRevenueByYear(),
             'bestMonthBenchmark' => $stats->bestMonthBenchmark(),
             'regionalGrowth' => $stats->regionalGrowthTrend(),
@@ -175,12 +169,12 @@ class DashboardController extends Controller
 
         if ($compare && $prevFrom) {
             $prevAov = $stats->averageOrderValue($prevFrom, $prevTo);
-            $prevRepeat = $stats->repeatCustomerRate($prevFrom, $prevTo);
             $prevItems = $stats->itemsPerOrder($prevFrom, $prevTo);
+            $prevImpact = $stats->discountMarginImpact($prevFrom, $prevTo);
             $data['deltas'] = [
                 'aov' => DashboardStatsService::delta($aov, $prevAov),
-                'repeat_pct' => DashboardStatsService::delta($repeatRate['repeat_pct'], $prevRepeat['repeat_pct']),
                 'items_per_order' => DashboardStatsService::delta($itemsPerOrder, $prevItems),
+                'discount_pct' => DashboardStatsService::delta($discountImpact['discount_pct'], $prevImpact['discount_pct']),
             ];
             $data['prevRevenueOverTime'] = $stats->revenueOverTime($prevFrom, $prevTo);
         }
@@ -191,23 +185,22 @@ class DashboardController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function promotionsTab(DashboardStatsService $stats, ?Carbon $from, ?Carbon $to, ?Carbon $prevFrom, ?Carbon $prevTo, bool $compare): array
+    private function marketingTab(DashboardStatsService $stats, ?Carbon $from, ?Carbon $to, ?Carbon $prevFrom, ?Carbon $prevTo, bool $compare): array
     {
-        $impact = $stats->discountMarginImpact($from, $to);
         $recovery = $stats->cartRecoveryFunnel($from, $to);
+        $custStats = $stats->customerStats($from, $to);
 
         $data = [
+            'newsletterCount' => $custStats['total_newsletter'],
             'couponLeaderboard' => $stats->couponLeaderboard(30, $from, $to),
-            'discountImpact' => $impact,
             'cartRecovery' => $recovery,
             'topAbandonedProducts' => $stats->topAbandonedProducts(30, $from, $to),
+            'waitlistConversion' => $stats->waitlistConversionBenchmark(),
         ];
 
         if ($compare && $prevFrom) {
-            $prevImpact = $stats->discountMarginImpact($prevFrom, $prevTo);
             $prevRecovery = $stats->cartRecoveryFunnel($prevFrom, $prevTo);
             $data['deltas'] = [
-                'discount_pct' => DashboardStatsService::delta($impact['discount_pct'], $prevImpact['discount_pct']),
                 'recovery_pct' => DashboardStatsService::delta($recovery['recovery_pct'], $prevRecovery['recovery_pct']),
             ];
         }
@@ -218,17 +211,16 @@ class DashboardController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function customersTab(DashboardStatsService $stats, ?Carbon $from, ?Carbon $to, ?Carbon $prevFrom, ?Carbon $prevTo, bool $compare): array
+    private function audienceTab(DashboardStatsService $stats, ?Carbon $from, ?Carbon $to, ?Carbon $prevFrom, ?Carbon $prevTo, bool $compare): array
     {
         $custStats = $stats->customerStats($from, $to);
+        $repeatRate = $stats->repeatCustomerRate($from, $to);
 
         $data = [
             'customerStats' => $custStats,
-            'customerGeo' => $stats->customerGeography(30, $from, $to),
+            'repeatRate' => $repeatRate,
             'tagFollows' => $stats->tagFollowPopularity(30),
             'cohortRetention' => $stats->cohortRetentionHistory(),
-            'aovBreakdown' => $stats->aovBreakdown(),
-            'waitlistConversion' => $stats->waitlistConversionBenchmark(),
             'rfmSegmentation' => $stats->rfmSegmentation(),
             'clv' => $stats->customerLifetimeValue(),
             'vipChurn' => $stats->vipChurnWarning(),
@@ -236,13 +228,31 @@ class DashboardController extends Controller
 
         if ($compare && $prevFrom) {
             $prevCust = $stats->customerStats($prevFrom, $prevTo);
+            $prevRepeat = $stats->repeatCustomerRate($prevFrom, $prevTo);
             $data['deltas'] = [
                 'active_in_period' => DashboardStatsService::delta($custStats['active_in_period'], $prevCust['active_in_period']),
                 'new_in_period' => DashboardStatsService::delta($custStats['new_in_period'], $prevCust['new_in_period']),
+                'repeat_pct' => DashboardStatsService::delta($repeatRate['repeat_pct'], $prevRepeat['repeat_pct']),
             ];
         }
 
         return $data;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function inventoryTab(DashboardStatsService $stats, ?Carbon $from, ?Carbon $to): array
+    {
+        return [
+            'stockHealth' => $stats->stockHealth(),
+            'stockAlertDemand' => $stats->stockAlertDemand(30),
+            'productStatus' => $stats->productStatusBreakdown(),
+            'daysOfStockRemaining' => $stats->daysOfStockRemaining(50),
+            'revenueAtRisk' => $stats->revenueAtRisk(50),
+            'preorderLiability' => $stats->preorderLiability(),
+            'fulfillmentSpeed' => $stats->fulfillmentSpeed($from, $to),
+        ];
     }
 
     private function periodLabel(string $period, ?Carbon $from = null, ?Carbon $to = null): string
