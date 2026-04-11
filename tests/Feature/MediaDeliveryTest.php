@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 class MediaDeliveryTest extends TestCase
 {
+    use RefreshDatabase;
+
     /**
      * Uploaded public media can be served through the media route.
      */

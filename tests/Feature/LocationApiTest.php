@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class LocationApiTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_states_endpoint_returns_regions_for_country(): void
     {
         Http::fake([
