@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardStatsService
 {
+    /** @var list<string> */
+    private const PAID_STATUSES = ['paid', 'completed'];
+
     // ── Overview Tab ──────────────────────────────────────────
 
     /**
@@ -28,9 +31,9 @@ class DashboardStatsService
             return [
                 'total_orders' => Order::count(),
                 'pending_orders' => Order::where('status', 'pending')->count(),
-                'revenue' => (float) Order::where('payment_status', 'paid')->sum('total'),
+                'revenue' => (float) Order::whereIn('payment_status', self::PAID_STATUSES)->sum('total'),
                 'orders_today' => Order::whereDate('placed_at', $today)->count(),
-                'revenue_week' => (float) Order::where('payment_status', 'paid')
+                'revenue_week' => (float) Order::whereIn('payment_status', self::PAID_STATUSES)
                     ->where('placed_at', '>=', $weekStart)
                     ->sum('total'),
                 'low_stock' => ProductVariant::where('stock_quantity', '>', 0)
@@ -60,7 +63,7 @@ class DashboardStatsService
     {
         return Cache::remember("dashboard:revenue:{$days}", 300, function () use ($days): array {
             return DB::table('orders')
-                ->where('payment_status', 'paid')
+                ->whereIn('payment_status', self::PAID_STATUSES)
                 ->where('placed_at', '>=', Carbon::now()->subDays($days))
                 ->selectRaw('DATE(placed_at) as day')
                 ->selectRaw('SUM(total) as revenue')
@@ -102,7 +105,7 @@ class DashboardStatsService
     {
         return Cache::remember('dashboard:revenue-by-country', 300, function () use ($limit): array {
             return DB::table('orders')
-                ->where('payment_status', 'paid')
+                ->whereIn('payment_status', self::PAID_STATUSES)
                 ->selectRaw('country, SUM(total) as revenue, COUNT(*) as count')
                 ->groupBy('country')
                 ->orderByDesc('revenue')
@@ -125,7 +128,7 @@ class DashboardStatsService
         return Cache::remember("dashboard:top-products:{$days}", 300, function () use ($days, $limit): array {
             return DB::table('order_items')
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
-                ->where('orders.payment_status', 'paid')
+                ->whereIn('orders.payment_status', self::PAID_STATUSES)
                 ->where('orders.placed_at', '>=', Carbon::now()->subDays($days))
                 ->selectRaw('order_items.product_name as name, SUM(order_items.quantity) as units, SUM(order_items.line_total) as revenue')
                 ->groupBy('order_items.product_id', 'order_items.product_name')
@@ -144,7 +147,7 @@ class DashboardStatsService
     public function averageOrderValue(): float
     {
         return Cache::remember('dashboard:aov', 300, function (): float {
-            return (float) Order::where('payment_status', 'paid')->avg('total');
+            return (float) Order::whereIn('payment_status', self::PAID_STATUSES)->avg('total');
         });
     }
 
@@ -155,7 +158,7 @@ class DashboardStatsService
     {
         return Cache::remember('dashboard:repeat-rate', 300, function (): array {
             $counts = DB::table('orders')
-                ->where('payment_status', 'paid')
+                ->whereIn('payment_status', self::PAID_STATUSES)
                 ->selectRaw('email, COUNT(*) as order_count')
                 ->groupBy('email')
                 ->get();
@@ -273,7 +276,7 @@ class DashboardStatsService
     {
         return Cache::remember('dashboard:discount-impact', 300, function (): array {
             $row = DB::table('orders')
-                ->where('payment_status', 'paid')
+                ->whereIn('payment_status', self::PAID_STATUSES)
                 ->selectRaw('SUM(discount_total + regional_discount_total + bundle_discount_total) as total_discounts')
                 ->selectRaw('SUM(subtotal) as total_gross')
                 ->first();
@@ -340,7 +343,7 @@ class DashboardStatsService
     {
         return Cache::remember('dashboard:customer-geography', 300, function () use ($limit): array {
             return DB::table('orders')
-                ->where('payment_status', 'paid')
+                ->whereIn('payment_status', self::PAID_STATUSES)
                 ->selectRaw('country, COUNT(DISTINCT email) as count')
                 ->groupBy('country')
                 ->orderByDesc('count')
