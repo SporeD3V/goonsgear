@@ -281,7 +281,7 @@
 {{-- VIP Churn Warning --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="9">
     <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">VIP Churn Warning</h3>
-    <p class="mb-3 text-[13px] text-stone-500">Top 5% spenders who haven't ordered in 90+ days — these are customers worth reaching out to.</p>
+    <p class="mb-3 text-[13px] text-stone-500">Top 5% spenders who haven't ordered within their personalised churn window (2.5× their average purchase interval, min 90d, max 365d).</p>
     @if ($vipChurn['vip_total'] === 0)
         <p class="text-[15px] text-stone-500">No customer data available yet.</p>
     @elseif (empty($vipChurn['churning']))
@@ -332,6 +332,7 @@
                         <th @click="toggleSort('total_spent')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Total Spent <span class="text-xs" x-text="sortIcon('total_spent')"></span></th>
                         <th @click="toggleSort('order_count')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Orders <span class="text-xs" x-text="sortIcon('order_count')"></span></th>
                         <th @click="toggleSort('days_since_last')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Days Silent <span class="text-xs" x-text="sortIcon('days_since_last')"></span></th>
+                        <th @click="toggleSort('churn_threshold')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Threshold <span class="text-xs" x-text="sortIcon('churn_threshold')"></span></th>
                         <th @click="toggleSort('last_order')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Last Order <span class="text-xs" x-text="sortIcon('last_order')"></span></th>
                     </tr>
                 </thead>
@@ -346,6 +347,7 @@
                                     :class="vip.days_since_last >= 180 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'"
                                     x-text="vip.days_since_last + 'd'"></span>
                             </td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="vip.churn_threshold + 'd'"></td>
                             <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="vip.last_order"></td>
                         </tr>
                     </template>

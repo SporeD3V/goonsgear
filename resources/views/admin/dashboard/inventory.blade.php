@@ -36,7 +36,7 @@
 @php $risk = (object) $revenueAtRisk; @endphp
 <div class="admin-card rounded-xl border border-red-200 bg-red-50/30 p-5 shadow-sm" data-delay="2">
     <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-red-700">Revenue at Risk — Sold Out Items</h3>
-    <p class="mb-3 text-[12px] text-stone-500">Estimated monthly revenue you're losing because these variants are sold out. Based on 90-day historical sales velocity. <span class="font-medium">Formula: Avg Daily Units × 30 × Avg Price Per Unit</span>.</p>
+    <p class="mb-3 text-[12px] text-stone-500">Estimated monthly revenue you're losing because these variants are sold out. Velocity is calculated using only the days the item was actually in stock (not the full 90-day window). <span class="font-medium">Formula: (Units Sold ÷ Days In Stock) × 30 × Avg Price</span>.</p>
 
     <div class="mb-4 grid gap-4 sm:grid-cols-3">
         <div class="rounded-xl border border-red-200 bg-white p-4 text-center">
@@ -85,6 +85,7 @@
                         <th @click="toggleSort('product')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Product <span class="text-xs" x-text="sortIcon('product')"></span></th>
                         <th @click="toggleSort('variant')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Variant <span class="text-xs" x-text="sortIcon('variant')"></span></th>
                         <th @click="toggleSort('avg_daily_units')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Avg Daily Units <span class="text-xs" x-text="sortIcon('avg_daily_units')"></span></th>
+                        <th @click="toggleSort('days_in_stock')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Days In Stock <span class="text-xs" x-text="sortIcon('days_in_stock')"></span></th>
                         <th @click="toggleSort('avg_price')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Avg Price <span class="text-xs" x-text="sortIcon('avg_price')"></span></th>
                         <th @click="toggleSort('monthly_revenue')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Monthly Loss <span class="text-xs" x-text="sortIcon('monthly_revenue')"></span></th>
                     </tr>
@@ -95,6 +96,7 @@
                             <td class="px-4 py-2.5 text-stone-700" x-text="row.product"></td>
                             <td class="px-4 py-2.5 text-stone-500" x-text="row.variant"></td>
                             <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="row.avg_daily_units + '/day'"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="row.days_in_stock + 'd'"></td>
                             <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="'€' + row.avg_price.toFixed(2)"></td>
                             <td class="whitespace-nowrap px-4 py-2.5 text-right font-semibold text-red-700" x-text="'€' + row.monthly_revenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></td>
                         </tr>

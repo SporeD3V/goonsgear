@@ -138,6 +138,7 @@ class DashboardController extends Controller
             $prev = $stats->overviewStats($prevFrom, $prevTo);
             $data['deltas'] = [
                 'revenue' => DashboardStatsService::delta($data['overview']['revenue'], $prev['revenue']),
+                'net_revenue' => DashboardStatsService::delta($data['overview']['net_revenue'], $prev['net_revenue']),
                 'total_orders' => DashboardStatsService::delta($data['overview']['total_orders'], $prev['total_orders']),
             ];
             $data['prevRevenueOverTime'] = $stats->revenueOverTime($prevFrom, $prevTo);

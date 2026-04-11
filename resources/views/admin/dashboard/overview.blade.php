@@ -1,10 +1,18 @@
 {{-- KPI Row --}}
-<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
     @include('admin.dashboard._kpi-card', [
         'label' => 'Revenue (' . $periodLabel . ')',
         'value' => '&euro;' . number_format($overview['revenue'], 2),
         'delta' => $deltas['revenue'] ?? null,
-        'subtitle' => 'Total paid order value after discounts',
+        'subtitle' => 'Gross: total paid order value',
+        'delay' => 1,
+    ])
+
+    @include('admin.dashboard._kpi-card', [
+        'label' => 'Net Revenue (' . $periodLabel . ')',
+        'value' => '&euro;' . number_format($overview['net_revenue'], 2),
+        'delta' => $deltas['net_revenue'] ?? null,
+        'subtitle' => 'Revenue minus tax & shipping',
         'delay' => 1,
     ])
 
@@ -76,7 +84,7 @@
             </div>
         </div>
         <div class="mt-2 text-[11px] text-stone-400">
-            Industry benchmark: 1–3% CR is typical for e-commerce. Above 3% is excellent.
+            Industry benchmark: 1–3% CR is typical for e-commerce. Above 3% is excellent. Niche music/merch stores often see lower conversion rates due to browsing-heavy traffic — this is normal and does not indicate a problem.
         </div>
     @endif
 </div>
@@ -149,13 +157,13 @@
             <p class="text-[15px] text-stone-500">No shipped orders with both placed and shipped dates in this period.</p>
         @else
             <div class="flex items-baseline gap-3">
-                <p class="text-3xl font-bold" style="color: #36a2eb">{{ $fulfillmentSpeed['avg_days'] }}</p>
-                <span class="text-[15px] text-stone-500">avg days to ship</span>
+                <p class="text-3xl font-bold" style="color: #36a2eb">{{ $fulfillmentSpeed['median_days'] }}</p>
+                <span class="text-[15px] text-stone-500">median days to ship</span>
             </div>
             <div class="mt-3 grid grid-cols-3 gap-3">
                 <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 text-center">
-                    <div class="text-[13px] text-stone-500">Median</div>
-                    <div class="text-lg font-bold text-stone-700">{{ $fulfillmentSpeed['median_days'] }}d</div>
+                    <div class="text-[13px] text-stone-500">Average</div>
+                    <div class="text-lg font-bold text-stone-700">{{ $fulfillmentSpeed['avg_days'] }}d</div>
                 </div>
                 <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 text-center">
                     <div class="text-[13px] text-stone-500">Fastest</div>

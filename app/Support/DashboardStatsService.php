@@ -60,19 +60,25 @@ class DashboardStatsService
     // ── Overview Tab ──────────────────────────────────────────
 
     /**
-     * @return array{total_orders: int, pending_orders: int, revenue: float, orders_today: int, low_stock: int, out_of_stock: int, stock_alert_waiting: int, total_products: int, active_products: int}
+     * @return array{total_orders: int, pending_orders: int, revenue: float, net_revenue: float, orders_today: int, low_stock: int, out_of_stock: int, stock_alert_waiting: int, total_products: int, active_products: int}
      */
     public function overviewStats(?Carbon $from = null, ?Carbon $to = null): array
     {
         $key = $this->periodCacheKey('overview', $from, $to);
 
         return Cache::remember($key, 300, function () use ($from, $to): array {
+            $paidQuery = $this->applyPeriod(
+                Order::whereIn('payment_status', self::PAID_STATUSES), $from, $to
+            );
+            $totals = (clone $paidQuery)
+                ->selectRaw('COALESCE(SUM(total), 0) as gross, COALESCE(SUM(total - shipping_total - tax_total), 0) as net')
+                ->first();
+
             return [
                 'total_orders' => (int) $this->applyPeriod(Order::query(), $from, $to)->count(),
                 'pending_orders' => Order::where('status', 'pending')->count(),
-                'revenue' => (float) $this->applyPeriod(
-                    Order::whereIn('payment_status', self::PAID_STATUSES), $from, $to
-                )->sum('total'),
+                'revenue' => round((float) $totals->gross, 2),
+                'net_revenue' => round((float) $totals->net, 2),
                 'orders_today' => Order::whereDate('placed_at', Carbon::today())->count(),
                 'low_stock' => ProductVariant::where('stock_quantity', '>', 0)
                     ->where('stock_quantity', '<=', 5)
@@ -209,7 +215,7 @@ class DashboardStatsService
     // ── Sales Tab ─────────────────────────────────────────────
 
     /**
-     * @return array<int, array{day: string, revenue: float, gross: float, discounts: float, order_count: int}>
+     * @return array<int, array{day: string, revenue: float, net_revenue: float, gross: float, discounts: float, order_count: int}>
      */
     public function revenueOverTime(?Carbon $from = null, ?Carbon $to = null): array
     {
@@ -224,6 +230,7 @@ class DashboardStatsService
             $data = $query
                 ->selectRaw('DATE(placed_at) as day')
                 ->selectRaw('SUM(total) as revenue')
+                ->selectRaw('SUM(total - shipping_total - tax_total) as net_revenue')
                 ->selectRaw('SUM(subtotal) as gross')
                 ->selectRaw('SUM(discount_total + regional_discount_total + bundle_discount_total) as discounts')
                 ->selectRaw('COUNT(*) as order_count')
@@ -243,6 +250,7 @@ class DashboardStatsService
                     $result[] = [
                         'day' => $dayKey,
                         'revenue' => (float) ($row->revenue ?? 0),
+                        'net_revenue' => (float) ($row->net_revenue ?? 0),
                         'gross' => (float) ($row->gross ?? 0),
                         'discounts' => (float) ($row->discounts ?? 0),
                         'order_count' => (int) ($row->order_count ?? 0),
@@ -256,6 +264,7 @@ class DashboardStatsService
             return $data->values()->map(fn ($row) => [
                 'day' => $row->day,
                 'revenue' => (float) $row->revenue,
+                'net_revenue' => (float) $row->net_revenue,
                 'gross' => (float) $row->gross,
                 'discounts' => (float) $row->discounts,
                 'order_count' => (int) $row->order_count,
@@ -540,7 +549,9 @@ class DashboardStatsService
                 ];
             }
 
-            // Calculate 90-day historical sales velocity per variant (longer window for accuracy)
+            // Calculate 90-day historical sales velocity per variant.
+            // Use last sale date as proxy for when the item went OOS,
+            // so we only divide by days the item was actually in stock.
             $ninetyDaysAgo = Carbon::now()->subDays(90);
             $sales = DB::table('order_items')
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
@@ -548,11 +559,11 @@ class DashboardStatsService
                 ->where('orders.placed_at', '>=', $ninetyDaysAgo)
                 ->whereIn('order_items.product_variant_id', $soldOut->pluck('id'))
                 ->groupBy('order_items.product_variant_id')
-                ->selectRaw('order_items.product_variant_id, SUM(order_items.quantity) as total_sold, SUM(order_items.line_total) as total_revenue')
+                ->selectRaw('order_items.product_variant_id, SUM(order_items.quantity) as total_sold, SUM(order_items.line_total) as total_revenue, MAX(orders.placed_at) as last_sale_at')
                 ->get()
                 ->keyBy('product_variant_id');
 
-            $items = $soldOut->map(function ($v) use ($sales) {
+            $items = $soldOut->map(function ($v) use ($sales, $ninetyDaysAgo) {
                 $sale = $sales->get($v->id);
                 if (! $sale || (int) $sale->total_sold === 0) {
                     return null;
@@ -560,7 +571,12 @@ class DashboardStatsService
 
                 $totalSold = (int) $sale->total_sold;
                 $totalRevenue = (float) $sale->total_revenue;
-                $avgDailyUnits = round($totalSold / 90, 2);
+
+                // Days actually in stock = window start to last sale (proxy for sell-out date)
+                $lastSale = Carbon::parse($sale->last_sale_at);
+                $daysInStock = max(1, (int) $ninetyDaysAgo->diffInDays($lastSale));
+
+                $avgDailyUnits = round($totalSold / $daysInStock, 2);
                 $avgPrice = round($totalRevenue / $totalSold, 2);
                 $monthlyRevenue = round($avgDailyUnits * 30 * $avgPrice, 2);
 
@@ -571,6 +587,7 @@ class DashboardStatsService
                     'monthly_revenue' => $monthlyRevenue,
                     'avg_daily_units' => $avgDailyUnits,
                     'avg_price' => $avgPrice,
+                    'days_in_stock' => $daysInStock,
                 ];
             })
                 ->filter()
@@ -1251,13 +1268,15 @@ class DashboardStatsService
     }
 
     /**
-     * VIP Churn Warning: top 5% spenders who haven't ordered in 90+ days.
+     * VIP Churn Warning: top 5% spenders who haven't ordered within their
+     * personalised churn window (2.5× their average purchase interval, floored
+     * at 90 days and capped at 365).
      *
-     * @return array{vip_threshold: float, vip_total: int, churning: list<array{email: string, total_spent: float, order_count: int, days_since_last: int, last_order: string}>}
+     * @return array{vip_threshold: float, vip_total: int, churning: list<array{email: string, total_spent: float, order_count: int, days_since_last: int, churn_threshold: int, last_order: string}>}
      */
     public function vipChurnWarning(): array
     {
-        /** @var array{vip_threshold: float, vip_total: int, churning: list<array{email: string, total_spent: float, order_count: int, days_since_last: int, last_order: string}>} */
+        /** @var array{vip_threshold: float, vip_total: int, churning: list<array{email: string, total_spent: float, order_count: int, days_since_last: int, churn_threshold: int, last_order: string}>} */
         return Cache::remember('dashboard:vip-churn', 300, function (): array {
             $isSqlite = DB::connection()->getDriverName() === 'sqlite';
 
@@ -1265,11 +1284,15 @@ class DashboardStatsService
                 ? 'CAST(julianday("now") - julianday(MAX(placed_at)) AS INTEGER)'
                 : 'DATEDIFF(NOW(), MAX(placed_at))';
 
+            $spanExpr = $isSqlite
+                ? 'CAST(julianday(MAX(placed_at)) - julianday(MIN(placed_at)) AS INTEGER)'
+                : 'DATEDIFF(MAX(placed_at), MIN(placed_at))';
+
             $customers = DB::table('orders')
                 ->whereIn('payment_status', self::PAID_STATUSES)
                 ->whereNotNull('placed_at')
                 ->groupBy('email')
-                ->selectRaw("email, COUNT(*) as order_count, SUM(total) as total_spent, MAX(placed_at) as last_order, {$daysSinceExpr} as days_since_last")
+                ->selectRaw("email, COUNT(*) as order_count, SUM(total) as total_spent, MAX(placed_at) as last_order, {$daysSinceExpr} as days_since_last, {$spanExpr} as order_span_days")
                 ->get();
 
             if ($customers->isEmpty()) {
@@ -1282,14 +1305,29 @@ class DashboardStatsService
             $threshold = (float) $sorted[$vipCount - 1]->total_spent;
 
             $vips = $sorted->take($vipCount);
-            $churning = $vips->filter(fn ($c) => (int) $c->days_since_last >= 90)
-                ->map(fn ($c) => [
-                    'email' => $c->email,
-                    'total_spent' => round((float) $c->total_spent, 2),
-                    'order_count' => (int) $c->order_count,
-                    'days_since_last' => (int) $c->days_since_last,
-                    'last_order' => Carbon::parse($c->last_order)->format('M j, Y'),
-                ])
+            $churning = $vips->filter(function ($c) {
+                $churnThreshold = $this->calculateChurnThreshold(
+                    (int) $c->order_count,
+                    (int) ($c->order_span_days ?? 0)
+                );
+
+                return (int) $c->days_since_last >= $churnThreshold;
+            })
+                ->map(function ($c) {
+                    $churnThreshold = $this->calculateChurnThreshold(
+                        (int) $c->order_count,
+                        (int) ($c->order_span_days ?? 0)
+                    );
+
+                    return [
+                        'email' => $c->email,
+                        'total_spent' => round((float) $c->total_spent, 2),
+                        'order_count' => (int) $c->order_count,
+                        'days_since_last' => (int) $c->days_since_last,
+                        'churn_threshold' => $churnThreshold,
+                        'last_order' => Carbon::parse($c->last_order)->format('M j, Y'),
+                    ];
+                })
                 ->sortByDesc('days_since_last')
                 ->values()
                 ->all();
@@ -1300,6 +1338,20 @@ class DashboardStatsService
                 'churning' => $churning,
             ];
         });
+    }
+
+    /**
+     * Dynamic churn threshold: 2.5× average purchase interval, floored at 90, capped at 365.
+     */
+    private function calculateChurnThreshold(int $orderCount, int $orderSpanDays): int
+    {
+        if ($orderCount <= 1) {
+            return 90;
+        }
+
+        $avgInterval = $orderSpanDays / ($orderCount - 1);
+
+        return (int) max(90, min($avgInterval * 2.5, 365));
     }
 
     // ── Historical / Seasonal ─────────────────────────────────
@@ -1799,12 +1851,13 @@ class DashboardStatsService
 
     /**
      * Product Affinity (Market Basket): products frequently bought together.
+     * Includes lift score: lift = P(A∩B) / (P(A) × P(B)). Lift > 1 means genuine affinity.
      *
-     * @return list<array{product_a: string, product_b: string, co_purchases: int, affinity_pct: float}>
+     * @return list<array{product_a: string, product_b: string, co_purchases: int, affinity_pct: float, lift: float}>
      */
     public function productAffinity(int $limit = 10): array
     {
-        /** @var list<array{product_a: string, product_b: string, co_purchases: int, affinity_pct: float}> */
+        /** @var list<array{product_a: string, product_b: string, co_purchases: int, affinity_pct: float, lift: float}> */
         return Cache::remember('dashboard:product-affinity', 300, function () use ($limit): array {
             // Get all paid orders that have 2+ distinct products
             $orderProducts = DB::table('order_items as oi')
@@ -1853,16 +1906,24 @@ class DashboardStatsService
             arsort($pairs);
             $topPairs = array_slice($pairs, 0, $limit, true);
 
+            $totalOrders = $orderProducts->count();
             $result = [];
             foreach ($topPairs as $key => $coPurchases) {
                 [$a, $b] = explode('|||', $key);
                 // Affinity % = co-purchases / purchases of less popular product
                 $minCount = min($productCounts[$a] ?? 1, $productCounts[$b] ?? 1);
+                // Lift = P(A∩B) / (P(A) × P(B))
+                $pA = ($productCounts[$a] ?? 1) / max(1, $totalOrders);
+                $pB = ($productCounts[$b] ?? 1) / max(1, $totalOrders);
+                $pAB = $coPurchases / max(1, $totalOrders);
+                $lift = ($pA * $pB) > 0 ? round($pAB / ($pA * $pB), 2) : 0.0;
+
                 $result[] = [
                     'product_a' => $a,
                     'product_b' => $b,
                     'co_purchases' => $coPurchases,
                     'affinity_pct' => round(($coPurchases / $minCount) * 100, 1),
+                    'lift' => $lift,
                 ];
             }
 

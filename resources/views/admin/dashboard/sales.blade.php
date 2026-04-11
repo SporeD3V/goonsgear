@@ -384,7 +384,7 @@
 {{-- Product Affinity (Market Basket) --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="11">
     <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Product Affinity (Market Basket)</h3>
-    <p class="mb-3 text-[13px] text-stone-500">"Customers who bought X also bought Y" — use this for "Complete the Look" upsells. <span class="font-medium">Affinity % = Co-purchases ÷ Total purchases of Product A × 100</span>.</p>
+    <p class="mb-3 text-[13px] text-stone-500">"Customers who bought X also bought Y" — use this for "Complete the Look" upsells. <span class="font-medium">Lift &gt; 1.0 = genuine affinity</span> (not just popular items appearing together by chance).</p>
     @if (empty($productAffinity))
         <p class="text-[15px] text-stone-500">No multi-product order data yet. Affinity appears once customers start buying 2+ products together.</p>
     @else
@@ -420,6 +420,7 @@
                         <th @click="toggleSort('product_b')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Product B <span class="text-xs" x-text="sortIcon('product_b')"></span></th>
                         <th @click="toggleSort('co_purchases')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Bought Together <span class="text-xs" x-text="sortIcon('co_purchases')"></span></th>
                         <th @click="toggleSort('affinity_pct')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Affinity <span class="text-xs" x-text="sortIcon('affinity_pct')"></span></th>
+                        <th @click="toggleSort('lift')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Lift <span class="text-xs" x-text="sortIcon('lift')"></span></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-stone-100">
@@ -432,6 +433,11 @@
                                 <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
                                     :class="pair.affinity_pct >= 50 ? 'bg-[#4bc0c0]/15 text-[#4bc0c0]' : (pair.affinity_pct >= 25 ? 'bg-[#ff9f40]/15 text-[#ff9f40]' : 'bg-stone-100 text-stone-500')"
                                     x-text="pair.affinity_pct + '%'"></span>
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right">
+                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
+                                    :class="pair.lift >= 2 ? 'bg-[#4bc0c0]/15 text-[#4bc0c0]' : (pair.lift >= 1 ? 'bg-[#ff9f40]/15 text-[#ff9f40]' : 'bg-stone-100 text-stone-500')"
+                                    x-text="pair.lift + '×'"></span>
                             </td>
                         </tr>
                     </template>
