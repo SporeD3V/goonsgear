@@ -120,7 +120,7 @@
             <div class="h-[260px]">
                 <canvas id="abandonedProductsChart"></canvas>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" x-data="{ showAll: false, limit: 10 }">
                 <table class="min-w-full divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
@@ -131,8 +131,8 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-stone-100">
-                        @foreach ($topAbandonedProducts as $item)
-                            <tr class="transition hover:bg-stone-50">
+                        @foreach ($topAbandonedProducts as $idx => $item)
+                            <tr class="transition hover:bg-stone-50" x-show="showAll || {{ $idx }} < limit">
                                 <td class="px-4 py-2.5 font-medium text-stone-700">{{ $item['product_name'] }}</td>
                                 <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ $item['times_abandoned'] }}×</td>
                                 <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ $item['total_qty'] }}</td>
@@ -141,6 +141,9 @@
                         @endforeach
                     </tbody>
                 </table>
+                @if (count($topAbandonedProducts) > 10)
+                    <button @click="showAll = !showAll" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="showAll ? 'Show less' : 'Show all {{ count($topAbandonedProducts) }} products'"></button>
+                @endif
             </div>
         </div>
     @endif

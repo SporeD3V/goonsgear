@@ -39,7 +39,7 @@
         @if (empty($tagFollows))
             <p class="text-[15px] text-stone-500">No tag follow data yet.</p>
         @else
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" x-data="{ showAll: false, limit: 10 }">
                 <table class="min-w-full divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
@@ -49,8 +49,8 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-stone-100">
-                        @foreach ($tagFollows as $tag)
-                            <tr class="transition hover:bg-stone-50">
+                        @foreach ($tagFollows as $idx => $tag)
+                            <tr class="transition hover:bg-stone-50" x-show="showAll || {{ $idx }} < limit">
                                 <td class="px-4 py-2.5 font-medium text-stone-700">{{ $tag['name'] }}</td>
                                 <td class="whitespace-nowrap px-4 py-2.5">
                                     @php
@@ -65,6 +65,9 @@
                         @endforeach
                     </tbody>
                 </table>
+                @if (count($tagFollows) > 10)
+                    <button @click="showAll = !showAll" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="showAll ? 'Show less' : 'Show all {{ count($tagFollows) }} tags'"></button>
+                @endif
             </div>
         @endif
     </div>

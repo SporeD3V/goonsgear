@@ -304,8 +304,6 @@ class DashboardControllerTest extends TestCase
         $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
 
         $response->assertOk()
-            ->assertViewHas('benchmarkableProducts')
-            ->assertViewHas('releaseBenchmark', null)
             ->assertViewHas('regionalGrowth')
             ->assertViewHas('productDecay');
 
@@ -315,38 +313,14 @@ class DashboardControllerTest extends TestCase
         $this->assertArrayHasKey('series', $regional);
     }
 
-    public function test_release_benchmark_with_two_products(): void
+    public function test_release_benchmark_livewire_component_renders_on_sales_tab(): void
     {
         $this->actingAsAdmin();
 
-        $productA = Product::factory()->create(['published_at' => now()->subMonths(3)]);
-        $productB = Product::factory()->create(['published_at' => now()->subMonths(6)]);
-
-        $order = Order::factory()->create([
-            'payment_status' => 'paid',
-            'placed_at' => $productA->published_at->copy()->addDays(2),
-        ]);
-        OrderItem::factory()->create([
-            'order_id' => $order->id,
-            'product_id' => $productA->id,
-            'quantity' => 5,
-            'line_total' => 150.00,
-        ]);
-
-        $response = $this->get(route('admin.dashboard', [
-            'tab' => 'sales',
-            'benchmark_a' => $productA->id,
-            'benchmark_b' => $productB->id,
-            'benchmark_days' => 30,
-        ]));
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
 
         $response->assertOk()
-            ->assertViewHas('releaseBenchmark');
-
-        $benchmark = $response->viewData('releaseBenchmark');
-        $this->assertCount(2, $benchmark['products']);
-        $this->assertArrayHasKey($productA->id, $benchmark['comparison']);
-        $this->assertArrayHasKey($productB->id, $benchmark['comparison']);
+            ->assertSeeLivewire('admin.release-benchmark');
     }
 
     public function test_release_benchmark_null_when_no_products_selected(): void
@@ -354,8 +328,7 @@ class DashboardControllerTest extends TestCase
         $this->actingAsAdmin();
 
         $this->get(route('admin.dashboard', ['tab' => 'sales']))
-            ->assertOk()
-            ->assertViewHas('releaseBenchmark', null);
+            ->assertOk();
     }
 
     public function test_benchmark_days_clamps_to_valid_range(): void
@@ -1500,10 +1473,8 @@ class DashboardControllerTest extends TestCase
 
     // ── Release Benchmark Custom Start Dates ──────────────────
 
-    public function test_release_benchmark_accepts_custom_start_dates(): void
+    public function test_release_benchmark_accepts_custom_start_dates_via_livewire(): void
     {
-        $this->actingAsAdmin();
-
         $productA = Product::factory()->create(['published_at' => now()->subMonths(6)]);
         $productB = Product::factory()->create(['published_at' => now()->subMonths(3)]);
 
@@ -1520,44 +1491,28 @@ class DashboardControllerTest extends TestCase
             'line_total' => 90.00,
         ]);
 
-        $response = $this->get(route('admin.dashboard', [
-            'tab' => 'sales',
-            'benchmark_a' => $productA->id,
-            'benchmark_b' => $productB->id,
-            'benchmark_days' => 14,
-            'benchmark_start_a' => $customStartA,
-        ]));
-
-        $response->assertOk()
-            ->assertViewHas('releaseBenchmark')
-            ->assertViewHas('benchmarkStartA', $customStartA)
-            ->assertViewHas('benchmarkStartB', null);
-
-        $benchmark = $response->viewData('releaseBenchmark');
-        $this->assertCount(2, $benchmark['products']);
+        Livewire::test('admin.release-benchmark')
+            ->call('selectProduct', 'a', $productA->id, $productA->name)
+            ->call('selectProduct', 'b', $productB->id, $productB->name)
+            ->set('startA', $customStartA)
+            ->set('days', 14)
+            ->assertSet('selectedA', $productA->id)
+            ->assertSet('selectedB', $productB->id)
+            ->assertSet('startA', $customStartA);
     }
 
-    public function test_release_benchmark_custom_start_preserved_in_view(): void
+    public function test_release_benchmark_product_selection_via_livewire(): void
     {
-        $this->actingAsAdmin();
-
         $productA = Product::factory()->create(['published_at' => now()->subMonths(6)]);
         $productB = Product::factory()->create(['published_at' => now()->subMonths(3)]);
 
-        $startA = '2025-01-15';
-        $startB = '2025-06-01';
-
-        $response = $this->get(route('admin.dashboard', [
-            'tab' => 'sales',
-            'benchmark_a' => $productA->id,
-            'benchmark_b' => $productB->id,
-            'benchmark_start_a' => $startA,
-            'benchmark_start_b' => $startB,
-        ]));
-
-        $response->assertOk()
-            ->assertViewHas('benchmarkStartA', $startA)
-            ->assertViewHas('benchmarkStartB', $startB);
+        Livewire::test('admin.release-benchmark')
+            ->call('selectProduct', 'a', $productA->id, $productA->name)
+            ->call('selectProduct', 'b', $productB->id, $productB->name)
+            ->assertSet('selectedA', $productA->id)
+            ->assertSet('selectedB', $productB->id)
+            ->assertSet('selectedNameA', $productA->name)
+            ->assertSet('selectedNameB', $productB->name);
     }
 
     // ── Contextual Notes ──────────────────────────────────────

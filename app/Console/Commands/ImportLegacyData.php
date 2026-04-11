@@ -687,6 +687,14 @@ class ImportLegacyData extends Command
                     'email_verified_at' => now(),
                 ]);
 
+                // Preserve original WordPress registration date
+                if ($legacyCust->user_registered) {
+                    $user->timestamps = false;
+                    $user->created_at = $legacyCust->user_registered;
+                    $user->save();
+                    $user->timestamps = true;
+                }
+
                 $this->syncLegacyCustomerMapping($legacyCust->ID, $user->id);
 
                 $count++;
@@ -796,6 +804,9 @@ class ImportLegacyData extends Command
                     'payment_status' => 'completed',
                     'coupon_code' => null,
                     'placed_at' => $legacyOrder->post_date,
+                    'shipped_at' => in_array($status, ['completed']) && ! empty($meta['_date_completed'])
+                        ? Carbon::createFromTimestamp((int) $meta['_date_completed'])
+                        : null,
                     'billing_first_name' => $meta['_billing_first_name'] ?? null,
                     'billing_last_name' => $meta['_billing_last_name'] ?? null,
                     'billing_country' => $meta['_billing_country'] ?? null,

@@ -67,6 +67,8 @@
             <div class="overflow-x-auto" x-data="{
                 sortCol: 'aov',
                 sortAsc: false,
+                showAll: false,
+                limit: 10,
                 items: {{ Js::from($aovByCountry) }},
                 get sorted() {
                     const col = this.sortCol;
@@ -75,6 +77,9 @@
                         if (typeof a[col] === 'string') return dir * a[col].localeCompare(b[col]);
                         return dir * (a[col] - b[col]);
                     });
+                },
+                get visible() {
+                    return this.showAll ? this.sorted : this.sorted.slice(0, this.limit);
                 },
                 toggleSort(col) {
                     if (this.sortCol === col) { this.sortAsc = !this.sortAsc; } else { this.sortCol = col; this.sortAsc = col === 'country'; }
@@ -94,7 +99,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-stone-100">
-                        <template x-for="row in sorted" :key="row.country">
+                        <template x-for="row in visible" :key="row.country">
                             <tr class="transition hover:bg-stone-50">
                                 <td class="whitespace-nowrap px-4 py-2.5 font-medium text-stone-700" x-text="row.country || 'Unknown'"></td>
                                 <td class="whitespace-nowrap px-4 py-2.5 text-right font-semibold" style="color: #36a2eb" x-text="'€' + Number(row.aov).toFixed(2)"></td>
@@ -104,6 +109,9 @@
                         </template>
                     </tbody>
                 </table>
+                <template x-if="items.length > limit">
+                    <button @click="showAll = !showAll" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="showAll ? 'Show less' : 'Show all ' + items.length + ' countries'"></button>
+                </template>
             </div>
         </div>
     @endif
@@ -252,79 +260,7 @@
 
 {{-- Release-to-Release Benchmarking --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="8">
-    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Release-to-Release Benchmarking</h3>
-    <p class="mb-3 text-[12px] text-stone-400">Compare how two products performed in their first days after launch. Pick two products, optionally set a custom "Start Date" to compare different vinyl drops regardless of their actual publish date, and choose a time window.</p>
-
-    {{-- Product Selector --}}
-    <form method="GET" action="{{ route('admin.dashboard') }}" class="mb-4 flex flex-wrap items-end gap-3">
-        <input type="hidden" name="tab" value="sales">
-        <input type="hidden" name="period" value="{{ $period }}">
-        <input type="hidden" name="compare" value="{{ $compare ? 1 : 0 }}">
-        <input type="hidden" name="compare_mode" value="{{ $compareMode }}">
-        @if ($period === 'custom' && $customFrom && $customTo)
-            <input type="hidden" name="custom_from" value="{{ $customFrom }}">
-            <input type="hidden" name="custom_to" value="{{ $customTo }}">
-        @endif
-
-        <div class="flex-1 min-w-[180px]">
-            <label class="mb-1 block text-xs font-medium text-stone-500">Product A</label>
-            <select name="benchmark_a" class="w-full rounded-md border border-stone-300 px-3 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]">
-                <option value="">Select product…</option>
-                @foreach ($benchmarkableProducts as $bp)
-                    <option value="{{ $bp['id'] }}" {{ $benchmarkA == $bp['id'] ? 'selected' : '' }}>
-                        {{ $bp['name'] }} ({{ $bp['published_at'] }})
-                    </option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="w-36">
-            <label class="mb-1 block text-xs font-medium text-stone-500">Start Date A <span class="text-stone-400">(optional)</span></label>
-            <input type="date" name="benchmark_start_a" value="{{ $benchmarkStartA ?? '' }}" class="w-full rounded-md border border-stone-300 px-3 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]">
-        </div>
-
-        <div class="flex-1 min-w-[180px]">
-            <label class="mb-1 block text-xs font-medium text-stone-500">Product B</label>
-            <select name="benchmark_b" class="w-full rounded-md border border-stone-300 px-3 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]">
-                <option value="">Select product…</option>
-                @foreach ($benchmarkableProducts as $bp)
-                    <option value="{{ $bp['id'] }}" {{ $benchmarkB == $bp['id'] ? 'selected' : '' }}>
-                        {{ $bp['name'] }} ({{ $bp['published_at'] }})
-                    </option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="w-36">
-            <label class="mb-1 block text-xs font-medium text-stone-500">Start Date B <span class="text-stone-400">(optional)</span></label>
-            <input type="date" name="benchmark_start_b" value="{{ $benchmarkStartB ?? '' }}" class="w-full rounded-md border border-stone-300 px-3 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]">
-        </div>
-
-        <div class="w-24">
-            <label class="mb-1 block text-xs font-medium text-stone-500">Days</label>
-            <select name="benchmark_days" class="w-full rounded-md border border-stone-300 px-3 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]">
-                @foreach ([7, 14, 30, 60, 90] as $d)
-                    <option value="{{ $d }}" {{ $benchmarkDays == $d ? 'selected' : '' }}>{{ $d }}d</option>
-                @endforeach
-            </select>
-        </div>
-
-        <button type="submit" class="rounded-md bg-[#36a2eb] px-4 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#36a2eb]/90">
-            Compare
-        </button>
-    </form>
-    <p class="mb-3 text-[11px] text-stone-400">Leave "Start Date" empty to use the product's publish date. Set a custom date to compare specific drops (e.g. the first 14 days of the ONYX edition vs. the IVORY edition).</p>
-
-    {{-- Benchmark Chart --}}
-    @if ($releaseBenchmark && count($releaseBenchmark['products']) === 2)
-        <div class="h-[280px]">
-            <canvas id="releaseBenchmarkChart"></canvas>
-        </div>
-    @elseif ($benchmarkA && $benchmarkB)
-        <p class="text-[15px] text-stone-500">One or both products don't have a publish date or sales data.</p>
-    @else
-        <p class="text-[15px] text-stone-500">Select two products above to compare their launch performance.</p>
-    @endif
+    <livewire:admin.release-benchmark />
 </div>
 
 {{-- Regional Growth Trend --}}
@@ -360,7 +296,7 @@
     @if (empty($productDecay))
         <p class="text-[15px] text-stone-500">No products with a published date more than 2 months old.</p>
     @else
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto" x-data="{ showAll: false, limit: 8 }">
             <table class="min-w-full divide-y divide-stone-200 text-[15px]">
                 <thead class="bg-stone-50">
                     <tr>
@@ -372,8 +308,8 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-stone-100">
-                    @foreach ($productDecay as $pd)
-                        <tr class="transition hover:bg-stone-50">
+                    @foreach ($productDecay as $idx => $pd)
+                        <tr class="transition hover:bg-stone-50" x-show="showAll || {{ $idx }} < limit">
                             <td class="px-4 py-2.5 text-stone-700 max-w-[200px] truncate" title="{{ $pd['name'] }}">{{ $pd['name'] }}</td>
                             <td class="whitespace-nowrap px-4 py-2.5 text-center text-stone-500 text-sm">{{ $pd['published_at'] }}</td>
                             @for ($m = 0; $m < 6; $m++)
@@ -399,6 +335,9 @@
                     @endforeach
                 </tbody>
             </table>
+            @if (count($productDecay) > 8)
+                <button @click="showAll = !showAll" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="showAll ? 'Show less' : 'Show all {{ count($productDecay) }} products'"></button>
+            @endif
         </div>
         <p class="mt-2 text-xs text-stone-400">Percentages are relative to Month 1 units. <span class="text-[#4bc0c0]">≥80%</span> strong, <span class="text-[#ff9f40]">40–79%</span> fading, <span class="text-[#ff6384]">&lt;40%</span> declining.</p>
     @endif
@@ -415,7 +354,7 @@
             <div class="h-[260px]">
                 <canvas id="firstPurchaseChart"></canvas>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto" x-data="{ showAll: false, limit: 10 }">
                 <table class="min-w-full divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
@@ -425,8 +364,8 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-stone-100">
-                        @foreach ($firstPurchaseHeroes as $hero)
-                            <tr class="transition hover:bg-stone-50">
+                        @foreach ($firstPurchaseHeroes as $idx => $hero)
+                            <tr class="transition hover:bg-stone-50" x-show="showAll || {{ $idx }} < limit">
                                 <td class="px-4 py-2.5 font-medium text-stone-700">{{ $hero['product_name'] }}</td>
                                 <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ number_format($hero['first_purchases']) }}</td>
                                 <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500">{{ $hero['pct'] }}%</td>
@@ -434,6 +373,9 @@
                         @endforeach
                     </tbody>
                 </table>
+                @if (count($firstPurchaseHeroes) > 10)
+                    <button @click="showAll = !showAll" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="showAll ? 'Show less' : 'Show all {{ count($firstPurchaseHeroes) }} products'"></button>
+                @endif
             </div>
         </div>
     @endif
@@ -509,7 +451,6 @@
         const countryData = @json($revenueByCountry);
         const prevRevenueData = @json($prevRevenueOverTime ?? null);
         const yearlyRevenue = @json($yearlyRevenue);
-        const releaseBenchmark = @json($releaseBenchmark ?? null);
         const regionalGrowth = @json($regionalGrowth);
 
         // Revenue line chart with gross/net/discounts — Chart.js palette
@@ -653,55 +594,6 @@
                     },
                     scales: {
                         x: { grid: { display: false }, ticks: { font: { size: 12 }, color: '#78716c' } },
-                        y: { beginAtZero: true, ticks: { callback: v => '€' + v.toLocaleString(), font: { size: 12 }, color: '#78716c' }, grid: { color: '#f5f5f4' } }
-                    }
-                }
-            });
-        }
-
-        // Release-to-Release Benchmark Chart
-        if (releaseBenchmark && releaseBenchmark.products.length === 2 && document.getElementById('releaseBenchmarkChart')) {
-            const productA = releaseBenchmark.products[0];
-            const productB = releaseBenchmark.products[1];
-            const dataA = releaseBenchmark.comparison[productA.id] || [];
-            const dataB = releaseBenchmark.comparison[productB.id] || [];
-
-            new Chart(document.getElementById('releaseBenchmarkChart'), {
-                type: 'line',
-                data: {
-                    labels: dataA.map(d => 'Day ' + d.day),
-                    datasets: [
-                        {
-                            label: productA.name,
-                            data: dataA.map(d => d.cumulative_revenue),
-                            borderColor: '#36a2eb',
-                            backgroundColor: 'rgba(54, 162, 235, 0.06)',
-                            fill: true,
-                            tension: 0.35,
-                            pointRadius: 0,
-                            borderWidth: 2.5,
-                        },
-                        {
-                            label: productB.name,
-                            data: dataB.map(d => d.cumulative_revenue),
-                            borderColor: '#ff6384',
-                            backgroundColor: 'rgba(255, 99, 132, 0.06)',
-                            fill: true,
-                            tension: 0.35,
-                            pointRadius: 0,
-                            borderWidth: 2.5,
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 }, color: '#57534e' } },
-                        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': €' + ctx.parsed.y.toLocaleString() } }
-                    },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { maxTicksLimit: 10, font: { size: 11 }, color: '#78716c' } },
                         y: { beginAtZero: true, ticks: { callback: v => '€' + v.toLocaleString(), font: { size: 12 }, color: '#78716c' }, grid: { color: '#f5f5f4' } }
                     }
                 }

@@ -106,10 +106,10 @@ class DashboardController extends Controller
             'sales' => $data += $this->salesTab($stats, $from, $to, $prevFrom, $prevTo, $compare, $benchmarkA, $benchmarkB, $benchmarkDays, $benchmarkStartA, $benchmarkStartB),
             'inventory' => $data += [
                 'stockHealth' => $stats->stockHealth(),
-                'stockAlertDemand' => $stats->stockAlertDemand(),
+                'stockAlertDemand' => $stats->stockAlertDemand(30),
                 'productStatus' => $stats->productStatusBreakdown(),
-                'daysOfStockRemaining' => $stats->daysOfStockRemaining(),
-                'revenueAtRisk' => $stats->revenueAtRisk(),
+                'daysOfStockRemaining' => $stats->daysOfStockRemaining(50),
+                'revenueAtRisk' => $stats->revenueAtRisk(50),
             ],
             'promotions' => $data += $this->promotionsTab($stats, $from, $to, $prevFrom, $prevTo, $compare),
             'customers' => $data += $this->customersTab($stats, $from, $to, $prevFrom, $prevTo, $compare),
@@ -158,20 +158,18 @@ class DashboardController extends Controller
         $data = [
             'revenueOverTime' => $stats->revenueOverTime($from, $to),
             'ordersByStatus' => $stats->ordersByStatus($from, $to),
-            'revenueByCountry' => $stats->revenueByCountry(10, $from, $to),
-            'aovByCountry' => $stats->aovByCountry(10, $from, $to),
-            'topProducts' => $stats->topSellingProducts(10, $from, $to),
+            'revenueByCountry' => $stats->revenueByCountry(50, $from, $to),
+            'aovByCountry' => $stats->aovByCountry(50, $from, $to),
+            'topProducts' => $stats->topSellingProducts(50, $from, $to),
             'aov' => $aov,
             'repeatRate' => $repeatRate,
             'itemsPerOrder' => $itemsPerOrder,
             'yearlyRevenue' => $stats->monthlyRevenueByYear(),
             'bestMonthBenchmark' => $stats->bestMonthBenchmark(),
-            'benchmarkableProducts' => $stats->benchmarkableProducts(),
-            'releaseBenchmark' => ($benchmarkA && $benchmarkB) ? $stats->releaseBenchmark($benchmarkA, $benchmarkB, $benchmarkDays, $benchmarkStartA, $benchmarkStartB) : null,
             'regionalGrowth' => $stats->regionalGrowthTrend(),
-            'productDecay' => $stats->productDecayTracking(),
-            'firstPurchaseHeroes' => $stats->firstPurchaseHeroes(),
-            'productAffinity' => $stats->productAffinity(),
+            'productDecay' => $stats->productDecayTracking(30),
+            'firstPurchaseHeroes' => $stats->firstPurchaseHeroes(30),
+            'productAffinity' => $stats->productAffinity(30),
         ];
 
         if ($compare && $prevFrom) {
@@ -198,10 +196,10 @@ class DashboardController extends Controller
         $recovery = $stats->cartRecoveryFunnel($from, $to);
 
         $data = [
-            'couponLeaderboard' => $stats->couponLeaderboard(10, $from, $to),
+            'couponLeaderboard' => $stats->couponLeaderboard(30, $from, $to),
             'discountImpact' => $impact,
             'cartRecovery' => $recovery,
-            'topAbandonedProducts' => $stats->topAbandonedProducts(10, $from, $to),
+            'topAbandonedProducts' => $stats->topAbandonedProducts(30, $from, $to),
         ];
 
         if ($compare && $prevFrom) {
@@ -225,8 +223,8 @@ class DashboardController extends Controller
 
         $data = [
             'customerStats' => $custStats,
-            'customerGeo' => $stats->customerGeography(10, $from, $to),
-            'tagFollows' => $stats->tagFollowPopularity(),
+            'customerGeo' => $stats->customerGeography(30, $from, $to),
+            'tagFollows' => $stats->tagFollowPopularity(30),
             'cohortRetention' => $stats->cohortRetentionHistory(),
             'aovBreakdown' => $stats->aovBreakdown(),
             'waitlistConversion' => $stats->waitlistConversionBenchmark(),
