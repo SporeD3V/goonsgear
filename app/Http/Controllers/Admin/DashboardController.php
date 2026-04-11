@@ -3,41 +3,50 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Order;
-use App\Models\Product;
-use App\Models\ProductVariant;
+use App\Support\DashboardStatsService;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index(): View
+    public function index(Request $request, DashboardStatsService $stats): View
     {
-        $totalOrders = Order::count();
-        $pendingOrders = Order::where('status', 'pending')->count();
-        $revenue = Order::where('payment_status', 'paid')->sum('total');
+        $tab = $request->query('tab', 'overview');
 
-        $lowStockVariants = ProductVariant::where('stock_quantity', '>', 0)
-            ->where('stock_quantity', '<=', 5)
-            ->count();
+        $data = ['tab' => $tab];
 
-        $outOfStockVariants = ProductVariant::where('stock_quantity', 0)->count();
+        match ($tab) {
+            'sales' => $data += [
+                'revenueOverTime' => $stats->revenueOverTime(30),
+                'ordersByStatus' => $stats->ordersByStatus(),
+                'revenueByCountry' => $stats->revenueByCountry(),
+                'topProducts' => $stats->topSellingProducts(),
+                'aov' => $stats->averageOrderValue(),
+                'repeatRate' => $stats->repeatCustomerRate(),
+            ],
+            'inventory' => $data += [
+                'stockHealth' => $stats->stockHealth(),
+                'stockAlertDemand' => $stats->stockAlertDemand(),
+                'productStatus' => $stats->productStatusBreakdown(),
+            ],
+            'promotions' => $data += [
+                'couponLeaderboard' => $stats->couponLeaderboard(),
+                'discountImpact' => $stats->discountMarginImpact(),
+                'cartRecovery' => $stats->cartRecoveryFunnel(),
+            ],
+            'customers' => $data += [
+                'customerStats' => $stats->customerStats(),
+                'customerGeo' => $stats->customerGeography(),
+                'tagFollows' => $stats->tagFollowPopularity(),
+            ],
+            default => $data += [
+                'overview' => $stats->overviewStats(),
+                'recentOrders' => $stats->recentOrders(),
+                'revenueOverTime' => $stats->revenueOverTime(30),
+                'ordersByStatus' => $stats->ordersByStatus(),
+            ],
+        };
 
-        $recentOrders = Order::latest('placed_at')
-            ->take(10)
-            ->get();
-
-        $totalProducts = Product::count();
-        $activeProducts = Product::where('status', 'active')->count();
-
-        return view('admin.dashboard', compact(
-            'totalOrders',
-            'pendingOrders',
-            'revenue',
-            'lowStockVariants',
-            'outOfStockVariants',
-            'recentOrders',
-            'totalProducts',
-            'activeProducts',
-        ));
+        return view('admin.dashboard', $data);
     }
 }

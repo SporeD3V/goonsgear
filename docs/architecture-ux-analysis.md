@@ -572,14 +572,14 @@ SIDEBAR (reorganized)
 
 ## 9. Implementation Priority
 
-### Phase 1: Admin Container Separation (High Impact, Low Risk)
-1. **Product edit page** — Break single form into sectioned containers
-2. **Order detail page** — Separate info cards, actions, and items into containers
-3. **All list pages** — Separate filters and data table into distinct containers
-4. **Sidebar reorganization** — Flat sections with labels
+### Phase 1: Admin Container Separation (High Impact, Low Risk) ✅ DONE
+1. ~~**Product edit page** — Break single form into sectioned containers~~
+2. ~~**Order detail page** — Separate info cards, actions, and items into containers~~
+3. ~~**All list pages** — Separate filters and data table into distinct containers~~
+4. ~~**Sidebar reorganization** — Collapsible sections with route-aware auto-expand~~
 
-### Phase 2: Admin Dashboard
-4. **Create admin dashboard** — Landing page with quick stats and attention items
+### Phase 2: Admin Dashboard (Basic) ✅ DONE
+4. ~~**Create admin dashboard** — Landing page with quick stats and attention items~~
 
 ### Phase 3: Storefront Quick Wins
 5. **Checkout form** — Progressive disclosure, collapse optional apartment fields
@@ -891,7 +891,7 @@ For rendering charts in a Laravel/Livewire app, recommended options:
 - Consider a `DashboardStatsService` class to encapsulate all query logic
 
 #### Progressive Build Order
-1. **Phase A:** Expand current dashboard with KPI cards + recent orders (already done)
+1. ~~**Phase A:** Expand current dashboard with KPI cards + recent orders~~ ✅ DONE
 2. **Phase B:** Add revenue line chart + orders donut (Chart.js, inline Livewire component)
 3. **Phase C:** Add inventory health section (stock buckets, alert demand)
 4. **Phase D:** Add promotions tab (coupon leaderboard, discount impact)
