@@ -1,4 +1,7 @@
 import './bootstrap';
+import Chart from 'chart.js/auto';
+
+window.Chart = Chart;
 
 // Bundle product page: component variant selector
 window.bundleSelector = function () {
