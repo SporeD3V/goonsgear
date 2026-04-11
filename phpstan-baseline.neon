@@ -79,6 +79,12 @@ parameters:
 			path: app/Http/Controllers/CartController.php
 
 		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_bundle_exclusive\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/CartController.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$media\.$#'
 			identifier: property.notFound
 			count: 2
@@ -123,7 +129,7 @@ parameters:
 		-
 			message: '#^Using nullsafe property access on non\-nullable type Illuminate\\Database\\Eloquent\\Model\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
-			count: 1
+			count: 2
 			path: app/Http/Controllers/CartController.php
 
 		-
