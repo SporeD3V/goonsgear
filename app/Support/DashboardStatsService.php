@@ -449,6 +449,67 @@ class DashboardStatsService
         });
     }
 
+    /**
+     * Top Abandoned Products: most-abandoned products from cart_abandonments JSON.
+     *
+     * @return list<array{product_id: int, product_name: string, times_abandoned: int, total_qty: int, avg_price: float}>
+     */
+    public function topAbandonedProducts(int $limit = 10, ?Carbon $from = null, ?Carbon $to = null): array
+    {
+        $key = $this->periodCacheKey('top-abandoned-products', $from, $to);
+
+        /** @var list<array{product_id: int, product_name: string, times_abandoned: int, total_qty: int, avg_price: float}> */
+        return Cache::remember($key, 300, function () use ($limit, $from, $to): array {
+            $query = DB::table('cart_abandonments')
+                ->whereNull('recovered_at');
+
+            $this->applyPeriod($query, $from, $to, 'abandoned_at');
+
+            $abandonments = $query->select('cart_data')->get();
+
+            if ($abandonments->isEmpty()) {
+                return [];
+            }
+
+            $products = [];
+            foreach ($abandonments as $row) {
+                $items = is_string($row->cart_data) ? json_decode($row->cart_data, true) : $row->cart_data;
+                if (! is_array($items)) {
+                    continue;
+                }
+                foreach ($items as $item) {
+                    if (! isset($item['product_id'])) {
+                        continue;
+                    }
+                    $pid = (int) $item['product_id'];
+                    if (! isset($products[$pid])) {
+                        $products[$pid] = [
+                            'product_id' => $pid,
+                            'product_name' => $item['product_name'] ?? 'Unknown',
+                            'times_abandoned' => 0,
+                            'total_qty' => 0,
+                            'total_price' => 0.0,
+                        ];
+                    }
+                    $products[$pid]['times_abandoned']++;
+                    $products[$pid]['total_qty'] += (int) ($item['quantity'] ?? 1);
+                    $products[$pid]['total_price'] += (float) ($item['price'] ?? 0) * (int) ($item['quantity'] ?? 1);
+                }
+            }
+
+            usort($products, fn ($a, $b) => $b['times_abandoned'] <=> $a['times_abandoned']);
+            $products = array_slice($products, 0, $limit);
+
+            return array_map(fn ($p) => [
+                'product_id' => $p['product_id'],
+                'product_name' => $p['product_name'],
+                'times_abandoned' => $p['times_abandoned'],
+                'total_qty' => $p['total_qty'],
+                'avg_price' => $p['total_qty'] > 0 ? round($p['total_price'] / $p['total_qty'], 2) : 0.0,
+            ], $products);
+        });
+    }
+
     // ── Customers Tab ─────────────────────────────────────────
 
     /**
@@ -916,6 +977,58 @@ class DashboardStatsService
         });
     }
 
+    /**
+     * VIP Churn Warning: top 5% spenders who haven't ordered in 90+ days.
+     *
+     * @return array{vip_threshold: float, vip_total: int, churning: list<array{email: string, total_spent: float, order_count: int, days_since_last: int, last_order: string}>}
+     */
+    public function vipChurnWarning(): array
+    {
+        /** @var array{vip_threshold: float, vip_total: int, churning: list<array{email: string, total_spent: float, order_count: int, days_since_last: int, last_order: string}>} */
+        return Cache::remember('dashboard:vip-churn', 300, function (): array {
+            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+
+            $daysSinceExpr = $isSqlite
+                ? 'CAST(julianday("now") - julianday(MAX(placed_at)) AS INTEGER)'
+                : 'DATEDIFF(NOW(), MAX(placed_at))';
+
+            $customers = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->whereNotNull('placed_at')
+                ->groupBy('email')
+                ->selectRaw("email, COUNT(*) as order_count, SUM(total) as total_spent, MAX(placed_at) as last_order, {$daysSinceExpr} as days_since_last")
+                ->get();
+
+            if ($customers->isEmpty()) {
+                return ['vip_threshold' => 0.0, 'vip_total' => 0, 'churning' => []];
+            }
+
+            // Sort by total_spent descending to find top 5%
+            $sorted = $customers->sortByDesc('total_spent')->values();
+            $vipCount = max(1, (int) ceil($sorted->count() * 0.05));
+            $threshold = (float) $sorted[$vipCount - 1]->total_spent;
+
+            $vips = $sorted->take($vipCount);
+            $churning = $vips->filter(fn ($c) => (int) $c->days_since_last >= 90)
+                ->map(fn ($c) => [
+                    'email' => $c->email,
+                    'total_spent' => round((float) $c->total_spent, 2),
+                    'order_count' => (int) $c->order_count,
+                    'days_since_last' => (int) $c->days_since_last,
+                    'last_order' => Carbon::parse($c->last_order)->format('M j, Y'),
+                ])
+                ->sortByDesc('days_since_last')
+                ->values()
+                ->all();
+
+            return [
+                'vip_threshold' => round($threshold, 2),
+                'vip_total' => $vipCount,
+                'churning' => $churning,
+            ];
+        });
+    }
+
     // ── Historical / Seasonal ─────────────────────────────────
 
     /**
@@ -1293,6 +1406,125 @@ class DashboardStatsService
                     'name' => $product->name,
                     'published_at' => Carbon::parse($product->published_at)->format('Y-m-d'),
                     'months' => $monthsData,
+                ];
+            }
+
+            return $result;
+        });
+    }
+
+    // ── Deep Product & Cart Insights ──────────────────────────
+
+    /**
+     * First-Purchase Heroes: which products customers buy as their first order.
+     *
+     * @return list<array{product_name: string, first_purchases: int, pct: float}>
+     */
+    public function firstPurchaseHeroes(int $limit = 10): array
+    {
+        /** @var list<array{product_name: string, first_purchases: int, pct: float}> */
+        return Cache::remember('dashboard:first-purchase-heroes', 300, function () use ($limit): array {
+            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+            $minExpr = $isSqlite
+                ? 'MIN(julianday(o.placed_at))'
+                : 'MIN(o.placed_at)';
+
+            // Subquery: find each customer's first order
+            $firstOrders = DB::table('orders as o')
+                ->whereIn('o.payment_status', self::PAID_STATUSES)
+                ->whereNotNull('o.placed_at')
+                ->groupBy('o.email')
+                ->selectRaw("o.email, MIN(o.id) as first_order_id, {$minExpr} as first_placed");
+
+            // Join to get items from those first orders
+            $rows = DB::table('order_items as oi')
+                ->joinSub($firstOrders, 'fo', 'oi.order_id', '=', 'fo.first_order_id')
+                ->selectRaw('oi.product_name, COUNT(*) as first_purchases')
+                ->groupBy('oi.product_name')
+                ->orderByDesc('first_purchases')
+                ->limit($limit)
+                ->get();
+
+            if ($rows->isEmpty()) {
+                return [];
+            }
+
+            $total = $rows->sum('first_purchases');
+
+            return $rows->map(fn ($r) => [
+                'product_name' => $r->product_name,
+                'first_purchases' => (int) $r->first_purchases,
+                'pct' => $total > 0 ? round(((int) $r->first_purchases / $total) * 100, 1) : 0.0,
+            ])->all();
+        });
+    }
+
+    /**
+     * Product Affinity (Market Basket): products frequently bought together.
+     *
+     * @return list<array{product_a: string, product_b: string, co_purchases: int, affinity_pct: float}>
+     */
+    public function productAffinity(int $limit = 10): array
+    {
+        /** @var list<array{product_a: string, product_b: string, co_purchases: int, affinity_pct: float}> */
+        return Cache::remember('dashboard:product-affinity', 300, function () use ($limit): array {
+            // Get all paid orders that have 2+ distinct products
+            $orderProducts = DB::table('order_items as oi')
+                ->join('orders as o', 'oi.order_id', '=', 'o.id')
+                ->whereIn('o.payment_status', self::PAID_STATUSES)
+                ->whereNotNull('o.placed_at')
+                ->select('oi.order_id', 'oi.product_name')
+                ->distinct()
+                ->get()
+                ->groupBy('order_id');
+
+            if ($orderProducts->isEmpty()) {
+                return [];
+            }
+
+            // Count product purchase totals (for affinity %)
+            $productCounts = [];
+            $pairs = [];
+
+            foreach ($orderProducts as $orderId => $items) {
+                $names = $items->pluck('product_name')->unique()->sort()->values()->all();
+
+                foreach ($names as $name) {
+                    $productCounts[$name] = ($productCounts[$name] ?? 0) + 1;
+                }
+
+                // Generate all pairs (sorted to avoid A→B and B→A duplicates)
+                $count = count($names);
+                if ($count < 2) {
+                    continue;
+                }
+
+                for ($i = 0; $i < $count; $i++) {
+                    for ($j = $i + 1; $j < $count; $j++) {
+                        $key = $names[$i].'|||'.$names[$j];
+                        $pairs[$key] = ($pairs[$key] ?? 0) + 1;
+                    }
+                }
+            }
+
+            if (empty($pairs)) {
+                return [];
+            }
+
+            // Sort by co-purchase count
+            arsort($pairs);
+            $topPairs = array_slice($pairs, 0, $limit, true);
+
+            $result = [];
+            foreach ($topPairs as $key => $coPurchases) {
+                [$a, $b] = explode('|||', $key);
+                // Affinity % = co-purchases / purchases of less popular product
+                $minCount = min($productCounts[$a] ?? 1, $productCounts[$b] ?? 1);
+                $result[] = [
+                    'product_a' => $a,
+                    'product_b' => $b,
+                    'co_purchases' => $coPurchases,
+                    'affinity_pct' => round(($coPurchases / $minCount) * 100, 1),
                 ];
             }
 

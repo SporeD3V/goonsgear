@@ -78,3 +78,81 @@
         </div>
     </div>
 </div>
+
+{{-- Top Abandoned Products --}}
+<div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="4">
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Top Abandoned Products</h3>
+    <p class="mb-3 text-[13px] text-stone-500">Which items are left behind? If a product shows up here often, investigate price or shipping barriers.</p>
+    @if (empty($topAbandonedProducts))
+        <p class="text-[15px] text-stone-500">No abandoned cart data for this period.</p>
+    @else
+        <div class="grid gap-5 lg:grid-cols-2">
+            <div class="h-[260px]">
+                <canvas id="abandonedProductsChart"></canvas>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                    <thead class="bg-stone-50">
+                        <tr>
+                            <th class="px-4 py-2.5 text-left font-medium text-stone-600">Product</th>
+                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Abandoned</th>
+                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Total Qty</th>
+                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Avg Price</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-stone-100">
+                        @foreach ($topAbandonedProducts as $item)
+                            <tr class="transition hover:bg-stone-50">
+                                <td class="px-4 py-2.5 font-medium text-stone-700">{{ $item['product_name'] }}</td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ $item['times_abandoned'] }}×</td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ $item['total_qty'] }}</td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500">&euro;{{ number_format($item['avg_price'], 2) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+</div>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const abandonedData = @json($topAbandonedProducts);
+        if (abandonedData.length && document.getElementById('abandonedProductsChart')) {
+            new Chart(document.getElementById('abandonedProductsChart'), {
+                type: 'bar',
+                data: {
+                    labels: abandonedData.map(p => p.product_name),
+                    datasets: [{
+                        label: 'Times Abandoned',
+                        data: abandonedData.map(p => p.times_abandoned),
+                        backgroundColor: '#ff6384',
+                        borderRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    return 'Abandoned ' + ctx.parsed.x + ' times';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { beginAtZero: true, ticks: { font: { size: 12 }, color: '#78716c', precision: 0 }, grid: { color: '#f5f5f4' } },
+                        y: { ticks: { font: { size: 11 }, color: '#57534e' } }
+                    }
+                }
+            });
+        }
+    });
+</script>
+@endpush

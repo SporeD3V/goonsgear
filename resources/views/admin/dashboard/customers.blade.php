@@ -229,6 +229,55 @@
     @endif
 </div>
 
+{{-- VIP Churn Warning --}}
+<div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="9">
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">VIP Churn Warning</h3>
+    <p class="mb-3 text-[13px] text-stone-500">Top 5% spenders who haven't ordered in 90+ days — these are customers worth reaching out to.</p>
+    @if ($vipChurn['vip_total'] === 0)
+        <p class="text-[15px] text-stone-500">No customer data available yet.</p>
+    @elseif (empty($vipChurn['churning']))
+        <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-center">
+            <p class="text-[15px] font-medium text-emerald-700">All {{ $vipChurn['vip_total'] }} VIP customers are active</p>
+            <p class="mt-1 text-[13px] text-emerald-600">VIP threshold: &euro;{{ number_format($vipChurn['vip_threshold'], 2) }}+ total spend</p>
+        </div>
+    @else
+        <div class="mb-3 flex items-center gap-4">
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-sm font-semibold text-red-700">
+                {{ count($vipChurn['churning']) }} at risk
+            </span>
+            <span class="text-[13px] text-stone-500">of {{ $vipChurn['vip_total'] }} VIPs (threshold: &euro;{{ number_format($vipChurn['vip_threshold'], 2) }})</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                <thead class="bg-stone-50">
+                    <tr>
+                        <th class="px-4 py-2.5 text-left font-medium text-stone-600">Customer</th>
+                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Total Spent</th>
+                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Orders</th>
+                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Days Silent</th>
+                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Last Order</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100">
+                    @foreach ($vipChurn['churning'] as $vip)
+                        <tr class="transition hover:bg-stone-50">
+                            <td class="px-4 py-2.5 font-medium text-stone-700">{{ $vip['email'] }}</td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">&euro;{{ number_format($vip['total_spent'], 2) }}</td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ $vip['order_count'] }}</td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right">
+                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold {{ $vip['days_since_last'] >= 180 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700' }}">
+                                    {{ $vip['days_since_last'] }}d
+                                </span>
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500">{{ $vip['last_order'] }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+</div>
+
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {

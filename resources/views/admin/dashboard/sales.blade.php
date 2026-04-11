@@ -257,6 +257,77 @@
     @endif
 </div>
 
+{{-- First-Purchase Heroes --}}
+<div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="10">
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">First-Purchase Heroes</h3>
+    <p class="mb-3 text-[13px] text-stone-500">Which products do new customers buy first? Identifies the "entry point" products that bring people in.</p>
+    @if (empty($firstPurchaseHeroes))
+        <p class="text-[15px] text-stone-500">No first-purchase data available yet.</p>
+    @else
+        <div class="grid gap-5 lg:grid-cols-2">
+            <div class="h-[260px]">
+                <canvas id="firstPurchaseChart"></canvas>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                    <thead class="bg-stone-50">
+                        <tr>
+                            <th class="px-4 py-2.5 text-left font-medium text-stone-600">Product</th>
+                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">First Purchases</th>
+                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Share</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-stone-100">
+                        @foreach ($firstPurchaseHeroes as $hero)
+                            <tr class="transition hover:bg-stone-50">
+                                <td class="px-4 py-2.5 font-medium text-stone-700">{{ $hero['product_name'] }}</td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ number_format($hero['first_purchases']) }}</td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500">{{ $hero['pct'] }}%</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+</div>
+
+{{-- Product Affinity (Market Basket) --}}
+<div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="11">
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Product Affinity</h3>
+    <p class="mb-3 text-[13px] text-stone-500">"Customers who bought X also bought Y" — use this for "Complete the Look" upsells.</p>
+    @if (empty($productAffinity))
+        <p class="text-[15px] text-stone-500">No multi-product order data yet. Affinity appears once customers start buying 2+ products together.</p>
+    @else
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                <thead class="bg-stone-50">
+                    <tr>
+                        <th class="px-4 py-2.5 text-left font-medium text-stone-600">Product A</th>
+                        <th class="px-4 py-2.5 text-left font-medium text-stone-600">Product B</th>
+                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Bought Together</th>
+                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Affinity</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100">
+                    @foreach ($productAffinity as $pair)
+                        <tr class="transition hover:bg-stone-50">
+                            <td class="px-4 py-2.5 font-medium text-stone-700">{{ $pair['product_a'] }}</td>
+                            <td class="px-4 py-2.5 font-medium text-stone-700">{{ $pair['product_b'] }}</td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ $pair['co_purchases'] }}×</td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right">
+                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold {{ $pair['affinity_pct'] >= 50 ? 'bg-[#4bc0c0]/15 text-[#4bc0c0]' : ($pair['affinity_pct'] >= 25 ? 'bg-[#ff9f40]/15 text-[#ff9f40]' : 'bg-stone-100 text-stone-500') }}">
+                                    {{ $pair['affinity_pct'] }}%
+                                </span>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+</div>
+
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -488,6 +559,40 @@
                     scales: {
                         x: { grid: { display: false }, ticks: { font: { size: 12 }, color: '#78716c' } },
                         y: { beginAtZero: true, ticks: { callback: v => '€' + v.toLocaleString(), font: { size: 12 }, color: '#78716c' }, grid: { color: '#f5f5f4' } }
+                    }
+                }
+            });
+        }
+
+        // First-Purchase Heroes Chart
+        const heroData = @json($firstPurchaseHeroes);
+        if (heroData.length && document.getElementById('firstPurchaseChart')) {
+            const heroColors = ['#36a2eb', '#ff6384', '#4bc0c0', '#ff9f40', '#9966ff', '#c9cbcf', '#e7e5e4', '#57534e', '#78716c', '#a8a29e'];
+            new Chart(document.getElementById('firstPurchaseChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: heroData.map(h => h.product_name),
+                    datasets: [{
+                        data: heroData.map(h => h.first_purchases),
+                        backgroundColor: heroData.map((_, i) => heroColors[i % heroColors.length]),
+                        borderWidth: 2,
+                        borderColor: '#fff',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { font: { size: 11 }, color: '#57534e', padding: 10 } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+                                    return ctx.label + ': ' + ctx.parsed + ' (' + pct + '%)';
+                                }
+                            }
+                        }
                     }
                 }
             });

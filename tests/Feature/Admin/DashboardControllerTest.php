@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\CartAbandonment;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -728,5 +729,262 @@ class DashboardControllerTest extends TestCase
         $years = collect($clv['by_year'])->pluck('year')->toArray();
         $this->assertContains(now()->subYear()->year, $years);
         $this->assertContains(now()->year, $years);
+    }
+
+    public function test_vip_churn_warning_detects_inactive_vips(): void
+    {
+        $this->actingAsAdmin();
+
+        // Create 20 customers so top 5% = 1 customer
+        foreach (range(1, 19) as $i) {
+            Order::factory()->create([
+                'email' => "regular{$i}@example.com",
+                'payment_status' => 'paid',
+                'placed_at' => now()->subDays(5),
+                'total' => 20.00,
+            ]);
+        }
+
+        // VIP customer who stopped buying 120 days ago
+        foreach (range(1, 5) as $i) {
+            Order::factory()->create([
+                'email' => 'vip@example.com',
+                'payment_status' => 'paid',
+                'placed_at' => now()->subDays(120 + $i),
+                'total' => 500.00,
+            ]);
+        }
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response->assertOk();
+
+        $churn = $response->viewData('vipChurn');
+        $this->assertGreaterThan(0, $churn['vip_total']);
+        $this->assertNotEmpty($churn['churning']);
+        $this->assertEquals('vip@example.com', $churn['churning'][0]['email']);
+    }
+
+    public function test_vip_churn_empty_without_orders(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'customers']));
+        $response->assertOk();
+
+        $churn = $response->viewData('vipChurn');
+        $this->assertEquals(0, $churn['vip_total']);
+        $this->assertEmpty($churn['churning']);
+    }
+
+    public function test_first_purchase_heroes_identifies_entry_products(): void
+    {
+        $this->actingAsAdmin();
+
+        $product = Product::factory()->create(['name' => 'Entry T-Shirt']);
+        $variant = ProductVariant::factory()->create(['product_id' => $product->id]);
+
+        // Customer A: first order has "Entry T-Shirt"
+        $orderA = Order::factory()->create([
+            'email' => 'custA@example.com',
+            'payment_status' => 'paid',
+            'placed_at' => now()->subMonths(3),
+            'total' => 30.00,
+        ]);
+
+        OrderItem::factory()->create([
+            'order_id' => $orderA->id,
+            'product_id' => $product->id,
+            'product_variant_id' => $variant->id,
+            'product_name' => 'Entry T-Shirt',
+            'quantity' => 1,
+            'unit_price' => 30.00,
+            'line_total' => 30.00,
+        ]);
+
+        // Customer B: also first order has "Entry T-Shirt"
+        $orderB = Order::factory()->create([
+            'email' => 'custB@example.com',
+            'payment_status' => 'paid',
+            'placed_at' => now()->subMonths(2),
+            'total' => 30.00,
+        ]);
+
+        OrderItem::factory()->create([
+            'order_id' => $orderB->id,
+            'product_id' => $product->id,
+            'product_variant_id' => $variant->id,
+            'product_name' => 'Entry T-Shirt',
+            'quantity' => 1,
+            'unit_price' => 30.00,
+            'line_total' => 30.00,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
+        $response->assertOk();
+
+        $heroes = $response->viewData('firstPurchaseHeroes');
+        $this->assertNotEmpty($heroes);
+        $this->assertEquals('Entry T-Shirt', $heroes[0]['product_name']);
+        $this->assertEquals(2, $heroes[0]['first_purchases']);
+    }
+
+    public function test_first_purchase_heroes_empty_without_orders(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
+        $response->assertOk();
+
+        $heroes = $response->viewData('firstPurchaseHeroes');
+        $this->assertEmpty($heroes);
+    }
+
+    public function test_product_affinity_finds_co_purchased_products(): void
+    {
+        $this->actingAsAdmin();
+
+        $productA = Product::factory()->create(['name' => 'Blue Shirt']);
+        $variantA = ProductVariant::factory()->create(['product_id' => $productA->id]);
+        $productB = Product::factory()->create(['name' => 'Brown Belt']);
+        $variantB = ProductVariant::factory()->create(['product_id' => $productB->id]);
+
+        // Order with both products
+        $order = Order::factory()->create([
+            'email' => 'buyer@example.com',
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(5),
+            'total' => 80.00,
+        ]);
+
+        OrderItem::factory()->create([
+            'order_id' => $order->id,
+            'product_id' => $productA->id,
+            'product_variant_id' => $variantA->id,
+            'product_name' => 'Blue Shirt',
+            'quantity' => 1,
+            'unit_price' => 40.00,
+            'line_total' => 40.00,
+        ]);
+
+        OrderItem::factory()->create([
+            'order_id' => $order->id,
+            'product_id' => $productB->id,
+            'product_variant_id' => $variantB->id,
+            'product_name' => 'Brown Belt',
+            'quantity' => 1,
+            'unit_price' => 40.00,
+            'line_total' => 40.00,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
+        $response->assertOk();
+
+        $affinity = $response->viewData('productAffinity');
+        $this->assertNotEmpty($affinity);
+        $this->assertEquals(1, $affinity[0]['co_purchases']);
+
+        $names = [$affinity[0]['product_a'], $affinity[0]['product_b']];
+        sort($names);
+        $this->assertEquals(['Blue Shirt', 'Brown Belt'], $names);
+    }
+
+    public function test_product_affinity_empty_without_multi_product_orders(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
+        $response->assertOk();
+
+        $affinity = $response->viewData('productAffinity');
+        $this->assertEmpty($affinity);
+    }
+
+    public function test_top_abandoned_products_lists_abandoned_items(): void
+    {
+        $this->actingAsAdmin();
+
+        CartAbandonment::factory()->create([
+            'cart_data' => [
+                1 => [
+                    'product_id' => 1,
+                    'product_name' => 'Heavy Vinyl Record',
+                    'price' => 35.00,
+                    'quantity' => 2,
+                ],
+                2 => [
+                    'product_id' => 2,
+                    'product_name' => 'T-Shirt',
+                    'price' => 25.00,
+                    'quantity' => 1,
+                ],
+            ],
+            'abandoned_at' => now()->subDays(2),
+            'recovered_at' => null,
+        ]);
+
+        CartAbandonment::factory()->create([
+            'cart_data' => [
+                1 => [
+                    'product_id' => 1,
+                    'product_name' => 'Heavy Vinyl Record',
+                    'price' => 35.00,
+                    'quantity' => 1,
+                ],
+            ],
+            'abandoned_at' => now()->subDay(),
+            'recovered_at' => null,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'promotions']));
+        $response->assertOk();
+
+        $abandoned = $response->viewData('topAbandonedProducts');
+        $this->assertNotEmpty($abandoned);
+        $this->assertEquals('Heavy Vinyl Record', $abandoned[0]['product_name']);
+        $this->assertEquals(2, $abandoned[0]['times_abandoned']);
+        $this->assertEquals(3, $abandoned[0]['total_qty']);
+    }
+
+    public function test_top_abandoned_products_excludes_recovered_carts(): void
+    {
+        $this->actingAsAdmin();
+
+        CartAbandonment::factory()->create([
+            'cart_data' => [
+                1 => [
+                    'product_id' => 1,
+                    'product_name' => 'Recovered Item',
+                    'price' => 50.00,
+                    'quantity' => 1,
+                ],
+            ],
+            'abandoned_at' => now()->subDays(2),
+            'recovered_at' => now()->subDay(),
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'promotions']));
+        $response->assertOk();
+
+        $abandoned = $response->viewData('topAbandonedProducts');
+        $this->assertEmpty($abandoned);
+    }
+
+    public function test_sales_tab_has_heroes_and_affinity_data(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
+        $response->assertOk()
+            ->assertViewHas('firstPurchaseHeroes')
+            ->assertViewHas('productAffinity');
+    }
+
+    public function test_promotions_tab_has_abandoned_products_data(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'promotions']));
+        $response->assertOk()
+            ->assertViewHas('topAbandonedProducts');
     }
 }

@@ -158,6 +158,8 @@ class DashboardController extends Controller
             'releaseBenchmark' => ($benchmarkA && $benchmarkB) ? $stats->releaseBenchmark($benchmarkA, $benchmarkB, $benchmarkDays) : null,
             'regionalGrowth' => $stats->regionalGrowthTrend(),
             'productDecay' => $stats->productDecayTracking(),
+            'firstPurchaseHeroes' => $stats->firstPurchaseHeroes(),
+            'productAffinity' => $stats->productAffinity(),
         ];
 
         if ($compare && $prevFrom) {
@@ -187,6 +189,7 @@ class DashboardController extends Controller
             'couponLeaderboard' => $stats->couponLeaderboard(10, $from, $to),
             'discountImpact' => $impact,
             'cartRecovery' => $recovery,
+            'topAbandonedProducts' => $stats->topAbandonedProducts(10, $from, $to),
         ];
 
         if ($compare && $prevFrom) {
@@ -217,6 +220,7 @@ class DashboardController extends Controller
             'waitlistConversion' => $stats->waitlistConversionBenchmark(),
             'rfmSegmentation' => $stats->rfmSegmentation(),
             'clv' => $stats->customerLifetimeValue(),
+            'vipChurn' => $stats->vipChurnWarning(),
         ];
 
         if ($compare && $prevFrom) {
