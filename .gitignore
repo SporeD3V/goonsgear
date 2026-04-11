@@ -29,6 +29,9 @@ _ide_helper.php
 _ide_helper_models.php
 .phpstorm.meta.php
 
+# Internal documentation
+/docs/internal/
+
 # Root-level ad hoc scripts (use artisan commands or tests instead)
 /*.py
 /*.sql
