@@ -4,6 +4,7 @@ use App\Http\Middleware\AddAdminNoIndexHeaders;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleLegacyRedirects;
 use App\Http\Middleware\SetSecurityHeaders;
+use App\Http\Middleware\TrackVisitor;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -21,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->append(HandleLegacyRedirects::class);
         $middleware->append(SetSecurityHeaders::class);
+        $middleware->appendToGroup('web', TrackVisitor::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

@@ -92,6 +92,40 @@ class DashboardStatsService
         return Order::latest('placed_at')->take($limit)->get();
     }
 
+    /**
+     * Site traffic and conversion metrics: visitors, orders, CR%, revenue per visitor.
+     *
+     * @return array{visitors: int, orders: int, conversion_pct: float, revenue_per_visitor: float, revenue: float}
+     */
+    public function siteConversionRate(?Carbon $from = null, ?Carbon $to = null): array
+    {
+        $key = $this->periodCacheKey('site-conversion', $from, $to);
+
+        return Cache::remember($key, 300, function () use ($from, $to): array {
+            $visitQuery = DB::table('daily_visits');
+            if ($from !== null) {
+                $visitQuery->where('date', '>=', $from->toDateString());
+            }
+            if ($to !== null) {
+                $visitQuery->where('date', '<=', $to->toDateString());
+            }
+            $visitors = (int) $visitQuery->sum('visitor_count');
+
+            $orderQuery = Order::whereIn('payment_status', self::PAID_STATUSES);
+            $this->applyPeriod($orderQuery, $from, $to);
+            $orders = (int) $orderQuery->count();
+            $revenue = (float) $orderQuery->sum('total');
+
+            return [
+                'visitors' => $visitors,
+                'orders' => $orders,
+                'conversion_pct' => $visitors > 0 ? round(($orders / $visitors) * 100, 2) : 0.0,
+                'revenue_per_visitor' => $visitors > 0 ? round($revenue / $visitors, 2) : 0.0,
+                'revenue' => round($revenue, 2),
+            ];
+        });
+    }
+
     // ── Sales Tab ─────────────────────────────────────────────
 
     /**
@@ -191,6 +225,37 @@ class DashboardStatsService
                     'country' => $row->country,
                     'revenue' => (float) $row->revenue,
                     'count' => (int) $row->count,
+                ])
+                ->all();
+        });
+    }
+
+    /**
+     * Average Order Value broken down by country.
+     *
+     * @return array<int, array{country: string, aov: float, orders: int, revenue: float}>
+     */
+    public function aovByCountry(int $limit = 10, ?Carbon $from = null, ?Carbon $to = null): array
+    {
+        $key = $this->periodCacheKey('aov-by-country', $from, $to);
+
+        return Cache::remember($key, 300, function () use ($limit, $from, $to): array {
+            $query = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES);
+
+            $this->applyPeriod($query, $from, $to);
+
+            return $query
+                ->selectRaw('country, ROUND(AVG(total), 2) as aov, COUNT(*) as orders, SUM(total) as revenue')
+                ->groupBy('country')
+                ->orderByDesc('orders')
+                ->take($limit)
+                ->get()
+                ->map(fn ($row) => [
+                    'country' => $row->country,
+                    'aov' => (float) $row->aov,
+                    'orders' => (int) $row->orders,
+                    'revenue' => round((float) $row->revenue, 2),
                 ])
                 ->all();
         });

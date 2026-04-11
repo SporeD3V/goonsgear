@@ -51,6 +51,43 @@
     </div>
 </div>
 
+{{-- AOV by Country --}}
+<div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="5">
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">AOV by Country ({{ $periodLabel }})</h3>
+    <p class="mb-3 text-[13px] text-stone-500">Do customers in some countries spend more per order? Use this to justify marketing spend allocation.</p>
+    @if (empty($aovByCountry))
+        <p class="text-[15px] text-stone-500">No order data yet.</p>
+    @else
+        <div class="grid gap-5 lg:grid-cols-2">
+            <div class="h-[260px]">
+                <canvas id="aovByCountryChart"></canvas>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                    <thead class="bg-stone-50">
+                        <tr>
+                            <th class="px-4 py-2.5 text-left font-medium text-stone-600">Country</th>
+                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">AOV</th>
+                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Orders</th>
+                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-stone-100">
+                        @foreach ($aovByCountry as $row)
+                            <tr class="transition hover:bg-stone-50">
+                                <td class="whitespace-nowrap px-4 py-2.5 font-medium text-stone-700">{{ $row['country'] ?: 'Unknown' }}</td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right font-semibold" style="color: #36a2eb">&euro;{{ number_format($row['aov'], 2) }}</td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ number_format($row['orders']) }}</td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500">&euro;{{ number_format($row['revenue'], 2) }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    @endif
+</div>
+
 {{-- Top Products --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="5">
     <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Top Selling Products ({{ $periodLabel }})</h3>
@@ -559,6 +596,41 @@
                     scales: {
                         x: { grid: { display: false }, ticks: { font: { size: 12 }, color: '#78716c' } },
                         y: { beginAtZero: true, ticks: { callback: v => '€' + v.toLocaleString(), font: { size: 12 }, color: '#78716c' }, grid: { color: '#f5f5f4' } }
+                    }
+                }
+            });
+        }
+
+        // AOV by Country Chart
+        const aovCountryData = @json($aovByCountry);
+        if (aovCountryData.length && document.getElementById('aovByCountryChart')) {
+            new Chart(document.getElementById('aovByCountryChart'), {
+                type: 'bar',
+                data: {
+                    labels: aovCountryData.map(r => r.country || 'Unknown'),
+                    datasets: [{
+                        label: 'AOV (€)',
+                        data: aovCountryData.map(r => r.aov),
+                        backgroundColor: '#36a2eb',
+                        borderRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    return 'AOV: €' + ctx.parsed.y.toFixed(2);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { callback: v => '€' + v, font: { size: 12 }, color: '#78716c' }, grid: { color: '#f5f5f4' } },
+                        x: { ticks: { font: { size: 12 }, color: '#57534e' } }
                     }
                 }
             });

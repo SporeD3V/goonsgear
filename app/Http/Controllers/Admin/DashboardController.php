@@ -121,6 +121,7 @@ class DashboardController extends Controller
             'recentOrders' => $stats->recentOrders(),
             'revenueOverTime' => $stats->revenueOverTime($from, $to),
             'ordersByStatus' => $stats->ordersByStatus($from, $to),
+            'siteConversion' => $stats->siteConversionRate($from, $to),
         ];
 
         if ($compare && $prevFrom) {
@@ -148,6 +149,7 @@ class DashboardController extends Controller
             'revenueOverTime' => $stats->revenueOverTime($from, $to),
             'ordersByStatus' => $stats->ordersByStatus($from, $to),
             'revenueByCountry' => $stats->revenueByCountry(10, $from, $to),
+            'aovByCountry' => $stats->aovByCountry(10, $from, $to),
             'topProducts' => $stats->topSellingProducts(10, $from, $to),
             'aov' => $aov,
             'repeatRate' => $repeatRate,

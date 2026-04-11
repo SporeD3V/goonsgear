@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Http\Middleware\TrackVisitor;
 use App\Models\CartAbandonment;
+use App\Models\DailyVisit;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -986,5 +988,135 @@ class DashboardControllerTest extends TestCase
         $response = $this->get(route('admin.dashboard', ['tab' => 'promotions']));
         $response->assertOk()
             ->assertViewHas('topAbandonedProducts');
+    }
+
+    public function test_overview_has_site_conversion_data(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard'));
+        $response->assertOk()
+            ->assertViewHas('siteConversion');
+    }
+
+    public function test_site_conversion_calculates_metrics(): void
+    {
+        $this->withoutMiddleware(TrackVisitor::class);
+        $this->actingAsAdmin();
+
+        DailyVisit::create(['date' => now()->subDays(2)->toDateString(), 'visitor_count' => 100]);
+        DailyVisit::create(['date' => now()->subDay()->toDateString(), 'visitor_count' => 150]);
+
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(2),
+            'total' => 75.00,
+        ]);
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDay(),
+            'total' => 125.00,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['period' => '7d']));
+        $response->assertOk();
+
+        $conversion = $response->viewData('siteConversion');
+        $this->assertEquals(250, $conversion['visitors']);
+        $this->assertEquals(2, $conversion['orders']);
+        // CR = 2/250 * 100 = 0.8%
+        $this->assertEquals(0.8, $conversion['conversion_pct']);
+        // Rev/visitor = 200/250 = 0.8
+        $this->assertEquals(0.8, $conversion['revenue_per_visitor']);
+    }
+
+    public function test_site_conversion_empty_without_visitors(): void
+    {
+        $this->withoutMiddleware(TrackVisitor::class);
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard'));
+        $response->assertOk();
+
+        $conversion = $response->viewData('siteConversion');
+        $this->assertEquals(0, $conversion['visitors']);
+        $this->assertEquals(0.0, $conversion['conversion_pct']);
+        $this->assertEquals(0.0, $conversion['revenue_per_visitor']);
+    }
+
+    public function test_aov_by_country_calculates_correctly(): void
+    {
+        $this->actingAsAdmin();
+
+        Order::factory()->create([
+            'country' => 'US',
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(5),
+            'total' => 100.00,
+        ]);
+        Order::factory()->create([
+            'country' => 'US',
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(4),
+            'total' => 200.00,
+        ]);
+        Order::factory()->create([
+            'country' => 'DE',
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(3),
+            'total' => 80.00,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
+        $response->assertOk();
+
+        $aovByCountry = $response->viewData('aovByCountry');
+        $this->assertNotEmpty($aovByCountry);
+
+        $us = collect($aovByCountry)->firstWhere('country', 'US');
+        $de = collect($aovByCountry)->firstWhere('country', 'DE');
+
+        $this->assertNotNull($us);
+        $this->assertEquals(150.0, $us['aov']);
+        $this->assertEquals(2, $us['orders']);
+
+        $this->assertNotNull($de);
+        $this->assertEquals(80.0, $de['aov']);
+        $this->assertEquals(1, $de['orders']);
+    }
+
+    public function test_aov_by_country_empty_without_orders(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
+        $response->assertOk();
+
+        $aovByCountry = $response->viewData('aovByCountry');
+        $this->assertEmpty($aovByCountry);
+    }
+
+    public function test_sales_tab_has_aov_by_country(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
+        $response->assertOk()
+            ->assertViewHas('aovByCountry');
+    }
+
+    public function test_visitor_tracking_middleware_increments_count(): void
+    {
+        // Visit the homepage as a regular user — middleware should count it
+        $response = $this->get('/');
+
+        $visit = DailyVisit::where('date', now()->toDateString())->first();
+        $this->assertNotNull($visit);
+        $this->assertEquals(1, $visit->visitor_count);
+
+        // Second request in same session should NOT increment
+        $response = $this->get('/');
+        $visit->refresh();
+        $this->assertEquals(1, $visit->visitor_count);
     }
 }

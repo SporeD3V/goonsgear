@@ -28,6 +28,37 @@
     ])
 </div>
 
+{{-- Site Conversion Rate --}}
+<div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="2">
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Site Conversion ({{ $periodLabel }})</h3>
+    <p class="mb-3 text-[13px] text-stone-500">How efficiently are visitors turning into paying customers?</p>
+    @if ($siteConversion['visitors'] === 0)
+        <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+            <p class="text-[15px] text-stone-500">No visitor data recorded yet.</p>
+            <p class="mt-1 text-[13px] text-stone-400">Visitor tracking is active — data will appear as users visit the site.</p>
+        </div>
+    @else
+        <div class="grid gap-4 sm:grid-cols-4">
+            <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Visitors</div>
+                <div class="mt-1 text-2xl font-bold" style="color: #9966ff">{{ number_format($siteConversion['visitors']) }}</div>
+            </div>
+            <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Orders</div>
+                <div class="mt-1 text-2xl font-bold" style="color: #36a2eb">{{ number_format($siteConversion['orders']) }}</div>
+            </div>
+            <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Conversion Rate</div>
+                <div class="mt-1 text-2xl font-bold {{ $siteConversion['conversion_pct'] >= 3 ? 'text-[#4bc0c0]' : ($siteConversion['conversion_pct'] >= 1 ? 'text-[#ff9f40]' : 'text-[#ff6384]') }}">{{ $siteConversion['conversion_pct'] }}%</div>
+            </div>
+            <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Rev / Visitor</div>
+                <div class="mt-1 text-2xl font-bold" style="color: #4bc0c0">&euro;{{ number_format($siteConversion['revenue_per_visitor'], 2) }}</div>
+            </div>
+        </div>
+    @endif
+</div>
+
 {{-- Attention Items with Quick Links --}}
 @if ($overview['low_stock'] > 0 || $overview['out_of_stock'] > 0 || $overview['pending_orders'] > 0 || $overview['stock_alert_waiting'] > 0)
     <div class="admin-card rounded-xl border border-[#ff9f40]/30 bg-[#ff9f40]/10 p-5" data-delay="2">
