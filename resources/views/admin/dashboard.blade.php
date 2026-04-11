@@ -17,7 +17,7 @@
         </div>
 
         {{-- Tab Content --}}
-        <div class="animate-fade-in">
+        <div class="animate-fade-in space-y-6">
             @include("admin.dashboard.{$tab}")
         </div>
     </div>
