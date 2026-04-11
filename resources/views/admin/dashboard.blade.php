@@ -9,7 +9,7 @@
             <nav class="-mb-px flex gap-1 overflow-x-auto text-[15px] font-medium">
                 @foreach (['overview' => 'Overview', 'sales' => 'Sales', 'inventory' => 'Inventory', 'promotions' => 'Promotions', 'customers' => 'Customers'] as $key => $label)
                     <a href="{{ route('admin.dashboard', ['tab' => $key]) }}"
-                       class="whitespace-nowrap rounded-t-lg border-b-2 px-4 py-3 transition {{ $tab === $key ? 'border-amber-600 bg-amber-50/50 text-amber-700' : 'border-transparent text-stone-500 hover:border-stone-300 hover:bg-stone-50 hover:text-stone-700' }}">
+                       class="whitespace-nowrap rounded-t-lg border-b-2 px-4 py-3 transition {{ $tab === $key ? 'border-[#36a2eb] bg-[#36a2eb]/10 text-[#36a2eb]' : 'border-transparent text-stone-500 hover:border-stone-300 hover:bg-stone-50 hover:text-stone-700' }}">
                         {{ $label }}
                     </a>
                 @endforeach

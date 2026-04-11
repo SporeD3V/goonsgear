@@ -35,13 +35,17 @@
     {{-- Revenue Over Time --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Revenue Over Time (30d)</h3>
-        <canvas id="salesRevenueChart" height="220"></canvas>
+        <div class="h-[280px]">
+            <canvas id="salesRevenueChart"></canvas>
+        </div>
     </div>
 
     {{-- Revenue by Country --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="4">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Revenue by Country</h3>
-        <canvas id="countryRevenueChart" height="220"></canvas>
+        <div class="h-[280px]">
+            <canvas id="countryRevenueChart"></canvas>
+        </div>
     </div>
 </div>
 
@@ -82,7 +86,7 @@
         const revenueData = @json($revenueOverTime);
         const countryData = @json($revenueByCountry);
 
-        // Revenue line chart with gross/net/discounts — warm palette
+        // Revenue line chart with gross/net/discounts — Chart.js palette
         new Chart(document.getElementById('salesRevenueChart'), {
             type: 'line',
             data: {
@@ -91,19 +95,19 @@
                     {
                         label: 'Net Revenue',
                         data: revenueData.map(r => r.revenue),
-                        borderColor: '#d97706',
-                        backgroundColor: 'rgba(217, 119, 6, 0.08)',
+                        borderColor: '#36a2eb',
+                        backgroundColor: 'rgba(54, 162, 235, 0.08)',
                         fill: true,
                         tension: 0.35,
                         pointRadius: 3,
-                        pointBackgroundColor: '#d97706',
+                        pointBackgroundColor: '#36a2eb',
                         pointBorderColor: '#fff',
                         pointBorderWidth: 2,
                     },
                     {
                         label: 'Gross',
                         data: revenueData.map(r => r.gross),
-                        borderColor: '#059669',
+                        borderColor: '#4bc0c0',
                         borderDash: [5, 5],
                         fill: false,
                         tension: 0.35,
@@ -112,7 +116,7 @@
                     {
                         label: 'Discounts',
                         data: revenueData.map(r => r.discounts),
-                        borderColor: '#dc2626',
+                        borderColor: '#ff6384',
                         borderDash: [3, 3],
                         fill: false,
                         tension: 0.35,
@@ -131,7 +135,7 @@
             }
         });
 
-        // Revenue by country horizontal bar — warm teal
+        // Revenue by country horizontal bar — Chart.js orange
         new Chart(document.getElementById('countryRevenueChart'), {
             type: 'bar',
             data: {
@@ -139,7 +143,7 @@
                 datasets: [{
                     label: 'Revenue',
                     data: countryData.map(c => c.revenue),
-                    backgroundColor: '#0d9488',
+                    backgroundColor: '#ff9f40',
                     borderRadius: 6,
                 }]
             },

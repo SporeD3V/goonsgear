@@ -16,41 +16,41 @@
     </div>
 
     <a href="{{ route('admin.orders.index', ['status' => 'pending']) }}" class="admin-card admin-card-hover group rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="4">
-        <p class="text-sm font-semibold uppercase tracking-wide text-stone-500 group-hover:text-amber-600">Pending Orders</p>
-        <p class="mt-1 text-3xl font-bold {{ $overview['pending_orders'] > 0 ? 'text-amber-600' : 'text-stone-800' }}">{{ $overview['pending_orders'] }}</p>
+        <p class="text-sm font-semibold uppercase tracking-wide text-stone-500 group-hover:text-[#36a2eb]">Pending Orders</p>
+        <p class="mt-1 text-3xl font-bold {{ $overview['pending_orders'] > 0 ? 'text-[#ff9f40]' : 'text-stone-800' }}">{{ $overview['pending_orders'] }}</p>
         @if ($overview['pending_orders'] > 0)
-            <p class="mt-1 text-sm text-amber-600 opacity-0 transition group-hover:opacity-100">View orders &rarr;</p>
+            <p class="mt-1 text-sm text-[#ff9f40] opacity-0 transition group-hover:opacity-100">View orders &rarr;</p>
         @endif
     </a>
 </div>
 
 {{-- Attention Items with Quick Links --}}
 @if ($overview['low_stock'] > 0 || $overview['out_of_stock'] > 0 || $overview['pending_orders'] > 0 || $overview['stock_alert_waiting'] > 0)
-    <div class="admin-card rounded-xl border border-amber-200 bg-amber-50 p-5" data-delay="2">
-        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-amber-800">Needs Attention</h3>
+    <div class="admin-card rounded-xl border border-[#ff9f40]/30 bg-[#ff9f40]/10 p-5" data-delay="2">
+        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-[#ff9f40]">Needs Attention</h3>
         <div class="space-y-2">
             @if ($overview['pending_orders'] > 0)
-                <a href="{{ route('admin.orders.index', ['status' => 'pending']) }}" class="flex items-center justify-between rounded-lg bg-white/60 px-4 py-3 text-[15px] text-amber-700 transition hover:bg-white hover:shadow-sm">
+                <a href="{{ route('admin.orders.index', ['status' => 'pending']) }}" class="flex items-center justify-between rounded-lg bg-white/60 px-4 py-3 text-[15px] text-stone-700 transition hover:bg-white hover:shadow-sm">
                     <span>{{ $overview['pending_orders'] }} {{ Str::plural('order', $overview['pending_orders']) }} pending processing</span>
-                    <svg class="h-5 w-5 shrink-0 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                    <svg class="h-5 w-5 shrink-0 text-[#ff9f40]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
                 </a>
             @endif
             @if ($overview['low_stock'] > 0)
-                <a href="{{ route('admin.products.index') }}" class="flex items-center justify-between rounded-lg bg-white/60 px-4 py-3 text-[15px] text-amber-700 transition hover:bg-white hover:shadow-sm">
+                <a href="{{ route('admin.products.index') }}" class="flex items-center justify-between rounded-lg bg-white/60 px-4 py-3 text-[15px] text-stone-700 transition hover:bg-white hover:shadow-sm">
                     <span>{{ $overview['low_stock'] }} {{ Str::plural('variant', $overview['low_stock']) }} with low stock (1–5 remaining)</span>
-                    <svg class="h-5 w-5 shrink-0 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                    <svg class="h-5 w-5 shrink-0 text-[#ff9f40]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
                 </a>
             @endif
             @if ($overview['out_of_stock'] > 0)
-                <a href="{{ route('admin.products.index') }}" class="flex items-center justify-between rounded-lg bg-white/60 px-4 py-3 text-[15px] text-amber-700 transition hover:bg-white hover:shadow-sm">
+                <a href="{{ route('admin.products.index') }}" class="flex items-center justify-between rounded-lg bg-white/60 px-4 py-3 text-[15px] text-stone-700 transition hover:bg-white hover:shadow-sm">
                     <span>{{ $overview['out_of_stock'] }} {{ Str::plural('variant', $overview['out_of_stock']) }} out of stock</span>
-                    <svg class="h-5 w-5 shrink-0 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                    <svg class="h-5 w-5 shrink-0 text-[#ff9f40]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
                 </a>
             @endif
             @if ($overview['stock_alert_waiting'] > 0)
                 <a href="{{ route('admin.products.index') }}" class="flex items-center justify-between rounded-lg bg-white/60 px-4 py-3 text-[15px] text-amber-700 transition hover:bg-white hover:shadow-sm">
                     <span>{{ $overview['stock_alert_waiting'] }} {{ Str::plural('customer', $overview['stock_alert_waiting']) }} waiting on stock alerts</span>
-                    <svg class="h-5 w-5 shrink-0 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                    <svg class="h-5 w-5 shrink-0 text-[#ff9f40]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
                 </a>
             @endif
         </div>
@@ -62,14 +62,16 @@
     {{-- Revenue (30d) --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Revenue (30 days)</h3>
-        <canvas id="revenueChart" height="200"></canvas>
+        <div class="h-[280px]">
+            <canvas id="revenueChart"></canvas>
+        </div>
     </div>
 
     {{-- Orders by Status --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="4">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Orders by Status</h3>
-        <div class="mx-auto max-w-xs">
-            <canvas id="statusChart" height="200"></canvas>
+        <div class="mx-auto h-[250px] max-w-xs">
+            <canvas id="statusChart"></canvas>
         </div>
     </div>
 </div>
@@ -103,7 +105,7 @@
                         @foreach ($recentOrders as $order)
                             <tr class="transition hover:bg-stone-50">
                                 <td class="whitespace-nowrap px-4 py-2.5">
-                                    <a href="{{ route('admin.orders.show', $order) }}" class="font-medium text-amber-700 hover:underline">
+                                    <a href="{{ route('admin.orders.show', $order) }}" class="font-medium text-[#36a2eb] hover:underline">
                                         {{ $order->order_number }}
                                     </a>
                                 </td>
@@ -113,11 +115,11 @@
                                 <td class="whitespace-nowrap px-4 py-2.5">
                                     @php
                                         $statusColors = [
-                                            'pending' => 'bg-amber-100 text-amber-700',
-                                            'processing' => 'bg-blue-100 text-blue-700',
-                                            'shipped' => 'bg-indigo-100 text-indigo-700',
-                                            'delivered' => 'bg-emerald-100 text-emerald-700',
-                                            'cancelled' => 'bg-red-100 text-red-700',
+                                            'pending' => 'bg-[#ff9f40]/15 text-[#ff9f40]',
+                                            'processing' => 'bg-[#36a2eb]/15 text-[#36a2eb]',
+                                            'shipped' => 'bg-[#9966ff]/15 text-[#9966ff]',
+                                            'delivered' => 'bg-[#4bc0c0]/15 text-[#4bc0c0]',
+                                            'cancelled' => 'bg-[#ff6384]/15 text-[#ff6384]',
                                             'refunded' => 'bg-stone-100 text-stone-700',
                                         ];
                                     @endphp
@@ -126,7 +128,7 @@
                                     </span>
                                 </td>
                                 <td class="whitespace-nowrap px-4 py-2.5">
-                                    <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium {{ $order->payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
+                                    <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium {{ $order->payment_status === 'paid' ? 'bg-[#4bc0c0]/15 text-[#4bc0c0]' : 'bg-[#ff9f40]/15 text-[#ff9f40]' }}">
                                         {{ ucfirst($order->payment_status) }}
                                     </span>
                                 </td>
@@ -151,7 +153,7 @@
         const revenueData = @json($revenueOverTime);
         const statusData = @json($ordersByStatus);
 
-        // Revenue Line Chart — warm amber tones
+        // Revenue Line Chart — Chart.js blue
         new Chart(document.getElementById('revenueChart'), {
             type: 'line',
             data: {
@@ -159,12 +161,12 @@
                 datasets: [{
                     label: 'Revenue',
                     data: revenueData.map(r => r.revenue),
-                    borderColor: '#d97706',
-                    backgroundColor: 'rgba(217, 119, 6, 0.08)',
+                    borderColor: '#36a2eb',
+                    backgroundColor: 'rgba(54, 162, 235, 0.08)',
                     fill: true,
                     tension: 0.35,
                     pointRadius: 3,
-                    pointBackgroundColor: '#d97706',
+                    pointBackgroundColor: '#36a2eb',
                     pointBorderColor: '#fff',
                     pointBorderWidth: 2,
                 }]
@@ -180,10 +182,10 @@
             }
         });
 
-        // Orders by Status Donut — warm semantic colors
+        // Orders by Status Donut — Chart.js palette
         const statusColors = {
-            pending: '#d97706', processing: '#2563eb', shipped: '#6366f1',
-            delivered: '#059669', cancelled: '#dc2626', refunded: '#78716c'
+            pending: '#ff9f40', processing: '#36a2eb', shipped: '#9966ff',
+            delivered: '#4bc0c0', cancelled: '#ff6384', refunded: '#c9cbcf'
         };
         const statusLabels = Object.keys(statusData);
         new Chart(document.getElementById('statusChart'), {

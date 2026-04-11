@@ -23,7 +23,9 @@
         @if (empty($customerGeo))
             <p class="text-[15px] text-stone-500">No customer data yet.</p>
         @else
-            <canvas id="customerGeoChart" height="220"></canvas>
+            <div class="h-[280px]">
+                <canvas id="customerGeoChart"></canvas>
+            </div>
         @endif
     </div>
 
@@ -48,7 +50,7 @@
                                 <td class="px-4 py-2.5 font-medium text-stone-700">{{ $tag['name'] }}</td>
                                 <td class="whitespace-nowrap px-4 py-2.5">
                                     @php
-                                        $typeColors = ['artist' => 'bg-amber-100 text-amber-700', 'brand' => 'bg-emerald-100 text-emerald-700', 'custom' => 'bg-stone-100 text-stone-700'];
+                                        $typeColors = ['artist' => 'bg-[#ff9f40]/15 text-[#ff9f40]', 'brand' => 'bg-[#4bc0c0]/15 text-[#4bc0c0]', 'custom' => 'bg-stone-100 text-stone-700'];
                                     @endphp
                                     <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium {{ $typeColors[$tag['type']] ?? 'bg-stone-100 text-stone-700' }}">
                                         {{ ucfirst($tag['type']) }}
@@ -77,7 +79,7 @@
                 datasets: [{
                     label: 'Customers',
                     data: geoData.map(c => c.count),
-                    backgroundColor: '#7c3aed',
+                    backgroundColor: '#9966ff',
                     borderRadius: 6,
                 }]
             },

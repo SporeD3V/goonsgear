@@ -64,8 +64,8 @@
     {{-- Product Status Breakdown --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Product Status</h3>
-        <div class="mx-auto max-w-xs">
-            <canvas id="productStatusChart" height="200"></canvas>
+        <div class="mx-auto h-[250px] max-w-xs">
+            <canvas id="productStatusChart"></canvas>
         </div>
     </div>
 </div>
@@ -74,7 +74,7 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const statusData = @json($productStatus);
-        const colorMap = { active: '#059669', draft: '#d97706', archived: '#78716c' };
+        const colorMap = { active: '#4bc0c0', draft: '#ff9f40', archived: '#c9cbcf' };
         const labels = Object.keys(statusData);
 
         new Chart(document.getElementById('productStatusChart'), {
