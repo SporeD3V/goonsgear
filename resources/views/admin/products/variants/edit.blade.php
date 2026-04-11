@@ -1,9 +1,11 @@
 @extends('admin.layout')
 
 @section('content')
-    <h2 class="mb-2 text-lg font-semibold">Edit Variant for {{ $product->name }}</h2>
-    <p class="mb-4 text-sm text-slate-600">SKU: {{ $variant->sku }}</p>
+    <div class="space-y-6">
+    <h2 class="text-lg font-semibold">Edit Variant for {{ $product->name }}</h2>
+    <p class="text-sm text-slate-600">SKU: {{ $variant->sku }}</p>
 
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
     <form method="POST" action="{{ route('admin.products.variants.update', [$product, $variant]) }}" class="space-y-4" novalidate>
         @csrf
         @method('PUT')
@@ -15,4 +17,6 @@
             <a href="{{ route('admin.products.edit', $product) }}" class="text-sm text-slate-600 hover:underline">Back to Product</a>
         </div>
     </form>
+    </div>
+    </div>
 @endsection

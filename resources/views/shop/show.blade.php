@@ -500,6 +500,25 @@
                                     </p>
                                 </div>
 
+                                @if ($product->is_bundle_exclusive)
+                                <div class="mt-4 rounded border border-black/10 bg-black/5 p-4 text-center">
+                                    <span class="inline-block rounded bg-black px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">Bundle Exclusive</span>
+                                    <p class="mt-2 text-sm text-black/70">This product is only available as part of a bundle.</p>
+                                    @if ($parentBundle !== null)
+                                        @if ($parentBundle['auto_variant_ids'] !== null)
+                                            <form method="POST" action="{{ route('cart.bundle.store') }}" class="mt-3">
+                                                @csrf
+                                                @foreach ($parentBundle['auto_variant_ids'] as $variantId)
+                                                    <input type="hidden" name="variant_ids[]" value="{{ $variantId }}">
+                                                @endforeach
+                                                <button type="submit" class="rounded bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80">Add Bundle to Cart</button>
+                                            </form>
+                                        @else
+                                            <a href="{{ route('shop.show', ['product' => $parentBundle['slug']]) }}" class="mt-3 inline-block rounded bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80">Get the Bundle</a>
+                                        @endif
+                                    @endif
+                                </div>
+                                @else
                                 <form method="POST" action="{{ route('cart.items.store') }}" class="mt-4 flex flex-wrap items-end gap-3">
                                     @csrf
                                     <input type="hidden" name="variant_id" value="{{ $hasAttributeGroups ? '' : $defaultVariant->id }}" data-cart-variant-input>
@@ -587,6 +606,7 @@
                                         </template>
                                     </div>
                                 </dialog>
+                                @endif
                             </div>
 
                             @if ($variantsWithStockState->count() > 1)

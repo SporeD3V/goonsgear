@@ -1,16 +1,17 @@
 @extends('admin.layout')
 
 @section('content')
-    <div class="mb-4 flex items-center justify-between gap-3">
+    <div class="space-y-6">
+    <div class="flex items-center justify-between gap-3">
         <h2 class="text-lg font-semibold">Integration Settings</h2>
         <a href="{{ route('admin.products.index') }}" class="text-sm text-blue-700 hover:underline">Back to Products</a>
     </div>
 
-    <p class="mb-4 text-sm text-slate-600">
+    <p class="text-sm text-slate-600">
         Credentials are encrypted before they are stored in the database. Update values below to manage external integrations.
     </p>
 
-    <form method="POST" action="{{ route('admin.maintenance.integrations.update') }}" class="grid gap-6 rounded border border-slate-200 bg-slate-50 p-4">
+    <form method="POST" action="{{ route('admin.maintenance.integrations.update') }}" class="grid gap-6">
         @csrf
 
         <section class="grid gap-3 rounded border border-slate-200 bg-white p-4">
@@ -105,4 +106,5 @@
             <button type="submit" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">Save integration settings</button>
         </div>
     </form>
+    </div>
 @endsection

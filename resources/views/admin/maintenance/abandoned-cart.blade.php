@@ -1,16 +1,18 @@
 @extends('admin.layout')
 
 @section('content')
-    <div class="mb-4 flex items-center justify-between gap-3">
+    <div class="space-y-6">
+    <div class="flex items-center justify-between gap-3">
         <h2 class="text-lg font-semibold">Abandoned Cart Reminder Settings</h2>
         <a href="{{ route('admin.products.index') }}" class="text-sm text-blue-700 hover:underline">Back to Products</a>
     </div>
 
-    <p class="mb-4 text-sm text-slate-600">
+    <p class="text-sm text-slate-600">
         Configure whether reminder emails are sent, the delay before sending, and which coupon code (if any) should be included.
     </p>
 
-    <form method="POST" action="{{ route('admin.maintenance.abandoned-cart.update') }}" class="grid gap-4 rounded border border-slate-200 bg-slate-50 p-4 md:max-w-2xl">
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <form method="POST" action="{{ route('admin.maintenance.abandoned-cart.update') }}" class="grid gap-4 md:max-w-2xl">
         @csrf
 
         <div class="flex items-center gap-2">
@@ -50,4 +52,6 @@
             <button type="submit" class="rounded bg-slate-700 px-4 py-2 text-sm text-white hover:bg-slate-800">Save Settings</button>
         </div>
     </form>
+    </div>
+    </div>
 @endsection

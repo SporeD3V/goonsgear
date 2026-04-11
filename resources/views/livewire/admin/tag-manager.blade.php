@@ -371,16 +371,16 @@ new class extends Component
     }
 }; ?>
 
-<div>
+<div class="space-y-6">
     {{-- Flash message --}}
     @if (session('status'))
-        <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+        <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
             {{ session('status') }}
         </div>
     @endif
 
     {{-- Header row --}}
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-lg font-semibold">Tags{{ $filterType ? ': ' . ucfirst($filterType) . 's' : '' }}</h2>
         <div class="flex items-center gap-3">
             <input
@@ -395,21 +395,23 @@ new class extends Component
         </div>
     </div>
 
-    {{-- Type filter tabs --}}
-    <div class="mb-4 flex gap-2 text-sm">
-        @foreach (['' => 'All', 'artist' => 'Artists', 'brand' => 'Brands', 'custom' => 'Custom'] as $value => $label)
-            <button
-                wire:click="$set('filterType', '{{ $value }}')"
-                class="rounded px-3 py-1 {{ $filterType === $value ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}"
-            >{{ $label }}</button>
-        @endforeach
-    </div>
+    {{-- Filters & Table --}}
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        {{-- Type filter tabs --}}
+        <div class="mb-4 flex gap-2 text-sm">
+            @foreach (['' => 'All', 'artist' => 'Artists', 'brand' => 'Brands', 'custom' => 'Custom'] as $value => $label)
+                <button
+                    wire:click="$set('filterType', '{{ $value }}')"
+                    class="rounded px-3 py-1 {{ $filterType === $value ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}"
+                >{{ $label }}</button>
+            @endforeach
+        </div>
 
-    {{-- Loading indicator --}}
-    <div wire:loading.delay class="mb-2 text-xs text-slate-500">Loading…</div>
+        {{-- Loading indicator --}}
+        <div wire:loading.delay class="mb-2 text-xs text-slate-500">Loading…</div>
 
-    {{-- Table --}}
-    <div class="overflow-x-auto">
+        {{-- Table --}}
+        <div class="overflow-x-auto">
         <table class="min-w-full border border-slate-200 text-sm">
             <thead class="bg-slate-50">
                 <tr>
@@ -456,7 +458,8 @@ new class extends Component
     </div>
 
     {{-- Pagination --}}
-    <div class="mt-4">{{ $this->tags->links() }}</div>
+        <div class="mt-4">{{ $this->tags->links() }}</div>
+    </div>
 
     {{-- Modal --}}
     @if ($showModal)

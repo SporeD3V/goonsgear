@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\BundleDiscountController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\CouponController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FallbackMediaController;
 use App\Http\Controllers\Admin\IntegrationSettingsController;
 use App\Http\Controllers\Admin\MaintenanceController;
@@ -143,6 +144,7 @@ Route::get('/media/{path}', [MediaController::class, 'show'])
     ->name('media.show');
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin', 'admin.noindex'])->group(function () {
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('categories', [CategoryController::class, 'index'])->name('categories.index');
     Route::get('coupons', [CouponController::class, 'index'])->name('coupons.index');
     Route::get('bundle-discounts', [BundleDiscountController::class, 'index'])->name('bundle-discounts.index');

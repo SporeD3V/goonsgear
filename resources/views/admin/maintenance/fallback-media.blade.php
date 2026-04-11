@@ -1,12 +1,14 @@
 @extends('admin.layout')
 
 @section('content')
-    <div class="mb-4 flex items-center justify-between gap-3">
+    <div class="space-y-6">
+    <div class="flex items-center justify-between gap-3">
         <h2 class="text-lg font-semibold">Fallback Media Maintenance</h2>
         <a href="{{ route('admin.products.index') }}" class="text-sm text-blue-700 hover:underline">Back to Products</a>
     </div>
 
-    <form method="GET" action="{{ route('admin.maintenance.fallback-media.index') }}" class="mb-4 grid gap-3 rounded border border-slate-200 bg-slate-50 p-3 md:grid-cols-5">
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <form method="GET" action="{{ route('admin.maintenance.fallback-media.index') }}" class="grid gap-3 md:grid-cols-5">
         <div class="md:col-span-2">
             <label class="mb-1 block text-xs font-medium text-slate-700">Search</label>
             <input
@@ -53,10 +55,12 @@
             <span class="text-xs text-slate-500">Showing {{ $entries->firstItem() ?? 0 }}–{{ $entries->lastItem() ?? 0 }} of {{ $entries->total() }} result(s)</span>
         </div>
     </form>
+    </div>
 
     @if ($entries->isEmpty())
-        <p class="rounded border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">No fallback images were found.</p>
+        <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm text-sm text-slate-600">No fallback images were found.</div>
     @else
+        <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div class="overflow-x-auto">
             <table class="min-w-full border border-slate-200 text-sm">
                 <thead class="bg-slate-50">
@@ -131,5 +135,7 @@
         <div class="mt-4">
             {{ $entries->links() }}
         </div>
+        </div>
     @endif
+    </div>
 @endsection

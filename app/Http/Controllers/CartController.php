@@ -211,7 +211,7 @@ class CartController extends Controller
 
         $variant = ProductVariant::query()
             ->with([
-                'product:id,name,slug,status',
+                'product:id,name,slug,status,is_bundle_exclusive',
                 'product.media' => fn ($query) => $query
                     ->orderByDesc('is_primary')
                     ->orderBy('position')
@@ -225,6 +225,14 @@ class CartController extends Controller
             }
 
             return back()->withErrors(['cart' => 'This variant is not available for purchase.']);
+        }
+
+        if ($variant->product?->is_bundle_exclusive) {
+            if ($request->wantsJson()) {
+                return response()->json(['errors' => ['cart' => ['This product is only available as part of a bundle.']]], 422);
+            }
+
+            return back()->withErrors(['cart' => 'This product is only available as part of a bundle.']);
         }
 
         $cartItems = $this->getCartItems($request);

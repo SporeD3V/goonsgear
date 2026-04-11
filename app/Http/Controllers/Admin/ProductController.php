@@ -67,6 +67,7 @@ class ProductController extends Controller
         $validated = $request->validated();
         $validated['is_featured'] = $request->boolean('is_featured');
         $validated['is_preorder'] = $request->boolean('is_preorder');
+        $validated['is_bundle_exclusive'] = $request->boolean('is_bundle_exclusive');
 
         $categoryIds = $validated['category_ids'] ?? [];
         $tagIds = $validated['tag_ids'] ?? [];
@@ -191,6 +192,7 @@ class ProductController extends Controller
         $validated = $request->validated();
         $validated['is_featured'] = $request->boolean('is_featured');
         $validated['is_preorder'] = $request->boolean('is_preorder');
+        $validated['is_bundle_exclusive'] = $request->boolean('is_bundle_exclusive');
 
         $categoryIds = $validated['category_ids'] ?? [];
         $tagIds = $validated['tag_ids'] ?? [];
@@ -199,7 +201,7 @@ class ProductController extends Controller
         unset($validated['media_files']);
         unset($validated['media_alt_text']);
 
-        $trackedFields = ['name', 'slug', 'status', 'excerpt', 'description', 'meta_title', 'meta_description', 'is_featured', 'is_preorder', 'primary_category_id'];
+        $trackedFields = ['name', 'slug', 'status', 'excerpt', 'description', 'meta_title', 'meta_description', 'is_featured', 'is_preorder', 'is_bundle_exclusive', 'primary_category_id'];
         $this->recordFieldChanges($product, $validated, $trackedFields);
 
         $product->update($validated);

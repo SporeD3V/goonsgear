@@ -1,8 +1,10 @@
 @extends('admin.layout')
 
 @section('content')
-    <h2 class="mb-4 text-lg font-semibold">New Category</h2>
+    <div class="space-y-6">
+    <h2 class="text-lg font-semibold">New Category</h2>
 
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
     <form method="POST" action="{{ route('admin.categories.store') }}" class="space-y-4" novalidate>
         @csrf
 
@@ -80,4 +82,6 @@
             <a href="{{ route('admin.categories.index') }}" class="text-sm text-slate-600 hover:underline">Cancel</a>
         </div>
     </form>
+    </div>
+    </div>
 @endsection

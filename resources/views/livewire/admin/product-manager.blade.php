@@ -248,13 +248,15 @@ new class extends Component
     }
 }; ?>
 
-<div>
-    <div class="mb-4 flex items-center justify-between">
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
         <h2 class="text-lg font-semibold">Products</h2>
         <a href="{{ route('admin.products.create') }}" class="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">New Product</a>
     </div>
 
-    <div class="mb-4 grid gap-3 rounded border border-slate-200 bg-slate-50 p-3 md:grid-cols-7">
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">Filters</h3>
+        <div class="grid gap-3 md:grid-cols-7">
         <div>
             <label class="mb-1 block text-xs font-medium text-slate-700">Search</label>
             <input type="text" wire:model.live.debounce.300ms="search" placeholder="Name / slug / excerpt" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
@@ -305,7 +307,8 @@ new class extends Component
         </div>
     </div>
 
-    <div class="overflow-x-auto">
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="overflow-x-auto">
         <table class="min-w-full border border-slate-200 text-sm">
             <thead class="bg-slate-50">
                 <tr>
@@ -504,5 +507,6 @@ new class extends Component
         </table>
     </div>
 
-    <div class="mt-4">{{ $this->products->links() }}</div>
+        <div class="mt-4">{{ $this->products->links() }}</div>
+    </div>
 </div>

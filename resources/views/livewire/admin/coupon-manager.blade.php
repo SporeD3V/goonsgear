@@ -351,17 +351,18 @@ new class extends Component
     }
 }; ?>
 
-<div>
-    <div class="mb-4 flex items-center justify-between">
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
         <h2 class="text-lg font-semibold">Coupons</h2>
         <button wire:click="openCreate" class="rounded bg-slate-800 px-3 py-2 text-sm text-white hover:bg-slate-900">New Coupon</button>
     </div>
 
-    <div class="mb-4">
-        <input type="text" wire:model.live.debounce.300ms="search" placeholder="Search by code or description…" class="w-full rounded border border-slate-300 px-3 py-2 text-sm md:w-1/3">
-    </div>
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="mb-4">
+            <input type="text" wire:model.live.debounce.300ms="search" placeholder="Search by code or description…" class="w-full rounded border border-slate-300 px-3 py-2 text-sm md:w-1/3">
+        </div>
 
-    <div class="overflow-x-auto">
+        <div class="overflow-x-auto">
         <table class="min-w-full border border-slate-200 text-sm">
             <thead class="bg-slate-50">
                 <tr>
@@ -425,7 +426,8 @@ new class extends Component
         </table>
     </div>
 
-    <div class="mt-4">{{ $this->coupons->links() }}</div>
+        <div class="mt-4">{{ $this->coupons->links() }}</div>
+    </div>
 
     {{-- Create / Edit Modal --}}
     @if ($showModal)

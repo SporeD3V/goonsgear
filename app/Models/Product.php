@@ -37,6 +37,7 @@ class Product extends Model
         'meta_description',
         'is_featured',
         'is_preorder',
+        'is_bundle_exclusive',
         'published_at',
         'preorder_available_from',
         'expected_ship_at',
@@ -50,6 +51,7 @@ class Product extends Model
         return [
             'is_featured' => 'boolean',
             'is_preorder' => 'boolean',
+            'is_bundle_exclusive' => 'boolean',
             'published_at' => 'datetime',
             'preorder_available_from' => 'datetime',
             'expected_ship_at' => 'datetime',

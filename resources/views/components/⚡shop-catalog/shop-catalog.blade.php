@@ -346,7 +346,9 @@
                     <a href="{{ route('shop.show', $product) }}" class="group block flex-1">
                         @if ($mediaUrl)
                             <div class="relative mb-3 h-52 w-full overflow-hidden rounded bg-white">
-                                @if (in_array($product->id, $bundleProductIds))
+                                @if ($product->is_bundle_exclusive)
+                                    <span class="absolute right-2 top-2 z-10 rounded bg-black px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Bundle Exclusive</span>
+                                @elseif (in_array($product->id, $bundleProductIds))
                                     <span class="absolute right-2 top-2 z-10 rounded border border-black/20 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-black">Part of a bundle</span>
                                 @endif
                                 <img
@@ -398,7 +400,11 @@
                         @endif
                     </a>
 
-                    @if ($allOutOfStock)
+                    @if ($product->is_bundle_exclusive)
+                        <div class="mt-auto pt-3">
+                            <p class="text-center text-xs font-semibold uppercase tracking-wide text-black/50">Bundle Exclusive</p>
+                        </div>
+                    @elseif ($allOutOfStock)
                         <div class="mt-auto pt-3" data-catalog-hover-section>
                             <button
                                 type="button"

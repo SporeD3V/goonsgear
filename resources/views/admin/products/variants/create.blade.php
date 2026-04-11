@@ -1,9 +1,11 @@
 @extends('admin.layout')
 
 @section('content')
-    <h2 class="mb-2 text-lg font-semibold">New Variant for {{ $product->name }}</h2>
-    <p class="mb-4 text-sm text-slate-600">Use variants for size, color, edition, or other purchasable options.</p>
+    <div class="space-y-6">
+    <h2 class="text-lg font-semibold">New Variant for {{ $product->name }}</h2>
+    <p class="text-sm text-slate-600">Use variants for size, color, edition, or other purchasable options.</p>
 
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
     <form method="POST" action="{{ route('admin.products.variants.store', $product) }}" class="space-y-4" novalidate>
         @csrf
 
@@ -14,4 +16,6 @@
             <a href="{{ route('admin.products.edit', $product) }}" class="text-sm text-slate-600 hover:underline">Back to Product</a>
         </div>
     </form>
+    </div>
+    </div>
 @endsection

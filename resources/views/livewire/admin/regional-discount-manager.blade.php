@@ -172,15 +172,15 @@ new class extends Component
     }
 }; ?>
 
-<div>
+<div class="space-y-6">
     @if (session('status'))
-        <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+        <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
             {{ session('status') }}
         </div>
     @endif
 
     {{-- Header --}}
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-lg font-semibold">Regional Discounts</h2>
         <div class="flex items-center gap-3">
             <input
@@ -195,7 +195,8 @@ new class extends Component
         </div>
     </div>
 
-    <div wire:loading.delay class="mb-2 text-xs text-slate-500">Loading…</div>
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div wire:loading.delay class="mb-2 text-xs text-slate-500">Loading…</div>
 
     {{-- Table --}}
     <div class="overflow-x-auto">
@@ -261,7 +262,8 @@ new class extends Component
         </table>
     </div>
 
-    <div class="mt-4">{{ $this->discounts->links() }}</div>
+        <div class="mt-4">{{ $this->discounts->links() }}</div>
+    </div>
 
     {{-- Modal --}}
     @if ($showModal)

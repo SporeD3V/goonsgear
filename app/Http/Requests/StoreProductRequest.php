@@ -37,6 +37,7 @@ class StoreProductRequest extends FormRequest
             'meta_description' => ['nullable', 'string', 'max:1000'],
             'is_featured' => ['sometimes', 'boolean'],
             'is_preorder' => ['sometimes', 'boolean'],
+            'is_bundle_exclusive' => ['sometimes', 'boolean'],
             'published_at' => ['nullable', 'date'],
             'preorder_available_from' => ['nullable', 'date'],
             'expected_ship_at' => ['nullable', 'date'],

@@ -1,8 +1,10 @@
 @extends('admin.layout')
 
 @section('content')
-    <h2 class="mb-4 text-lg font-semibold">Edit Tag: {{ $tag->name }}</h2>
+    <div class="space-y-6">
+    <h2 class="text-lg font-semibold">Edit Tag: {{ $tag->name }}</h2>
 
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
     <form method="POST" action="{{ route('admin.tags.update', $tag) }}" class="space-y-4" enctype="multipart/form-data" novalidate>
         @csrf
         @method('PUT')
@@ -83,6 +85,7 @@
             <a href="{{ route('admin.tags.index') }}" class="text-sm text-slate-600 hover:underline">Cancel</a>
         </div>
     </form>
+    </div>
 
     <script>
         document.getElementById('tag-type').addEventListener('change', function () {
@@ -96,5 +99,6 @@
     </script>
 
     @include('admin.partials.edit-history', ['histories' => $editHistories])
+    </div>
 @endsection
 
