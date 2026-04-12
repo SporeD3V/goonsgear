@@ -144,6 +144,9 @@ class DashboardStatsService
                 ->where('status', 'pre-ordered')
                 ->whereIn('payment_status', self::PAID_STATUSES)
                 ->selectRaw('COALESCE(SUM(total), 0) as total_liability')
+                ->selectRaw('COALESCE(SUM(subtotal), 0) as product_liability')
+                ->selectRaw('COALESCE(SUM(shipping_total), 0) as shipping_liability')
+                ->selectRaw('COALESCE(SUM(tax_total), 0) as tax_liability')
                 ->selectRaw('COUNT(*) as order_count')
                 ->first();
 
@@ -155,6 +158,9 @@ class DashboardStatsService
 
             return [
                 'total_liability' => round((float) ($row->total_liability ?? 0), 2),
+                'product_liability' => round((float) ($row->product_liability ?? 0), 2),
+                'shipping_liability' => round((float) ($row->shipping_liability ?? 0), 2),
+                'tax_liability' => round((float) ($row->tax_liability ?? 0), 2),
                 'order_count' => (int) ($row->order_count ?? 0),
                 'item_count' => $itemCount,
             ];

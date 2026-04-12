@@ -7,25 +7,33 @@
     {{-- Pre-order Liability --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="1">
         <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Pre-order Liability</h3>
-        <p class="mb-3 text-[12px] text-stone-400">Outstanding value of pre-ordered items that haven't shipped yet — includes all payment statuses except failed and refunded. This is goods you owe until the order is fulfilled.</p>
+        <p class="mb-3 text-[12px] text-stone-400">Cash collected for pre-orders not yet shipped. Split by product value vs. shipping & tax so you can see your real obligation.</p>
         @if ($preorderLiability['order_count'] === 0)
             <p class="text-[15px] text-stone-500">No active pre-orders with payment confirmed.</p>
         @else
             <div class="flex items-baseline gap-3">
                 <p class="text-3xl font-bold text-[#ff9f40]">&euro;{{ number_format($preorderLiability['total_liability'], 2) }}</p>
-                <span class="text-[15px] text-stone-500">outstanding</span>
+                <span class="text-[15px] text-stone-500">total collected</span>
             </div>
-            <div class="mt-3 grid grid-cols-2 gap-3">
+            <div class="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 text-center">
+                    <div class="text-[13px] text-stone-500">Product Value</div>
+                    <div class="text-lg font-bold text-stone-700">&euro;{{ number_format($preorderLiability['product_liability'], 2) }}</div>
+                </div>
+                <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 text-center">
+                    <div class="text-[13px] text-stone-500">Shipping + Tax</div>
+                    <div class="text-lg font-bold text-stone-700">&euro;{{ number_format($preorderLiability['shipping_liability'] + $preorderLiability['tax_liability'], 2) }}</div>
+                </div>
                 <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 text-center">
                     <div class="text-[13px] text-stone-500">Orders</div>
                     <div class="text-lg font-bold text-stone-700">{{ $preorderLiability['order_count'] }}</div>
                 </div>
                 <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 text-center">
-                    <div class="text-[13px] text-stone-500">Total Items</div>
+                    <div class="text-[13px] text-stone-500">Items</div>
                     <div class="text-lg font-bold text-stone-700">{{ $preorderLiability['item_count'] }}</div>
                 </div>
             </div>
-            <p class="mt-2 text-[11px] text-stone-400">Formula: SUM(order total) where status = "pre-ordered" and payment is not failed or refunded.</p>
+            <p class="mt-2 text-[11px] text-stone-400">Only paid pre-orders. Product = subtotal, Shipping + Tax = shipping_total + tax_total.</p>
         @endif
     </div>
 

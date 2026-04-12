@@ -1203,12 +1203,18 @@ class DashboardControllerTest extends TestCase
         Order::factory()->create([
             'status' => 'pre-ordered',
             'payment_status' => 'paid',
+            'subtotal' => 120.00,
+            'shipping_total' => 20.00,
+            'tax_total' => 10.00,
             'total' => 150.00,
             'placed_at' => now()->subDays(5),
         ]);
         Order::factory()->create([
             'status' => 'pre-ordered',
             'payment_status' => 'paid',
+            'subtotal' => 200.00,
+            'shipping_total' => 30.00,
+            'tax_total' => 20.00,
             'total' => 250.00,
             'placed_at' => now()->subDays(3),
         ]);
@@ -1225,6 +1231,9 @@ class DashboardControllerTest extends TestCase
 
         $liability = $response->viewData('preorderLiability');
         $this->assertEquals(400.0, $liability['total_liability']);
+        $this->assertEquals(320.0, $liability['product_liability']);
+        $this->assertEquals(50.0, $liability['shipping_liability']);
+        $this->assertEquals(30.0, $liability['tax_liability']);
         $this->assertEquals(2, $liability['order_count']);
     }
 
@@ -1238,6 +1247,9 @@ class DashboardControllerTest extends TestCase
         $liability = $response->viewData('preorderLiability');
         $this->assertEquals(0, $liability['order_count']);
         $this->assertEquals(0.0, $liability['total_liability']);
+        $this->assertEquals(0.0, $liability['product_liability']);
+        $this->assertEquals(0.0, $liability['shipping_liability']);
+        $this->assertEquals(0.0, $liability['tax_liability']);
     }
 
     public function test_inventory_has_fulfillment_speed_data(): void

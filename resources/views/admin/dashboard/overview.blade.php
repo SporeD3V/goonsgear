@@ -4,7 +4,7 @@
         'label' => 'Revenue (' . $periodLabel . ')',
         'value' => '&euro;' . number_format($overview['revenue'], 2),
         'delta' => $deltas['revenue'] ?? null,
-        'subtitle' => 'Gross: total paid order value',
+        'subtitle' => 'Gross collected — partial refunds not deducted',
         'delay' => 1,
     ])
 
@@ -12,7 +12,7 @@
         'label' => 'Net Revenue (' . $periodLabel . ')',
         'value' => '&euro;' . number_format($overview['net_revenue'], 2),
         'delta' => $deltas['net_revenue'] ?? null,
-        'subtitle' => 'Revenue minus tax & shipping',
+        'subtitle' => 'Minus tax & shipping — partial refunds not deducted',
         'delay' => 1,
     ])
 
