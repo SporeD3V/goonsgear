@@ -774,7 +774,7 @@ class ImportLegacyData extends Command
                     'wc-cancelled' => 'cancelled',
                     'wc-refunded' => 'refunded',
                     'wc-failed' => 'failed',
-                    'wc-pre-ordered' => 'pending',
+                    'wc-pre-ordered' => 'paid',
                 ];
                 $paymentStatus = $paymentStatusMap[$legacyOrder->post_status] ?? 'pending';
 
