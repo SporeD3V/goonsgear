@@ -18,6 +18,15 @@ class DashboardStatsService
     /** @var list<string> */
     private const PAID_STATUSES = ['paid', 'completed'];
 
+    /** Minimum stock to qualify as dead stock (prevents flagging low-stock items). */
+    private const DEAD_STOCK_MIN_UNITS = 10;
+
+    /** Days without a sale before stock is considered dead. */
+    private const DEAD_STOCK_DAYS_CUTOFF = 180;
+
+    /** Minimum co-purchase orders to suggest bundle inclusion over clearance. */
+    private const DEAD_STOCK_BUNDLE_THRESHOLD = 3;
+
     // ── Helpers ────────────────────────────────────────────────
 
     private function periodCacheKey(string $base, ?Carbon $from, ?Carbon $to): string
@@ -51,7 +60,11 @@ class DashboardStatsService
     public static function delta(float $current, float $previous): ?float
     {
         if ($previous == 0) {
-            return $current > 0 ? 100.0 : null;
+            if ($current > 0) {
+                return 100.0;
+            }
+
+            return $current < 0 ? -100.0 : null;
         }
 
         return round(($current - $previous) / $previous * 100, 1);
@@ -76,10 +89,10 @@ class DashboardStatsService
 
             return [
                 'total_orders' => (int) $this->applyPeriod(Order::query(), $from, $to)->count(),
-                'pending_orders' => Order::where('status', 'pending')->count(),
+                'pending_orders' => Order::where('status', 'pending')->count(), // Real-time operational KPI — intentionally unscoped to period
                 'revenue' => round((float) $totals->gross, 2),
                 'net_revenue' => round((float) $totals->net, 2),
-                'orders_today' => Order::whereDate('placed_at', Carbon::today())->count(),
+                'orders_today' => Order::whereDate('placed_at', Carbon::today())->count(), // Real-time operational KPI — always today
                 'low_stock' => ProductVariant::where('is_active', true)
                     ->where('stock_quantity', '>', 0)
                     ->where('stock_quantity', '<=', 5)
@@ -414,13 +427,14 @@ class DashboardStatsService
     }
 
     /**
-     * @return array{one_time: int, two_orders: int, three_plus: int, total: int, repeat_pct: float}
+     * @return array{one_time: int, two_orders: int, three_plus: int, total: int, repeat_pct: float, all_time_repeat_pct: float}
      */
     public function repeatCustomerRate(?Carbon $from = null, ?Carbon $to = null): array
     {
         $key = $this->periodCacheKey('repeat-rate', $from, $to);
 
         return Cache::remember($key, 300, function () use ($from, $to): array {
+            // Period-scoped counts (windowed view)
             $query = DB::table('orders')
                 ->whereIn('payment_status', self::PAID_STATUSES);
 
@@ -436,12 +450,22 @@ class DashboardStatsService
             $threePlus = $counts->where('order_count', '>=', 3)->count();
             $total = $counts->count();
 
+            // All-time repeat rate for context (unaffected by period filter)
+            $allTimeCounts = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->selectRaw('email, COUNT(*) as order_count')
+                ->groupBy('email')
+                ->get();
+            $allTimeTotal = $allTimeCounts->count();
+            $allTimeRepeat = $allTimeCounts->where('order_count', '>=', 2)->count();
+
             return [
                 'one_time' => $oneTime,
                 'two_orders' => $twoOrders,
                 'three_plus' => $threePlus,
                 'total' => $total,
                 'repeat_pct' => $total > 0 ? round(($twoOrders + $threePlus) / $total * 100, 1) : 0,
+                'all_time_repeat_pct' => $allTimeTotal > 0 ? round($allTimeRepeat / $allTimeTotal * 100, 1) : 0,
             ];
         });
     }
@@ -757,14 +781,13 @@ class DashboardStatsService
     public function deadStock(int $limit = 50): array
     {
         return Cache::remember('dashboard:dead-stock', 300, function () use ($limit): array {
-            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
-            $cutoff = Carbon::now()->subDays(180);
+            $cutoff = Carbon::now()->subDays(self::DEAD_STOCK_DAYS_CUTOFF);
 
-            // Variants with stock > 10 that are active
+            // Variants with significant stock that are active
             $variants = DB::table('product_variants as pv')
                 ->join('products as p', 'p.id', '=', 'pv.product_id')
                 ->where('pv.is_active', true)
-                ->where('pv.stock_quantity', '>', 10)
+                ->where('pv.stock_quantity', '>', self::DEAD_STOCK_MIN_UNITS)
                 ->select('pv.id', 'pv.sku', 'pv.name as variant', 'p.name as product', 'pv.stock_quantity as stock', 'pv.price')
                 ->get();
 
@@ -811,7 +834,7 @@ class DashboardStatsService
                 $unitPrice = (float) $v->price;
 
                 // Suggestion logic: if it's been bought with other products before → bundle candidate
-                $suggestion = $coOrders >= 3 ? 'Bundle Inclusion' : 'Clearance Sale';
+                $suggestion = $coOrders >= self::DEAD_STOCK_BUNDLE_THRESHOLD ? 'Bundle Inclusion' : 'Clearance Sale';
 
                 return [
                     'product' => $v->product,
@@ -913,7 +936,7 @@ class DashboardStatsService
     }
 
     /**
-     * @return array{abandoned: int, reminded: int, recovered: int, recovery_pct: float}
+     * @return array{abandoned: int, reminded: int, recovered: int, recovery_pct: float, overall_recovery_pct: float}
      */
     public function cartRecoveryFunnel(?Carbon $from = null, ?Carbon $to = null): array
     {
@@ -929,14 +952,16 @@ class DashboardStatsService
                 ->selectRaw('SUM(recovered_at IS NOT NULL) as recovered')
                 ->first();
 
+            $abandoned = (int) $row->abandoned;
             $reminded = (int) $row->reminded;
             $recovered = (int) $row->recovered;
 
             return [
-                'abandoned' => (int) $row->abandoned,
+                'abandoned' => $abandoned,
                 'reminded' => $reminded,
                 'recovered' => $recovered,
                 'recovery_pct' => $reminded > 0 ? round($recovered / $reminded * 100, 1) : 0,
+                'overall_recovery_pct' => $abandoned > 0 ? round($recovered / $abandoned * 100, 1) : 0,
             ];
         });
     }
@@ -1312,12 +1337,12 @@ class DashboardStatsService
 
             $today = Carbon::today()->format('Y-m-d');
 
-            // Get per-customer RFM raw values
+            // Get per-customer RFM raw values (net revenue for monetary score)
             $customers = DB::table('orders')
                 ->whereIn('payment_status', self::PAID_STATUSES)
                 ->whereNotNull('placed_at')
                 ->groupBy('email')
-                ->selectRaw("email, {$daysSinceExpr} as days_since_last, COUNT(*) as order_count, SUM(total) as total_spent", [$today])
+                ->selectRaw("email, {$daysSinceExpr} as days_since_last, COUNT(*) as order_count, SUM(total - shipping_total - tax_total) as total_spent", [$today])
                 ->get();
 
             if ($customers->isEmpty()) {
@@ -1415,14 +1440,12 @@ class DashboardStatsService
     {
         /** @var array{overall_clv: float, total_customers: int, total_revenue: float, by_year: list<array{year: int, customers: int, clv: float, avg_orders: float}>} */
         return Cache::remember('dashboard:clv', 300, function (): array {
-            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
-
-            // Per-customer aggregates
+            // Per-customer aggregates (net revenue: excludes shipping + tax)
             $customers = DB::table('orders')
                 ->whereIn('payment_status', self::PAID_STATUSES)
                 ->whereNotNull('placed_at')
                 ->groupBy('email')
-                ->selectRaw('email, MIN(placed_at) as first_order, COUNT(*) as order_count, SUM(total) as total_spent')
+                ->selectRaw('email, MIN(placed_at) as first_order, COUNT(*) as order_count, SUM(total - shipping_total - tax_total) as total_spent')
                 ->get();
 
             if ($customers->isEmpty()) {
@@ -1544,11 +1567,12 @@ class DashboardStatsService
 
     /**
      * Dynamic churn threshold: 2.5× average purchase interval, floored at 90, capped at 365.
+     * Single-order VIPs get a 180-day floor since no purchase pattern exists.
      */
     private function calculateChurnThreshold(int $orderCount, int $orderSpanDays): int
     {
         if ($orderCount <= 1) {
-            return 90;
+            return 180;
         }
 
         $avgInterval = $orderSpanDays / ($orderCount - 1);
@@ -1637,23 +1661,23 @@ class DashboardStatsService
             $yearExpr = $isSqlite ? "cast(strftime('%Y', placed_at) as integer)" : 'YEAR(placed_at)';
             $dayExpr = $isSqlite ? "cast(strftime('%d', placed_at) as integer)" : 'DAY(placed_at)';
 
-            // Full month totals per year
+            // Full month net revenue per year
             $rows = DB::table('orders')
                 ->whereIn('payment_status', self::PAID_STATUSES)
                 ->whereNotNull('placed_at')
                 ->whereMonth('placed_at', $month)
-                ->selectRaw("{$yearExpr} as yr, SUM(total) as revenue")
+                ->selectRaw("{$yearExpr} as yr, SUM(total - shipping_total - tax_total) as revenue")
                 ->groupBy('yr')
                 ->orderByDesc('revenue')
                 ->get();
 
-            // MTD totals per year (same day range: 1st to current day)
+            // MTD net revenue per year (same day range: 1st to current day)
             $mtdRows = DB::table('orders')
                 ->whereIn('payment_status', self::PAID_STATUSES)
                 ->whereNotNull('placed_at')
                 ->whereMonth('placed_at', $month)
                 ->whereRaw("{$dayExpr} <= ?", [$currentDay])
-                ->selectRaw("{$yearExpr} as yr, SUM(total) as revenue")
+                ->selectRaw("{$yearExpr} as yr, SUM(total - shipping_total - tax_total) as revenue")
                 ->groupBy('yr')
                 ->orderByDesc('revenue')
                 ->get();
@@ -2041,19 +2065,25 @@ class DashboardStatsService
     {
         /** @var list<array{product_name: string, first_purchases: int, pct: float, avg_ltv: float}> */
         return Cache::remember('dashboard:first-purchase-heroes', 300, function () use ($limit): array {
-            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
-            $minExpr = $isSqlite
-                ? 'MIN(julianday(o.placed_at))'
-                : 'MIN(o.placed_at)';
+            // Subquery: find each customer's earliest order date
+            $firstDates = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->whereNotNull('placed_at')
+                ->groupBy('email')
+                ->selectRaw('email, MIN(placed_at) as first_placed_at');
 
-            // Subquery: find each customer's first order
-            $firstOrders = DB::table('orders as o')
+            // Join back to find the order_id at earliest placed_at (MIN(id) breaks date ties)
+            $firstOrders = DB::table(DB::raw("({$firstDates->toSql()}) as fd"))
+                ->mergeBindings($firstDates)
+                ->join('orders as o', function ($join) {
+                    $join->on('o.email', '=', 'fd.email')
+                        ->on('o.placed_at', '=', 'fd.first_placed_at');
+                })
                 ->whereIn('o.payment_status', self::PAID_STATUSES)
-                ->whereNotNull('o.placed_at')
-                ->groupBy('o.email')
-                ->selectRaw("o.email, MIN(o.id) as first_order_id, {$minExpr} as first_placed");
+                ->groupBy('fd.email')
+                ->selectRaw('fd.email, MIN(o.id) as first_order_id');
 
-            // Join to get items from those first orders
+            // Top-N product names from first orders
             $rows = DB::table('order_items as oi')
                 ->joinSub($firstOrders, 'fo', 'oi.order_id', '=', 'fo.first_order_id')
                 ->selectRaw('oi.product_name, COUNT(*) as first_purchases')
@@ -2066,7 +2096,10 @@ class DashboardStatsService
                 return [];
             }
 
-            $total = $rows->sum('first_purchases');
+            // Total of ALL first-purchase items (not just top-N) for accurate percentages
+            $total = DB::table('order_items as oi')
+                ->joinSub($firstOrders, 'fo', 'oi.order_id', '=', 'fo.first_order_id')
+                ->count();
 
             // Get emails per hero product for LTV calculation
             $heroNames = $rows->pluck('product_name');
@@ -2078,14 +2111,14 @@ class DashboardStatsService
                 ->get()
                 ->groupBy('product_name');
 
-            // Lifetime spend per customer
+            // Lifetime net spend per customer
             $allEmails = $emailsByProduct->flatten()->pluck('email')->unique();
             $ltvByEmail = DB::table('orders')
                 ->whereIn('payment_status', self::PAID_STATUSES)
                 ->whereNotNull('placed_at')
                 ->whereIn('email', $allEmails)
                 ->groupBy('email')
-                ->selectRaw('email, SUM(total) as lifetime_spend')
+                ->selectRaw('email, SUM(total - shipping_total - tax_total) as lifetime_spend')
                 ->pluck('lifetime_spend', 'email');
 
             return $rows->map(function ($r) use ($total, $emailsByProduct, $ltvByEmail) {
