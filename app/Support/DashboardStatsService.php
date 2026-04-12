@@ -80,10 +80,12 @@ class DashboardStatsService
                 'revenue' => round((float) $totals->gross, 2),
                 'net_revenue' => round((float) $totals->net, 2),
                 'orders_today' => Order::whereDate('placed_at', Carbon::today())->count(),
-                'low_stock' => ProductVariant::where('stock_quantity', '>', 0)
+                'low_stock' => ProductVariant::where('is_active', true)
+                    ->where('stock_quantity', '>', 0)
                     ->where('stock_quantity', '<=', 5)
                     ->count(),
-                'out_of_stock' => ProductVariant::where('stock_quantity', 0)->count(),
+                'out_of_stock' => ProductVariant::where('is_active', true)
+                    ->where('stock_quantity', 0)->count(),
                 'stock_alert_waiting' => StockAlertSubscription::where('is_active', true)
                     ->whereNull('notified_at')
                     ->count(),
@@ -390,9 +392,11 @@ class DashboardStatsService
         $key = $this->periodCacheKey('aov', $from, $to);
 
         return Cache::remember($key, 300, function () use ($from, $to): float {
-            return (float) $this->applyPeriod(
+            $query = $this->applyPeriod(
                 Order::whereIn('payment_status', self::PAID_STATUSES), $from, $to
-            )->avg('total');
+            );
+
+            return (float) $query->selectRaw('AVG(total - shipping_total - tax_total) as net_aov')->value('net_aov');
         });
     }
 
@@ -844,12 +848,11 @@ class DashboardStatsService
         $key = $this->periodCacheKey('coupon-leaderboard', $from, $to);
 
         return Cache::remember($key, 300, function () use ($limit, $from, $to): array {
-            $query = DB::table('order_coupon_usages');
+            $query = DB::table('order_coupon_usages')
+                ->join('orders', 'orders.id', '=', 'order_coupon_usages.order_id')
+                ->whereIn('orders.payment_status', self::PAID_STATUSES);
 
-            if ($from || $to) {
-                $query->join('orders', 'orders.id', '=', 'order_coupon_usages.order_id');
-                $this->applyPeriod($query, $from, $to, 'orders.placed_at');
-            }
+            $this->applyPeriod($query, $from, $to, 'orders.placed_at');
 
             return $query
                 ->selectRaw('order_coupon_usages.coupon_code as code, COUNT(*) as times_used, SUM(order_coupon_usages.discount_total) as total_discounted, AVG(order_coupon_usages.discount_total) as avg_discount')
