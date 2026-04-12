@@ -179,15 +179,25 @@ class DashboardStatsService
         $key = $this->periodCacheKey('fulfillment-speed', $from, $to);
 
         return Cache::remember($key, 300, function () use ($from, $to): array {
+            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+
+            $diffExpr = $isSqlite
+                ? 'ROUND((julianday(shipped_at) - julianday(placed_at)) * 24, 1) / 24'
+                : 'TIMESTAMPDIFF(HOUR, placed_at, shipped_at) / 24';
+
             $query = Order::whereNotNull('shipped_at')
                 ->whereNotNull('placed_at')
                 ->whereIn('status', ['shipped', 'delivered', 'completed']);
 
             $this->applyPeriod($query, $from, $to);
 
-            $orders = $query->get(['placed_at', 'shipped_at']);
+            $stats = (clone $query)
+                ->selectRaw("COUNT(*) as cnt, ROUND(AVG({$diffExpr}), 1) as avg_days, ROUND(MIN({$diffExpr}), 1) as fastest, ROUND(MAX({$diffExpr}), 1) as slowest")
+                ->first();
 
-            if ($orders->isEmpty()) {
+            $count = (int) ($stats->cnt ?? 0);
+
+            if ($count === 0) {
                 return [
                     'avg_days' => 0.0,
                     'median_days' => 0.0,
@@ -197,24 +207,27 @@ class DashboardStatsService
                 ];
             }
 
-            $daysArr = $orders->map(function ($o) {
-                $placed = Carbon::parse($o->placed_at);
-                $shipped = Carbon::parse($o->shipped_at);
-
-                return max(0, round($placed->diffInHours($shipped) / 24, 1));
-            })->sort()->values();
-
-            $count = $daysArr->count();
+            // Only fetch the values needed for median (two middle rows)
             $mid = intdiv($count, 2);
-            $median = $count % 2 === 0
-                ? round(($daysArr[$mid - 1] + $daysArr[$mid]) / 2, 1)
-                : $daysArr[$mid];
+            $offset = $count % 2 === 0 ? $mid - 1 : $mid;
+            $take = $count % 2 === 0 ? 2 : 1;
+
+            $medianRows = (clone $query)
+                ->selectRaw("{$diffExpr} as days_val")
+                ->orderByRaw("{$diffExpr}")
+                ->offset($offset)
+                ->limit($take)
+                ->pluck('days_val');
+
+            $median = $medianRows->count() === 2
+                ? round(($medianRows[0] + $medianRows[1]) / 2, 1)
+                : round((float) $medianRows[0], 1);
 
             return [
-                'avg_days' => round($daysArr->avg(), 1),
-                'median_days' => $median,
-                'fastest_days' => $daysArr->first(),
-                'slowest_days' => $daysArr->last(),
+                'avg_days' => max(0, (float) ($stats->avg_days ?? 0)),
+                'median_days' => max(0, $median),
+                'fastest_days' => max(0, (float) ($stats->fastest ?? 0)),
+                'slowest_days' => max(0, (float) ($stats->slowest ?? 0)),
                 'shipped_count' => $count,
             ];
         });
@@ -1077,72 +1090,63 @@ class DashboardStatsService
     {
         /** @var list<array{year: int, total_customers: int, retained: int, retention_pct: float, is_complete: bool}> */
         return Cache::remember('dashboard:cohort-retention', 300, function (): array {
-            // Step 1: Get first order date per email
-            $firstOrders = DB::table('orders')
+            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+
+            $yearExpr = $isSqlite
+                ? "cast(strftime('%Y', fo.first_placed_at) as integer)"
+                : 'YEAR(fo.first_placed_at)';
+
+            // Subquery: first order per customer
+            $firstOrdersSub = DB::table('orders')
                 ->whereIn('payment_status', self::PAID_STATUSES)
                 ->whereNotNull('placed_at')
                 ->selectRaw('email, MIN(placed_at) as first_placed_at')
-                ->groupBy('email')
+                ->groupBy('email');
+
+            // Join against orders table to check for a return within 12 months
+            $addIntervalExpr = $isSqlite
+                ? "datetime(fo.first_placed_at, '+365 days')"
+                : 'DATE_ADD(fo.first_placed_at, INTERVAL 365 DAY)';
+
+            $retainedSub = DB::table(DB::raw("({$firstOrdersSub->toSql()}) as fo"))
+                ->mergeBindings($firstOrdersSub)
+                ->leftJoin('orders as ret', function ($join) use ($addIntervalExpr) {
+                    $join->on('ret.email', '=', 'fo.email')
+                        ->whereColumn('ret.placed_at', '>', 'fo.first_placed_at')
+                        ->whereRaw("ret.placed_at <= {$addIntervalExpr}")
+                        ->whereIn('ret.payment_status', self::PAID_STATUSES)
+                        ->whereNotNull('ret.placed_at');
+                })
+                ->selectRaw("{$yearExpr} as cohort_year, fo.email, MAX(CASE WHEN ret.id IS NOT NULL THEN 1 ELSE 0 END) as retained")
+                ->groupBy('cohort_year', 'fo.email');
+
+            $cohortRows = DB::table(DB::raw("({$retainedSub->toSql()}) as cr"))
+                ->mergeBindings($retainedSub)
+                ->selectRaw('cr.cohort_year as year, COUNT(*) as total_customers, SUM(cr.retained) as retained')
+                ->groupBy('cr.cohort_year')
+                ->orderBy('cr.cohort_year')
                 ->get();
 
-            if ($firstOrders->isEmpty()) {
+            if ($cohortRows->isEmpty()) {
                 return [];
             }
 
-            // Step 2: Get all orders grouped by email for return checking
-            $allOrders = DB::table('orders')
-                ->whereIn('payment_status', self::PAID_STATUSES)
-                ->whereNotNull('placed_at')
-                ->select('email', 'placed_at')
-                ->orderBy('placed_at')
-                ->get()
-                ->groupBy('email');
-
-            // Step 3: Process cohorts in PHP
-            $cohorts = [];
             $now = Carbon::now();
 
-            foreach ($firstOrders as $row) {
-                $firstDate = Carbon::parse($row->first_placed_at);
-                $year = $firstDate->year;
-
-                if (! isset($cohorts[$year])) {
-                    $cohorts[$year] = ['total' => 0, 'retained' => 0];
-                }
-                $cohorts[$year]['total']++;
-
-                // Check for return order within 12 months of first order
-                $cutoff = $firstDate->copy()->addYear();
-                $customerOrders = $allOrders->get($row->email, collect());
-                $hasReturn = $customerOrders->contains(function ($order) use ($firstDate, $cutoff) {
-                    $orderDate = Carbon::parse($order->placed_at);
-
-                    return $orderDate->gt($firstDate) && $orderDate->lte($cutoff);
-                });
-
-                if ($hasReturn) {
-                    $cohorts[$year]['retained']++;
-                }
-            }
-
-            // Build sorted result
-            ksort($cohorts);
-            $result = [];
-
-            foreach ($cohorts as $year => $data) {
-                // A cohort is "complete" if 12 months have passed since year end
+            return $cohortRows->map(function ($row) use ($now) {
+                $year = (int) $row->year;
+                $total = (int) $row->total_customers;
+                $retained = (int) $row->retained;
                 $yearEnd = Carbon::createFromDate($year, 12, 31)->endOfDay();
 
-                $result[] = [
+                return [
                     'year' => $year,
-                    'total_customers' => $data['total'],
-                    'retained' => $data['retained'],
-                    'retention_pct' => round($data['retained'] / $data['total'] * 100, 1),
+                    'total_customers' => $total,
+                    'retained' => $retained,
+                    'retention_pct' => round($retained / $total * 100, 1),
                     'is_complete' => $yearEnd->copy()->addYear()->lte($now),
                 ];
-            }
-
-            return $result;
+            })->all();
         });
     }
 
@@ -1931,7 +1935,6 @@ class DashboardStatsService
 
         /** @var list<array{product_id: int, name: string, published_at: string, months: list<array{month: int, units: int, revenue: float, velocity_pct: float|null}>}> */
         return Cache::remember($cacheKey, 300, function () use ($limit, $monthsToTrack): array {
-            // Get top products that have a published_at date (at least 2 months old)
             $cutoff = Carbon::now()->subMonths(2);
             $products = Product::whereNotNull('published_at')
                 ->where('published_at', '<=', $cutoff)
@@ -1944,31 +1947,58 @@ class DashboardStatsService
             }
 
             $isSqlite = DB::connection()->getDriverName() === 'sqlite';
-            $result = [];
+            $now = Carbon::now();
 
+            // Build a single batched query: for each product×month window, compute
+            // units and revenue using conditional aggregates instead of N+1 queries.
+            $productIds = $products->pluck('id');
+
+            // Determine the widest date range we need
+            $earliestRelease = $products->min('published_at');
+            $windowStart = Carbon::parse($earliestRelease)->startOfDay();
+            $windowEnd = $now->copy()->endOfDay();
+
+            $salesQuery = DB::table('order_items')
+                ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                ->whereIn('orders.payment_status', self::PAID_STATUSES)
+                ->whereIn('order_items.product_id', $productIds)
+                ->whereBetween('orders.placed_at', [$windowStart, $windowEnd]);
+
+            // Build conditional SUM expressions for each month offset
+            $selects = ['order_items.product_id'];
+            for ($m = 0; $m < $monthsToTrack; $m++) {
+                $monthStartExpr = $isSqlite
+                    ? "datetime(p_pub.published_at, '+{$m} months')"
+                    : "DATE_ADD(p_pub.published_at, INTERVAL {$m} MONTH)";
+                $monthEndExpr = $isSqlite
+                    ? "datetime(p_pub.published_at, '+".($m + 1)." months', '-1 second')"
+                    : 'DATE_ADD(DATE_ADD(p_pub.published_at, INTERVAL '.($m + 1).' MONTH), INTERVAL -1 SECOND)';
+
+                $selects[] = DB::raw("SUM(CASE WHEN orders.placed_at >= {$monthStartExpr} AND orders.placed_at <= {$monthEndExpr} THEN order_items.quantity ELSE 0 END) as units_{$m}");
+                $selects[] = DB::raw("SUM(CASE WHEN orders.placed_at >= {$monthStartExpr} AND orders.placed_at <= {$monthEndExpr} THEN order_items.line_total ELSE 0 END) as revenue_{$m}");
+            }
+
+            $salesData = $salesQuery
+                ->join('products as p_pub', 'p_pub.id', '=', 'order_items.product_id')
+                ->select($selects)
+                ->groupBy('order_items.product_id')
+                ->get()
+                ->keyBy('product_id');
+
+            $result = [];
             foreach ($products as $product) {
                 $releaseDate = Carbon::parse($product->published_at)->startOfDay();
+                $sale = $salesData->get($product->id);
                 $monthsData = [];
 
                 for ($m = 0; $m < $monthsToTrack; $m++) {
                     $monthStart = $releaseDate->copy()->addMonths($m);
-                    $monthEnd = $monthStart->copy()->addMonth()->subSecond();
-
-                    // Don't query future months
                     if ($monthStart->isFuture()) {
                         break;
                     }
 
-                    $rows = DB::table('order_items')
-                        ->join('orders', 'orders.id', '=', 'order_items.order_id')
-                        ->whereIn('orders.payment_status', self::PAID_STATUSES)
-                        ->where('order_items.product_id', $product->id)
-                        ->whereBetween('orders.placed_at', [$monthStart, $monthEnd])
-                        ->selectRaw('SUM(order_items.quantity) as units, SUM(order_items.line_total) as revenue')
-                        ->first();
-
-                    $units = (int) ($rows->units ?? 0);
-                    $revenue = (float) ($rows->revenue ?? 0);
+                    $units = (int) ($sale->{"units_{$m}"} ?? 0);
+                    $revenue = (float) ($sale->{"revenue_{$m}"} ?? 0);
 
                     $monthsData[] = [
                         'month' => $m + 1,
@@ -1978,7 +2008,6 @@ class DashboardStatsService
                     ];
                 }
 
-                // Calculate velocity % relative to month 1
                 if (! empty($monthsData) && $monthsData[0]['units'] > 0) {
                     $baselineUnits = $monthsData[0]['units'];
                     for ($i = 0; $i < count($monthsData); $i++) {
@@ -2090,75 +2119,64 @@ class DashboardStatsService
     {
         /** @var list<array{product_a: string, product_b: string, co_purchases: int, affinity_pct: float, lift: float}> */
         return Cache::remember('dashboard:product-affinity', 300, function () use ($limit): array {
-            // Get all paid orders that have 2+ distinct products
-            $orderProducts = DB::table('order_items as oi')
-                ->join('orders as o', 'oi.order_id', '=', 'o.id')
+            // Step 1: SQL co-purchase pairs via self-join (avoids loading all items into PHP)
+            $coPurchases = DB::table('order_items as oi1')
+                ->join('order_items as oi2', function ($join) {
+                    $join->on('oi1.order_id', '=', 'oi2.order_id')
+                        ->whereColumn('oi1.product_name', '<', 'oi2.product_name');
+                })
+                ->join('orders as o', 'o.id', '=', 'oi1.order_id')
                 ->whereIn('o.payment_status', self::PAID_STATUSES)
                 ->whereNotNull('o.placed_at')
-                ->select('oi.order_id', 'oi.product_name')
-                ->distinct()
-                ->get()
-                ->groupBy('order_id');
+                ->selectRaw('oi1.product_name as product_a, oi2.product_name as product_b, COUNT(DISTINCT oi1.order_id) as co_purchases')
+                ->groupBy('oi1.product_name', 'oi2.product_name')
+                ->orderByDesc('co_purchases')
+                ->limit($limit)
+                ->get();
 
-            if ($orderProducts->isEmpty()) {
+            if ($coPurchases->isEmpty()) {
                 return [];
             }
 
-            // Count product purchase totals (for affinity %)
-            $productCounts = [];
-            $pairs = [];
+            // Step 2: Get individual product counts + total orders for lift calc
+            $productNames = $coPurchases->pluck('product_a')
+                ->merge($coPurchases->pluck('product_b'))
+                ->unique()
+                ->values();
 
-            foreach ($orderProducts as $orderId => $items) {
-                $names = $items->pluck('product_name')->unique()->sort()->values()->all();
+            $productCounts = DB::table('order_items')
+                ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                ->whereIn('orders.payment_status', self::PAID_STATUSES)
+                ->whereNotNull('orders.placed_at')
+                ->whereIn('order_items.product_name', $productNames)
+                ->selectRaw('order_items.product_name, COUNT(DISTINCT order_items.order_id) as order_count')
+                ->groupBy('order_items.product_name')
+                ->pluck('order_count', 'product_name');
 
-                foreach ($names as $name) {
-                    $productCounts[$name] = ($productCounts[$name] ?? 0) + 1;
-                }
+            $totalOrders = (int) DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->whereNotNull('placed_at')
+                ->count();
 
-                // Generate all pairs (sorted to avoid A→B and B→A duplicates)
-                $count = count($names);
-                if ($count < 2) {
-                    continue;
-                }
+            return $coPurchases->map(function ($row) use ($productCounts, $totalOrders) {
+                $countA = (int) ($productCounts[$row->product_a] ?? 1);
+                $countB = (int) ($productCounts[$row->product_b] ?? 1);
+                $coPurch = (int) $row->co_purchases;
+                $minCount = min($countA, $countB);
 
-                for ($i = 0; $i < $count; $i++) {
-                    for ($j = $i + 1; $j < $count; $j++) {
-                        $key = $names[$i].'|||'.$names[$j];
-                        $pairs[$key] = ($pairs[$key] ?? 0) + 1;
-                    }
-                }
-            }
-
-            if (empty($pairs)) {
-                return [];
-            }
-
-            // Sort by co-purchase count
-            arsort($pairs);
-            $topPairs = array_slice($pairs, 0, $limit, true);
-
-            $totalOrders = $orderProducts->count();
-            $result = [];
-            foreach ($topPairs as $key => $coPurchases) {
-                [$a, $b] = explode('|||', $key);
-                // Affinity % = co-purchases / purchases of less popular product
-                $minCount = min($productCounts[$a] ?? 1, $productCounts[$b] ?? 1);
-                // Lift = P(A∩B) / (P(A) × P(B))
-                $pA = ($productCounts[$a] ?? 1) / max(1, $totalOrders);
-                $pB = ($productCounts[$b] ?? 1) / max(1, $totalOrders);
-                $pAB = $coPurchases / max(1, $totalOrders);
+                $pA = $countA / max(1, $totalOrders);
+                $pB = $countB / max(1, $totalOrders);
+                $pAB = $coPurch / max(1, $totalOrders);
                 $lift = ($pA * $pB) > 0 ? round($pAB / ($pA * $pB), 2) : 0.0;
 
-                $result[] = [
-                    'product_a' => $a,
-                    'product_b' => $b,
-                    'co_purchases' => $coPurchases,
-                    'affinity_pct' => round(($coPurchases / $minCount) * 100, 1),
+                return [
+                    'product_a' => $row->product_a,
+                    'product_b' => $row->product_b,
+                    'co_purchases' => $coPurch,
+                    'affinity_pct' => round(($coPurch / $minCount) * 100, 1),
                     'lift' => $lift,
                 ];
-            }
-
-            return $result;
+            })->all();
         });
     }
 }
