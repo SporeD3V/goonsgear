@@ -4,7 +4,7 @@
         'label' => 'AOV — Avg Order Value',
         'value' => '&euro;' . number_format($aov, 2),
         'delta' => $deltas['aov'] ?? null,
-        'subtitle' => 'Total Revenue ÷ Number of Paid Orders',
+        'subtitle' => 'Net Revenue ÷ Number of Paid Orders',
         'delay' => 1,
     ])
 
@@ -29,7 +29,7 @@
 <div class="grid gap-6 lg:grid-cols-2">
     {{-- Revenue Over Time --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
-        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Revenue Over Time ({{ $periodLabel }})</h3>
+        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Revenue Over Time — Net vs Gross ({{ $periodLabel }})</h3>
         <div class="h-[280px]">
             <canvas id="salesRevenueChart"></canvas>
         </div>
@@ -46,8 +46,8 @@
 
 {{-- Geography Hub — Unified Country Table --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="5">
-    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Revenue, AOV & Customers by Country ({{ $periodLabel }})</h3>
-    <p class="mb-3 text-[13px] text-stone-500">Revenue, average order value, and unique customer count per country in one view.</p>
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Gross Revenue, AOV & Customers by Country ({{ $periodLabel }})</h3>
+    <p class="mb-3 text-[13px] text-stone-500">Gross revenue, average order value, and unique customer count per country in one view.</p>
     @if (empty($aovByCountry))
         <p class="text-[15px] text-stone-500">No order data yet.</p>
     @else
@@ -92,7 +92,7 @@
                     <thead class="bg-stone-50">
                         <tr>
                             <th @click="toggleSort('country')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Country <span class="text-xs" x-text="sortIcon('country')"></span></th>
-                            <th @click="toggleSort('revenue')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Revenue <span class="text-xs" x-text="sortIcon('revenue')"></span></th>
+                            <th @click="toggleSort('revenue')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Gross Rev. <span class="text-xs" x-text="sortIcon('revenue')"></span></th>
                             <th @click="toggleSort('orders')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Orders <span class="text-xs" x-text="sortIcon('orders')"></span></th>
                             <th @click="toggleSort('aov')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">AOV <span class="text-xs" x-text="sortIcon('aov')"></span></th>
                             <th @click="toggleSort('customers')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Customers <span class="text-xs" x-text="sortIcon('customers')"></span></th>
@@ -121,7 +121,7 @@
 {{-- Top Products --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="5">
     <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Top Selling Products ({{ $periodLabel }})</h3>
-    <p class="mb-2 text-[12px] text-stone-400">Ranked by total revenue. Click any column header to sort. Shows top 10 by default.</p>
+    <p class="mb-2 text-[12px] text-stone-400">Ranked by gross revenue. Click any column header to sort. Shows top 10 by default.</p>
     @if (empty($topProducts))
         <p class="text-[15px] text-stone-500">No sales data yet.</p>
     @else
@@ -157,7 +157,7 @@
                             <th class="px-4 py-2.5 text-left font-medium text-stone-600">#</th>
                             <th @click="toggleSort('name')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Product <span class="text-xs" x-text="sortIcon('name')"></span></th>
                             <th @click="toggleSort('units')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Units <span class="text-xs" x-text="sortIcon('units')"></span></th>
-                            <th @click="toggleSort('revenue')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Revenue <span class="text-xs" x-text="sortIcon('revenue')"></span></th>
+                            <th @click="toggleSort('revenue')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Gross Rev. <span class="text-xs" x-text="sortIcon('revenue')"></span></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-stone-100">
@@ -183,8 +183,8 @@
 <div class="grid gap-6 lg:grid-cols-3">
     {{-- Multi-Year Line Overlay --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm lg:col-span-2" data-delay="6">
-        <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Monthly Revenue — Multi-Year Overlay</h3>
-        <p class="mb-2 text-[12px] text-stone-400">Each line is one year's monthly revenue. Hover over any point to see the exact amount. The dashed line shows the historical average across all years.</p>
+        <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Gross Monthly Revenue — Multi-Year Overlay</h3>
+        <p class="mb-2 text-[12px] text-stone-400">Each line is one year's gross monthly revenue. Hover over any point to see the exact amount. The dashed line shows the historical average across all years.</p>
         <div class="h-[300px]">
             <canvas id="yearlyRevenueChart"></canvas>
         </div>
@@ -192,7 +192,7 @@
 
     {{-- Best-in-Class Month Benchmark --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="7">
-        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">{{ $bestMonthBenchmark['month_name'] }} Benchmark</h3>
+        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">{{ $bestMonthBenchmark['month_name'] }} Benchmark (Net)</h3>
 
         <div class="mt-4 space-y-5">
             {{-- MTD Comparison (fair, same day range) --}}
@@ -269,10 +269,10 @@
     <div class="mb-2 flex items-center justify-between">
         <div>
             <h3 class="text-sm font-semibold uppercase tracking-wide text-stone-600">Regional Growth Trend (Quarterly)</h3>
-            <p class="text-[12px] text-stone-400">Revenue per quarter for your top countries. Toggle AOV to see average spend per order by region.</p>
+            <p class="text-[12px] text-stone-400">Gross revenue per quarter for your top countries. Toggle AOV to see average spend per order by region.</p>
         </div>
         <div class="flex items-center gap-2" x-data="{ showAov: false }" x-init="$watch('showAov', () => window.dispatchEvent(new CustomEvent('toggle-regional-aov', { detail: showAov })))">
-            <span class="text-xs text-stone-500">Revenue</span>
+            <span class="text-xs text-stone-500">Gross Rev.</span>
             <button @click="showAov = !showAov" class="relative inline-flex h-5 w-9 items-center rounded-full transition" :class="showAov ? 'bg-[#9966ff]' : 'bg-stone-300'">
                 <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition" :class="showAov ? 'translate-x-4' : 'translate-x-0.5'"></span>
             </button>
@@ -657,7 +657,7 @@
             data: {
                 labels: countryChartData.map(c => c.country || 'Unknown'),
                 datasets: [{
-                    label: 'Revenue',
+                    label: 'Gross Revenue',
                     data: countryChartData.map(c => c.revenue),
                     backgroundColor: '#ff9f40',
                     borderRadius: 6,

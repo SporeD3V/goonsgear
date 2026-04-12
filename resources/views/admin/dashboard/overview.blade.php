@@ -1,10 +1,10 @@
 {{-- KPI Row --}}
 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
     @include('admin.dashboard._kpi-card', [
-        'label' => 'Revenue (' . $periodLabel . ')',
+        'label' => 'Gross Revenue (' . $periodLabel . ')',
         'value' => '&euro;' . number_format($overview['revenue'], 2),
         'delta' => $deltas['revenue'] ?? null,
-        'subtitle' => 'Gross collected — partial refunds not deducted',
+        'subtitle' => 'Total collected incl. shipping & tax',
         'delay' => 1,
     ])
 
@@ -12,7 +12,7 @@
         'label' => 'Net Revenue (' . $periodLabel . ')',
         'value' => '&euro;' . number_format($overview['net_revenue'], 2),
         'delta' => $deltas['net_revenue'] ?? null,
-        'subtitle' => 'Minus tax & shipping — partial refunds not deducted',
+        'subtitle' => 'Minus shipping, tax & refunds',
         'delay' => 1,
     ])
 
@@ -52,9 +52,9 @@
                 <div class="mt-1 text-[11px] text-stone-400">Orders with payment confirmed</div>
             </div>
             <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
-                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Revenue</div>
+                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Gross Revenue</div>
                 <div class="mt-1 text-2xl font-bold" style="color: #4bc0c0">&euro;{{ number_format($siteConversion['revenue'], 2) }}</div>
-                <div class="mt-1 text-[11px] text-stone-400">Total from paid orders</div>
+                <div class="mt-1 text-[11px] text-stone-400">Total collected from paid orders</div>
             </div>
         </div>
         <div class="mt-3 rounded-lg border border-stone-100 bg-stone-50 p-4">
@@ -80,7 +80,7 @@
             <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
                 <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Rev / Visitor</div>
                 <div class="mt-1 text-2xl font-bold" style="color: #4bc0c0">&euro;{{ number_format($siteConversion['revenue_per_visitor'], 2) }}</div>
-                <div class="mt-1 text-[11px] text-stone-400">Revenue ÷ Visitors</div>
+                <div class="mt-1 text-[11px] text-stone-400">Gross Revenue ÷ Visitors</div>
             </div>
         </div>
         <div class="mt-2 text-[11px] text-stone-400">
@@ -126,7 +126,7 @@
 <div class="grid gap-6 lg:grid-cols-2">
     {{-- Revenue (30d) --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
-        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Revenue ({{ $periodLabel }})</h3>
+        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Gross Revenue ({{ $periodLabel }})</h3>
         <div class="h-[280px]">
             <canvas id="revenueChart"></canvas>
         </div>
@@ -221,7 +221,7 @@
 
         // Revenue Line Chart — with optional comparison overlay
         const revenueDatasets = [{
-            label: 'Revenue',
+            label: 'Gross Revenue',
             data: revenueData.map(r => r.revenue),
             borderColor: '#36a2eb',
             backgroundColor: 'rgba(54, 162, 235, 0.08)',
