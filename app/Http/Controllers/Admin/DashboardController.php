@@ -165,6 +165,7 @@ class DashboardController extends Controller
             'productDecay' => $stats->productDecayTracking(30),
             'firstPurchaseHeroes' => $stats->firstPurchaseHeroes(30),
             'productAffinity' => $stats->productAffinity(30),
+            'shippingMargins' => $stats->shippingMargins(30),
         ];
 
         if ($compare && $prevFrom) {

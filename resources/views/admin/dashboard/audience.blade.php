@@ -206,78 +206,178 @@
     <p class="mb-3 text-[13px] text-stone-500">Top 5% spenders who haven't ordered within their personalised churn window (2.5× their average purchase interval, min 90d, max 365d).</p>
     @if ($vipChurn['vip_total'] === 0)
         <p class="text-[15px] text-stone-500">No customer data available yet.</p>
-    @elseif (empty($vipChurn['churning']))
+    @elseif (empty($vipChurn['at_risk_vips']) && empty($vipChurn['lost_vips']))
         <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-center">
             <p class="text-[15px] font-medium text-emerald-700">All {{ $vipChurn['vip_total'] }} VIP customers are active</p>
             <p class="mt-1 text-[13px] text-emerald-600">VIP threshold: &euro;{{ number_format($vipChurn['vip_threshold'], 2) }}+ total spend</p>
         </div>
     @else
         <div class="mb-3 flex items-center gap-4">
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-sm font-semibold text-red-700">
-                {{ count($vipChurn['churning']) }} at risk
-            </span>
+            @if (!empty($vipChurn['at_risk_vips']))
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">
+                    {{ count($vipChurn['at_risk_vips']) }} at risk
+                </span>
+            @endif
+            @if (!empty($vipChurn['lost_vips']))
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-sm font-semibold text-red-700">
+                    {{ count($vipChurn['lost_vips']) }} lost
+                </span>
+            @endif
             <span class="text-[13px] text-stone-500">of {{ $vipChurn['vip_total'] }} VIPs (threshold: &euro;{{ number_format($vipChurn['vip_threshold'], 2) }})</span>
         </div>
-        <div class="overflow-x-auto" x-data="{
-            sortCol: 'days_since_last',
-            sortAsc: false,
-            page: 1,
-            perPage: 50,
-            items: {{ Js::from($vipChurn['churning']) }},
-            get sorted() {
-                const col = this.sortCol;
-                const dir = this.sortAsc ? 1 : -1;
-                return [...this.items].sort((a, b) => {
-                    if (typeof a[col] === 'string') return dir * a[col].localeCompare(b[col]);
-                    return dir * (a[col] - b[col]);
-                });
-            },
-            get visible() {
-                return this.sorted.slice(0, this.page * this.perPage);
-            },
-            get hasMore() {
-                return this.visible.length < this.sorted.length;
-            },
-            toggleSort(col) {
-                if (this.sortCol === col) { this.sortAsc = !this.sortAsc; } else { this.sortCol = col; this.sortAsc = col === 'email'; }
-                this.page = 1;
-            },
-            sortIcon(col) {
-                if (this.sortCol !== col) return '↕';
-                return this.sortAsc ? '↑' : '↓';
-            }
-        }">
-            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
-                <thead class="bg-stone-50">
-                    <tr>
-                        <th @click="toggleSort('email')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Customer <span class="text-xs" x-text="sortIcon('email')"></span></th>
-                        <th @click="toggleSort('total_spent')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Total Spent <span class="text-xs" x-text="sortIcon('total_spent')"></span></th>
-                        <th @click="toggleSort('order_count')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Orders <span class="text-xs" x-text="sortIcon('order_count')"></span></th>
-                        <th @click="toggleSort('days_since_last')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Days Silent <span class="text-xs" x-text="sortIcon('days_since_last')"></span></th>
-                        <th @click="toggleSort('churn_threshold')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Threshold <span class="text-xs" x-text="sortIcon('churn_threshold')"></span></th>
-                        <th @click="toggleSort('last_order')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Last Order <span class="text-xs" x-text="sortIcon('last_order')"></span></th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-stone-100">
-                    <template x-for="vip in visible" :key="vip.email">
-                        <tr class="transition hover:bg-stone-50">
-                            <td class="px-4 py-2.5 font-medium text-stone-700" x-text="vip.email"></td>
-                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="'€' + Number(vip.total_spent).toFixed(2)"></td>
-                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="vip.order_count"></td>
-                            <td class="whitespace-nowrap px-4 py-2.5 text-right">
-                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
-                                    :class="vip.days_since_last >= 180 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'"
-                                    x-text="vip.days_since_last + 'd'"></span>
-                            </td>
-                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="vip.churn_threshold + 'd'"></td>
-                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="vip.last_order"></td>
-                        </tr>
-                    </template>
-                </tbody>
-            </table>
-            <template x-if="hasMore">
-                <button @click="page++" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="'Load more (' + (items.length - visible.length) + ' remaining)'"></button>
-            </template>
+
+        <div x-data="{ churnTab: 'at_risk' }">
+            {{-- Tab buttons --}}
+            <div class="mb-3 flex gap-2 border-b border-stone-200 pb-2">
+                <button @click="churnTab = 'at_risk'"
+                    :class="churnTab === 'at_risk' ? 'border-b-2 border-amber-500 text-amber-700 font-semibold' : 'text-stone-500 hover:text-stone-700'"
+                    class="px-3 py-1.5 text-sm transition">
+                    At Risk ({{ count($vipChurn['at_risk_vips']) }})
+                </button>
+                <button @click="churnTab = 'lost'"
+                    :class="churnTab === 'lost' ? 'border-b-2 border-red-500 text-red-700 font-semibold' : 'text-stone-500 hover:text-stone-700'"
+                    class="px-3 py-1.5 text-sm transition">
+                    Lost ({{ count($vipChurn['lost_vips']) }})
+                </button>
+            </div>
+
+            {{-- At Risk VIPs --}}
+            <div x-show="churnTab === 'at_risk'" x-cloak>
+                @if (empty($vipChurn['at_risk_vips']))
+                    <p class="py-4 text-center text-[15px] text-stone-500">No at-risk VIPs — all churning VIPs have been silent 365+ days.</p>
+                @else
+                    <div class="overflow-x-auto" x-data="{
+                        sortCol: 'days_since_last',
+                        sortAsc: false,
+                        page: 1,
+                        perPage: 50,
+                        items: {{ Js::from($vipChurn['at_risk_vips']) }},
+                        get sorted() {
+                            const col = this.sortCol;
+                            const dir = this.sortAsc ? 1 : -1;
+                            return [...this.items].sort((a, b) => {
+                                if (typeof a[col] === 'string') return dir * a[col].localeCompare(b[col]);
+                                return dir * (a[col] - b[col]);
+                            });
+                        },
+                        get visible() {
+                            return this.sorted.slice(0, this.page * this.perPage);
+                        },
+                        get hasMore() {
+                            return this.visible.length < this.sorted.length;
+                        },
+                        toggleSort(col) {
+                            if (this.sortCol === col) { this.sortAsc = !this.sortAsc; } else { this.sortCol = col; this.sortAsc = col === 'email'; }
+                            this.page = 1;
+                        },
+                        sortIcon(col) {
+                            if (this.sortCol !== col) return '↕';
+                            return this.sortAsc ? '↑' : '↓';
+                        }
+                    }">
+                        <p class="mb-2 text-[12px] text-stone-400">Exceeded churn threshold but silent &lt; 365 days — still recoverable with re-engagement campaigns.</p>
+                        <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                            <thead class="bg-stone-50">
+                                <tr>
+                                    <th @click="toggleSort('email')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Customer <span class="text-xs" x-text="sortIcon('email')"></span></th>
+                                    <th @click="toggleSort('total_spent')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Total Spent <span class="text-xs" x-text="sortIcon('total_spent')"></span></th>
+                                    <th @click="toggleSort('order_count')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Orders <span class="text-xs" x-text="sortIcon('order_count')"></span></th>
+                                    <th @click="toggleSort('days_since_last')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Days Silent <span class="text-xs" x-text="sortIcon('days_since_last')"></span></th>
+                                    <th @click="toggleSort('churn_threshold')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Threshold <span class="text-xs" x-text="sortIcon('churn_threshold')"></span></th>
+                                    <th @click="toggleSort('last_order')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Last Order <span class="text-xs" x-text="sortIcon('last_order')"></span></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-stone-100">
+                                <template x-for="vip in visible" :key="vip.email">
+                                    <tr class="transition hover:bg-stone-50">
+                                        <td class="px-4 py-2.5 font-medium text-stone-700" x-text="vip.email"></td>
+                                        <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="'€' + Number(vip.total_spent).toFixed(2)"></td>
+                                        <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="vip.order_count"></td>
+                                        <td class="whitespace-nowrap px-4 py-2.5 text-right">
+                                            <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700"
+                                                x-text="vip.days_since_last + 'd'"></span>
+                                        </td>
+                                        <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="vip.churn_threshold + 'd'"></td>
+                                        <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="vip.last_order"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                        <template x-if="hasMore">
+                            <button @click="page++" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="'Load more (' + (items.length - visible.length) + ' remaining)'"></button>
+                        </template>
+                    </div>
+                @endif
+            </div>
+
+            {{-- Lost VIPs --}}
+            <div x-show="churnTab === 'lost'" x-cloak>
+                @if (empty($vipChurn['lost_vips']))
+                    <p class="py-4 text-center text-[15px] text-stone-500">No lost VIPs — all churning customers ordered within the last year.</p>
+                @else
+                    <div class="overflow-x-auto" x-data="{
+                        sortCol: 'days_since_last',
+                        sortAsc: false,
+                        page: 1,
+                        perPage: 50,
+                        items: {{ Js::from($vipChurn['lost_vips']) }},
+                        get sorted() {
+                            const col = this.sortCol;
+                            const dir = this.sortAsc ? 1 : -1;
+                            return [...this.items].sort((a, b) => {
+                                if (typeof a[col] === 'string') return dir * a[col].localeCompare(b[col]);
+                                return dir * (a[col] - b[col]);
+                            });
+                        },
+                        get visible() {
+                            return this.sorted.slice(0, this.page * this.perPage);
+                        },
+                        get hasMore() {
+                            return this.visible.length < this.sorted.length;
+                        },
+                        toggleSort(col) {
+                            if (this.sortCol === col) { this.sortAsc = !this.sortAsc; } else { this.sortCol = col; this.sortAsc = col === 'email'; }
+                            this.page = 1;
+                        },
+                        sortIcon(col) {
+                            if (this.sortCol !== col) return '↕';
+                            return this.sortAsc ? '↑' : '↓';
+                        }
+                    }">
+                        <p class="mb-2 text-[12px] text-stone-400">Silent 365+ days — likely permanently lost. Consider win-back campaigns or write-off.</p>
+                        <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                            <thead class="bg-stone-50">
+                                <tr>
+                                    <th @click="toggleSort('email')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Customer <span class="text-xs" x-text="sortIcon('email')"></span></th>
+                                    <th @click="toggleSort('total_spent')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Total Spent <span class="text-xs" x-text="sortIcon('total_spent')"></span></th>
+                                    <th @click="toggleSort('order_count')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Orders <span class="text-xs" x-text="sortIcon('order_count')"></span></th>
+                                    <th @click="toggleSort('days_since_last')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Days Silent <span class="text-xs" x-text="sortIcon('days_since_last')"></span></th>
+                                    <th @click="toggleSort('churn_threshold')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Threshold <span class="text-xs" x-text="sortIcon('churn_threshold')"></span></th>
+                                    <th @click="toggleSort('last_order')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Last Order <span class="text-xs" x-text="sortIcon('last_order')"></span></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-stone-100">
+                                <template x-for="vip in visible" :key="vip.email">
+                                    <tr class="transition hover:bg-stone-50">
+                                        <td class="px-4 py-2.5 font-medium text-stone-700" x-text="vip.email"></td>
+                                        <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="'€' + Number(vip.total_spent).toFixed(2)"></td>
+                                        <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="vip.order_count"></td>
+                                        <td class="whitespace-nowrap px-4 py-2.5 text-right">
+                                            <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700"
+                                                x-text="vip.days_since_last + 'd'"></span>
+                                        </td>
+                                        <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="vip.churn_threshold + 'd'"></td>
+                                        <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="vip.last_order"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                        <template x-if="hasMore">
+                            <button @click="page++" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="'Load more (' + (items.length - visible.length) + ' remaining)'"></button>
+                        </template>
+                    </div>
+                @endif
+            </div>
         </div>
     @endif
 </div>

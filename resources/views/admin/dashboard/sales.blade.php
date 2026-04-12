@@ -362,6 +362,7 @@
                             <th class="px-4 py-2.5 text-left font-medium text-stone-600">Product</th>
                             <th class="px-4 py-2.5 text-right font-medium text-stone-600">First Purchases</th>
                             <th class="px-4 py-2.5 text-right font-medium text-stone-600">Share</th>
+                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Avg Resulting LTV</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-stone-100">
@@ -370,6 +371,7 @@
                                 <td class="px-4 py-2.5 font-medium text-stone-700">{{ $hero['product_name'] }}</td>
                                 <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700">{{ number_format($hero['first_purchases']) }}</td>
                                 <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500">{{ $hero['pct'] }}%</td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right font-medium text-stone-700">&euro;{{ number_format($hero['avg_ltv'], 2) }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -422,6 +424,7 @@
                         <th @click="toggleSort('co_purchases')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Bought Together <span class="text-xs" x-text="sortIcon('co_purchases')"></span></th>
                         <th @click="toggleSort('affinity_pct')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Affinity <span class="text-xs" x-text="sortIcon('affinity_pct')"></span></th>
                         <th @click="toggleSort('lift')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Lift <span class="text-xs" x-text="sortIcon('lift')"></span></th>
+                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Action</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-stone-100">
@@ -439,6 +442,14 @@
                                 <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
                                     :class="pair.lift >= 2 ? 'bg-[#4bc0c0]/15 text-[#4bc0c0]' : (pair.lift >= 1 ? 'bg-[#ff9f40]/15 text-[#ff9f40]' : 'bg-stone-100 text-stone-500')"
                                     x-text="pair.lift + '×'"></span>
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right">
+                                <template x-if="pair.co_purchases >= 10">
+                                    <a :href="'{{ route('admin.products.create') }}?bundle_a=' + encodeURIComponent(pair.product_a) + '&bundle_b=' + encodeURIComponent(pair.product_b)"
+                                        class="inline-flex items-center gap-1 rounded-md bg-[#36a2eb]/10 px-2.5 py-1 text-xs font-semibold text-[#36a2eb] transition hover:bg-[#36a2eb]/20">
+                                        Create Bundle
+                                    </a>
+                                </template>
                             </td>
                         </tr>
                     </template>
@@ -484,6 +495,84 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>
+    @endif
+</div>
+
+{{-- Shipping Margins --}}
+<div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="13">
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Shipping Margins</h3>
+    <p class="mb-3 text-[13px] text-stone-500">Shipping revenue collected vs estimated cost by country. <span class="font-medium">Cost estimate uses a flat 60% assumption</span> — replace with actual carrier data for accuracy.</p>
+    @php $shipping = (object) $shippingMargins; @endphp
+    @if (empty($shipping->by_country))
+        <p class="text-[15px] text-stone-500">No shipping revenue data yet.</p>
+    @else
+        <div class="mb-4 grid grid-cols-3 gap-4">
+            <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Collected</div>
+                <div class="mt-1 text-2xl font-bold text-stone-700">&euro;{{ number_format($shipping->total_collected, 2) }}</div>
+            </div>
+            <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Est. Cost</div>
+                <div class="mt-1 text-2xl font-bold text-red-600">&euro;{{ number_format($shipping->total_estimated_cost, 2) }}</div>
+            </div>
+            <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Est. Margin</div>
+                <div class="mt-1 text-2xl font-bold text-emerald-600">&euro;{{ number_format($shipping->total_margin, 2) }}</div>
+            </div>
+        </div>
+        <div class="overflow-x-auto" x-data="{
+            sortCol: 'collected',
+            sortAsc: false,
+            showAll: false,
+            limit: 10,
+            items: {{ Js::from($shipping->by_country) }},
+            get sorted() {
+                const col = this.sortCol;
+                const dir = this.sortAsc ? 1 : -1;
+                return [...this.items].sort((a, b) => {
+                    if (typeof a[col] === 'string') return dir * a[col].localeCompare(b[col]);
+                    return dir * (a[col] - b[col]);
+                });
+            },
+            get visible() {
+                return this.showAll ? this.sorted : this.sorted.slice(0, this.limit);
+            },
+            toggleSort(col) {
+                if (this.sortCol === col) { this.sortAsc = !this.sortAsc; } else { this.sortCol = col; this.sortAsc = col === 'country'; }
+            },
+            sortIcon(col) {
+                if (this.sortCol !== col) return '↕';
+                return this.sortAsc ? '↑' : '↓';
+            }
+        }">
+            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                <thead class="bg-stone-50">
+                    <tr>
+                        <th @click="toggleSort('country')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Country <span class="text-xs" x-text="sortIcon('country')"></span></th>
+                        <th @click="toggleSort('orders')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Orders <span class="text-xs" x-text="sortIcon('orders')"></span></th>
+                        <th @click="toggleSort('collected')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Collected <span class="text-xs" x-text="sortIcon('collected')"></span></th>
+                        <th @click="toggleSort('avg_collected')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Avg / Order <span class="text-xs" x-text="sortIcon('avg_collected')"></span></th>
+                        <th @click="toggleSort('estimated_cost')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Est. Cost <span class="text-xs" x-text="sortIcon('estimated_cost')"></span></th>
+                        <th @click="toggleSort('margin')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Margin <span class="text-xs" x-text="sortIcon('margin')"></span></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100">
+                    <template x-for="row in visible" :key="row.country">
+                        <tr class="transition hover:bg-stone-50">
+                            <td class="px-4 py-2.5 font-medium text-stone-700" x-text="row.country"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="row.orders"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="'€' + Number(row.collected).toFixed(2)"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="'€' + Number(row.avg_collected).toFixed(2)"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-red-600" x-text="'€' + Number(row.estimated_cost).toFixed(2)"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right font-semibold text-emerald-600" x-text="'€' + Number(row.margin).toFixed(2)"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+            <template x-if="items.length > limit">
+                <button @click="showAll = !showAll" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="showAll ? 'Show less' : 'Show all ' + items.length + ' countries'"></button>
+            </template>
         </div>
     @endif
 </div>

@@ -174,7 +174,7 @@
 {{-- Days of Stock Remaining --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="2">
     <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Days of Stock Remaining</h3>
-    <p class="mb-3 text-[12px] text-stone-400">Estimated days until a variant sells out, based on the last 30 days of sales. <span class="font-medium">Formula: Current Stock ÷ (Units Sold in 30 Days ÷ 30)</span>. "No sales" means the item hasn't sold recently so no prediction is possible.</p>
+    <p class="mb-3 text-[12px] text-stone-400">Estimated days until a variant sells out, using smart velocity fallback: <span class="font-medium">30d → 90d → 365d → all-time sales</span>. Falls back to wider windows when recent sales are absent.</p>
     @if (empty($daysOfStockRemaining))
         <p class="text-[15px] text-stone-500">No low-stock variants (1–20 units) right now. All items are either well-stocked or out of stock.</p>
     @else
@@ -214,6 +214,7 @@
                         <th @click="toggleSort('stock')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Stock <span class="text-xs" x-text="sortIcon('stock')"></span></th>
                         <th @click="toggleSort('daily_velocity')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Daily Sales <span class="text-xs" x-text="sortIcon('daily_velocity')"></span></th>
                         <th @click="toggleSort('days_remaining')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Days Left <span class="text-xs" x-text="sortIcon('days_remaining')"></span></th>
+                        <th class="px-4 py-2.5 text-right font-medium text-stone-400 text-[11px]">Window</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-stone-100">
@@ -226,6 +227,7 @@
                             <td class="whitespace-nowrap px-4 py-2.5 text-right font-semibold"
                                 :class="row.days_remaining === null ? 'text-stone-400' : (row.days_remaining <= 3 ? 'text-[#ff6384]' : (row.days_remaining <= 7 ? 'text-[#ff9f40]' : 'text-stone-700'))"
                                 x-text="row.days_remaining !== null ? '~' + row.days_remaining + ' days' : 'No sales'"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-[11px] text-stone-400" x-text="row.velocity_window ? '(' + row.velocity_window + ')' : ''"></td>
                         </tr>
                     </template>
                 </tbody>

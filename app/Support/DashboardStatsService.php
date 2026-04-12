@@ -142,7 +142,7 @@ class DashboardStatsService
         return Cache::remember('dashboard:preorder-liability', 300, function (): array {
             $row = DB::table('orders')
                 ->where('status', 'pre-ordered')
-                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->whereNotIn('payment_status', ['failed', 'refunded'])
                 ->selectRaw('COALESCE(SUM(total), 0) as total_liability')
                 ->selectRaw('COUNT(*) as order_count')
                 ->first();
@@ -150,7 +150,7 @@ class DashboardStatsService
             $itemCount = (int) DB::table('order_items')
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
                 ->where('orders.status', 'pre-ordered')
-                ->whereIn('orders.payment_status', self::PAID_STATUSES)
+                ->whereNotIn('orders.payment_status', ['failed', 'refunded'])
                 ->sum('order_items.quantity');
 
             return [
@@ -445,6 +445,54 @@ class DashboardStatsService
         });
     }
 
+    // ── Shipping ───────────────────────────────────────────────
+
+    /**
+     * Shipping revenue and estimated margins by country.
+     * Uses a flat cost assumption (60%) since actual shipping costs are not tracked.
+     *
+     * @return array{total_collected: float, total_estimated_cost: float, total_margin: float, by_country: list<array{country: string, orders: int, collected: float, avg_collected: float, estimated_cost: float, margin: float, margin_pct: float}>}
+     */
+    public function shippingMargins(int $limit = 30): array
+    {
+        return Cache::remember('dashboard:shipping-margins', 300, function () use ($limit): array {
+            $rows = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->whereNotNull('placed_at')
+                ->where('shipping_total', '>', 0)
+                ->groupBy('country')
+                ->selectRaw('country, COUNT(*) as orders, SUM(shipping_total) as collected, AVG(shipping_total) as avg_collected')
+                ->orderByDesc('collected')
+                ->limit($limit)
+                ->get();
+
+            if ($rows->isEmpty()) {
+                return ['total_collected' => 0.0, 'total_estimated_cost' => 0.0, 'total_margin' => 0.0, 'by_country' => []];
+            }
+
+            $costPct = 0.60;
+
+            $byCountry = $rows->map(fn ($r) => [
+                'country' => $r->country ?: 'Unknown',
+                'orders' => (int) $r->orders,
+                'collected' => round((float) $r->collected, 2),
+                'avg_collected' => round((float) $r->avg_collected, 2),
+                'estimated_cost' => round((float) $r->collected * $costPct, 2),
+                'margin' => round((float) $r->collected * (1 - $costPct), 2),
+                'margin_pct' => round((1 - $costPct) * 100, 1),
+            ])->all();
+
+            $totalCollected = (float) $rows->sum('collected');
+
+            return [
+                'total_collected' => round($totalCollected, 2),
+                'total_estimated_cost' => round($totalCollected * $costPct, 2),
+                'total_margin' => round($totalCollected * (1 - $costPct), 2),
+                'by_country' => $byCountry,
+            ];
+        });
+    }
+
     // ── Inventory Tab ─────────────────────────────────────────
 
     /**
@@ -493,20 +541,60 @@ class DashboardStatsService
                 return [];
             }
 
-            // Get 30-day sales velocity per variant
-            $thirtyDaysAgo = Carbon::now()->subDays(30);
+            // Smart velocity: get sales across multiple windows in one query
+            $now = Carbon::now();
+            $thirtyDaysAgo = $now->copy()->subDays(30);
+            $ninetyDaysAgo = $now->copy()->subDays(90);
+            $yearAgo = $now->copy()->subDays(365);
+
             $sales = DB::table('order_items')
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
                 ->whereIn('orders.payment_status', self::PAID_STATUSES)
-                ->where('orders.placed_at', '>=', $thirtyDaysAgo)
                 ->whereIn('order_items.product_variant_id', $variants->pluck('id'))
                 ->groupBy('order_items.product_variant_id')
-                ->selectRaw('order_items.product_variant_id, SUM(order_items.quantity) as total_sold')
-                ->pluck('total_sold', 'product_variant_id');
+                ->selectRaw('order_items.product_variant_id, SUM(order_items.quantity) as total_sold, SUM(CASE WHEN orders.placed_at >= ? THEN order_items.quantity ELSE 0 END) as sold_30d, SUM(CASE WHEN orders.placed_at >= ? THEN order_items.quantity ELSE 0 END) as sold_90d, SUM(CASE WHEN orders.placed_at >= ? THEN order_items.quantity ELSE 0 END) as sold_365d, MIN(orders.placed_at) as first_sale_at', [$thirtyDaysAgo, $ninetyDaysAgo, $yearAgo])
+                ->get()
+                ->keyBy('product_variant_id');
 
-            return $variants->map(function ($v) use ($sales) {
-                $sold = (int) ($sales[$v->id] ?? 0);
-                $dailyVelocity = $sold / 30;
+            return $variants->map(function ($v) use ($sales, $now) {
+                $sale = $sales->get($v->id);
+
+                if (! $sale) {
+                    return [
+                        'product' => $v->product,
+                        'variant' => $v->variant,
+                        'sku' => $v->sku,
+                        'stock' => (int) $v->stock,
+                        'daily_velocity' => 0.0,
+                        'days_remaining' => null,
+                        'velocity_window' => null,
+                    ];
+                }
+
+                $sold30 = (int) ($sale->sold_30d ?? 0);
+                $sold90 = (int) ($sale->sold_90d ?? 0);
+                $sold365 = (int) ($sale->sold_365d ?? 0);
+                $soldAll = (int) ($sale->total_sold ?? 0);
+
+                // Cascade: 30d → 90d → 365d → all-time
+                if ($sold30 > 0) {
+                    $dailyVelocity = $sold30 / 30;
+                    $velocityWindow = '30d';
+                } elseif ($sold90 > 0) {
+                    $dailyVelocity = $sold90 / 90;
+                    $velocityWindow = '90d';
+                } elseif ($sold365 > 0) {
+                    $dailyVelocity = $sold365 / 365;
+                    $velocityWindow = '365d';
+                } elseif ($soldAll > 0) {
+                    $firstSale = Carbon::parse($sale->first_sale_at);
+                    $daysActive = max(1, (int) $firstSale->diffInDays($now));
+                    $dailyVelocity = $soldAll / $daysActive;
+                    $velocityWindow = 'all';
+                } else {
+                    $dailyVelocity = 0;
+                    $velocityWindow = null;
+                }
 
                 return [
                     'product' => $v->product,
@@ -515,6 +603,7 @@ class DashboardStatsService
                     'stock' => (int) $v->stock,
                     'daily_velocity' => round($dailyVelocity, 2),
                     'days_remaining' => $dailyVelocity > 0 ? round($v->stock / $dailyVelocity, 1) : null,
+                    'velocity_window' => $velocityWindow,
                 ];
             })
                 ->sortBy('days_remaining')
@@ -537,7 +626,7 @@ class DashboardStatsService
                 ->join('products as p', 'p.id', '=', 'pv.product_id')
                 ->where('pv.is_active', true)
                 ->where('pv.stock_quantity', 0)
-                ->select('pv.id', 'pv.sku', 'pv.name as variant', 'p.name as product', 'p.id as product_id')
+                ->select('pv.id', 'pv.sku', 'pv.name as variant', 'p.name as product', 'p.id as product_id', 'p.published_at')
                 ->get();
 
             if ($soldOut->isEmpty()) {
@@ -572,9 +661,16 @@ class DashboardStatsService
                 $totalSold = (int) $sale->total_sold;
                 $totalRevenue = (float) $sale->total_revenue;
 
-                // Days actually in stock = window start to last sale (proxy for sell-out date)
+                // Days actually in stock = MAX(published_at, windowStart) to last sale
                 $lastSale = Carbon::parse($sale->last_sale_at);
-                $daysInStock = max(1, (int) $ninetyDaysAgo->diffInDays($lastSale));
+                $windowStart = $ninetyDaysAgo;
+                if ($v->published_at) {
+                    $publishDate = Carbon::parse($v->published_at);
+                    if ($publishDate->gt($ninetyDaysAgo)) {
+                        $windowStart = $publishDate;
+                    }
+                }
+                $daysInStock = max(1, (int) $windowStart->diffInDays($lastSale));
 
                 $avgDailyUnits = round($totalSold / $daysInStock, 2);
                 $avgPrice = round($totalRevenue / $totalSold, 2);
@@ -1272,11 +1368,11 @@ class DashboardStatsService
      * personalised churn window (2.5× their average purchase interval, floored
      * at 90 days and capped at 365).
      *
-     * @return array{vip_threshold: float, vip_total: int, churning: list<array{email: string, total_spent: float, order_count: int, days_since_last: int, churn_threshold: int, last_order: string}>}
+     * @return array{vip_threshold: float, vip_total: int, at_risk_vips: list<array{email: string, total_spent: float, order_count: int, days_since_last: int, churn_threshold: int, last_order: string}>, lost_vips: list<array{email: string, total_spent: float, order_count: int, days_since_last: int, churn_threshold: int, last_order: string}>}
      */
     public function vipChurnWarning(): array
     {
-        /** @var array{vip_threshold: float, vip_total: int, churning: list<array{email: string, total_spent: float, order_count: int, days_since_last: int, churn_threshold: int, last_order: string}>} */
+        /** @var array{vip_threshold: float, vip_total: int, at_risk_vips: list<array{email: string, total_spent: float, order_count: int, days_since_last: int, churn_threshold: int, last_order: string}>, lost_vips: list<array{email: string, total_spent: float, order_count: int, days_since_last: int, churn_threshold: int, last_order: string}>} */
         return Cache::remember('dashboard:vip-churn', 300, function (): array {
             $isSqlite = DB::connection()->getDriverName() === 'sqlite';
 
@@ -1296,7 +1392,7 @@ class DashboardStatsService
                 ->get();
 
             if ($customers->isEmpty()) {
-                return ['vip_threshold' => 0.0, 'vip_total' => 0, 'churning' => []];
+                return ['vip_threshold' => 0.0, 'vip_total' => 0, 'at_risk_vips' => [], 'lost_vips' => []];
             }
 
             // Sort by total_spent descending to find top 5%
@@ -1329,13 +1425,17 @@ class DashboardStatsService
                     ];
                 })
                 ->sortByDesc('days_since_last')
-                ->values()
-                ->all();
+                ->values();
+
+            // Split: at-risk (churn threshold to 365d) vs lost (365d+)
+            $atRisk = $churning->filter(fn ($c) => $c['days_since_last'] < 365)->values()->all();
+            $lost = $churning->filter(fn ($c) => $c['days_since_last'] >= 365)->values()->all();
 
             return [
                 'vip_threshold' => round($threshold, 2),
                 'vip_total' => $vipCount,
-                'churning' => $churning,
+                'at_risk_vips' => $atRisk,
+                'lost_vips' => $lost,
             ];
         });
     }
@@ -1808,11 +1908,11 @@ class DashboardStatsService
     /**
      * First-Purchase Heroes: which products customers buy as their first order.
      *
-     * @return list<array{product_name: string, first_purchases: int, pct: float}>
+     * @return list<array{product_name: string, first_purchases: int, pct: float, avg_ltv: float}>
      */
     public function firstPurchaseHeroes(int $limit = 10): array
     {
-        /** @var list<array{product_name: string, first_purchases: int, pct: float}> */
+        /** @var list<array{product_name: string, first_purchases: int, pct: float, avg_ltv: float}> */
         return Cache::remember('dashboard:first-purchase-heroes', 300, function () use ($limit): array {
             $isSqlite = DB::connection()->getDriverName() === 'sqlite';
             $minExpr = $isSqlite
@@ -1841,11 +1941,44 @@ class DashboardStatsService
 
             $total = $rows->sum('first_purchases');
 
-            return $rows->map(fn ($r) => [
-                'product_name' => $r->product_name,
-                'first_purchases' => (int) $r->first_purchases,
-                'pct' => $total > 0 ? round(((int) $r->first_purchases / $total) * 100, 1) : 0.0,
-            ])->all();
+            // Get emails per hero product for LTV calculation
+            $heroNames = $rows->pluck('product_name');
+            $emailsByProduct = DB::table('order_items as oi')
+                ->joinSub($firstOrders, 'fo', 'oi.order_id', '=', 'fo.first_order_id')
+                ->whereIn('oi.product_name', $heroNames)
+                ->select('oi.product_name', 'fo.email')
+                ->distinct()
+                ->get()
+                ->groupBy('product_name');
+
+            // Lifetime spend per customer
+            $allEmails = $emailsByProduct->flatten()->pluck('email')->unique();
+            $ltvByEmail = DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->whereNotNull('placed_at')
+                ->whereIn('email', $allEmails)
+                ->groupBy('email')
+                ->selectRaw('email, SUM(total) as lifetime_spend')
+                ->pluck('lifetime_spend', 'email');
+
+            return $rows->map(function ($r) use ($total, $emailsByProduct, $ltvByEmail) {
+                $emails = $emailsByProduct->get($r->product_name, collect());
+                $ltvSum = 0;
+                $ltvCount = 0;
+                foreach ($emails as $item) {
+                    if (isset($ltvByEmail[$item->email])) {
+                        $ltvSum += (float) $ltvByEmail[$item->email];
+                        $ltvCount++;
+                    }
+                }
+
+                return [
+                    'product_name' => $r->product_name,
+                    'first_purchases' => (int) $r->first_purchases,
+                    'pct' => $total > 0 ? round(((int) $r->first_purchases / $total) * 100, 1) : 0.0,
+                    'avg_ltv' => $ltvCount > 0 ? round($ltvSum / $ltvCount, 2) : 0.0,
+                ];
+            })->all();
         });
     }
 

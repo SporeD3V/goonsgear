@@ -805,8 +805,8 @@ class DashboardControllerTest extends TestCase
 
         $churn = $response->viewData('vipChurn');
         $this->assertGreaterThan(0, $churn['vip_total']);
-        $this->assertNotEmpty($churn['churning']);
-        $this->assertEquals('vip@example.com', $churn['churning'][0]['email']);
+        $this->assertNotEmpty($churn['at_risk_vips']);
+        $this->assertEquals('vip@example.com', $churn['at_risk_vips'][0]['email']);
     }
 
     public function test_vip_churn_empty_without_orders(): void
@@ -818,7 +818,8 @@ class DashboardControllerTest extends TestCase
 
         $churn = $response->viewData('vipChurn');
         $this->assertEquals(0, $churn['vip_total']);
-        $this->assertEmpty($churn['churning']);
+        $this->assertEmpty($churn['at_risk_vips']);
+        $this->assertEmpty($churn['lost_vips']);
     }
 
     public function test_first_purchase_heroes_identifies_entry_products(): void
@@ -1021,7 +1022,8 @@ class DashboardControllerTest extends TestCase
         $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
         $response->assertOk()
             ->assertViewHas('firstPurchaseHeroes')
-            ->assertViewHas('productAffinity');
+            ->assertViewHas('productAffinity')
+            ->assertViewHas('shippingMargins');
     }
 
     public function test_marketing_tab_has_abandoned_products_data(): void
@@ -1210,20 +1212,28 @@ class DashboardControllerTest extends TestCase
             'total' => 250.00,
             'placed_at' => now()->subDays(3),
         ]);
-        // This one should NOT count (not paid)
+        // This one should NOT count (refunded)
+        Order::factory()->create([
+            'status' => 'pre-ordered',
+            'payment_status' => 'refunded',
+            'total' => 100.00,
+            'placed_at' => now()->subDays(2),
+        ]);
+
+        // Pending pre-order SHOULD count (pre-orders are committed even before payment)
         Order::factory()->create([
             'status' => 'pre-ordered',
             'payment_status' => 'pending',
             'total' => 100.00,
-            'placed_at' => now()->subDays(2),
+            'placed_at' => now()->subDays(1),
         ]);
 
         $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
         $response->assertOk();
 
         $liability = $response->viewData('preorderLiability');
-        $this->assertEquals(400.0, $liability['total_liability']);
-        $this->assertEquals(2, $liability['order_count']);
+        $this->assertEquals(500.0, $liability['total_liability']);
+        $this->assertEquals(3, $liability['order_count']);
     }
 
     public function test_preorder_liability_zero_without_preorders(): void

@@ -21,31 +21,49 @@ new class extends Component
     #[Computed]
     public function products(): array
     {
-        return app(DashboardStatsService::class)->benchmarkableProducts(50);
+        return app(DashboardStatsService::class)->benchmarkableProducts(500);
     }
 
     #[Computed]
     public function filteredA(): array
     {
-        if (mb_strlen($this->searchA) < 1) {
-            return $this->products;
+        if (mb_strlen($this->searchA) < 2) {
+            return array_slice($this->products, 0, 30);
         }
 
-        $term = mb_strtolower($this->searchA);
+        $terms = array_filter(explode(' ', mb_strtolower($this->searchA)));
 
-        return array_values(array_filter($this->products, fn (array $p) => str_contains(mb_strtolower($p['name']), $term)));
+        return array_values(array_filter($this->products, function (array $p) use ($terms) {
+            $name = mb_strtolower($p['name']);
+            foreach ($terms as $term) {
+                if (! str_contains($name, $term)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }));
     }
 
     #[Computed]
     public function filteredB(): array
     {
-        if (mb_strlen($this->searchB) < 1) {
-            return $this->products;
+        if (mb_strlen($this->searchB) < 2) {
+            return array_slice($this->products, 0, 30);
         }
 
-        $term = mb_strtolower($this->searchB);
+        $terms = array_filter(explode(' ', mb_strtolower($this->searchB)));
 
-        return array_values(array_filter($this->products, fn (array $p) => str_contains(mb_strtolower($p['name']), $term)));
+        return array_values(array_filter($this->products, function (array $p) use ($terms) {
+            $name = mb_strtolower($p['name']);
+            foreach ($terms as $term) {
+                if (! str_contains($name, $term)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }));
     }
 
     #[Computed]
