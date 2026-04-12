@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\AdminNote;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -564,6 +566,237 @@ class BackfillSyncGapsTest extends TestCase
         $this->assertSame(1, Coupon::where('code', 'EXISTING5')->count());
     }
 
+    // ─── Shipment Tracking Backfill ─────────────────────────────────
+
+    public function test_backfill_tracking_populates_carrier_and_tracking_number(): void
+    {
+        $order = Order::factory()->create([
+            'shipping_carrier' => null,
+            'tracking_number' => null,
+        ]);
+
+        DB::table('import_legacy_orders')->insert([
+            'legacy_wc_order_id' => 4001,
+            'order_id' => $order->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Serialized WC tracking data — deutsche-post-dhl carrier
+        $trackingData = serialize([[
+            'tracking_provider' => 'deutsche-post-dhl',
+            'custom_tracking_provider' => '',
+            'custom_tracking_link' => '',
+            'tracking_number' => 'LB852179686DE',
+            'tracking_product_code' => '',
+            'date_shipped' => '1632268800',
+            'products_list' => '',
+            'status_shipped' => '1',
+        ]]);
+
+        DB::connection('legacy')->table('wp_postmeta')->insert([
+            ['post_id' => 4001, 'meta_key' => '_wc_shipment_tracking_items', 'meta_value' => $trackingData],
+        ]);
+
+        $this->artisan('app:backfill-sync-gaps', ['--only' => 'tracking'])
+            ->assertSuccessful();
+
+        $order->refresh();
+        $this->assertSame('dhl', $order->shipping_carrier);
+        $this->assertSame('LB852179686DE', $order->tracking_number);
+    }
+
+    public function test_backfill_tracking_normalizes_spaced_tracking_numbers(): void
+    {
+        $order = Order::factory()->create([
+            'shipping_carrier' => null,
+            'tracking_number' => null,
+        ]);
+
+        DB::table('import_legacy_orders')->insert([
+            'legacy_wc_order_id' => 4002,
+            'order_id' => $order->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $trackingData = serialize([[
+            'tracking_provider' => 'deutsche-post',
+            'custom_tracking_provider' => '',
+            'custom_tracking_link' => '',
+            'tracking_number' => 'L E 4 3 7 9 3 7 8 2 5 D E',
+            'tracking_product_code' => '',
+            'date_shipped' => '1695254400',
+        ]]);
+
+        DB::connection('legacy')->table('wp_postmeta')->insert([
+            ['post_id' => 4002, 'meta_key' => '_wc_shipment_tracking_items', 'meta_value' => $trackingData],
+        ]);
+
+        $this->artisan('app:backfill-sync-gaps', ['--only' => 'tracking'])
+            ->assertSuccessful();
+
+        $order->refresh();
+        $this->assertSame('dhl', $order->shipping_carrier);
+        $this->assertSame('LE437937825DE', $order->tracking_number);
+    }
+
+    public function test_backfill_tracking_skips_orders_that_already_have_tracking(): void
+    {
+        $order = Order::factory()->create([
+            'shipping_carrier' => 'dhl',
+            'tracking_number' => 'EXISTING123',
+        ]);
+
+        DB::table('import_legacy_orders')->insert([
+            'legacy_wc_order_id' => 4003,
+            'order_id' => $order->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $trackingData = serialize([[
+            'tracking_provider' => 'usps',
+            'tracking_number' => 'NEWTRACKING456',
+        ]]);
+
+        DB::connection('legacy')->table('wp_postmeta')->insert([
+            ['post_id' => 4003, 'meta_key' => '_wc_shipment_tracking_items', 'meta_value' => $trackingData],
+        ]);
+
+        $this->artisan('app:backfill-sync-gaps', ['--only' => 'tracking'])
+            ->assertSuccessful();
+
+        $order->refresh();
+        $this->assertSame('dhl', $order->shipping_carrier);
+        $this->assertSame('EXISTING123', $order->tracking_number);
+    }
+
+    public function test_backfill_tracking_maps_carrier_names(): void
+    {
+        $order = Order::factory()->create(['shipping_carrier' => null, 'tracking_number' => null]);
+
+        DB::table('import_legacy_orders')->insert([
+            'legacy_wc_order_id' => 4004,
+            'order_id' => $order->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $trackingData = serialize([[
+            'tracking_provider' => 'hermes',
+            'tracking_number' => 'H123456789DE',
+        ]]);
+
+        DB::connection('legacy')->table('wp_postmeta')->insert([
+            ['post_id' => 4004, 'meta_key' => '_wc_shipment_tracking_items', 'meta_value' => $trackingData],
+        ]);
+
+        $this->artisan('app:backfill-sync-gaps', ['--only' => 'tracking'])
+            ->assertSuccessful();
+
+        $order->refresh();
+        $this->assertSame('hermes', $order->shipping_carrier);
+        $this->assertSame('H123456789DE', $order->tracking_number);
+    }
+
+    // ─── Human Order Notes Import ──────────────────────────────────
+
+    public function test_import_order_notes_creates_admin_notes_for_human_notes(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $order = Order::factory()->create(['order_number' => 'WC-1234']);
+
+        DB::table('import_legacy_orders')->insert([
+            'legacy_wc_order_id' => 3001,
+            'order_id' => $order->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::connection('legacy')->table('wp_comments')->insert([
+            'comment_ID' => 101,
+            'comment_post_ID' => 3001,
+            'comment_author' => 'Manuel Rückert',
+            'comment_content' => 'SIGNED ALL!!',
+            'comment_type' => 'order_note',
+            'comment_date' => '2026-03-23 22:12:03',
+        ]);
+
+        $this->artisan('app:backfill-sync-gaps', ['--only' => 'order-notes'])
+            ->assertSuccessful();
+
+        $this->assertDatabaseHas('admin_notes', [
+            'user_id' => $admin->id,
+            'content' => 'SIGNED ALL!!',
+            'context' => "order:{$order->id}",
+            'context_label' => 'Order #WC-1234',
+        ]);
+    }
+
+    public function test_import_order_notes_skips_woocommerce_system_notes(): void
+    {
+        User::factory()->create(['is_admin' => true]);
+        $order = Order::factory()->create();
+
+        DB::table('import_legacy_orders')->insert([
+            'legacy_wc_order_id' => 3002,
+            'order_id' => $order->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // System note from WooCommerce
+        DB::connection('legacy')->table('wp_comments')->insert([
+            'comment_ID' => 102,
+            'comment_post_ID' => 3002,
+            'comment_author' => 'WooCommerce',
+            'comment_content' => 'Order status changed from Processing to Completed.',
+            'comment_type' => 'order_note',
+            'comment_date' => '2026-03-23 10:00:00',
+        ]);
+
+        $this->artisan('app:backfill-sync-gaps', ['--only' => 'order-notes'])
+            ->assertSuccessful();
+
+        $this->assertSame(0, AdminNote::count());
+    }
+
+    public function test_import_order_notes_skips_duplicate_content(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $order = Order::factory()->create();
+
+        DB::table('import_legacy_orders')->insert([
+            'legacy_wc_order_id' => 3003,
+            'order_id' => $order->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Pre-existing note
+        AdminNote::create([
+            'user_id' => $admin->id,
+            'content' => 'NUR NOCH VINYL!',
+            'context' => "order:{$order->id}",
+            'context_label' => 'Order #test',
+        ]);
+
+        DB::connection('legacy')->table('wp_comments')->insert([
+            'comment_ID' => 103,
+            'comment_post_ID' => 3003,
+            'comment_author' => 'Manuel Rückert',
+            'comment_content' => 'NUR NOCH VINYL!',
+            'comment_type' => 'order_note',
+            'comment_date' => '2026-03-19 10:34:25',
+        ]);
+
+        $this->artisan('app:backfill-sync-gaps', ['--only' => 'order-notes'])
+            ->assertSuccessful();
+
+        $this->assertSame(1, AdminNote::where('context', "order:{$order->id}")->count());
+    }
+
     // ─── Schema Helper ─────────────────────────────────────────────
 
     private function createLegacySchema(): void
@@ -608,6 +841,15 @@ class BackfillSyncGapsTest extends TestCase
             $table->unsignedBigInteger('order_id');
             $table->unsignedBigInteger('coupon_id');
             $table->decimal('discount_amount', 10, 2);
+        });
+
+        $schema->create('wp_comments', function ($table) {
+            $table->unsignedBigInteger('comment_ID')->primary();
+            $table->unsignedBigInteger('comment_post_ID');
+            $table->string('comment_author');
+            $table->text('comment_content');
+            $table->string('comment_type');
+            $table->dateTime('comment_date');
         });
     }
 }

@@ -2,11 +2,13 @@
 
 namespace App\Console\Commands;
 
+use App\Models\AdminNote;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +20,7 @@ class BackfillSyncGaps extends Command
      */
     protected $signature = 'app:backfill-sync-gaps
         {--dry-run : Preview changes without writing}
-        {--only= : Run specific operations (refunds,tax,coupons,items,phones,dimensions,preorders)}';
+        {--only= : Run specific operations (refunds,tax,coupons,items,phones,dimensions,preorders,wc-coupons,tracking,order-notes)}';
 
     /**
      * @var string
@@ -76,6 +78,14 @@ class BackfillSyncGaps extends Command
 
         if ($this->shouldRun('wc-coupons', $only)) {
             $this->importWcCoupons($legacy, $dryRun);
+        }
+
+        if ($this->shouldRun('tracking', $only)) {
+            $this->backfillShipmentTracking($legacy, $dryRun);
+        }
+
+        if ($this->shouldRun('order-notes', $only)) {
+            $this->importHumanOrderNotes($legacy, $dryRun);
         }
 
         $this->newLine();
@@ -684,7 +694,7 @@ class BackfillSyncGaps extends Command
             return null;
         }
 
-        $valid = ['refunds', 'tax', 'coupons', 'items', 'phones', 'dimensions', 'preorders', 'wc-coupons'];
+        $valid = ['refunds', 'tax', 'coupons', 'items', 'phones', 'dimensions', 'preorders', 'wc-coupons', 'tracking', 'order-notes'];
         $requested = array_map('trim', explode(',', $raw));
 
         foreach ($requested as $item) {
@@ -696,6 +706,232 @@ class BackfillSyncGaps extends Command
         }
 
         return $requested;
+    }
+
+    /**
+     * Backfill shipping_carrier and tracking_number from WC serialized tracking data.
+     */
+    private function backfillShipmentTracking(mixed $legacy, bool $dryRun): void
+    {
+        $this->info('--- Backfilling Shipment Tracking ---');
+
+        $mappings = DB::table('import_legacy_orders')
+            ->select('legacy_wc_order_id', 'order_id')
+            ->get();
+
+        $this->line("  Processing {$mappings->count()} mapped orders...");
+
+        $updated = 0;
+        $skippedNoData = 0;
+        $skippedAlreadySet = 0;
+        $unparseable = 0;
+
+        foreach ($mappings->chunk(500) as $batch) {
+            $wcIds = $batch->pluck('legacy_wc_order_id')->toArray();
+
+            $trackingMeta = $legacy->table('wp_postmeta')
+                ->whereIn('post_id', $wcIds)
+                ->where('meta_key', '_wc_shipment_tracking_items')
+                ->where('meta_value', '!=', '')
+                ->where('meta_value', '!=', 'a:0:{}')
+                ->pluck('meta_value', 'post_id');
+
+            foreach ($batch as $mapping) {
+                $serialized = $trackingMeta[$mapping->legacy_wc_order_id] ?? null;
+
+                if ($serialized === null) {
+                    $skippedNoData++;
+
+                    continue;
+                }
+
+                // Check if order already has tracking
+                $existing = DB::table('orders')
+                    ->where('id', $mapping->order_id)
+                    ->first(['tracking_number', 'shipping_carrier']);
+
+                if ($existing !== null && $existing->tracking_number !== null && $existing->tracking_number !== '') {
+                    $skippedAlreadySet++;
+
+                    continue;
+                }
+
+                $parsed = $this->parseWcTrackingData($serialized);
+
+                if ($parsed === null) {
+                    $unparseable++;
+
+                    continue;
+                }
+
+                if (! $dryRun) {
+                    DB::table('orders')
+                        ->where('id', $mapping->order_id)
+                        ->update([
+                            'shipping_carrier' => $parsed['carrier'],
+                            'tracking_number' => $parsed['tracking_number'],
+                        ]);
+                }
+
+                $updated++;
+            }
+        }
+
+        $this->stats['tracking_updated'] = $updated;
+        $this->stats['tracking_no_data'] = $skippedNoData;
+        $this->stats['tracking_already_set'] = $skippedAlreadySet;
+        $this->stats['tracking_unparseable'] = $unparseable;
+        $this->info("  {$updated} orders updated, {$skippedNoData} had no tracking, {$skippedAlreadySet} already set, {$unparseable} unparseable.");
+    }
+
+    /**
+     * Parse WC serialized tracking data and extract carrier + tracking number.
+     *
+     * @return array{carrier: string, tracking_number: string}|null
+     */
+    private function parseWcTrackingData(string $serialized): ?array
+    {
+        // Try PHP unserialize first
+        $data = @unserialize($serialized);
+
+        if (is_array($data) && count($data) > 0) {
+            // Use the first (most recent) tracking entry
+            $entry = $data[0] ?? null;
+
+            if (! is_array($entry)) {
+                return null;
+            }
+
+            $trackingNumber = trim((string) ($entry['tracking_number'] ?? ''));
+            // Remove spaces from tracking numbers (some have "L E 4 3 7..." format)
+            $trackingNumber = str_replace(' ', '', $trackingNumber);
+
+            if ($trackingNumber === '') {
+                return null;
+            }
+
+            $provider = strtolower(trim((string) ($entry['tracking_provider'] ?? '')));
+            $carrier = $this->normalizeCarrier($provider);
+
+            return ['carrier' => $carrier, 'tracking_number' => $trackingNumber];
+        }
+
+        // Fallback: regex extraction for corrupted serialized data
+        if (preg_match('/tracking_number";s:\d+:"([^"]+)"/', $serialized, $tnMatch)
+            && preg_match('/tracking_provider";s:\d+:"([^"]+)"/', $serialized, $cpMatch)) {
+            $trackingNumber = str_replace(' ', '', trim($tnMatch[1]));
+
+            if ($trackingNumber === '') {
+                return null;
+            }
+
+            return [
+                'carrier' => $this->normalizeCarrier(strtolower(trim($cpMatch[1]))),
+                'tracking_number' => $trackingNumber,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * Normalize WC carrier slug to GG carrier name.
+     */
+    private function normalizeCarrier(string $wcProvider): string
+    {
+        return match (true) {
+            str_contains($wcProvider, 'dhl') => 'dhl',
+            str_contains($wcProvider, 'deutsche-post') => 'dhl',
+            str_contains($wcProvider, 'hermes') => 'hermes',
+            str_contains($wcProvider, 'usps') => 'usps',
+            str_contains($wcProvider, 'ups') => 'ups',
+            str_contains($wcProvider, 'fedex') => 'fedex',
+            str_contains($wcProvider, 'dpd') => 'dpd',
+            $wcProvider !== '' => $wcProvider,
+            default => 'dhl',
+        };
+    }
+
+    /**
+     * Import human-written order notes from WC into admin_notes.
+     */
+    private function importHumanOrderNotes(mixed $legacy, bool $dryRun): void
+    {
+        $this->info('--- Importing Human Order Notes ---');
+
+        // Find admin user for note ownership
+        $adminUser = User::where('is_admin', true)->first();
+
+        if ($adminUser === null) {
+            $this->error('  No admin user found. Cannot assign order notes.');
+
+            return;
+        }
+
+        // Get human-written order notes (not system-generated WooCommerce notes)
+        $notes = $legacy->table('wp_comments')
+            ->where('comment_type', 'order_note')
+            ->where('comment_author', '!=', 'WooCommerce')
+            ->where('comment_content', '!=', '')
+            ->select('comment_post_ID', 'comment_content', 'comment_date', 'comment_author')
+            ->orderBy('comment_date')
+            ->get();
+
+        $this->line("  Found {$notes->count()} human order notes.");
+
+        $created = 0;
+        $skippedNoMapping = 0;
+        $skippedDuplicate = 0;
+
+        // Build order mapping lookup
+        $mappings = DB::table('import_legacy_orders')
+            ->pluck('order_id', 'legacy_wc_order_id');
+
+        foreach ($notes as $note) {
+            $orderId = $mappings[(int) $note->comment_post_ID] ?? null;
+
+            if ($orderId === null) {
+                $skippedNoMapping++;
+
+                continue;
+            }
+
+            // Get the order number for context_label
+            $orderNumber = DB::table('orders')
+                ->where('id', $orderId)
+                ->value('order_number');
+
+            $contextKey = "order:{$orderId}";
+
+            // Check for duplicate (same context + same content)
+            $exists = AdminNote::where('context', $contextKey)
+                ->where('content', $note->comment_content)
+                ->exists();
+
+            if ($exists) {
+                $skippedDuplicate++;
+
+                continue;
+            }
+
+            if (! $dryRun) {
+                AdminNote::create([
+                    'user_id' => $adminUser->id,
+                    'content' => $note->comment_content,
+                    'is_pinned' => false,
+                    'color' => 'warm',
+                    'context' => $contextKey,
+                    'context_label' => $orderNumber ? "Order #{$orderNumber}" : "Order (ID:{$orderId})",
+                ]);
+            }
+
+            $created++;
+        }
+
+        $this->stats['notes_created'] = $created;
+        $this->stats['notes_skipped_no_mapping'] = $skippedNoMapping;
+        $this->stats['notes_skipped_duplicate'] = $skippedDuplicate;
+        $this->info("  {$created} notes imported, {$skippedNoMapping} skipped (no mapping), {$skippedDuplicate} skipped (duplicate).");
     }
 
     /**
