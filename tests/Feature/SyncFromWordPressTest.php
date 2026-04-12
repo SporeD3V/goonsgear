@@ -1576,12 +1576,13 @@ class SyncFromWordPressTest extends TestCase
 
     public function test_sync_order_subtotal_adds_discount_back(): void
     {
-        // Order: total=50 (post-discount), shipping=5, tax=0, discount=10
-        // Expected subtotal = 50 - 5 - 0 + 10 = 55 (pre-discount product value)
+        // Order: total=50 (post-discount), shipping=5, tax=3+0.94(shipping_tax), discount=10
+        // Expected subtotal = 50 - 5 - 3.94 + 10 = 51.06 (pre-discount product value)
         $this->insertLegacyOrder(7001, 'wc-completed');
         DB::connection('legacy')->table('wp_postmeta')->insert([
             ['post_id' => 7001, 'meta_key' => '_order_shipping', 'meta_value' => '5.00'],
-            ['post_id' => 7001, 'meta_key' => '_order_tax', 'meta_value' => '0'],
+            ['post_id' => 7001, 'meta_key' => '_order_tax', 'meta_value' => '3.00'],
+            ['post_id' => 7001, 'meta_key' => '_order_shipping_tax', 'meta_value' => '0.94'],
             ['post_id' => 7001, 'meta_key' => '_cart_discount', 'meta_value' => '10.00'],
         ]);
         // Override the total set by insertLegacyOrder
@@ -1595,7 +1596,8 @@ class SyncFromWordPressTest extends TestCase
 
         $order = Order::where('order_number', 'WC-7001')->first();
         $this->assertNotNull($order);
-        $this->assertSame('55.00', $order->subtotal);
+        $this->assertEquals(51.06, (float) $order->subtotal);
+        $this->assertEquals(3.94, (float) $order->tax_total);
         $this->assertSame('10.00', $order->discount_total);
     }
 
