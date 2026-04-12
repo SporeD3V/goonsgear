@@ -62,6 +62,7 @@ class Order extends Model
             'discount_total' => 'decimal:2',
             'regional_discount_total' => 'decimal:2',
             'bundle_discount_total' => 'decimal:2',
+            'refund_total' => 'decimal:2',
             'subtotal' => 'decimal:2',
             'total' => 'decimal:2',
             'placed_at' => 'datetime',

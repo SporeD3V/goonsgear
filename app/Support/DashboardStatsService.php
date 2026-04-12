@@ -84,7 +84,7 @@ class DashboardStatsService
                 Order::whereIn('payment_status', self::PAID_STATUSES), $from, $to
             );
             $totals = (clone $paidQuery)
-                ->selectRaw('COALESCE(SUM(total), 0) as gross, COALESCE(SUM(total - shipping_total - tax_total), 0) as net')
+                ->selectRaw('COALESCE(SUM(total), 0) as gross, COALESCE(SUM(total - shipping_total - tax_total - refund_total), 0) as net')
                 ->first();
 
             return [
@@ -264,7 +264,7 @@ class DashboardStatsService
             $data = $query
                 ->selectRaw('DATE(placed_at) as day')
                 ->selectRaw('SUM(total) as revenue')
-                ->selectRaw('SUM(total - shipping_total - tax_total) as net_revenue')
+                ->selectRaw('SUM(total - shipping_total - tax_total - refund_total) as net_revenue')
                 ->selectRaw('SUM(subtotal) as gross')
                 ->selectRaw('SUM(discount_total + regional_discount_total + bundle_discount_total) as discounts')
                 ->selectRaw('COUNT(*) as order_count')
@@ -422,7 +422,7 @@ class DashboardStatsService
                 Order::whereIn('payment_status', self::PAID_STATUSES), $from, $to
             );
 
-            return (float) $query->selectRaw('AVG(total - shipping_total - tax_total) as net_aov')->value('net_aov');
+            return (float) $query->selectRaw('AVG(total - shipping_total - tax_total - refund_total) as net_aov')->value('net_aov');
         });
     }
 
@@ -1342,7 +1342,7 @@ class DashboardStatsService
                 ->whereIn('payment_status', self::PAID_STATUSES)
                 ->whereNotNull('placed_at')
                 ->groupBy('email')
-                ->selectRaw("email, {$daysSinceExpr} as days_since_last, COUNT(*) as order_count, SUM(total - shipping_total - tax_total) as total_spent", [$today])
+                ->selectRaw("email, {$daysSinceExpr} as days_since_last, COUNT(*) as order_count, SUM(total - shipping_total - tax_total - refund_total) as total_spent", [$today])
                 ->get();
 
             if ($customers->isEmpty()) {
@@ -1445,7 +1445,7 @@ class DashboardStatsService
                 ->whereIn('payment_status', self::PAID_STATUSES)
                 ->whereNotNull('placed_at')
                 ->groupBy('email')
-                ->selectRaw('email, MIN(placed_at) as first_order, COUNT(*) as order_count, SUM(total - shipping_total - tax_total) as total_spent')
+                ->selectRaw('email, MIN(placed_at) as first_order, COUNT(*) as order_count, SUM(total - shipping_total - tax_total - refund_total) as total_spent')
                 ->get();
 
             if ($customers->isEmpty()) {
@@ -1666,7 +1666,7 @@ class DashboardStatsService
                 ->whereIn('payment_status', self::PAID_STATUSES)
                 ->whereNotNull('placed_at')
                 ->whereMonth('placed_at', $month)
-                ->selectRaw("{$yearExpr} as yr, SUM(total - shipping_total - tax_total) as revenue")
+                ->selectRaw("{$yearExpr} as yr, SUM(total - shipping_total - tax_total - refund_total) as revenue")
                 ->groupBy('yr')
                 ->orderByDesc('revenue')
                 ->get();
@@ -1677,7 +1677,7 @@ class DashboardStatsService
                 ->whereNotNull('placed_at')
                 ->whereMonth('placed_at', $month)
                 ->whereRaw("{$dayExpr} <= ?", [$currentDay])
-                ->selectRaw("{$yearExpr} as yr, SUM(total - shipping_total - tax_total) as revenue")
+                ->selectRaw("{$yearExpr} as yr, SUM(total - shipping_total - tax_total - refund_total) as revenue")
                 ->groupBy('yr')
                 ->orderByDesc('revenue')
                 ->get();
@@ -2118,7 +2118,7 @@ class DashboardStatsService
                 ->whereNotNull('placed_at')
                 ->whereIn('email', $allEmails)
                 ->groupBy('email')
-                ->selectRaw('email, SUM(total - shipping_total - tax_total) as lifetime_spend')
+                ->selectRaw('email, SUM(total - shipping_total - tax_total - refund_total) as lifetime_spend')
                 ->pluck('lifetime_spend', 'email');
 
             return $rows->map(function ($r) use ($total, $emailsByProduct, $ltvByEmail) {

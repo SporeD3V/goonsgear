@@ -1885,4 +1885,66 @@ class DashboardControllerTest extends TestCase
             ->assertSee('Revenue at risk note')
             ->assertDontSee('Regional growth note');
     }
+
+    // ── Refund Deduction ───────────────────────────────────────
+
+    public function test_net_revenue_deducts_refund_total(): void
+    {
+        $this->actingAsAdmin();
+
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'total' => 200.00,
+            'shipping_total' => 10.00,
+            'tax_total' => 5.00,
+            'refund_total' => 30.00,
+            'placed_at' => now()->subDays(3),
+        ]);
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'total' => 100.00,
+            'shipping_total' => 5.00,
+            'tax_total' => 3.00,
+            'refund_total' => 0.00,
+            'placed_at' => now()->subDays(1),
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'overview']));
+        $response->assertOk();
+
+        $overview = $response->viewData('overview');
+        // Net = (200-10-5-30) + (100-5-3-0) = 155 + 92 = 247
+        $this->assertEquals(247.0, $overview['net_revenue']);
+        // Gross = 200 + 100 = 300
+        $this->assertEquals(300.0, $overview['revenue']);
+    }
+
+    public function test_aov_deducts_refund_total(): void
+    {
+        $this->actingAsAdmin();
+
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'total' => 200.00,
+            'shipping_total' => 10.00,
+            'tax_total' => 5.00,
+            'refund_total' => 30.00,
+            'placed_at' => now()->subDays(3),
+        ]);
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'total' => 100.00,
+            'shipping_total' => 5.00,
+            'tax_total' => 3.00,
+            'refund_total' => 0.00,
+            'placed_at' => now()->subDays(1),
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'sales']));
+        $response->assertOk();
+
+        $aov = $response->viewData('aov');
+        // AOV = (155 + 92) / 2 = 123.5
+        $this->assertEquals(123.5, $aov);
+    }
 }
