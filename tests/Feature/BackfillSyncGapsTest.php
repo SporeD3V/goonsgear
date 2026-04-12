@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -467,6 +468,100 @@ class BackfillSyncGapsTest extends TestCase
     {
         $this->artisan('app:backfill-sync-gaps', ['--only' => 'nonexistent'])
             ->assertFailed();
+    }
+
+    // ─── WC Coupon Import ──────────────────────────────────────────
+
+    public function test_import_wc_coupons_creates_percent_coupon(): void
+    {
+        DB::connection('legacy')->table('wp_posts')->insert([
+            'ID' => 5001,
+            'post_parent' => 0,
+            'post_author' => 0,
+            'post_type' => 'shop_coupon',
+            'post_status' => 'publish',
+            'post_title' => 'hiphop5',
+            'post_name' => 'hiphop5',
+            'post_excerpt' => 'Hip hop discount',
+            'post_date' => now()->toDateTimeString(),
+        ]);
+
+        DB::connection('legacy')->table('wp_postmeta')->insert([
+            ['post_id' => 5001, 'meta_key' => 'discount_type', 'meta_value' => 'percent'],
+            ['post_id' => 5001, 'meta_key' => 'coupon_amount', 'meta_value' => '5'],
+            ['post_id' => 5001, 'meta_key' => 'usage_count', 'meta_value' => '227'],
+            ['post_id' => 5001, 'meta_key' => 'usage_limit', 'meta_value' => '0'],
+            ['post_id' => 5001, 'meta_key' => 'date_expires', 'meta_value' => '1693432800'],
+            ['post_id' => 5001, 'meta_key' => 'minimum_amount', 'meta_value' => ''],
+        ]);
+
+        $this->artisan('app:backfill-sync-gaps', ['--only' => 'wc-coupons'])
+            ->assertSuccessful();
+
+        $coupon = Coupon::where('code', 'HIPHOP5')->first();
+        $this->assertNotNull($coupon);
+        $this->assertSame('percent', $coupon->type);
+        $this->assertEquals(5.00, (float) $coupon->value);
+        $this->assertSame(227, $coupon->used_count);
+        $this->assertTrue($coupon->is_active);
+        $this->assertNotNull($coupon->ends_at);
+        $this->assertNull($coupon->minimum_subtotal);
+    }
+
+    public function test_import_wc_coupons_creates_fixed_cart_coupon(): void
+    {
+        DB::connection('legacy')->table('wp_posts')->insert([
+            'ID' => 5002,
+            'post_parent' => 0,
+            'post_author' => 0,
+            'post_type' => 'shop_coupon',
+            'post_status' => 'publish',
+            'post_title' => 'flat10',
+            'post_name' => 'flat10',
+            'post_date' => now()->toDateTimeString(),
+        ]);
+
+        DB::connection('legacy')->table('wp_postmeta')->insert([
+            ['post_id' => 5002, 'meta_key' => 'discount_type', 'meta_value' => 'fixed_cart'],
+            ['post_id' => 5002, 'meta_key' => 'coupon_amount', 'meta_value' => '10'],
+            ['post_id' => 5002, 'meta_key' => 'usage_count', 'meta_value' => '50'],
+            ['post_id' => 5002, 'meta_key' => 'minimum_amount', 'meta_value' => '25.00'],
+        ]);
+
+        $this->artisan('app:backfill-sync-gaps', ['--only' => 'wc-coupons'])
+            ->assertSuccessful();
+
+        $coupon = Coupon::where('code', 'FLAT10')->first();
+        $this->assertNotNull($coupon);
+        $this->assertSame('fixed', $coupon->type);
+        $this->assertEquals(10.00, (float) $coupon->value);
+        $this->assertEquals(25.00, (float) $coupon->minimum_subtotal);
+    }
+
+    public function test_import_wc_coupons_skips_existing(): void
+    {
+        Coupon::factory()->create(['code' => 'EXISTING5']);
+
+        DB::connection('legacy')->table('wp_posts')->insert([
+            'ID' => 5003,
+            'post_parent' => 0,
+            'post_author' => 0,
+            'post_type' => 'shop_coupon',
+            'post_status' => 'publish',
+            'post_title' => 'EXISTING5',
+            'post_name' => 'existing5',
+            'post_date' => now()->toDateTimeString(),
+        ]);
+
+        DB::connection('legacy')->table('wp_postmeta')->insert([
+            ['post_id' => 5003, 'meta_key' => 'discount_type', 'meta_value' => 'percent'],
+            ['post_id' => 5003, 'meta_key' => 'coupon_amount', 'meta_value' => '5'],
+        ]);
+
+        $this->artisan('app:backfill-sync-gaps', ['--only' => 'wc-coupons'])
+            ->assertSuccessful();
+
+        $this->assertSame(1, Coupon::where('code', 'EXISTING5')->count());
     }
 
     // ─── Schema Helper ─────────────────────────────────────────────

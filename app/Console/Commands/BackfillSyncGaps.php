@@ -2,11 +2,13 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class BackfillSyncGaps extends Command
@@ -70,6 +72,10 @@ class BackfillSyncGaps extends Command
 
         if ($this->shouldRun('preorders', $only)) {
             $this->backfillPreorderFlags($legacy, $dryRun);
+        }
+
+        if ($this->shouldRun('wc-coupons', $only)) {
+            $this->importWcCoupons($legacy, $dryRun);
         }
 
         $this->newLine();
@@ -602,6 +608,72 @@ class BackfillSyncGaps extends Command
     }
 
     /**
+     * Import WC shop_coupon posts into the GG coupons table.
+     */
+    private function importWcCoupons(mixed $legacy, bool $dryRun): void
+    {
+        $this->info('--- Importing WC Coupons ---');
+
+        $wcCoupons = $legacy->table('wp_posts')
+            ->where('post_type', 'shop_coupon')
+            ->whereIn('post_status', ['publish', 'draft'])
+            ->select('ID', 'post_title', 'post_excerpt', 'post_status')
+            ->get();
+
+        $this->line("  Found {$wcCoupons->count()} WC coupons.");
+
+        $created = 0;
+        $skipped = 0;
+
+        foreach ($wcCoupons as $wcCoupon) {
+            $code = strtoupper(trim($wcCoupon->post_title));
+
+            if (Coupon::where('code', $code)->exists()) {
+                $skipped++;
+
+                continue;
+            }
+
+            $meta = $legacy->table('wp_postmeta')
+                ->where('post_id', $wcCoupon->ID)
+                ->pluck('meta_value', 'meta_key')
+                ->toArray();
+
+            $wcType = $meta['discount_type'] ?? 'percent';
+            $type = match ($wcType) {
+                'percent' => Coupon::TYPE_PERCENT,
+                'fixed_cart', 'fixed_product' => Coupon::TYPE_FIXED,
+                default => Coupon::TYPE_PERCENT,
+            };
+
+            $expiresTimestamp = $meta['date_expires'] ?? null;
+            $endsAt = $expiresTimestamp && $expiresTimestamp > 0
+                ? Carbon::createFromTimestamp((int) $expiresTimestamp)
+                : null;
+
+            if (! $dryRun) {
+                Coupon::create([
+                    'code' => $code,
+                    'description' => $wcCoupon->post_excerpt ?: null,
+                    'type' => $type,
+                    'value' => (float) ($meta['coupon_amount'] ?? 0),
+                    'minimum_subtotal' => ($meta['minimum_amount'] ?? '') !== '' ? (float) $meta['minimum_amount'] : null,
+                    'usage_limit' => ($meta['usage_limit'] ?? '') !== '' && (int) $meta['usage_limit'] > 0 ? (int) $meta['usage_limit'] : null,
+                    'used_count' => (int) ($meta['usage_count'] ?? 0),
+                    'is_active' => $wcCoupon->post_status === 'publish',
+                    'ends_at' => $endsAt,
+                ]);
+            }
+
+            $created++;
+        }
+
+        $this->stats['coupons_imported'] = $created;
+        $this->stats['coupons_skipped_existing'] = $skipped;
+        $this->info("  {$created} coupons imported, {$skipped} skipped (already exist).");
+    }
+
+    /**
      * @return list<string>|false|null
      */
     private function parseOnlyOption(): array|false|null
@@ -612,7 +684,7 @@ class BackfillSyncGaps extends Command
             return null;
         }
 
-        $valid = ['refunds', 'tax', 'coupons', 'items', 'phones', 'dimensions', 'preorders'];
+        $valid = ['refunds', 'tax', 'coupons', 'items', 'phones', 'dimensions', 'preorders', 'wc-coupons'];
         $requested = array_map('trim', explode(',', $raw));
 
         foreach ($requested as $item) {
