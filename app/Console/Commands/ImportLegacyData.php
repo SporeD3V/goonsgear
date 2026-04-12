@@ -778,11 +778,12 @@ class ImportLegacyData extends Command
                 ];
                 $paymentStatus = $paymentStatusMap[$legacyOrder->post_status] ?? 'pending';
 
-                // Compute subtotal (total minus shipping and tax)
+                // Compute subtotal: WC _order_total is post-discount, add discount back for pre-discount product subtotal
                 $orderTotal = (float) ($meta['_order_total'] ?? 0);
                 $shippingTotal = (float) ($meta['_order_shipping'] ?? 0);
                 $taxTotal = (float) ($meta['_order_tax'] ?? 0);
-                $subtotal = max(0, $orderTotal - $shippingTotal - $taxTotal);
+                $discountTotal = (float) ($meta['_cart_discount'] ?? 0);
+                $subtotal = max(0, $orderTotal - $shippingTotal - $taxTotal + $discountTotal);
 
                 // Get coupon code from WC order items
                 $couponItem = $legacy->table('wp_woocommerce_order_items')
@@ -882,6 +883,9 @@ class ImportLegacyData extends Command
                         );
                     }
 
+                    $qty = max(1, (int) ($itemMeta['_qty'] ?? 1));
+                    $lineSubtotal = (float) ($itemMeta['_line_subtotal'] ?? 0);
+
                     OrderItem::create([
                         'order_id' => $order->id,
                         'product_id' => $newProductId,
@@ -889,8 +893,8 @@ class ImportLegacyData extends Command
                         'product_name' => $item->order_item_name,
                         'variant_name' => $itemMeta['_variation_title'] ?? null,
                         'sku' => $itemMeta['_sku'] ?? 'LEGACY-ITEM',
-                        'unit_price' => (float) ($itemMeta['_line_subtotal'] ?? 0),
-                        'quantity' => (int) ($itemMeta['_qty'] ?? 1),
+                        'unit_price' => $qty > 0 ? round($lineSubtotal / $qty, 2) : $lineSubtotal,
+                        'quantity' => $qty,
                         'line_total' => (float) ($itemMeta['_line_total'] ?? 0),
                     ]);
 

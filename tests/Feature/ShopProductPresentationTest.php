@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductMedia;
 use App\Models\ProductVariant;
@@ -630,5 +631,40 @@ class ShopProductPresentationTest extends TestCase
         $response->assertSee('data-variant-attribute-value="Black"', false);
         $response->assertSee('data-variant-attribute-value="Red"', false);
         $response->assertSee('data-variant-attribute-value="Splatter"', false);
+    }
+
+    public function test_delisted_product_shows_discontinued_page_with_noindex(): void
+    {
+        $category = Category::factory()->create(['name' => 'Hoodies']);
+        $product = Product::factory()->create([
+            'name' => 'Retired Hoodie',
+            'status' => 'delisted',
+            'primary_category_id' => $category->id,
+        ]);
+
+        // Create a suggested product in same category
+        $suggested = Product::factory()->create([
+            'status' => 'active',
+            'primary_category_id' => $category->id,
+        ]);
+        ProductVariant::factory()->create(['product_id' => $suggested->id, 'price' => 29.99]);
+
+        $response = $this->get(route('shop.show', $product));
+
+        $response->assertOk();
+        $response->assertSee('noindex', false);
+        $response->assertSeeText('This product has been discontinued');
+        $response->assertSeeText('Retired Hoodie');
+        $response->assertSeeText('You Might Also Like');
+        $response->assertDontSee('Add to Cart', false);
+    }
+
+    public function test_draft_product_returns_404(): void
+    {
+        $product = Product::factory()->create(['status' => 'draft']);
+
+        $response = $this->get(route('shop.show', $product));
+
+        $response->assertNotFound();
     }
 }

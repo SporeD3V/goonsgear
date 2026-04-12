@@ -41,6 +41,10 @@ class Product extends Model
         'published_at',
         'preorder_available_from',
         'expected_ship_at',
+        'weight',
+        'length',
+        'width',
+        'height',
     ];
 
     /**

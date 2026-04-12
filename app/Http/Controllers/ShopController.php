@@ -60,6 +60,10 @@ class ShopController extends Controller
 
     public function show(Product $product): View
     {
+        if ($product->status === 'delisted') {
+            return $this->showDelisted($product);
+        }
+
         abort_unless($product->status === 'active', 404);
 
         $product->load([
@@ -466,6 +470,50 @@ class ShopController extends Controller
                 'description' => $pageDescription,
                 'canonical_url' => $canonicalUrl,
                 'og_image' => asset('images/hero-goonsgear.jpg'),
+            ],
+        ]);
+    }
+
+    private function showDelisted(Product $product): View
+    {
+        $product->load('primaryCategory:id,name,slug,parent_id');
+
+        $primaryMedia = $product->media()->orderByDesc('is_primary')->first();
+
+        // Suggest active products from the same category
+        $suggestedProducts = Product::query()
+            ->where('status', 'active')
+            ->where('id', '!=', $product->id)
+            ->when($product->primary_category_id, fn ($q) => $q->where('primary_category_id', $product->primary_category_id))
+            ->with([
+                'media' => fn ($q) => $q->orderByDesc('is_primary')->limit(1),
+                'variants' => fn ($q) => $q->where('is_active', true)->select('id', 'product_id', 'price'),
+            ])
+            ->inRandomOrder()
+            ->limit(4)
+            ->get();
+
+        $breadcrumbs = [['name' => 'Home', 'url' => route('shop.index')]];
+
+        /** @var Category|null $primaryCategory */
+        $primaryCategory = $product->primaryCategory;
+
+        if ($primaryCategory !== null) {
+            $breadcrumbs[] = ['name' => $primaryCategory->name, 'url' => route('shop.category', $primaryCategory)];
+        }
+
+        $breadcrumbs[] = ['name' => $product->name, 'url' => null];
+
+        return view('shop.delisted', [
+            'product' => $product,
+            'primaryMedia' => $primaryMedia,
+            'suggestedProducts' => $suggestedProducts,
+            'breadcrumbs' => $breadcrumbs,
+            'seo' => [
+                'title' => $product->name.' | Discontinued | GoonsGear',
+                'description' => $product->name.' is no longer available. Browse similar products at GoonsGear.',
+                'canonical_url' => route('shop.show', $product),
+                'og_image' => $primaryMedia ? route('media.show', ['path' => $primaryMedia->path]) : null,
             ],
         ]);
     }
