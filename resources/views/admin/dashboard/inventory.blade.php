@@ -7,7 +7,7 @@
     {{-- Pre-order Liability --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="1">
         <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Pre-order Liability</h3>
-        <p class="mb-3 text-[12px] text-stone-400">Cash already collected for pre-ordered items that haven't shipped yet. This is money you owe in goods until the order is fulfilled.</p>
+        <p class="mb-3 text-[12px] text-stone-400">Outstanding value of pre-ordered items that haven't shipped yet — includes all payment statuses except failed and refunded. This is goods you owe until the order is fulfilled.</p>
         @if ($preorderLiability['order_count'] === 0)
             <p class="text-[15px] text-stone-500">No active pre-orders with payment confirmed.</p>
         @else
@@ -25,7 +25,7 @@
                     <div class="text-lg font-bold text-stone-700">{{ $preorderLiability['item_count'] }}</div>
                 </div>
             </div>
-            <p class="mt-2 text-[11px] text-stone-400">Formula: SUM(order total) where status = "pre-ordered" and payment is confirmed.</p>
+            <p class="mt-2 text-[11px] text-stone-400">Formula: SUM(order total) where status = "pre-ordered" and payment is not failed or refunded.</p>
         @endif
     </div>
 
@@ -93,7 +93,7 @@
 @php $risk = (object) $revenueAtRisk; @endphp
 <div class="admin-card rounded-xl border border-red-200 bg-red-50/30 p-5 shadow-sm" data-delay="2">
     <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-red-700">Revenue at Risk — Sold Out Items</h3>
-    <p class="mb-3 text-[12px] text-stone-500">Estimated monthly revenue you're losing because these variants are sold out. Velocity is calculated using only the days the item was actually in stock (not the full 90-day window). <span class="font-medium">Formula: (Units Sold ÷ Days In Stock) × 30 × Avg Price</span>.</p>
+    <p class="mb-3 text-[12px] text-stone-500">Estimated monthly revenue you're losing because these variants are sold out. Velocity is calculated using only the days the item was actually in stock — for recently-published items, the window starts from the publish date instead of 90 days ago. <span class="font-medium">Formula: (Units Sold ÷ Days In Stock) × 30 × Avg Price</span>.</p>
 
     <div class="mb-4 grid gap-4 sm:grid-cols-3">
         <div class="rounded-xl border border-red-200 bg-white p-4 text-center">

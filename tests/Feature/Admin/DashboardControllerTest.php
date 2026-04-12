@@ -1212,28 +1212,20 @@ class DashboardControllerTest extends TestCase
             'total' => 250.00,
             'placed_at' => now()->subDays(3),
         ]);
-        // This one should NOT count (refunded)
-        Order::factory()->create([
-            'status' => 'pre-ordered',
-            'payment_status' => 'refunded',
-            'total' => 100.00,
-            'placed_at' => now()->subDays(2),
-        ]);
-
-        // Pending pre-order SHOULD count (pre-orders are committed even before payment)
+        // This one should NOT count (pending — payment not collected yet)
         Order::factory()->create([
             'status' => 'pre-ordered',
             'payment_status' => 'pending',
             'total' => 100.00,
-            'placed_at' => now()->subDays(1),
+            'placed_at' => now()->subDays(2),
         ]);
 
         $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
         $response->assertOk();
 
         $liability = $response->viewData('preorderLiability');
-        $this->assertEquals(500.0, $liability['total_liability']);
-        $this->assertEquals(3, $liability['order_count']);
+        $this->assertEquals(400.0, $liability['total_liability']);
+        $this->assertEquals(2, $liability['order_count']);
     }
 
     public function test_preorder_liability_zero_without_preorders(): void

@@ -142,7 +142,7 @@ class DashboardStatsService
         return Cache::remember('dashboard:preorder-liability', 300, function (): array {
             $row = DB::table('orders')
                 ->where('status', 'pre-ordered')
-                ->whereNotIn('payment_status', ['failed', 'refunded'])
+                ->whereIn('payment_status', self::PAID_STATUSES)
                 ->selectRaw('COALESCE(SUM(total), 0) as total_liability')
                 ->selectRaw('COUNT(*) as order_count')
                 ->first();
@@ -150,7 +150,7 @@ class DashboardStatsService
             $itemCount = (int) DB::table('order_items')
                 ->join('orders', 'orders.id', '=', 'order_items.order_id')
                 ->where('orders.status', 'pre-ordered')
-                ->whereNotIn('orders.payment_status', ['failed', 'refunded'])
+                ->whereIn('orders.payment_status', self::PAID_STATUSES)
                 ->sum('order_items.quantity');
 
             return [

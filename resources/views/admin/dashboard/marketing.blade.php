@@ -11,7 +11,7 @@
         'label' => 'Cart Recovery Rate',
         'value' => $cartRecovery['recovery_pct'] . '%',
         'delta' => $deltas['recovery_pct'] ?? null,
-        'subtitle' => $cartRecovery['recovered'] . ' recovered of ' . $cartRecovery['abandoned'] . ' abandoned',
+        'subtitle' => $cartRecovery['recovered'] . ' recovered of ' . $cartRecovery['reminded'] . ' reminded',
         'delay' => 2,
     ])
 </div>
@@ -79,7 +79,7 @@
     {{-- Cart Recovery Funnel --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
         <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Cart Recovery Funnel</h3>
-        <p class="mb-2 text-[12px] text-stone-400">Abandoned → Reminded → Recovered funnel. Recovery Rate = Recovered ÷ Abandoned × 100.</p>
+        <p class="mb-2 text-[12px] text-stone-400">Abandoned → Reminded → Recovered funnel. Recovery Rate = Recovered ÷ Reminded × 100.</p>
         <div class="space-y-3">
             @php
                 $funnel = [
