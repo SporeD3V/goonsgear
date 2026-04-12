@@ -700,6 +700,38 @@ class BackfillSyncGapsTest extends TestCase
         $this->assertSame('H123456789DE', $order->tracking_number);
     }
 
+    public function test_backfill_tracking_handles_non_zero_indexed_array(): void
+    {
+        $order = Order::factory()->create(['shipping_carrier' => null, 'tracking_number' => null]);
+
+        DB::table('import_legacy_orders')->insert([
+            'legacy_wc_order_id' => 4005,
+            'order_id' => $order->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // WC sometimes serializes with key 1 instead of 0: a:1:{i:1;...}
+        $trackingData = serialize([1 => [
+            'tracking_provider' => 'deutsche-post',
+            'tracking_number' => 'LB 82 438 353 6DE',
+            'tracking_product_code' => '',
+            'date_shipped' => '1614211200',
+            'tracking_id' => '3723f672337ada0d5dabf6a98f3dda40',
+        ]]);
+
+        DB::connection('legacy')->table('wp_postmeta')->insert([
+            ['post_id' => 4005, 'meta_key' => '_wc_shipment_tracking_items', 'meta_value' => $trackingData],
+        ]);
+
+        $this->artisan('app:backfill-sync-gaps', ['--only' => 'tracking'])
+            ->assertSuccessful();
+
+        $order->refresh();
+        $this->assertSame('dhl', $order->shipping_carrier);
+        $this->assertSame('LB824383536DE', $order->tracking_number);
+    }
+
     // ─── Human Order Notes Import ──────────────────────────────────
 
     public function test_import_order_notes_creates_admin_notes_for_human_notes(): void

@@ -795,8 +795,8 @@ class BackfillSyncGaps extends Command
         $data = @unserialize($serialized);
 
         if (is_array($data) && count($data) > 0) {
-            // Use the first (most recent) tracking entry
-            $entry = $data[0] ?? null;
+            // Use the first tracking entry (keys may not start at 0)
+            $entry = reset($data);
 
             if (! is_array($entry)) {
                 return null;
