@@ -726,6 +726,95 @@ class DashboardStatsService
     }
 
     /**
+     * Dead stock: active variants with stock > 10 that haven't sold in 180+ days (or never).
+     * Suggests "Clearance Sale" for items with no recent affinity, "Bundle Inclusion" for items that pair well.
+     *
+     * @return array{total_units: int, total_value: float, items: list<array{product: string, variant: string, sku: string, stock: int, unit_price: float, stock_value: float, days_since_last_sale: int|null, total_ever_sold: int, suggestion: string}>}
+     */
+    public function deadStock(int $limit = 50): array
+    {
+        return Cache::remember('dashboard:dead-stock', 300, function () use ($limit): array {
+            $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+            $cutoff = Carbon::now()->subDays(180);
+
+            // Variants with stock > 10 that are active
+            $variants = DB::table('product_variants as pv')
+                ->join('products as p', 'p.id', '=', 'pv.product_id')
+                ->where('pv.is_active', true)
+                ->where('pv.stock_quantity', '>', 10)
+                ->select('pv.id', 'pv.sku', 'pv.name as variant', 'p.name as product', 'pv.stock_quantity as stock', 'pv.price')
+                ->get();
+
+            if ($variants->isEmpty()) {
+                return ['total_units' => 0, 'total_value' => 0.0, 'items' => []];
+            }
+
+            // Get last sale date and total sold per variant
+            $salesData = DB::table('order_items')
+                ->join('orders', 'orders.id', '=', 'order_items.order_id')
+                ->whereIn('orders.payment_status', self::PAID_STATUSES)
+                ->whereNotNull('orders.placed_at')
+                ->whereIn('order_items.product_variant_id', $variants->pluck('id'))
+                ->groupBy('order_items.product_variant_id')
+                ->selectRaw('order_items.product_variant_id, MAX(orders.placed_at) as last_sale_at, SUM(order_items.quantity) as total_sold')
+                ->get()
+                ->keyBy('product_variant_id');
+
+            // Get co-purchase counts to determine bundle suitability
+            $coProductCounts = DB::table('order_items as oi1')
+                ->join('order_items as oi2', function ($join) {
+                    $join->on('oi1.order_id', '=', 'oi2.order_id')
+                        ->whereColumn('oi1.product_variant_id', '!=', 'oi2.product_variant_id');
+                })
+                ->join('orders', 'orders.id', '=', 'oi1.order_id')
+                ->whereIn('orders.payment_status', self::PAID_STATUSES)
+                ->whereIn('oi1.product_variant_id', $variants->pluck('id'))
+                ->groupBy('oi1.product_variant_id')
+                ->selectRaw('oi1.product_variant_id, COUNT(DISTINCT oi1.order_id) as co_orders')
+                ->pluck('co_orders', 'product_variant_id');
+
+            $items = $variants->map(function ($v) use ($salesData, $coProductCounts, $cutoff) {
+                $sale = $salesData->get($v->id);
+                $lastSaleAt = $sale ? Carbon::parse($sale->last_sale_at) : null;
+                $totalSold = $sale ? (int) $sale->total_sold : 0;
+
+                // Skip if last sale is within 180 days
+                if ($lastSaleAt && $lastSaleAt->gte($cutoff)) {
+                    return null;
+                }
+
+                $daysSinceLastSale = $lastSaleAt ? (int) $lastSaleAt->diffInDays(Carbon::now()) : null;
+                $coOrders = (int) ($coProductCounts[$v->id] ?? 0);
+                $unitPrice = (float) $v->price;
+
+                // Suggestion logic: if it's been bought with other products before → bundle candidate
+                $suggestion = $coOrders >= 3 ? 'Bundle Inclusion' : 'Clearance Sale';
+
+                return [
+                    'product' => $v->product,
+                    'variant' => $v->variant,
+                    'sku' => $v->sku,
+                    'stock' => (int) $v->stock,
+                    'unit_price' => $unitPrice,
+                    'stock_value' => round($unitPrice * (int) $v->stock, 2),
+                    'days_since_last_sale' => $daysSinceLastSale,
+                    'total_ever_sold' => $totalSold,
+                    'suggestion' => $suggestion,
+                ];
+            })
+                ->filter()
+                ->sortByDesc('stock_value')
+                ->values();
+
+            return [
+                'total_units' => $items->sum('stock'),
+                'total_value' => round($items->sum('stock_value'), 2),
+                'items' => $items->take($limit)->all(),
+            ];
+        });
+    }
+
+    /**
      * @return array<string, int>
      */
     public function productStatusBreakdown(): array

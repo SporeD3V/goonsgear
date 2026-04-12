@@ -1295,6 +1295,149 @@ class DashboardControllerTest extends TestCase
         $this->assertEquals(0.0, $speed['avg_days']);
     }
 
+    // ── Dead Stock ────────────────────────────────────────────
+
+    public function test_inventory_has_dead_stock_data(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
+        $response->assertOk()
+            ->assertViewHas('deadStock');
+    }
+
+    public function test_dead_stock_detects_stale_variants(): void
+    {
+        $this->actingAsAdmin();
+
+        $product = Product::factory()->create(['status' => 'active']);
+        $variant = ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'stock_quantity' => 15,
+            'is_active' => true,
+            'price' => 25.00,
+        ]);
+
+        // Last sale was 200 days ago
+        $order = Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(200),
+        ]);
+        OrderItem::factory()->create([
+            'order_id' => $order->id,
+            'product_variant_id' => $variant->id,
+            'quantity' => 2,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
+        $response->assertOk();
+
+        $dead = $response->viewData('deadStock');
+        $this->assertNotEmpty($dead['items']);
+
+        $found = collect($dead['items'])->firstWhere('sku', $variant->sku);
+        $this->assertNotNull($found);
+        $this->assertEquals(15, $found['stock']);
+        $this->assertEquals(375.0, $found['stock_value']);
+        $this->assertGreaterThanOrEqual(200, $found['days_since_last_sale']);
+        $this->assertEquals('Clearance Sale', $found['suggestion']);
+    }
+
+    public function test_dead_stock_excludes_recently_sold(): void
+    {
+        $this->actingAsAdmin();
+
+        $product = Product::factory()->create(['status' => 'active']);
+        $variant = ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'stock_quantity' => 15,
+            'is_active' => true,
+        ]);
+
+        // Last sale was 30 days ago → should NOT appear
+        $order = Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => now()->subDays(30),
+        ]);
+        OrderItem::factory()->create([
+            'order_id' => $order->id,
+            'product_variant_id' => $variant->id,
+            'quantity' => 5,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
+        $response->assertOk();
+
+        $dead = $response->viewData('deadStock');
+        $found = collect($dead['items'])->firstWhere('sku', $variant->sku);
+        $this->assertNull($found);
+    }
+
+    public function test_dead_stock_suggests_bundle_for_co_purchased(): void
+    {
+        $this->actingAsAdmin();
+
+        $productA = Product::factory()->create(['status' => 'active', 'name' => 'Dead Item']);
+        $variantA = ProductVariant::factory()->create([
+            'product_id' => $productA->id,
+            'stock_quantity' => 20,
+            'is_active' => true,
+            'price' => 30.00,
+        ]);
+
+        $productB = Product::factory()->create(['status' => 'active', 'name' => 'Popular Item']);
+        $variantB = ProductVariant::factory()->create([
+            'product_id' => $productB->id,
+            'stock_quantity' => 5,
+            'is_active' => true,
+        ]);
+
+        // 3 orders containing both products (older than 180d)
+        foreach (range(1, 3) as $i) {
+            $order = Order::factory()->create([
+                'payment_status' => 'paid',
+                'placed_at' => now()->subDays(200 + $i),
+            ]);
+            OrderItem::factory()->create([
+                'order_id' => $order->id,
+                'product_variant_id' => $variantA->id,
+                'quantity' => 1,
+            ]);
+            OrderItem::factory()->create([
+                'order_id' => $order->id,
+                'product_variant_id' => $variantB->id,
+                'quantity' => 1,
+            ]);
+        }
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
+        $response->assertOk();
+
+        $dead = $response->viewData('deadStock');
+        $found = collect($dead['items'])->firstWhere('sku', $variantA->sku);
+        $this->assertNotNull($found);
+        $this->assertEquals('Bundle Inclusion', $found['suggestion']);
+    }
+
+    public function test_dead_stock_empty_when_all_healthy(): void
+    {
+        $this->actingAsAdmin();
+
+        // Variant with stock ≤ 10 → should NOT appear
+        $product = Product::factory()->create(['status' => 'active']);
+        ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'stock_quantity' => 5,
+            'is_active' => true,
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['tab' => 'inventory']));
+        $response->assertOk();
+
+        $dead = $response->viewData('deadStock');
+        $this->assertEmpty($dead['items']);
+    }
+
     public function test_inventory_has_days_of_stock_remaining(): void
     {
         $this->actingAsAdmin();

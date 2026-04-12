@@ -253,6 +253,7 @@ class DashboardController extends Controller
             'revenueAtRisk' => $stats->revenueAtRisk(50),
             'preorderLiability' => $stats->preorderLiability(),
             'fulfillmentSpeed' => $stats->fulfillmentSpeed($from, $to),
+            'deadStock' => $stats->deadStock(50),
         ];
     }
 

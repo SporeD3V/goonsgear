@@ -313,6 +313,103 @@
     </div>
 </div>
 
+{{-- Dead Stock: Clearance & Bundle Candidates --}}
+<div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="4">
+    <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Dead Stock</h3>
+    <p class="mb-3 text-[13px] text-stone-500">Active variants with 10+ units in stock and no sales in the last 180 days. These are tying up cash — consider clearance pricing or including them in bundles.</p>
+    @php $dead = (object) $deadStock; @endphp
+    @if (empty($dead->items))
+        <p class="text-[15px] text-stone-500">No dead stock right now — all stocked items have sold within the last 6 months.</p>
+    @else
+        <div class="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-center">
+                <div class="text-[13px] font-medium uppercase tracking-wide text-amber-600">Stuck Units</div>
+                <div class="mt-1 text-2xl font-bold text-amber-700">{{ number_format($dead->total_units) }}</div>
+            </div>
+            <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-center">
+                <div class="text-[13px] font-medium uppercase tracking-wide text-amber-600">Stock Value</div>
+                <div class="mt-1 text-2xl font-bold text-amber-700">&euro;{{ number_format($dead->total_value, 2) }}</div>
+            </div>
+            <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-center sm:col-span-1 col-span-2">
+                <div class="text-[13px] font-medium uppercase tracking-wide text-amber-600">Items</div>
+                <div class="mt-1 text-2xl font-bold text-amber-700">{{ count($dead->items) }}</div>
+            </div>
+        </div>
+        <div class="overflow-x-auto" x-data="{
+            sortCol: 'stock_value',
+            sortAsc: false,
+            showAll: false,
+            limit: 15,
+            items: {{ Js::from($dead->items) }},
+            get sorted() {
+                const col = this.sortCol;
+                const dir = this.sortAsc ? 1 : -1;
+                return [...this.items].sort((a, b) => {
+                    if (a[col] === null && b[col] === null) return 0;
+                    if (a[col] === null) return 1;
+                    if (b[col] === null) return -1;
+                    if (typeof a[col] === 'string') return dir * a[col].localeCompare(b[col]);
+                    return dir * (a[col] - b[col]);
+                });
+            },
+            get visible() {
+                return this.showAll ? this.sorted : this.sorted.slice(0, this.limit);
+            },
+            toggleSort(col) {
+                if (this.sortCol === col) { this.sortAsc = !this.sortAsc; } else { this.sortCol = col; this.sortAsc = (col === 'product' || col === 'variant' || col === 'sku'); }
+            },
+            sortIcon(col) {
+                if (this.sortCol !== col) return '↕';
+                return this.sortAsc ? '↑' : '↓';
+            }
+        }">
+            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                <thead class="bg-stone-50">
+                    <tr>
+                        <th @click="toggleSort('product')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Product <span class="text-xs" x-text="sortIcon('product')"></span></th>
+                        <th @click="toggleSort('variant')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Variant <span class="text-xs" x-text="sortIcon('variant')"></span></th>
+                        <th @click="toggleSort('stock')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Stock <span class="text-xs" x-text="sortIcon('stock')"></span></th>
+                        <th @click="toggleSort('unit_price')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Unit Price <span class="text-xs" x-text="sortIcon('unit_price')"></span></th>
+                        <th @click="toggleSort('stock_value')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Stock Value <span class="text-xs" x-text="sortIcon('stock_value')"></span></th>
+                        <th @click="toggleSort('days_since_last_sale')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Last Sale <span class="text-xs" x-text="sortIcon('days_since_last_sale')"></span></th>
+                        <th @click="toggleSort('total_ever_sold')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Total Sold <span class="text-xs" x-text="sortIcon('total_ever_sold')"></span></th>
+                        <th @click="toggleSort('suggestion')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Suggestion <span class="text-xs" x-text="sortIcon('suggestion')"></span></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-100">
+                    <template x-for="row in visible" :key="row.sku">
+                        <tr class="transition hover:bg-stone-50">
+                            <td class="px-4 py-2.5 font-medium text-stone-700" x-text="row.product"></td>
+                            <td class="px-4 py-2.5 text-stone-500" x-text="row.variant"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right font-medium text-stone-700" x-text="row.stock"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="'€' + Number(row.unit_price).toFixed(2)"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right font-semibold text-amber-700" x-text="'€' + Number(row.stock_value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right">
+                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold"
+                                    :class="row.days_since_last_sale === null ? 'bg-red-100 text-red-700' : (row.days_since_last_sale >= 365 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700')"
+                                    x-text="row.days_since_last_sale !== null ? row.days_since_last_sale + 'd ago' : 'Never'"></span>
+                            </td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="row.total_ever_sold"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5">
+                                <span class="inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold"
+                                    :class="row.suggestion === 'Bundle Inclusion' ? 'bg-[#36a2eb]/10 text-[#36a2eb]' : 'bg-[#ff6384]/10 text-[#ff6384]'"
+                                    x-text="row.suggestion"></span>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+            <template x-if="items.length > limit">
+                <button @click="showAll = !showAll" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="showAll ? 'Show less' : 'Show all ' + items.length + ' items'"></button>
+            </template>
+        </div>
+        <p class="mt-3 text-[12px] text-stone-400">
+            <span class="font-semibold text-[#ff6384]">Clearance Sale</span> = few co-purchases historically, discount to move units.
+            <span class="font-semibold text-[#36a2eb]">Bundle Inclusion</span> = has been bought with other products before, add to a bundle to boost value.
+        </p>
+    @endif
+</div>
+
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
