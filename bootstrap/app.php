@@ -5,6 +5,7 @@ use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleLegacyRedirects;
 use App\Http\Middleware\SetSecurityHeaders;
 use App\Http\Middleware\TrackVisitor;
+use App\Http\Middleware\VerifyWcSyncSignature;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -19,10 +20,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => EnsureUserIsAdmin::class,
             'admin.noindex' => AddAdminNoIndexHeaders::class,
+            'wc-sync-signature' => VerifyWcSyncSignature::class,
         ]);
         $middleware->append(HandleLegacyRedirects::class);
         $middleware->append(SetSecurityHeaders::class);
         $middleware->appendToGroup('web', TrackVisitor::class);
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/*',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

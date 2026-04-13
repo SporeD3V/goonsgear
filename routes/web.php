@@ -29,7 +29,13 @@ use App\Http\Controllers\MediaController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\SizeProfileController;
 use App\Http\Controllers\StockAlertSubscriptionController;
+use App\Http\Controllers\WcSyncWebhookController;
 use Illuminate\Support\Facades\Route;
+
+// --- Webhooks (external, no CSRF) ---
+Route::post('/webhooks/wc-sync', [WcSyncWebhookController::class, 'handle'])
+    ->middleware(['wc-sync-signature', 'throttle:120,1'])
+    ->name('webhooks.wc-sync');
 
 Route::get('/', [ShopController::class, 'index'])->name('shop.index');
 Route::get('/catalog', [ShopController::class, 'catalog'])->name('shop.catalog');

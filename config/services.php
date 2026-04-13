@@ -64,4 +64,8 @@ return [
         'ssh_path' => env('STAGING_SSH_PATH'),
     ],
 
+    'wc_sync' => [
+        'webhook_secret' => env('WC_SYNC_SECRET'),
+    ],
+
 ];
