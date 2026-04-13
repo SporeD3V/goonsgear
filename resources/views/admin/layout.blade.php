@@ -28,7 +28,7 @@
                         $inStore = str_starts_with($currentRoute, 'admin.orders') || str_starts_with($currentRoute, 'admin.products') || str_starts_with($currentRoute, 'admin.categories') || str_starts_with($currentRoute, 'admin.tags');
                         $inPricing = str_starts_with($currentRoute, 'admin.coupons') || str_starts_with($currentRoute, 'admin.bundle-discounts') || str_starts_with($currentRoute, 'admin.regional-discounts');
                         $inConfig = str_starts_with($currentRoute, 'admin.maintenance.integrations') || str_starts_with($currentRoute, 'admin.maintenance.abandoned-cart') || str_starts_with($currentRoute, 'admin.url-redirects');
-                        $inSystem = str_starts_with($currentRoute, 'admin.activity-log') || str_starts_with($currentRoute, 'admin.maintenance.fallback-media') || str_starts_with($currentRoute, 'admin.maintenance.clear');
+                        $inSystem = str_starts_with($currentRoute, 'admin.activity-log') || str_starts_with($currentRoute, 'admin.maintenance.fallback-media') || str_starts_with($currentRoute, 'admin.maintenance.clear') || str_starts_with($currentRoute, 'admin.sync-monitor');
                     @endphp
 
                     {{-- Dashboard --}}
@@ -39,7 +39,7 @@
                     </a>
 
                     {{-- Section: Store Management --}}
-                    <div x-data="{ open: {{ $inStore || $currentRoute === 'admin.dashboard' ? 'true' : 'false' }} }" class="mt-5">
+                    <div x-data="{ open: {{ $inStore ? 'true' : 'false' }} }" class="mt-5">
                         <button @click="open = !open" class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wider text-stone-500 transition hover:text-stone-300">
                             <span>Store</span>
                             <svg class="h-3.5 w-3.5 transition-transform" :class="open && 'rotate-90'" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
@@ -136,6 +136,12 @@
                                class="mb-0.5 mt-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-medium transition {{ str_starts_with($currentRoute, 'admin.activity-log') ? 'bg-[#36a2eb]/20 text-[#36a2eb]' : 'hover:bg-stone-800 hover:text-white' }}">
                                 <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
                                 Activity Log
+                            </a>
+
+                            <a href="{{ route('admin.sync-monitor.index') }}"
+                               class="mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-medium transition {{ str_starts_with($currentRoute, 'admin.sync-monitor') ? 'bg-[#36a2eb]/20 text-[#36a2eb]' : 'hover:bg-stone-800 hover:text-white' }}">
+                                <svg class="h-5 w-5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
+                                WC Sync
                             </a>
 
                             <a href="{{ route('admin.maintenance.fallback-media.index') }}"

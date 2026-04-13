@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ProductMediaController;
 use App\Http\Controllers\Admin\ProductVariantController;
 use App\Http\Controllers\Admin\RegionalDiscountController;
+use App\Http\Controllers\Admin\SyncMonitorController;
 use App\Http\Controllers\Admin\TagController;
 use App\Http\Controllers\Admin\UrlRedirectController;
 use App\Http\Controllers\Api\LocationController;
@@ -191,4 +192,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin', 'admin.noin
 
     Route::get('activity-log', [ActivityLogController::class, 'index'])
         ->name('activity-log.index');
+    Route::get('sync-monitor', [SyncMonitorController::class, 'index'])
+        ->name('sync-monitor.index');
 });
