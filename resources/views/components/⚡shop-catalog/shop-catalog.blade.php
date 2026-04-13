@@ -346,6 +346,9 @@
                     <a href="{{ route('shop.show', $product) }}" class="group block flex-1">
                         @if ($mediaUrl)
                             <div class="relative mb-3 h-52 w-full overflow-hidden rounded bg-white">
+                                @if ($product->is_preorder)
+                                    <span class="absolute left-2 top-2 z-10 rounded bg-amber-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Pre-order</span>
+                                @endif
                                 @if ($product->is_bundle_exclusive)
                                     <span class="absolute right-2 top-2 z-10 rounded bg-black px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Bundle Exclusive</span>
                                 @elseif (in_array($product->id, $bundleProductIds))
@@ -507,6 +510,7 @@
                                             @if ($variant->compare_at_price !== null && (float) $variant->compare_at_price > (float) $variant->price)
                                                 data-variant-compare-price="{{ number_format((float) $variant->compare_at_price, 2) }}"
                                             @endif
+                                            data-variant-is-preorder="{{ $variant->is_preorder ? '1' : '0' }}"
                                             data-variant-attributes='@json($selectorData['variantAttributesById'][$variant->id] ?? [])'
                                         >
                                             {{ $variant->name }}
@@ -542,7 +546,7 @@
                                         data-catalog-single-variant
                                         class="w-full rounded bg-black px-3 py-2 text-sm font-medium text-white transition hover:bg-black/80"
                                     >
-                                        Add to cart &mdash; &euro;{{ number_format((float) $singleVariant->price, 2) }}
+                                        {{ $singleVariant->is_preorder ? 'Pre-order' : 'Add to cart' }} &mdash; &euro;{{ number_format((float) $singleVariant->price, 2) }}
                                     </button>
                                 </form>
                             </div>
