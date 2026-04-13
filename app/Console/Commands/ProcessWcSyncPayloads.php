@@ -451,10 +451,19 @@ class ProcessWcSyncPayloads extends Command
 
                 ProductVariant::where('id', $existingVariantId)->update($attrs);
             } else {
-                // A variant with the same SKU may already exist (e.g. moved between products in WC).
-                $variant = ProductVariant::where('sku', $attrs['sku'])->first();
+                // Check for existing variant by SKU or by (product_id, name).
+                $variant = ProductVariant::where('sku', $attrs['sku'])->first()
+                    ?? ProductVariant::where('product_id', $product->id)
+                        ->where('name', $attrs['name'])
+                        ->first();
 
                 if ($variant) {
+                    // Clear conflicting SKU before updating.
+                    if ($variant->sku !== $attrs['sku']) {
+                        ProductVariant::where('sku', $attrs['sku'])
+                            ->where('id', '!=', $variant->id)
+                            ->update(['sku' => DB::raw("CONCAT(sku, '-moved-', id)")]);
+                    }
                     $variant->update($attrs);
                 } else {
                     $variant = ProductVariant::create($attrs);
