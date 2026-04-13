@@ -29,6 +29,9 @@ _ide_helper.php
 _ide_helper_models.php
 .phpstorm.meta.php
 
+# WordPress sync plugin (contains shared hosting deployment code, may hold secrets)
+/wp-plugin/
+
 # Internal documentation
 /docs/internal/
 
