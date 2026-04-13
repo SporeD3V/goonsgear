@@ -375,7 +375,9 @@ class ProcessWcSyncPayloads extends Command
             $product->update($attributes);
         } else {
             // A product with the same slug/name may already exist (e.g. re-created in WC with a new ID).
-            $product = Product::where('slug', $attributes['slug'])->first();
+            $product = Product::where('slug', $attributes['slug'])
+                ->orWhere('name', $attributes['name'])
+                ->first();
 
             if ($product) {
                 $product->update($attributes);
@@ -442,6 +444,11 @@ class ProcessWcSyncPayloads extends Command
             ];
 
             if ($existingVariantId) {
+                // Clear SKU from any other variant to prevent unique constraint conflicts.
+                ProductVariant::where('sku', $attrs['sku'])
+                    ->where('id', '!=', $existingVariantId)
+                    ->update(['sku' => DB::raw("CONCAT(sku, '-moved-', id)")]);
+
                 ProductVariant::where('id', $existingVariantId)->update($attrs);
             } else {
                 // A variant with the same SKU may already exist (e.g. moved between products in WC).
