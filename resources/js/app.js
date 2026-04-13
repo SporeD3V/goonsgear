@@ -317,7 +317,8 @@ window.initCatalogCards = () => {
 				}
 				const comparePrice = matchedOption.dataset.variantComparePrice || '';
 				if (addToCartButton) {
-					addToCartButton.textContent = `Add to cart — \u20AC${matchedOption.dataset.variantPrice}`;
+					const cartLabel = matchedOption.dataset.variantIsPreorder === '1' ? 'Pre-order' : 'Add to cart';
+					addToCartButton.textContent = `${cartLabel} — \u20AC${matchedOption.dataset.variantPrice}`;
 				}
 				if (priceElement) {
 					if (comparePrice) {
@@ -655,6 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 			if (addToCartButton) {
 				addToCartButton.disabled = selectedOption.dataset.variantOutOfStock === '1';
+				addToCartButton.textContent = isPreorder ? 'Pre-order' : 'Add to cart';
 			}
 
 			if (quantityInput) {
@@ -795,7 +797,8 @@ document.addEventListener('DOMContentLoaded', () => {
 							if (data.errors?.cart) {
 								addToCartButton.textContent = data.errors.cart[0] || 'Error';
 								setTimeout(() => {
-									addToCartButton.textContent = 'Add to cart';
+									const currentOption = addToCartButton.closest('form')?.querySelector('[data-variant-select] option:checked');
+									addToCartButton.textContent = currentOption?.dataset?.variantIsPreorder === '1' ? 'Pre-order' : 'Add to cart';
 								}, 2500);
 							}
 						}).catch(() => {});

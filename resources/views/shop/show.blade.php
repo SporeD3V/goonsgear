@@ -446,9 +446,9 @@
                                     @endif
                                     @foreach ($variantsWithStockState as $variant)
                                         @php
-                                            $stockStatus = $variant->stock_quantity > 0
-                                                ? 'In stock'
-                                                : (($variant->allow_backorder || $variant->is_preorder) ? 'Preorder' : 'Out of stock');
+                                            $stockStatus = $variant->is_preorder || $variant->allow_backorder
+                                                ? 'Preorder'
+                                                : ($variant->stock_quantity > 0 ? 'In stock' : 'Out of stock');
                                         @endphp
                                         <option
                                             value="{{ $variant->id }}"
@@ -536,7 +536,7 @@
                                         >
                                     </div>
 
-                                    <button type="submit" data-add-to-cart-button class="rounded bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-60" {{ $hasAttributeGroups ? 'disabled' : '' }}>Add to cart</button>
+                                    <button type="submit" data-add-to-cart-button class="rounded bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/80 disabled:cursor-not-allowed disabled:opacity-60" {{ $hasAttributeGroups ? 'disabled' : '' }}>{{ $defaultStockStatus === 'Preorder' ? 'Pre-order' : 'Add to cart' }}</button>
                                 </form>
 
                                 <div
