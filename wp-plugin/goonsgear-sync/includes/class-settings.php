@@ -176,6 +176,50 @@ class GG_Sync_Settings
                     </tbody>
                 </table>
             <?php endif; ?>
+
+            <hr />
+
+            <h2>Bulk Sync</h2>
+            <p>Push all WooCommerce data created or modified since a specific date. Use this to close the gap between your last database export and when real-time hooks went live.</p>
+
+            <table class="form-table" id="gg-bulk-sync-form">
+                <tr>
+                    <th scope="row"><label for="gg-bulk-since">Since Date</label></th>
+                    <td>
+                        <input type="date" id="gg-bulk-since" value="<?php echo esc_attr(gmdate('Y-m-d', strtotime('-14 days'))); ?>" />
+                        <p class="description">Pushes orders, products, coupons, and customers created/modified on or after this date.</p>
+                    </td>
+                </tr>
+            </table>
+
+            <p>
+                <button type="button" id="gg-bulk-start" class="button button-primary">Start Bulk Sync</button>
+            </p>
+
+            <div style="max-width:500px;background:#f0f0f0;border-radius:4px;overflow:hidden;margin:10px 0;">
+                <div id="gg-bulk-bar" style="width:0%;height:24px;background:#0073aa;transition:width 0.3s;"></div>
+            </div>
+
+            <ul id="gg-bulk-log" style="max-height:250px;overflow-y:auto;font-family:monospace;font-size:12px;background:#f9f9f9;border:1px solid #ddd;padding:8px 12px;margin-top:6px;list-style:none;"></ul>
+
+            <hr />
+
+            <h2>Image API</h2>
+            <p>The Laravel app can pull product images from this site using authenticated REST endpoints:</p>
+            <table class="widefat fixed" style="max-width:700px;">
+                <thead><tr><th>Endpoint</th><th>Purpose</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><code>POST /wp-json/gg-sync/v1/images/manifest</code></td>
+                        <td>Returns a list of all product images with attachment IDs, URLs, dimensions, and alt text. Accepts <code>since</code> date or <code>product_ids</code> filter.</td>
+                    </tr>
+                    <tr>
+                        <td><code>POST /wp-json/gg-sync/v1/images/download</code></td>
+                        <td>Downloads a single image file by <code>attachment_id</code>. Returns the original file.</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="description">Both endpoints require the <code>X-GG-Signature</code> header (HMAC-SHA256 of the request body using the shared secret).</p>
         </div>
 
         <script>
@@ -200,6 +244,92 @@ class GG_Sync_Settings
                 btn.disabled = false;
             });
         });
+
+        /* ---- Bulk Sync ---- */
+        var bulkForm   = document.getElementById('gg-bulk-sync-form');
+        var bulkBtn    = document.getElementById('gg-bulk-start');
+        var bulkLog    = document.getElementById('gg-bulk-log');
+        var bulkBar    = document.getElementById('gg-bulk-bar');
+        var bulkNonce  = '<?php echo esc_js(wp_create_nonce('gg_sync_bulk')); ?>';
+        var domains    = ['order', 'product', 'coupon', 'customer'];
+
+        if (bulkBtn) {
+            bulkBtn.addEventListener('click', function () {
+                var since  = document.getElementById('gg-bulk-since').value;
+                if (!since) { alert('Pick a date first.'); return; }
+                bulkBtn.disabled = true;
+                bulkLog.innerHTML = '';
+                bulkBar.style.width = '0%';
+
+                // 1. Count
+                var fd = new FormData();
+                fd.append('action', 'gg_sync_bulk_count');
+                fd.append('_wpnonce', bulkNonce);
+                fd.append('since', since);
+                fd.append('domain', 'all');
+
+                log('Counting items since ' + since + '…');
+
+                fetch(ajaxurl, { method: 'POST', body: fd })
+                .then(function (r) { return r.json(); })
+                .then(function (resp) {
+                    if (!resp.success) { log('Error: ' + (resp.data?.message || 'unknown')); bulkBtn.disabled = false; return; }
+                    var counts = resp.data.counts;
+                    var total  = resp.data.total;
+                    log('Found: ' + JSON.stringify(counts) + ' (' + total + ' total)');
+                    if (total === 0) { log('Nothing to sync.'); bulkBtn.disabled = false; return; }
+                    processDomains(since, counts, total, 0, 0);
+                })
+                .catch(function (e) { log('Request failed: ' + e.message); bulkBtn.disabled = false; });
+            });
+        }
+
+        var processed = 0;
+        function processDomains(since, counts, total, domainIdx, offset) {
+            if (domainIdx >= domains.length) {
+                log('Done! Sent ' + processed + ' webhook(s).');
+                bulkBar.style.width = '100%';
+                bulkBtn.disabled = false;
+                return;
+            }
+            var domain = domains[domainIdx];
+            var count  = counts[domain] || 0;
+            if (count === 0 || offset >= count) {
+                processDomains(since, counts, total, domainIdx + 1, 0);
+                return;
+            }
+            var fd = new FormData();
+            fd.append('action', 'gg_sync_bulk_sync');
+            fd.append('_wpnonce', bulkNonce);
+            fd.append('since', since);
+            fd.append('domain', domain);
+            fd.append('offset', offset);
+
+            fetch(ajaxurl, { method: 'POST', body: fd })
+            .then(function (r) { return r.json(); })
+            .then(function (resp) {
+                if (!resp.success) { log('Error on ' + domain + ': ' + (resp.data?.message || 'unknown')); bulkBtn.disabled = false; return; }
+                var sent = resp.data.sent;
+                processed += sent;
+                var pct = Math.round((processed / total) * 100);
+                bulkBar.style.width = pct + '%';
+                log(domain + ' batch @ offset ' + offset + ': sent ' + sent);
+                var nextOffset = offset + resp.data.batch_size;
+                if (sent > 0 && nextOffset < count) {
+                    processDomains(since, counts, total, domainIdx, nextOffset);
+                } else {
+                    processDomains(since, counts, total, domainIdx + 1, 0);
+                }
+            })
+            .catch(function (e) { log('Request failed: ' + e.message); bulkBtn.disabled = false; });
+        }
+
+        function log(msg) {
+            var li = document.createElement('li');
+            li.textContent = new Date().toLocaleTimeString() + ' — ' + msg;
+            bulkLog.appendChild(li);
+            bulkLog.scrollTop = bulkLog.scrollHeight;
+        }
         </script>
         <?php
     }

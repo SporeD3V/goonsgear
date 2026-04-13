@@ -20,6 +20,8 @@ define('GG_SYNC_URL', plugin_dir_url(__FILE__));
 
 require_once GG_SYNC_PATH . 'includes/class-dispatcher.php';
 require_once GG_SYNC_PATH . 'includes/class-settings.php';
+require_once GG_SYNC_PATH . 'includes/class-bulk-sync.php';
+require_once GG_SYNC_PATH . 'includes/class-image-endpoint.php';
 require_once GG_SYNC_PATH . 'includes/class-order-sync.php';
 require_once GG_SYNC_PATH . 'includes/class-product-sync.php';
 require_once GG_SYNC_PATH . 'includes/class-coupon-sync.php';
@@ -79,6 +81,8 @@ add_action('woocommerce_loaded', function () {
     $dispatcher = new GG_Sync_Dispatcher();
 
     new GG_Sync_Settings($dispatcher);
+    new GG_Sync_Bulk_Sync($dispatcher);
+    new GG_Sync_Image_Endpoint();
     new GG_Sync_Order_Sync($dispatcher);
     new GG_Sync_Product_Sync($dispatcher);
     new GG_Sync_Coupon_Sync($dispatcher);
