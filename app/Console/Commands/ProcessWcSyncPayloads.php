@@ -2,17 +2,21 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Category;
 use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\ProductMedia;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\WcSyncPayload;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class ProcessWcSyncPayloads extends Command
 {
@@ -221,7 +225,37 @@ class ProcessWcSyncPayloads extends Command
         }
 
         $newStatus = $this->mapWcOrderStatus($data['new_status'] ?? $data['status'] ?? '');
-        $order->update(['status' => $newStatus]);
+        $newPaymentStatus = $newStatus === 'pre-ordered'
+            ? 'paid'
+            : $this->mapPaymentStatus($data['new_status'] ?? $data['status'] ?? '');
+
+        $updates = [
+            'status' => $newStatus,
+            'payment_status' => $newPaymentStatus,
+        ];
+
+        // The status_changed payload carries full amounts — update financials
+        // if they were missing (e.g. order first seen via a partial event).
+        if (isset($data['subtotal']) && (float) $order->subtotal === 0.0) {
+            $updates['subtotal'] = $data['subtotal'];
+            $updates['total'] = $data['total'] ?? $order->total;
+            $updates['discount_total'] = $data['discount_total'] ?? $order->discount_total;
+            $updates['coupon_code'] = ! empty($data['coupon_codes']) ? $data['coupon_codes'][0] : $order->coupon_code;
+        }
+
+        $order->forceFill(array_filter([
+            'shipping_total' => isset($data['shipping_total']) && (float) $order->shipping_total === 0.0
+                ? $data['shipping_total'] : null,
+            'tax_total' => isset($data['tax_total']) && (float) $order->tax_total === 0.0
+                ? $data['tax_total'] : null,
+            'refund_total' => isset($data['refund_total']) && (float) $data['refund_total'] > 0
+                ? $data['refund_total'] : null,
+        ], fn ($v) => $v !== null) + $updates)->save();
+
+        // Sync line items if they were missing.
+        if (! empty($data['items']) && $order->items()->count() === 0) {
+            $this->syncOrderItems($order, $data['items']);
+        }
 
         return true;
     }
@@ -340,7 +374,14 @@ class ProcessWcSyncPayloads extends Command
 
             $product->update($attributes);
         } else {
-            $product = Product::create($attributes);
+            // A product with the same slug/name may already exist (e.g. re-created in WC with a new ID).
+            $product = Product::where('slug', $attributes['slug'])->first();
+
+            if ($product) {
+                $product->update($attributes);
+            } else {
+                $product = Product::create($attributes);
+            }
 
             DB::table('import_legacy_products')->insert([
                 'legacy_wp_post_id' => $wcProductId,
@@ -354,6 +395,19 @@ class ProcessWcSyncPayloads extends Command
         // Sync variants.
         if (! empty($data['variants'])) {
             $this->syncVariants($product, $data['variants']);
+        } elseif (isset($data['price']) || isset($data['regular_price'])) {
+            // Simple product (no variations) — create/update a default variant.
+            $this->syncDefaultVariant($product, $wcProductId, $data);
+        }
+
+        // Sync categories.
+        if (! empty($data['categories'])) {
+            $this->syncProductCategories($product, $data['categories']);
+        }
+
+        // Sync images.
+        if (! empty($data['images'])) {
+            $this->syncProductImages($product, $data['images']);
         }
 
         return true;
@@ -390,7 +444,14 @@ class ProcessWcSyncPayloads extends Command
             if ($existingVariantId) {
                 ProductVariant::where('id', $existingVariantId)->update($attrs);
             } else {
-                $variant = ProductVariant::create($attrs);
+                // A variant with the same SKU may already exist (e.g. moved between products in WC).
+                $variant = ProductVariant::where('sku', $attrs['sku'])->first();
+
+                if ($variant) {
+                    $variant->update($attrs);
+                } else {
+                    $variant = ProductVariant::create($attrs);
+                }
 
                 DB::table('import_legacy_variants')->insert([
                     'legacy_wp_post_id' => $wcVariationId,
@@ -398,6 +459,176 @@ class ProcessWcSyncPayloads extends Command
                     'synced_at' => now(),
                     'created_at' => now(),
                     'updated_at' => now(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Create or update a default variant for a simple (non-variable) WC product.
+     */
+    private function syncDefaultVariant(Product $product, int $wcProductId, array $data): void
+    {
+        $price = (float) ($data['price'] ?? $data['regular_price'] ?? 0);
+        $regularPrice = (float) ($data['regular_price'] ?? $data['price'] ?? 0);
+
+        $sku = $data['sku']
+            ?? $data['_raw_meta']['_sku'] ?? null
+            ?: "WC-{$wcProductId}";
+
+        $attrs = [
+            'product_id' => $product->id,
+            'name' => 'Default',
+            'sku' => $sku,
+            'price' => $price > 0 ? $price : $regularPrice,
+            'compare_at_price' => $regularPrice > $price && $price > 0 ? $regularPrice : null,
+            'stock_quantity' => (int) ($data['stock_quantity'] ?? 0),
+            'is_active' => ($data['stock_status'] ?? 'instock') !== 'outofstock',
+            'is_preorder' => $data['is_preorder'] ?? false,
+            'preorder_available_from' => isset($data['preorder_available_from']) ? Carbon::parse($data['preorder_available_from']) : null,
+        ];
+
+        // Check if this product already has a default variant.
+        $existingVariant = ProductVariant::where('product_id', $product->id)
+            ->where('name', 'Default')
+            ->first();
+
+        if ($existingVariant) {
+            $existingVariant->update($attrs);
+
+            return;
+        }
+
+        // Check via legacy mapping (WC simple products map their post ID to import_legacy_variants).
+        $existingVariantId = DB::table('import_legacy_variants')
+            ->where('legacy_wp_post_id', $wcProductId)
+            ->value('product_variant_id');
+
+        if ($existingVariantId) {
+            ProductVariant::where('id', $existingVariantId)->update($attrs);
+
+            return;
+        }
+
+        // Check for SKU conflict before creating.
+        $skuVariant = ProductVariant::where('sku', $attrs['sku'])->first();
+
+        if ($skuVariant) {
+            $skuVariant->update($attrs);
+            $variant = $skuVariant;
+        } else {
+            $variant = ProductVariant::create($attrs);
+        }
+
+        DB::table('import_legacy_variants')->insert([
+            'legacy_wp_post_id' => $wcProductId,
+            'product_variant_id' => $variant->id,
+            'synced_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    /**
+     * Sync product category assignments using the import_legacy_categories mapping.
+     * Only assigns existing categories — does not create new ones from WC data.
+     *
+     * @param  list<array<string, mixed>>  $categories
+     */
+    private function syncProductCategories(Product $product, array $categories): void
+    {
+        $categoryIds = [];
+        $primaryCategoryId = null;
+
+        foreach ($categories as $position => $cat) {
+            $wcTermId = $cat['wc_term_id'] ?? null;
+
+            if (! $wcTermId) {
+                continue;
+            }
+
+            // Look up via mapping table first.
+            $categoryId = DB::table('import_legacy_categories')
+                ->where('legacy_term_id', $wcTermId)
+                ->value('category_id');
+
+            // Fall back to slug match if no mapping exists.
+            if (! $categoryId) {
+                $slug = $cat['slug'] ?? null;
+
+                if ($slug) {
+                    $categoryId = Category::where('slug', $slug)->value('id');
+                }
+            }
+
+            if ($categoryId) {
+                $categoryIds[$categoryId] = ['position' => $position];
+
+                if ($primaryCategoryId === null) {
+                    $primaryCategoryId = $categoryId;
+                }
+            }
+        }
+
+        if (! empty($categoryIds)) {
+            $product->categories()->sync($categoryIds);
+        }
+
+        if ($primaryCategoryId && $product->primary_category_id !== $primaryCategoryId) {
+            $product->update(['primary_category_id' => $primaryCategoryId]);
+        }
+    }
+
+    /**
+     * Download product images from WooCommerce URLs and create ProductMedia records.
+     * Skips images that already exist for this product.
+     *
+     * @param  list<array<string, mixed>>  $images
+     */
+    private function syncProductImages(Product $product, array $images): void
+    {
+        // Skip if product already has images (avoid re-downloading on replays).
+        if ($product->media()->count() > 0) {
+            return;
+        }
+
+        $slug = $product->slug ?: 'product-'.$product->id;
+        $directory = "products/{$slug}";
+
+        foreach ($images as $imageData) {
+            $url = $imageData['url'] ?? null;
+
+            if (! $url) {
+                continue;
+            }
+
+            try {
+                $response = Http::timeout(15)->get($url);
+
+                if (! $response->successful()) {
+                    continue;
+                }
+
+                $extension = pathinfo(parse_url($url, PHP_URL_PATH) ?: '', PATHINFO_EXTENSION) ?: 'jpg';
+                $filename = $slug.'-'.($imageData['position'] ?? 0).'.'.$extension;
+                $path = "{$directory}/{$filename}";
+
+                Storage::disk('public')->put($path, $response->body());
+
+                $mimeType = $response->header('Content-Type') ?: 'image/jpeg';
+
+                ProductMedia::create([
+                    'product_id' => $product->id,
+                    'disk' => 'public',
+                    'path' => $path,
+                    'mime_type' => $mimeType,
+                    'alt_text' => $imageData['alt'] ?? $product->name,
+                    'is_primary' => ($imageData['position'] ?? 0) === 0,
+                    'position' => $imageData['position'] ?? 0,
+                ]);
+            } catch (\Throwable $e) {
+                Log::warning("[WC Sync] Failed to download image for product #{$product->id}: {$e->getMessage()}", [
+                    'url' => $url,
                 ]);
             }
         }

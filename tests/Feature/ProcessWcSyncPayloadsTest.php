@@ -747,4 +747,179 @@ class ProcessWcSyncPayloadsTest extends TestCase
         $this->assertNull($payload->processed_at);
         $this->assertSame(0, $payload->attempts);
     }
+
+    /* ---------------------------------------------------------------
+     *  Edge cases — Duplicate unique constraints
+     * ---------------------------------------------------------------*/
+
+    public function test_product_created_with_existing_slug_updates_instead_of_failing(): void
+    {
+        $existing = Product::factory()->create(['name' => 'Onyx Shirt', 'slug' => 'onyx-shirt']);
+
+        $this->createPayload('product.created', [
+            'wc_product_id' => 9001,
+            'name' => 'Onyx Shirt v2',
+            'slug' => 'onyx-shirt',
+            'status' => 'publish',
+        ], 9001);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $existing->refresh();
+        $this->assertSame('Onyx Shirt v2', $existing->name);
+
+        $this->assertDatabaseHas('import_legacy_products', [
+            'legacy_wp_post_id' => 9001,
+            'product_id' => $existing->id,
+        ]);
+
+        $this->assertSame(1, Product::where('slug', 'onyx-shirt')->count());
+    }
+
+    public function test_variant_with_duplicate_sku_updates_instead_of_failing(): void
+    {
+        $productA = Product::factory()->create();
+        $productB = Product::factory()->create();
+        $variant = ProductVariant::factory()->for($productA)->create(['sku' => 'DUP-SKU', 'price' => '10.00']);
+
+        DB::table('import_legacy_products')->insert([
+            'legacy_wp_post_id' => 9010,
+            'product_id' => $productB->id,
+            'synced_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->createPayload('product.updated', [
+            'wc_product_id' => 9010,
+            'name' => $productB->name,
+            'slug' => $productB->slug,
+            'status' => 'publish',
+            'variants' => [
+                [
+                    'wc_variation_id' => 9011,
+                    'name' => 'Moved Variant',
+                    'sku' => 'DUP-SKU',
+                    'price' => 25.00,
+                    'stock_quantity' => 5,
+                    'stock_status' => 'instock',
+                ],
+            ],
+        ], 9010);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $variant->refresh();
+        $this->assertSame('25.00', $variant->price);
+        $this->assertSame($productB->id, $variant->product_id);
+        $this->assertSame(1, ProductVariant::where('sku', 'DUP-SKU')->count());
+    }
+
+    /* ---------------------------------------------------------------
+     *  Edge cases — Status change updates payment_status & financials
+     * ---------------------------------------------------------------*/
+
+    public function test_order_status_changed_updates_payment_status(): void
+    {
+        $order = Order::forceCreate([
+            'order_number' => '#STAT001',
+            'status' => 'pending',
+            'payment_status' => 'pending',
+            'email' => 'test@example.com',
+            'first_name' => 'Test',
+            'last_name' => 'User',
+            'country' => 'DE',
+            'city' => 'Berlin',
+            'postal_code' => '10115',
+            'street_name' => 'Hauptstr.',
+            'street_number' => '1',
+            'currency' => 'EUR',
+            'subtotal' => 50,
+            'total' => 55.90,
+            'placed_at' => now(),
+        ]);
+
+        DB::table('import_legacy_orders')->insert([
+            'legacy_wc_order_id' => 8001,
+            'order_id' => $order->id,
+            'synced_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->createPayload('order.status_changed', [
+            'wc_order_id' => 8001,
+            'status' => 'processing',
+            'old_status' => 'pending',
+            'new_status' => 'processing',
+            'subtotal' => 50,
+            'total' => 55.90,
+            'shipping_total' => 5.90,
+        ], 8001);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $order->refresh();
+        $this->assertSame('processing', $order->status);
+        $this->assertSame('paid', $order->payment_status);
+    }
+
+    public function test_order_status_changed_fills_missing_subtotal(): void
+    {
+        $order = Order::forceCreate([
+            'order_number' => '#STAT002',
+            'status' => 'pending',
+            'payment_status' => 'pending',
+            'email' => 'test@example.com',
+            'first_name' => 'Test',
+            'last_name' => 'User',
+            'country' => 'DE',
+            'city' => 'Berlin',
+            'postal_code' => '10115',
+            'street_name' => 'Hauptstr.',
+            'street_number' => '1',
+            'currency' => 'EUR',
+            'subtotal' => 0,
+            'total' => 119.97,
+            'shipping_total' => 0,
+            'placed_at' => now(),
+        ]);
+
+        DB::table('import_legacy_orders')->insert([
+            'legacy_wc_order_id' => 8002,
+            'order_id' => $order->id,
+            'synced_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->createPayload('order.status_changed', [
+            'wc_order_id' => 8002,
+            'status' => 'processing',
+            'old_status' => 'pending',
+            'new_status' => 'processing',
+            'subtotal' => 119.97,
+            'total' => 135.87,
+            'shipping_total' => 15.90,
+            'discount_total' => 0,
+            'items' => [
+                [
+                    'name' => 'Test Product',
+                    'sku' => 'TP-001',
+                    'quantity' => 1,
+                    'unit_price' => 119.97,
+                    'line_total' => 119.97,
+                ],
+            ],
+        ], 8002);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $order->refresh();
+        $this->assertSame('119.97', $order->subtotal);
+        $this->assertSame('135.87', $order->total);
+        $this->assertEquals(15.90, (float) $order->shipping_total);
+        $this->assertSame('paid', $order->payment_status);
+        $this->assertSame(1, $order->items()->count());
+    }
 }
