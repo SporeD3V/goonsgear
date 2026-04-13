@@ -67,7 +67,9 @@ class ProcessWcSyncPayloads extends Command
     private function processPayload(WcSyncPayload $payload): void
     {
         $event = $payload->event;
-        $data = $payload->payload['data'] ?? [];
+        /** @var array<string, mixed> $decoded */
+        $decoded = $payload->payload;
+        $data = $decoded['data'] ?? [];
 
         if ($this->option('dry-run')) {
             $this->line("  [DRY-RUN] {$event} (ID: {$payload->id})");

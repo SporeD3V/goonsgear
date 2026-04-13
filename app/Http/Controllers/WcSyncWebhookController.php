@@ -43,7 +43,7 @@ class WcSyncWebhookController extends Controller
      */
     private function resolveEntity(string $event, array $data): array
     {
-        $prefix = explode('.', $event)[0] ?? '';
+        $prefix = explode('.', $event)[0];
 
         return match ($prefix) {
             'order' => ['order', $data['wc_order_id'] ?? null],
