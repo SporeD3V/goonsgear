@@ -16,7 +16,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ProcessWcSyncPayloads extends Command
 {
@@ -596,7 +596,8 @@ class ProcessWcSyncPayloads extends Command
     }
 
     /**
-     * Download product images from WooCommerce URLs and create ProductMedia records.
+     * Download product images from WooCommerce URLs, convert to AVIF, create
+     * thumbnail + gallery variants, and persist ProductMedia records.
      * Skips images that already exist for this product.
      *
      * @param  list<array<string, mixed>>  $images
@@ -609,7 +610,12 @@ class ProcessWcSyncPayloads extends Command
         }
 
         $slug = $product->slug ?: 'product-'.$product->id;
-        $directory = "products/{$slug}";
+        $mediaDirectory = "products/{$slug}/gallery";
+        $absoluteDir = storage_path('app/public/'.$mediaDirectory);
+
+        if (! is_dir($absoluteDir)) {
+            mkdir($absoluteDir, 0755, true);
+        }
 
         foreach ($images as $imageData) {
             $url = $imageData['url'] ?? null;
@@ -625,28 +631,276 @@ class ProcessWcSyncPayloads extends Command
                     continue;
                 }
 
-                $extension = pathinfo(parse_url($url, PHP_URL_PATH) ?: '', PATHINFO_EXTENSION) ?: 'jpg';
-                $filename = $slug.'-'.($imageData['position'] ?? 0).'.'.$extension;
-                $path = "{$directory}/{$filename}";
+                $position = $imageData['position'] ?? 0;
+                $originalName = pathinfo(parse_url($url, PHP_URL_PATH) ?: '', PATHINFO_FILENAME) ?: 'image';
+                $seoName = Str::slug($originalName) ?: 'image';
+                $baseFilename = "wc-{$position}-{$seoName}";
 
-                Storage::disk('public')->put($path, $response->body());
+                // Write original to a temp file for conversion.
+                $tmpFile = tempnam(sys_get_temp_dir(), 'wcsync');
+                file_put_contents($tmpFile, $response->body());
 
-                $mimeType = $response->header('Content-Type') ?: 'image/jpeg';
+                // Convert to AVIF (Imagick), fall back to WebP, fall back to original.
+                $targetPath = "{$absoluteDir}/{$baseFilename}.avif";
+                $converted = $this->convertImageWithImagick($tmpFile, $targetPath, 'avif', 62);
+                $finalExt = 'avif';
+                $finalMime = 'image/avif';
+
+                if (! $converted) {
+                    $targetPath = "{$absoluteDir}/{$baseFilename}.webp";
+                    $converted = $this->convertImageWithGd($tmpFile, $targetPath, 'webp');
+                    $finalExt = 'webp';
+                    $finalMime = 'image/webp';
+                }
+
+                if (! $converted) {
+                    // Keep original format as fallback.
+                    $originalExt = pathinfo(parse_url($url, PHP_URL_PATH) ?: '', PATHINFO_EXTENSION) ?: 'jpg';
+                    $targetPath = "{$absoluteDir}/{$baseFilename}.{$originalExt}";
+                    copy($tmpFile, $targetPath);
+                    $finalExt = $originalExt;
+                    $finalMime = $response->header('Content-Type') ?: 'image/jpeg';
+                }
+
+                @unlink($tmpFile);
+
+                $storagePath = "{$mediaDirectory}/{$baseFilename}.{$finalExt}";
+
+                // Create thumbnail (200x200) and gallery (600x600) variants.
+                $variants = config('images.sizes', []);
+                $thumbPath = null;
+                $galleryPath = null;
+
+                foreach ($variants as $variantName => $size) {
+                    $w = (int) ($size['width'] ?? 0);
+                    $h = (int) ($size['height'] ?? 0);
+
+                    if ($w <= 0 || $h <= 0) {
+                        continue;
+                    }
+
+                    $variantFilename = "{$baseFilename}-{$variantName}-{$w}x{$h}";
+                    $variantTarget = "{$absoluteDir}/{$variantFilename}.{$finalExt}";
+                    $variantCreated = $this->createCroppedImageVariant($targetPath, $variantTarget, $w, $h, $finalExt);
+
+                    if ($variantCreated) {
+                        $variantStoragePath = "{$mediaDirectory}/{$variantFilename}.{$finalExt}";
+
+                        if ($variantName === 'thumbnail') {
+                            $thumbPath = $variantStoragePath;
+                        } elseif ($variantName === 'gallery') {
+                            $galleryPath = $variantStoragePath;
+                        }
+                    }
+                }
 
                 ProductMedia::create([
                     'product_id' => $product->id,
                     'disk' => 'public',
-                    'path' => $path,
-                    'mime_type' => $mimeType,
+                    'path' => $storagePath,
+                    'mime_type' => $finalMime,
+                    'is_converted' => $finalExt !== pathinfo(parse_url($url, PHP_URL_PATH) ?: '', PATHINFO_EXTENSION),
+                    'converted_to' => $finalExt !== pathinfo(parse_url($url, PHP_URL_PATH) ?: '', PATHINFO_EXTENSION) ? $finalExt : null,
+                    'thumbnail_path' => $thumbPath,
+                    'gallery_path' => $galleryPath,
+                    'zoom_path' => $storagePath,
                     'alt_text' => $imageData['alt'] ?? $product->name,
-                    'is_primary' => ($imageData['position'] ?? 0) === 0,
-                    'position' => $imageData['position'] ?? 0,
+                    'is_primary' => $position === 0,
+                    'position' => $position,
                 ]);
             } catch (\Throwable $e) {
                 Log::warning("[WC Sync] Failed to download image for product #{$product->id}: {$e->getMessage()}", [
                     'url' => $url,
                 ]);
             }
+        }
+    }
+
+    /**
+     * Convert an image to a target format using Imagick.
+     */
+    private function convertImageWithImagick(string $sourcePath, string $targetPath, string $format, int $quality): bool
+    {
+        if (! class_exists('Imagick')) {
+            return false;
+        }
+
+        try {
+            $class = 'Imagick';
+            $imagick = new $class($sourcePath);
+            $imagick->setImageFormat($format);
+            $imagick->setImageCompressionQuality($quality);
+            $imagick->stripImage();
+
+            $directory = dirname($targetPath);
+            if (! is_dir($directory)) {
+                mkdir($directory, 0755, true);
+            }
+
+            $saved = $imagick->writeImage($targetPath);
+            $imagick->clear();
+            $imagick->destroy();
+
+            return $saved && is_file($targetPath);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * Convert an image to a target format using GD.
+     */
+    private function convertImageWithGd(string $sourcePath, string $targetPath, string $format): bool
+    {
+        if (! function_exists('getimagesize') || ! function_exists('imagecreatetruecolor')) {
+            return false;
+        }
+
+        try {
+            $imageInfo = @getimagesize($sourcePath);
+            if ($imageInfo === false) {
+                return false;
+            }
+
+            $image = match (strtolower((string) $imageInfo['mime'])) {
+                'image/jpeg' => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($sourcePath) : false,
+                'image/png' => function_exists('imagecreatefrompng') ? @imagecreatefrompng($sourcePath) : false,
+                'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($sourcePath) : false,
+                default => false,
+            };
+
+            if ($image === false) {
+                return false;
+            }
+
+            @imagepalettetotruecolor($image);
+            @imagealphablending($image, true);
+            @imagesavealpha($image, true);
+
+            $directory = dirname($targetPath);
+            if (! is_dir($directory)) {
+                mkdir($directory, 0755, true);
+            }
+
+            $saved = match ($format) {
+                'webp' => function_exists('imagewebp') ? @imagewebp($image, $targetPath, 82) : false,
+                'avif' => function_exists('imageavif') ? @imageavif($image, $targetPath, 62) : false,
+                default => false,
+            };
+
+            @imagedestroy($image);
+
+            return $saved && is_file($targetPath);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * Create a cropped and resized image variant (thumbnail, gallery, etc.).
+     */
+    private function createCroppedImageVariant(string $sourcePath, string $targetPath, int $width, int $height, string $format): bool
+    {
+        try {
+            if (class_exists('Imagick')) {
+                $class = 'Imagick';
+                $imagick = new $class($sourcePath);
+                $imagick->cropThumbnailImage($width, $height);
+                $imagick->setImageFormat($format);
+                $imagick->setImageCompressionQuality($format === 'avif' ? 62 : 82);
+                $imagick->stripImage();
+
+                $directory = dirname($targetPath);
+                if (! is_dir($directory)) {
+                    mkdir($directory, 0755, true);
+                }
+
+                $imagick->writeImage($targetPath);
+                $imagick->clear();
+                $imagick->destroy();
+
+                return is_file($targetPath);
+            }
+
+            return $this->createCroppedVariantWithGd($sourcePath, $targetPath, $width, $height, $format);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * GD fallback for creating cropped variants.
+     */
+    private function createCroppedVariantWithGd(string $sourcePath, string $targetPath, int $width, int $height, string $format): bool
+    {
+        if (! function_exists('getimagesize') || ! function_exists('imagecreatetruecolor')) {
+            return false;
+        }
+
+        try {
+            $imageInfo = @getimagesize($sourcePath);
+            if ($imageInfo === false) {
+                return false;
+            }
+
+            $source = match (strtolower((string) $imageInfo['mime'])) {
+                'image/jpeg' => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($sourcePath) : false,
+                'image/png' => function_exists('imagecreatefrompng') ? @imagecreatefrompng($sourcePath) : false,
+                'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($sourcePath) : false,
+                'image/avif' => function_exists('imagecreatefromavif') ? @imagecreatefromavif($sourcePath) : false,
+                default => false,
+            };
+
+            if ($source === false) {
+                return false;
+            }
+
+            $srcW = (int) $imageInfo[0];
+            $srcH = (int) $imageInfo[1];
+
+            if ($srcW <= 0 || $srcH <= 0) {
+                return false;
+            }
+
+            $ratio = max($width / $srcW, $height / $srcH);
+            $scaledW = (int) round($srcW * $ratio);
+            $scaledH = (int) round($srcH * $ratio);
+            $offsetX = (int) floor(($scaledW - $width) / 2);
+            $offsetY = (int) floor(($scaledH - $height) / 2);
+
+            $scaled = @imagecreatetruecolor($scaledW, $scaledH);
+            $target = @imagecreatetruecolor($width, $height);
+
+            if ($scaled === false || $target === false) {
+                return false;
+            }
+
+            @imagealphablending($scaled, false);
+            @imagesavealpha($scaled, true);
+            @imagealphablending($target, false);
+            @imagesavealpha($target, true);
+
+            @imagecopyresampled($scaled, $source, 0, 0, 0, 0, $scaledW, $scaledH, $srcW, $srcH);
+            @imagecopy($target, $scaled, 0, 0, $offsetX, $offsetY, $width, $height);
+
+            $directory = dirname($targetPath);
+            if (! is_dir($directory)) {
+                mkdir($directory, 0755, true);
+            }
+
+            $saved = match ($format) {
+                'avif' => function_exists('imageavif') ? @imageavif($target, $targetPath, 62) : false,
+                'webp' => function_exists('imagewebp') ? @imagewebp($target, $targetPath, 82) : false,
+                default => false,
+            };
+
+            @imagedestroy($source);
+            @imagedestroy($scaled);
+            @imagedestroy($target);
+
+            return $saved && is_file($targetPath);
+        } catch (\Throwable) {
+            return false;
         }
     }
 
