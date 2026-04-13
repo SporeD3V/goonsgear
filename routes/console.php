@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('app:send-abandoned-cart-reminders')->hourly();
 Schedule::command('app:generate-sitemap')->daily();
+Schedule::command('sync:process')->everyFiveMinutes();
