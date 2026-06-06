@@ -24,7 +24,7 @@ class DashboardController extends Controller
     public function index(Request $request, DashboardStatsService $stats): View
     {
         $tab = $request->query('tab', 'overview');
-        $period = $request->query('period', '1d');
+        $period = $request->query('period', '30d');
         $compare = $request->boolean('compare', false);
         $compareMode = $request->query('compare_mode', 'previous_period');
 
@@ -53,7 +53,7 @@ class DashboardController extends Controller
 
         if ($period !== 'custom') {
             if (! array_key_exists($period, self::PERIOD_PRESETS)) {
-                $period = '1d';
+                $period = '30d';
             }
 
             $days = self::PERIOD_PRESETS[$period];
@@ -272,7 +272,7 @@ class DashboardController extends Controller
             '90d' => 'Last 90 Days',
             'year' => 'Last Year',
             'all' => 'All Time',
-            default => 'Last 24 Hours',
+            default => 'Last 30 Days',
         };
     }
 }
