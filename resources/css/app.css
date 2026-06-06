@@ -114,8 +114,26 @@
 
 /* Dashboard tables: keep desktop table layout, switch to labeled card rows on mobile. */
 @media (max-width: 767px) {
-    .dashboard-section-collapsed {
-        display: none;
+    #admin-dashboard-content .dashboard-card-collapsed {
+        position: relative;
+        max-height: var(--dashboard-collapsed-height, 520px);
+        overflow: hidden;
+    }
+
+    #admin-dashboard-content .dashboard-card-collapsed::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 72px;
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.96));
+        pointer-events: none;
+    }
+
+    #admin-dashboard-content .dashboard-card-expanded {
+        max-height: none;
+        overflow: visible;
     }
 
     #admin-dashboard-content .dashboard-mobile-table {
@@ -154,6 +172,8 @@
         padding: 0.625rem 0.875rem;
         text-align: right;
         white-space: normal !important;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     #admin-dashboard-content .dashboard-mobile-table tbody td::before {
@@ -213,6 +233,8 @@
         padding: 0.625rem 0.875rem;
         text-align: right;
         white-space: normal !important;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     .admin-mobile-table tbody td::before {

@@ -168,58 +168,48 @@
         });
 
         const isMobile = window.matchMedia('(max-width: 767px)').matches;
-        const existingToggle = document.getElementById('dashboard-mobile-sections-toggle');
-        if (existingToggle) {
-            existingToggle.remove();
-        }
 
-        root.querySelectorAll('.dashboard-section-collapsed').forEach((section) => {
-            section.classList.remove('dashboard-section-collapsed', 'dashboard-section-expanded');
+        document.querySelectorAll('.dashboard-card-toggle').forEach((toggle) => toggle.remove());
+        root.querySelectorAll('.dashboard-card-collapsed, .dashboard-card-expanded').forEach((card) => {
+            card.classList.remove('dashboard-card-collapsed', 'dashboard-card-expanded');
+            card.style.removeProperty('--dashboard-collapsed-height');
         });
 
         if (!isMobile) {
             return;
         }
 
-        const sections = Array.from(root.children).filter((child) => child.matches('div'));
-        const visibleLimit = 4;
-        if (sections.length <= visibleLimit) {
-            return;
-        }
+        const collapseHeight = 520;
+        const cards = Array.from(root.querySelectorAll('.admin-card'));
 
-        sections.forEach((section, index) => {
-            if (index >= visibleLimit) {
-                section.classList.add('dashboard-section-collapsed');
+        cards.forEach((card) => {
+            if (card.scrollHeight <= collapseHeight + 40) {
+                return;
             }
+
+            card.classList.add('dashboard-card-collapsed');
+            card.style.setProperty('--dashboard-collapsed-height', collapseHeight + 'px');
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'dashboard-card-toggle mt-2 w-full rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700';
+            button.textContent = 'Show More';
+
+            button.addEventListener('click', function () {
+                const isCollapsed = card.classList.contains('dashboard-card-collapsed');
+                if (isCollapsed) {
+                    card.classList.remove('dashboard-card-collapsed');
+                    card.classList.add('dashboard-card-expanded');
+                    button.textContent = 'Show Less';
+                } else {
+                    card.classList.remove('dashboard-card-expanded');
+                    card.classList.add('dashboard-card-collapsed');
+                    button.textContent = 'Show More';
+                }
+            });
+
+            card.after(button);
         });
-
-        const button = document.createElement('button');
-        button.id = 'dashboard-mobile-sections-toggle';
-        button.type = 'button';
-        button.className = 'dashboard-mobile-sections-toggle mt-2 w-full rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700';
-        button.textContent = 'Show More Sections';
-
-        button.addEventListener('click', function () {
-            const collapsed = root.querySelectorAll('.dashboard-section-collapsed');
-            const expanded = root.querySelectorAll('.dashboard-section-expanded');
-            const shouldExpand = collapsed.length > 0;
-
-            if (shouldExpand) {
-                collapsed.forEach((section) => {
-                    section.classList.remove('dashboard-section-collapsed');
-                    section.classList.add('dashboard-section-expanded');
-                });
-                button.textContent = 'Show Fewer Sections';
-            } else {
-                expanded.forEach((section) => {
-                    section.classList.remove('dashboard-section-expanded');
-                    section.classList.add('dashboard-section-collapsed');
-                });
-                button.textContent = 'Show More Sections';
-            }
-        });
-
-        root.after(button);
     });
 </script>
 @endpush
