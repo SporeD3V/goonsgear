@@ -128,15 +128,32 @@
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Gross Revenue ({{ $periodLabel }})</h3>
         <div class="h-[280px]">
-            <canvas id="revenueChart" data-note-anchor-context="overview-revenue" data-note-anchor-label="Gross Revenue"></canvas>
+            <canvas id="revenueChart"></canvas>
         </div>
+        @php
+            $overviewRevenueNoteOptions = collect($revenueOverTime)
+                ->map(fn ($point, $index) => [
+                    'key' => 'overview-revenue::gross::' . $point['day'] . '::' . $index,
+                    'label' => 'Gross Revenue - ' . $point['day'],
+                    'value' => '€' . number_format((float) $point['revenue'], 2),
+                    'meta' => [
+                        'chart' => 'revenueChart',
+                        'series' => 'gross-revenue',
+                        'point' => $point['day'],
+                        'raw_value' => $point['revenue'],
+                    ],
+                ])
+                ->values()
+                ->all();
+        @endphp
+        @include('admin.dashboard._contextual-notes', ['context' => 'overview-revenue', 'label' => 'Gross Revenue', 'anchorOptions' => $overviewRevenueNoteOptions])
     </div>
 
     {{-- Orders by Status --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="4">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Orders by Status</h3>
         <div class="mx-auto h-[250px] max-w-xs">
-            <canvas id="statusChart" data-note-anchor-context="overview-status" data-note-anchor-label="Orders by Status"></canvas>
+            <canvas id="statusChart"></canvas>
         </div>
     </div>
 </div>

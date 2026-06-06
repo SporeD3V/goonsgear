@@ -14,6 +14,10 @@ new class extends Component
     public string $editingContent = '';
     public bool $showForm = false;
 
+    /** @var array<int, array{key:string,label:string,value:?string,meta?:array<string,mixed>}> */
+    public array $anchorOptions = [];
+    public string $selectedAnchorKey = '';
+
     public ?string $anchorKey = null;
     public ?string $anchorLabel = null;
     public ?string $anchorValue = null;
@@ -26,10 +30,14 @@ new class extends Component
     /** @var list<string> */
     public array $colorOptions = ['warm', 'sky', 'sage', 'rose', 'lavender'];
 
-    public function mount(?string $context = null, ?string $contextLabel = null): void
+    public function mount(?string $context = null, ?string $contextLabel = null, array $anchorOptions = []): void
     {
         $this->context = $context;
         $this->contextLabel = $contextLabel;
+        $this->anchorOptions = collect($anchorOptions)
+            ->filter(fn ($option) => isset($option['key'], $option['label']))
+            ->values()
+            ->all();
     }
 
     private function userId(): int
@@ -41,29 +49,49 @@ new class extends Component
     {
         $this->validate(['newNote' => 'required|string|max:1000']);
 
+        $selectedAnchor = $this->selectedAnchor();
+
         AdminNote::create([
             'user_id' => $this->userId(),
             'content' => $this->newNote,
             'color' => $this->newColor,
             'context' => $this->context,
             'context_label' => $this->contextLabel,
-            'anchor_key' => $this->anchorKey,
-            'anchor_label' => $this->anchorLabel,
-            'anchor_value' => $this->anchorValue,
-            'anchor_meta' => $this->anchorMeta ?: null,
+            'anchor_key' => $selectedAnchor['key'] ?? null,
+            'anchor_label' => $selectedAnchor['label'] ?? null,
+            'anchor_value' => $selectedAnchor['value'] ?? null,
+            'anchor_meta' => $selectedAnchor['meta'] ?? null,
         ]);
 
-        $this->reset('newNote', 'newColor', 'showForm', 'anchorKey', 'anchorLabel', 'anchorValue', 'anchorMeta');
+        $this->reset('newNote', 'newColor', 'showForm', 'selectedAnchorKey');
         unset($this->notes);
     }
 
-    public function selectAnchor(array $anchor): void
+    public function removeAnchor(int $id): void
     {
-        $this->anchorKey = $anchor['anchorKey'] ?? null;
-        $this->anchorLabel = $anchor['anchorLabel'] ?? null;
-        $this->anchorValue = $anchor['anchorValue'] ?? null;
-        $this->anchorMeta = $anchor['anchorMeta'] ?? [];
-        $this->showForm = true;
+        AdminNote::where('user_id', $this->userId())
+            ->where('id', $id)
+            ->update([
+                'anchor_key' => null,
+                'anchor_label' => null,
+                'anchor_value' => null,
+                'anchor_meta' => null,
+            ]);
+
+        unset($this->notes);
+    }
+
+    /**
+     * @return array{key:string,label:string,value:?string,meta?:array<string,mixed>}|null
+     */
+    private function selectedAnchor(): ?array
+    {
+        if ($this->selectedAnchorKey === '') {
+            return null;
+        }
+
+        return collect($this->anchorOptions)
+            ->first(fn ($option) => ($option['key'] ?? null) === $this->selectedAnchorKey);
     }
 
     public function startEditing(int $id): void
@@ -119,7 +147,7 @@ new class extends Component
     }
 }; ?>
 
-<div x-data x-on:dashboard-note-anchor-selected.window="$wire.selectAnchor($event.detail)">
+<div>
     <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
             <h3 class="text-base font-semibold text-stone-700">{{ $context ? 'Notes' : 'My Notes' }}</h3>
@@ -137,10 +165,18 @@ new class extends Component
     {{-- Add Note Form --}}
     @if ($showForm)
         <form wire:submit="addNote" class="mt-3 space-y-3 rounded-xl border border-stone-200 bg-white p-4 shadow-sm animate-fade-in">
-            @if ($anchorLabel)
-                <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                    <div class="font-medium">Linked to peak</div>
-                    <div class="mt-0.5 text-xs text-amber-700">{{ $anchorLabel }}@if ($anchorValue) · {{ $anchorValue }}@endif</div>
+            @if (!empty($anchorOptions))
+                <div class="space-y-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3">
+                    <label for="note-anchor-{{ $context ?: 'general' }}" class="block text-sm font-medium text-stone-700">Attach to point</label>
+                    <select id="note-anchor-{{ $context ?: 'general' }}"
+                            wire:model="selectedAnchorKey"
+                            class="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700 focus:border-amber-400 focus:ring-2 focus:ring-amber-200 focus:outline-none">
+                        <option value="">Section only</option>
+                        @foreach ($anchorOptions as $option)
+                            <option value="{{ $option['key'] }}">{{ $option['label'] }}@if(!empty($option['value'])) · {{ $option['value'] }}@endif</option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-stone-500">Pick the exact point, item, or row this note refers to.</p>
                 </div>
             @endif
 
@@ -230,6 +266,14 @@ new class extends Component
                                     class="rounded-lg p-2 text-stone-400 transition hover:bg-white/60 hover:text-stone-600">
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z"/></svg>
                             </button>
+                            @if ($note->anchor_key)
+                                <button wire:click="removeAnchor({{ $note->id }})"
+                                        wire:confirm="Remove this note link?"
+                                        title="Remove link"
+                                        class="rounded-lg p-2 text-stone-400 transition hover:bg-white/60 hover:text-amber-600">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 12H6m12 0a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z"/></svg>
+                                </button>
+                            @endif
                             <button wire:click="deleteNote({{ $note->id }})"
                                     wire:confirm="Delete this note?"
                                     title="Delete"

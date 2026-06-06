@@ -235,6 +235,31 @@ new class extends Component
         </div>
     </div>
 
+    @php
+        $orderNoteOptions = $this->order->items
+            ->map(fn ($item) => [
+                'key' => 'order-item::' . $item->id,
+                'label' => 'Item - ' . $item->product_name,
+                'value' => $item->quantity . ' × €' . number_format((float) $item->price, 2),
+                'meta' => [
+                    'order_id' => $this->order->id,
+                    'order_number' => $this->order->order_number,
+                    'order_item_id' => $item->id,
+                    'sku' => $item->sku,
+                ],
+            ])
+            ->values()
+            ->all();
+    @endphp
+
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <livewire:admin.dashboard-notes
+            :context="'order-' . $this->order->id"
+            :context-label="'Order ' . $this->order->order_number"
+            :anchor-options="$orderNoteOptions"
+            :key="'order-notes-' . $this->order->id" />
+    </div>
+
     {{-- Order Items --}}
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">Order Items</h3>

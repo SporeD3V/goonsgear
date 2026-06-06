@@ -1,5 +1,5 @@
 {{-- Contextual Notes Toggle --}}
-@props(['context', 'label'])
+@props(['context', 'label', 'anchorOptions' => []])
 
 <div x-data="{ open: false }" class="mt-3 border-t border-stone-100 pt-2">
     <button @click="open = !open"
@@ -9,7 +9,7 @@
         <span x-text="open ? 'Hide Notes' : 'Notes'"></span>
     </button>
     <div x-show="open" x-collapse class="mt-2">
-        <livewire:admin.dashboard-notes :context="$context" :context-label="$label" :key="'notes-' . $context" />
+        <livewire:admin.dashboard-notes :context="$context" :context-label="$label" :anchor-options="$anchorOptions" :key="'notes-' . $context" />
     </div>
 </div>
 

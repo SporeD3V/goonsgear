@@ -1891,17 +1891,20 @@ class DashboardControllerTest extends TestCase
         $user = User::factory()->admin()->create();
         $this->actingAs($user);
 
-        Livewire::test('admin.dashboard-notes')
-            ->call('selectAnchor', [
-                'anchorKey' => 'overview-revenue::Gross Revenue::2026-06-06::0',
-                'anchorLabel' => 'Gross Revenue - 2026-06-06',
-                'anchorValue' => '€1,245.50',
-                'anchorMeta' => [
-                    'chartId' => 'revenueChart',
-                    'datasetLabel' => 'Gross Revenue',
-                    'pointLabel' => '2026-06-06',
+        Livewire::test('admin.dashboard-notes', [
+            'anchorOptions' => [[
+                'key' => 'overview-revenue::gross::2026-06-06::0',
+                'label' => 'Gross Revenue - 2026-06-06',
+                'value' => '€1,245.50',
+                'meta' => [
+                    'chart' => 'revenueChart',
+                    'series' => 'gross-revenue',
+                    'point' => '2026-06-06',
                 ],
-            ])
+            ]],
+        ])
+            ->set('showForm', true)
+            ->set('selectedAnchorKey', 'overview-revenue::gross::2026-06-06::0')
             ->set('newNote', 'Revenue peak worth checking')
             ->call('addNote')
             ->assertHasNoErrors();
@@ -1909,9 +1912,36 @@ class DashboardControllerTest extends TestCase
         $this->assertDatabaseHas('admin_notes', [
             'user_id' => $user->id,
             'content' => 'Revenue peak worth checking',
-            'anchor_key' => 'overview-revenue::Gross Revenue::2026-06-06::0',
+            'anchor_key' => 'overview-revenue::gross::2026-06-06::0',
             'anchor_label' => 'Gross Revenue - 2026-06-06',
             'anchor_value' => '€1,245.50',
+        ]);
+    }
+
+    public function test_dashboard_notes_can_remove_an_anchor_without_deleting_the_note(): void
+    {
+        $user = User::factory()->admin()->create();
+        $this->actingAs($user);
+
+        $note = AdminNote::factory()->create([
+            'user_id' => $user->id,
+            'content' => 'Revenue peak worth checking',
+            'anchor_key' => 'overview-revenue::gross::2026-06-06::0',
+            'anchor_label' => 'Gross Revenue - 2026-06-06',
+            'anchor_value' => '€1,245.50',
+            'anchor_meta' => ['chart' => 'revenueChart'],
+        ]);
+
+        Livewire::test('admin.dashboard-notes')
+            ->call('removeAnchor', $note->id)
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('admin_notes', [
+            'id' => $note->id,
+            'content' => 'Revenue peak worth checking',
+            'anchor_key' => null,
+            'anchor_label' => null,
+            'anchor_value' => null,
         ]);
     }
 

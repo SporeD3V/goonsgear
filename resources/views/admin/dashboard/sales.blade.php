@@ -266,6 +266,48 @@
 
 {{-- Regional Growth Trend --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="9">
+    @php
+        $regionalGrowthNoteOptions = collect($regionalGrowth['countries'] ?? [])
+            ->flatMap(function ($country) use ($regionalGrowth) {
+                return collect($regionalGrowth['quarters'] ?? [])->flatMap(function ($quarter, $index) use ($country, $regionalGrowth) {
+                    $options = [];
+
+                    $revenue = $regionalGrowth['series'][$country][$index] ?? null;
+                    if ($revenue !== null) {
+                        $options[] = [
+                            'key' => 'sales-regional-growth::revenue::' . $country . '::' . $quarter . '::' . $index,
+                            'label' => $country . ' - ' . $quarter . ' (Revenue)',
+                            'value' => '€' . number_format((float) $revenue, 2),
+                            'meta' => [
+                                'series' => 'revenue',
+                                'country' => $country,
+                                'quarter' => $quarter,
+                                'raw_value' => $revenue,
+                            ],
+                        ];
+                    }
+
+                    $aov = $regionalGrowth['aov_series'][$country][$index] ?? null;
+                    if ($aov !== null) {
+                        $options[] = [
+                            'key' => 'sales-regional-growth::aov::' . $country . '::' . $quarter . '::' . $index,
+                            'label' => $country . ' - ' . $quarter . ' (AOV)',
+                            'value' => '€' . number_format((float) $aov, 2),
+                            'meta' => [
+                                'series' => 'aov',
+                                'country' => $country,
+                                'quarter' => $quarter,
+                                'raw_value' => $aov,
+                            ],
+                        ];
+                    }
+
+                    return $options;
+                });
+            })
+            ->values()
+            ->all();
+    @endphp
     <div class="mb-2 flex items-center justify-between">
         <div>
             <h3 class="text-sm font-semibold uppercase tracking-wide text-stone-600">Regional Growth Trend (Quarterly)</h3>
@@ -283,11 +325,11 @@
         <p class="text-[15px] text-stone-500">Not enough order data to show regional trends.</p>
     @else
         <div class="h-[300px]">
-            <canvas id="regionalGrowthChart" data-note-anchor-context="sales-regional-growth" data-note-anchor-label="Regional Growth Trend"></canvas>
+            <canvas id="regionalGrowthChart"></canvas>
         </div>
     @endif
 
-    @include('admin.dashboard._contextual-notes', ['context' => 'sales-regional-growth', 'label' => 'Regional Growth Trend'])
+    @include('admin.dashboard._contextual-notes', ['context' => 'sales-regional-growth', 'label' => 'Regional Growth Trend', 'anchorOptions' => $regionalGrowthNoteOptions])
 </div>
 
 {{-- Product Decay Tracking --}}
