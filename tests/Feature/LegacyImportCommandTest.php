@@ -119,6 +119,8 @@ class LegacyImportCommandTest extends TestCase
 
     public function test_future_legacy_preorder_date_is_imported_to_product_and_default_variant(): void
     {
+        $futurePreorderDate = now()->addDays(30)->startOfDay();
+
         DB::connection('legacy')->table('wp_posts')->insert([
             'ID' => 202,
             'post_parent' => 0,
@@ -138,7 +140,7 @@ class LegacyImportCommandTest extends TestCase
             ['post_id' => 202, 'meta_key' => '_sku', 'meta_value' => 'future-vinyl-202'],
             ['post_id' => 202, 'meta_key' => '_stock', 'meta_value' => '26'],
             ['post_id' => 202, 'meta_key' => '_manage_stock', 'meta_value' => 'yes'],
-            ['post_id' => 202, 'meta_key' => '_pre_order_date', 'meta_value' => '2026-05-29'],
+            ['post_id' => 202, 'meta_key' => '_pre_order_date', 'meta_value' => $futurePreorderDate->toDateString()],
             ['post_id' => 202, 'meta_key' => '_pre_order_stock_status', 'meta_value' => 'global'],
         ]);
 
@@ -147,12 +149,12 @@ class LegacyImportCommandTest extends TestCase
         $product = Product::query()->where('slug', 'future-vinyl')->first();
         $this->assertNotNull($product);
         $this->assertTrue($product->is_preorder);
-        $this->assertSame('2026-05-29 00:00:00', optional($product->preorder_available_from)?->format('Y-m-d H:i:s'));
+        $this->assertSame($futurePreorderDate->format('Y-m-d H:i:s'), optional($product->preorder_available_from)?->format('Y-m-d H:i:s'));
 
         $variant = ProductVariant::query()->where('product_id', $product->id)->where('name', 'Default')->first();
         $this->assertNotNull($variant);
         $this->assertTrue($variant->is_preorder);
-        $this->assertSame('2026-05-29 00:00:00', optional($variant->preorder_available_from)?->format('Y-m-d H:i:s'));
+        $this->assertSame($futurePreorderDate->format('Y-m-d H:i:s'), optional($variant->preorder_available_from)?->format('Y-m-d H:i:s'));
     }
 
     public function test_simple_product_price_is_recovered_from_legacy_order_history_when_meta_price_is_missing(): void
