@@ -21,15 +21,35 @@ class DashboardController extends Controller
         'all' => null,
     ];
 
+    /** @var list<string> */
+    private const COMPARE_MODES = ['previous_period', 'yoy', 'custom_interval'];
+
+    /** @var list<string> */
+    private const COMPARE_INTERVAL_UNITS = ['day', 'week', 'month', 'quarter', 'year'];
+
     public function index(Request $request, DashboardStatsService $stats): View
     {
         $tab = $request->query('tab', 'overview');
         $period = $request->query('period', '30d');
         $compare = $request->boolean('compare', false);
         $compareMode = $request->query('compare_mode', 'previous_period');
+        $compareIntervalUnit = $request->query('compare_interval_unit', 'week');
+        $compareIntervalValue = $request->integer('compare_interval_value', 1);
 
-        if (! in_array($compareMode, ['previous_period', 'yoy'])) {
+        if (! in_array($compareMode, self::COMPARE_MODES, true)) {
             $compareMode = 'previous_period';
+        }
+
+        if (! in_array($compareIntervalUnit, self::COMPARE_INTERVAL_UNITS, true)) {
+            $compareIntervalUnit = 'week';
+        }
+
+        if ($compareIntervalValue < 1) {
+            $compareIntervalValue = 1;
+        }
+
+        if ($compareIntervalValue > 365) {
+            $compareIntervalValue = 365;
         }
 
         // Custom date range
@@ -68,6 +88,9 @@ class DashboardController extends Controller
             if ($compareMode === 'yoy') {
                 $prevFrom = $from->copy()->subYear();
                 $prevTo = $to->copy()->subYear();
+            } elseif ($compareMode === 'custom_interval') {
+                $prevFrom = $this->shiftDateByInterval($from->copy(), $compareIntervalValue, $compareIntervalUnit);
+                $prevTo = $this->shiftDateByInterval($to->copy(), $compareIntervalValue, $compareIntervalUnit);
             } else {
                 $days = (int) $from->diffInDays($to);
                 $prevTo = $from->copy()->subSecond();
@@ -93,6 +116,8 @@ class DashboardController extends Controller
             'period' => $period,
             'compare' => $compare,
             'compareMode' => $compareMode,
+            'compareIntervalUnit' => $compareIntervalUnit,
+            'compareIntervalValue' => $compareIntervalValue,
             'customFrom' => $customFrom,
             'customTo' => $customTo,
             'periodLabel' => $this->periodLabel($period, $from, $to),
@@ -273,6 +298,18 @@ class DashboardController extends Controller
             'year' => 'Last Year',
             'all' => 'All Time',
             default => 'Last 30 Days',
+        };
+    }
+
+    private function shiftDateByInterval(Carbon $date, int $value, string $unit): Carbon
+    {
+        return match ($unit) {
+            'day' => $date->subDays($value),
+            'week' => $date->subWeeks($value),
+            'month' => $date->subMonthsNoOverflow($value),
+            'quarter' => $date->subMonthsNoOverflow($value * 3),
+            'year' => $date->subYearsNoOverflow($value),
+            default => $date->subWeeks($value),
         };
     }
 }

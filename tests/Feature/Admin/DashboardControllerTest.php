@@ -262,6 +262,24 @@ class DashboardControllerTest extends TestCase
             ->assertViewHas('prevRevenueOverTime');
     }
 
+    public function test_compare_mode_accepts_custom_interval(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->get(route('admin.dashboard', [
+            'compare' => 1,
+            'compare_mode' => 'custom_interval',
+            'compare_interval_unit' => 'month',
+            'compare_interval_value' => 2,
+        ]))
+            ->assertOk()
+            ->assertViewHas('compareMode', 'custom_interval')
+            ->assertViewHas('compareIntervalUnit', 'month')
+            ->assertViewHas('compareIntervalValue', 2)
+            ->assertViewHas('deltas')
+            ->assertViewHas('prevRevenueOverTime');
+    }
+
     public function test_invalid_compare_mode_defaults_to_previous_period(): void
     {
         $this->actingAsAdmin();
@@ -269,6 +287,22 @@ class DashboardControllerTest extends TestCase
         $this->get(route('admin.dashboard', ['compare' => 1, 'compare_mode' => 'bogus']))
             ->assertOk()
             ->assertViewHas('compareMode', 'previous_period');
+    }
+
+    public function test_invalid_custom_interval_inputs_fallback_to_safe_defaults(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->get(route('admin.dashboard', [
+            'compare' => 1,
+            'compare_mode' => 'custom_interval',
+            'compare_interval_unit' => 'fortnight',
+            'compare_interval_value' => 0,
+        ]))
+            ->assertOk()
+            ->assertViewHas('compareMode', 'custom_interval')
+            ->assertViewHas('compareIntervalUnit', 'week')
+            ->assertViewHas('compareIntervalValue', 1);
     }
 
     public function test_custom_date_range_sets_period_to_custom(): void

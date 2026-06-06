@@ -15,7 +15,13 @@
                     class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-700"
                     onchange="if (this.value) window.location.href = this.value;">
                 @php
-                    $mobileTabParams = ['period' => $period, 'compare' => $compare ? 1 : 0, 'compare_mode' => $compareMode];
+                    $mobileTabParams = [
+                        'period' => $period,
+                        'compare' => $compare ? 1 : 0,
+                        'compare_mode' => $compareMode,
+                        'compare_interval_unit' => $compareIntervalUnit,
+                        'compare_interval_value' => $compareIntervalValue,
+                    ];
                     if ($period === 'custom' && $customFrom && $customTo) {
                         $mobileTabParams['custom_from'] = $customFrom;
                         $mobileTabParams['custom_to'] = $customTo;
@@ -30,7 +36,13 @@
         <div class="hidden border-b border-stone-200 sm:block">
             <nav class="-mb-px flex gap-1 overflow-x-auto text-[15px] font-medium">
                 @php
-                    $tabParams = ['period' => $period, 'compare' => $compare ? 1 : 0, 'compare_mode' => $compareMode];
+                    $tabParams = [
+                        'period' => $period,
+                        'compare' => $compare ? 1 : 0,
+                        'compare_mode' => $compareMode,
+                        'compare_interval_unit' => $compareIntervalUnit,
+                        'compare_interval_value' => $compareIntervalValue,
+                    ];
                     if ($period === 'custom' && $customFrom && $customTo) {
                         $tabParams['custom_from'] = $customFrom;
                         $tabParams['custom_to'] = $customTo;
@@ -51,7 +63,13 @@
                 {{-- Preset Pills --}}
                 <div class="flex items-center gap-1 rounded-lg bg-stone-100 p-1">
                     @php
-                        $pillParams = ['tab' => $tab, 'compare' => $compare ? 1 : 0, 'compare_mode' => $compareMode];
+                        $pillParams = [
+                            'tab' => $tab,
+                            'compare' => $compare ? 1 : 0,
+                            'compare_mode' => $compareMode,
+                            'compare_interval_unit' => $compareIntervalUnit,
+                            'compare_interval_value' => $compareIntervalValue,
+                        ];
                     @endphp
                     @foreach (['1d' => '1D', '7d' => '7D', '14d' => '14D', '30d' => '30D', '90d' => '90D', 'year' => '1Y', 'all' => 'All'] as $key => $label)
                         <a href="{{ route('admin.dashboard', array_merge($pillParams, ['period' => $key])) }}"
@@ -73,6 +91,8 @@
                         <input type="hidden" name="tab" value="{{ $tab }}">
                         <input type="hidden" name="compare" value="{{ $compare ? 1 : 0 }}">
                         <input type="hidden" name="compare_mode" value="{{ $compareMode }}">
+                        <input type="hidden" name="compare_interval_unit" value="{{ $compareIntervalUnit }}">
+                        <input type="hidden" name="compare_interval_value" value="{{ $compareIntervalValue }}">
                         <input type="date" name="custom_from" value="{{ $customFrom }}"
                             class="w-full rounded-md border border-stone-300 px-2.5 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb] sm:w-auto"
                             required>
@@ -91,7 +111,12 @@
             @if ($tab !== 'inventory')
                 <div class="w-full sm:w-auto" x-data>
                     @php
-                        $baseCompareParams = ['tab' => $tab, 'period' => $period];
+                        $baseCompareParams = [
+                            'tab' => $tab,
+                            'period' => $period,
+                            'compare_interval_unit' => $compareIntervalUnit,
+                            'compare_interval_value' => $compareIntervalValue,
+                        ];
                         if ($period === 'custom' && $customFrom && $customTo) {
                             $baseCompareParams['custom_from'] = $customFrom;
                             $baseCompareParams['custom_to'] = $customTo;
@@ -113,6 +138,12 @@
                                 <svg class="mr-1 inline-block h-3.5 w-3.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
                                 vs Year Ago
                             </a>
+                            <a href="{{ route('admin.dashboard', array_merge($baseCompareParams, ['compare' => 1, 'compare_mode' => 'custom_interval'])) }}"
+                               class="rounded-md px-2.5 py-1.5 text-xs font-medium transition {{ $compare && $compareMode === 'custom_interval' ? 'bg-white text-[#9966ff] shadow-sm' : 'text-stone-400 hover:text-stone-600' }}"
+                               title="Compare by a custom shift interval">
+                                <svg class="mr-1 inline-block h-3.5 w-3.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15m0 0 4.5-4.5M4.5 12l4.5 4.5M12 4.5v15"/></svg>
+                                vs Custom Interval
+                            </a>
                         @endif
                         @if ($compare)
                             <a href="{{ route('admin.dashboard', array_merge($baseCompareParams, ['compare' => 0, 'compare_mode' => $compareMode])) }}"
@@ -122,6 +153,34 @@
                             </a>
                         @endif
                     </div>
+
+                    @if ($period !== 'all' && $compare && $compareMode === 'custom_interval')
+                        <form method="GET" action="{{ route('admin.dashboard') }}" class="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-stone-200 bg-white p-2">
+                            <input type="hidden" name="tab" value="{{ $tab }}">
+                            <input type="hidden" name="period" value="{{ $period }}">
+                            <input type="hidden" name="compare" value="1">
+                            <input type="hidden" name="compare_mode" value="custom_interval">
+                            @if ($period === 'custom' && $customFrom && $customTo)
+                                <input type="hidden" name="custom_from" value="{{ $customFrom }}">
+                                <input type="hidden" name="custom_to" value="{{ $customTo }}">
+                            @endif
+                            <label class="text-xs font-medium text-stone-500" for="compare-interval-value">Shift by</label>
+                            <input id="compare-interval-value"
+                                   type="number"
+                                   name="compare_interval_value"
+                                   min="1"
+                                   max="365"
+                                   value="{{ $compareIntervalValue }}"
+                                   class="w-20 rounded-md border border-stone-300 px-2 py-1 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]">
+                            <select name="compare_interval_unit"
+                                    class="rounded-md border border-stone-300 px-2 py-1 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]">
+                                @foreach (['day' => 'Day(s)', 'week' => 'Week(s)', 'month' => 'Month(s)', 'quarter' => 'Quarter(s)', 'year' => 'Year(s)'] as $unitKey => $unitLabel)
+                                    <option value="{{ $unitKey }}" {{ $compareIntervalUnit === $unitKey ? 'selected' : '' }}>{{ $unitLabel }}</option>
+                                @endforeach
+                            </select>
+                            <button type="submit" class="rounded-md bg-[#9966ff] px-2.5 py-1 text-xs font-medium text-white transition hover:bg-[#9966ff]/90">Apply</button>
+                        </form>
+                    @endif
                 </div>
             @endif
         </div>
