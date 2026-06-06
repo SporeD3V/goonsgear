@@ -433,6 +433,10 @@
                 if (!productId) return null;
                 return this.productsBaseUrl + '/' + productId + '/edit?source=dashboard-dead-stock';
             },
+            stockAlertsUrl(productId) {
+                if (!productId) return null;
+                return this.productsBaseUrl + '/' + productId + '/stock-alerts?source=dashboard-dead-stock';
+            },
             bundlePrefillUrl(row) {
                 if (!row?.product_id) return null;
 
@@ -501,7 +505,7 @@
                                 <div class="inline-flex items-center gap-1.5">
                                     <button @click="quickViewItem = row"
                                             class="rounded-md bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700 transition hover:bg-stone-200">
-                                        Quick View
+                                        Insights
                                     </button>
                                     <a :href="primaryActionUrl(row)"
                                        class="rounded-md bg-[#36a2eb]/10 px-2.5 py-1 text-xs font-semibold text-[#36a2eb] transition hover:bg-[#36a2eb]/20"
@@ -522,7 +526,7 @@
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <h4 class="text-base font-semibold text-stone-800" x-text="quickViewItem?.product"></h4>
-                            <p class="mt-1 text-xs text-stone-500" x-text="quickViewItem?.variant"></p>
+                            <p class="mt-1 text-xs text-stone-500" x-text="(quickViewItem?.variant || '') + ' - action center'"></p>
                         </div>
                         <button @click="quickViewItem = null" class="rounded-md p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-700">✕</button>
                     </div>
@@ -547,6 +551,8 @@
                     </div>
 
                     <div class="mt-4 flex flex-wrap justify-end gap-2">
+                        <a x-show="stockAlertsUrl(quickViewItem?.product_id)" :href="stockAlertsUrl(quickViewItem?.product_id)" class="rounded-md bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-200">Stock Alerts</a>
+                        <a x-show="editUrl(quickViewItem?.companion_product_id)" :href="editUrl(quickViewItem?.companion_product_id)" class="rounded-md bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-200">Edit Companion</a>
                         <a x-show="editUrl(quickViewItem?.product_id)" :href="editUrl(quickViewItem?.product_id)" class="rounded-md bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-200">Edit Product</a>
                         <a x-show="quickViewItem?.suggestion === 'Bundle Inclusion' && bundlePrefillUrl(quickViewItem)" :href="bundlePrefillUrl(quickViewItem)" class="rounded-md bg-[#36a2eb] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#2f8fd1]">Create Bundle</a>
                     </div>

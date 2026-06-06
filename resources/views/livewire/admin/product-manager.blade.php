@@ -27,6 +27,8 @@ new class extends Component
 
     public string $filterPreorder = '';
 
+    public string $filterStockAlerts = '';
+
     public function mount(): void
     {
         $search = trim((string) request()->query('search', ''));
@@ -50,13 +52,18 @@ new class extends Component
         }
 
         $stock = trim((string) request()->query('stock', request()->query('filterStock', '')));
-        if (in_array($stock, ['zero_stock', 'in_stock'], true)) {
+        if (in_array($stock, ['zero_stock', 'in_stock', 'low_stock', 'out_of_stock'], true)) {
             $this->filterStock = $stock;
         }
 
         $preorder = trim((string) request()->query('preorder', request()->query('filterPreorder', '')));
         if (in_array($preorder, ['only_preorder'], true)) {
             $this->filterPreorder = $preorder;
+        }
+
+        $stockAlerts = trim((string) request()->query('stock_alerts', request()->query('filterStockAlerts', '')));
+        if (in_array($stockAlerts, ['waiting'], true)) {
+            $this->filterStockAlerts = $stockAlerts;
         }
     }
 
@@ -90,9 +97,14 @@ new class extends Component
         $this->resetPage();
     }
 
+    public function updatedFilterStockAlerts(): void
+    {
+        $this->resetPage();
+    }
+
     public function resetFilters(): void
     {
-        $this->reset('search', 'filterStatus', 'filterCategory', 'filterSales', 'filterStock', 'filterPreorder');
+        $this->reset('search', 'filterStatus', 'filterCategory', 'filterSales', 'filterStock', 'filterPreorder', 'filterStockAlerts');
         $this->resetPage();
     }
 
@@ -144,12 +156,36 @@ new class extends Component
                     ->where('stock_quantity', '>', 0))
             )
             ->when(
+                $this->filterStock === 'low_stock',
+                fn ($query) => $query->whereHas('variants', fn ($vq) => $vq
+                    ->where('is_active', true)
+                    ->whereBetween('stock_quantity', [1, 5]))
+            )
+            ->when(
+                $this->filterStock === 'out_of_stock',
+                fn ($query) => $query
+                    ->whereHas('variants', fn ($vq) => $vq->where('is_active', true))
+                    ->whereDoesntHave('variants', fn ($vq) => $vq
+                        ->where('is_active', true)
+                        ->where('stock_quantity', '>', 0))
+            )
+            ->when(
                 $this->filterPreorder === 'only_preorder',
                 fn ($query) => $query->where(function ($pq) {
                     $pq->where('is_preorder', true)
                         ->orWhereHas('variants', fn ($vq) => $vq
                             ->where('is_active', true)
                             ->where('is_preorder', true));
+                })
+            )
+            ->when(
+                $this->filterStockAlerts === 'waiting',
+                fn ($query) => $query->whereExists(function ($subquery) {
+                    $subquery->selectRaw('1')
+                        ->from('stock_alert_subscriptions')
+                        ->whereColumn('stock_alert_subscriptions.product_id', 'products.id')
+                        ->where('stock_alert_subscriptions.is_active', true)
+                        ->whereNull('stock_alert_subscriptions.notified_at');
                 })
             )
             ->latest('id')
@@ -312,7 +348,7 @@ new class extends Component
 
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">Filters</h3>
-        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
         <div>
             <label class="mb-1 block text-xs font-medium text-slate-700">Search</label>
             <input type="text" wire:model.live.debounce.300ms="search" placeholder="Name / slug / excerpt" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
@@ -349,6 +385,15 @@ new class extends Component
                 <option value="">All</option>
                 <option value="zero_stock">Zero stock</option>
                 <option value="in_stock">Has stock</option>
+                <option value="low_stock">Low stock (1-5)</option>
+                <option value="out_of_stock">Out of stock</option>
+            </select>
+        </div>
+        <div>
+            <label class="mb-1 block text-xs font-medium text-slate-700">Stock Alerts</label>
+            <select wire:model.live="filterStockAlerts" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                <option value="">All</option>
+                <option value="waiting">Waiting customers</option>
             </select>
         </div>
         <div>

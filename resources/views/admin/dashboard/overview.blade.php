@@ -101,19 +101,19 @@
                 </a>
             @endif
             @if ($overview['low_stock'] > 0)
-                <a href="{{ route('admin.products.index') }}" class="flex items-center justify-between rounded-lg bg-white/60 px-4 py-3 text-[15px] text-stone-700 transition hover:bg-white hover:shadow-sm">
+                <a href="{{ route('admin.products.index', ['stock' => 'low_stock', 'source' => 'dashboard-needs-attention']) }}" class="flex items-center justify-between rounded-lg bg-white/60 px-4 py-3 text-[15px] text-stone-700 transition hover:bg-white hover:shadow-sm">
                     <span>{{ $overview['low_stock'] }} {{ Str::plural('variant', $overview['low_stock']) }} with low stock (1–5 remaining)</span>
                     <svg class="h-5 w-5 shrink-0 text-[#ff9f40]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
                 </a>
             @endif
             @if ($overview['out_of_stock'] > 0)
-                <a href="{{ route('admin.products.index') }}" class="flex items-center justify-between rounded-lg bg-white/60 px-4 py-3 text-[15px] text-stone-700 transition hover:bg-white hover:shadow-sm">
+                <a href="{{ route('admin.products.index', ['stock' => 'out_of_stock', 'source' => 'dashboard-needs-attention']) }}" class="flex items-center justify-between rounded-lg bg-white/60 px-4 py-3 text-[15px] text-stone-700 transition hover:bg-white hover:shadow-sm">
                     <span>{{ $overview['out_of_stock'] }} {{ Str::plural('variant', $overview['out_of_stock']) }} out of stock</span>
                     <svg class="h-5 w-5 shrink-0 text-[#ff9f40]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
                 </a>
             @endif
             @if ($overview['stock_alert_waiting'] > 0)
-                <a href="{{ route('admin.products.index') }}" class="flex items-center justify-between rounded-lg bg-white/60 px-4 py-3 text-[15px] text-amber-700 transition hover:bg-white hover:shadow-sm">
+                <a href="{{ route('admin.products.index', ['stock_alerts' => 'waiting', 'source' => 'dashboard-needs-attention']) }}" class="flex items-center justify-between rounded-lg bg-white/60 px-4 py-3 text-[15px] text-amber-700 transition hover:bg-white hover:shadow-sm">
                     <span>{{ $overview['stock_alert_waiting'] }} {{ Str::plural('customer', $overview['stock_alert_waiting']) }} waiting on stock alerts</span>
                     <svg class="h-5 w-5 shrink-0 text-[#ff9f40]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
                 </a>

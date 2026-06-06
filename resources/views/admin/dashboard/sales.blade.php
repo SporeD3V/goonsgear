@@ -580,6 +580,13 @@
                 if (!productId) return null;
                 return this.productsBaseUrl + '/' + productId + '/edit?source=dashboard-market-basket';
             },
+            stockAlertsUrl(productId) {
+                if (!productId) return null;
+                return this.productsBaseUrl + '/' + productId + '/stock-alerts?source=dashboard-market-basket';
+            },
+            canCreateBundle(pair) {
+                return !!pair && pair.co_purchases >= 10 && !!this.bundlePrefillUrl(pair);
+            },
             bundlePrefillUrl(pair) {
                 const productIds = [pair.product_a_id, pair.product_b_id].filter(id => Number.isInteger(id) && id > 0);
                 if (productIds.length < 2) return null;
@@ -626,9 +633,9 @@
                                 <div class="inline-flex items-center gap-1.5">
                                     <button @click="quickViewPair = pair"
                                             class="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700 transition hover:bg-stone-200">
-                                        Quick View
+                                        Insights
                                     </button>
-                                    <template x-if="pair.co_purchases >= 10 && bundlePrefillUrl(pair)">
+                                    <template x-if="canCreateBundle(pair)">
                                         <a :href="bundlePrefillUrl(pair)"
                                             class="inline-flex items-center gap-1 rounded-md bg-[#36a2eb]/10 px-2.5 py-1 text-xs font-semibold text-[#36a2eb] transition hover:bg-[#36a2eb]/20">
                                             Create Bundle
@@ -650,7 +657,7 @@
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <h4 class="text-base font-semibold text-stone-800" x-text="quickViewPair?.product_a + ' + ' + quickViewPair?.product_b"></h4>
-                            <p class="mt-1 text-xs text-stone-500">Market Basket quick view</p>
+                            <p class="mt-1 text-xs text-stone-500">Affinity insight and next actions</p>
                         </div>
                         <button @click="quickViewPair = null" class="rounded-md p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-700">✕</button>
                     </div>
@@ -671,9 +678,11 @@
                     </div>
 
                     <div class="mt-4 flex flex-wrap justify-end gap-2">
+                        <a x-show="stockAlertsUrl(quickViewPair?.product_a_id)" :href="stockAlertsUrl(quickViewPair?.product_a_id)" class="rounded-md bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-200">Stock Alerts A</a>
+                        <a x-show="stockAlertsUrl(quickViewPair?.product_b_id)" :href="stockAlertsUrl(quickViewPair?.product_b_id)" class="rounded-md bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-200">Stock Alerts B</a>
                         <a x-show="editUrl(quickViewPair?.product_a_id)" :href="editUrl(quickViewPair?.product_a_id)" class="rounded-md bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-200">Edit Product A</a>
                         <a x-show="editUrl(quickViewPair?.product_b_id)" :href="editUrl(quickViewPair?.product_b_id)" class="rounded-md bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-200">Edit Product B</a>
-                        <a x-show="bundlePrefillUrl(quickViewPair)" :href="bundlePrefillUrl(quickViewPair)" class="rounded-md bg-[#36a2eb] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#2f8fd1]">Create Bundle</a>
+                        <a x-show="canCreateBundle(quickViewPair)" :href="bundlePrefillUrl(quickViewPair)" class="rounded-md bg-[#36a2eb] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#2f8fd1]">Create Bundle</a>
                     </div>
                 </div>
             </div>
