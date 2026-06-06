@@ -96,7 +96,7 @@ new class extends Component
 }; ?>
 
 <div>
-    <div class="flex items-center justify-between">
+    <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
             <h3 class="text-base font-semibold text-stone-700">{{ $context ? 'Notes' : 'My Notes' }}</h3>
             @if ($contextLabel)
@@ -119,7 +119,7 @@ new class extends Component
                       class="w-full rounded-lg border border-stone-200 bg-stone-50 px-3 py-2.5 text-base text-stone-800 placeholder-stone-400 transition focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-200 focus:outline-none"></textarea>
             @error('newNote') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
 
-            <div class="flex items-center gap-4">
+            <div class="flex flex-wrap items-center gap-4">
                 <span class="text-sm text-stone-500">Color:</span>
                 <div class="flex gap-2">
                     @foreach ($colorOptions as $color)
@@ -165,7 +165,7 @@ new class extends Component
                                   rows="3"
                                   class="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-base text-stone-800 focus:border-amber-400 focus:ring-2 focus:ring-amber-200 focus:outline-none"></textarea>
                         @error('editingContent') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
-                        <div class="flex gap-2">
+                        <div class="flex flex-wrap gap-2">
                             <button type="submit" class="rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-amber-700 active:scale-95">Save</button>
                             <button type="button" wire:click="cancelEdit" class="rounded-lg px-3 py-1.5 text-sm font-medium text-stone-500 transition hover:text-stone-700">Cancel</button>
                         </div>
@@ -180,7 +180,7 @@ new class extends Component
                     </div>
                     <div class="mt-2 flex items-center justify-between">
                         <span class="text-xs text-stone-400">{{ $note->created_at->diffForHumans() }}</span>
-                        <div class="flex gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                        <div class="flex gap-1 opacity-100 transition-opacity duration-200 sm:opacity-0 sm:group-hover:opacity-100">
                             <button wire:click="togglePin({{ $note->id }})"
                                     title="{{ $note->is_pinned ? 'Unpin' : 'Pin' }}"
                                     class="rounded-lg p-2 text-stone-400 transition hover:bg-white/60 hover:text-amber-600">

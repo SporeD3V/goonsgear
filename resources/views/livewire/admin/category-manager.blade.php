@@ -232,7 +232,7 @@ new class extends Component
     {{-- Header row --}}
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-lg font-semibold">Categories</h2>
-        <div class="flex items-center gap-3">
+        <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
             <input
                 wire:model.live.debounce.300ms="search"
                 type="text"
@@ -258,12 +258,12 @@ new class extends Component
             <div
                 wire:key="category-{{ $category->id }}"
                 wire:sort:item="{{ $category->id }}"
-                class="flex items-center gap-3 rounded-md border border-slate-200 bg-white px-4 py-3 {{ $category->parent_id ? 'ml-8' : '' }}"
+                class="flex flex-wrap items-center gap-3 rounded-md border border-slate-200 bg-white px-4 py-3 {{ $category->parent_id ? 'ml-4 sm:ml-8' : '' }}"
             >
                 <span wire:sort:handle class="cursor-grab text-slate-400 hover:text-slate-600 active:cursor-grabbing">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
                 </span>
-                <div class="flex-1">
+                <div class="min-w-0 flex-1">
                     <span class="font-medium">{{ $category->name }}</span>
                     <span class="ml-2 text-xs text-slate-400">/{{ $category->slug }}</span>
                     @if ($category->parent)
@@ -273,15 +273,17 @@ new class extends Component
                         <span class="ml-2 rounded bg-indigo-50 px-1.5 py-0.5 text-xs text-indigo-600">{{ $category->size_type }}</span>
                     @endif
                 </div>
-                <button wire:click="toggleActive({{ $category->id }})" class="text-xs font-medium">
-                    @if ($category->is_active)
-                        <span class="rounded bg-emerald-100 px-2 py-0.5 text-emerald-800">Active</span>
-                    @else
-                        <span class="rounded bg-slate-100 px-2 py-0.5 text-slate-500">Inactive</span>
-                    @endif
-                </button>
-                <button wire:click="openEdit({{ $category->id }})" class="text-sm text-blue-600 hover:underline">Edit</button>
-                <button wire:click="delete({{ $category->id }})" wire:confirm="Delete this category?" class="text-sm text-red-600 hover:underline">Delete</button>
+                <div class="flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto sm:flex-nowrap">
+                    <button wire:click="toggleActive({{ $category->id }})" class="text-xs font-medium">
+                        @if ($category->is_active)
+                            <span class="rounded bg-emerald-100 px-2 py-0.5 text-emerald-800">Active</span>
+                        @else
+                            <span class="rounded bg-slate-100 px-2 py-0.5 text-slate-500">Inactive</span>
+                        @endif
+                    </button>
+                    <button wire:click="openEdit({{ $category->id }})" class="text-sm text-blue-600 hover:underline">Edit</button>
+                    <button wire:click="delete({{ $category->id }})" wire:confirm="Delete this category?" class="text-sm text-red-600 hover:underline">Delete</button>
+                </div>
             </div>
         @empty
             <p class="py-8 text-center text-slate-500">

@@ -140,7 +140,7 @@ new class extends Component
     {{-- Product Selectors --}}
     <div class="mb-4 flex flex-wrap items-end gap-3">
         {{-- Product A --}}
-        <div class="flex-1 min-w-[180px]" x-data x-on:click.outside="$wire.showDropdownA = false">
+        <div class="w-full min-w-0 sm:flex-1 sm:min-w-45" x-data x-on:click.outside="$wire.showDropdownA = false">
             <label class="mb-1 block text-xs font-medium text-stone-500">Product A</label>
             @if ($selectedA)
                 <div class="flex items-center gap-2 rounded-md border border-[#36a2eb] bg-[#36a2eb]/5 px-3 py-1.5">
@@ -176,7 +176,7 @@ new class extends Component
         </div>
 
         {{-- Start Date A --}}
-        <div class="w-36">
+        <div class="w-full sm:w-36">
             <label class="mb-1 block text-xs font-medium text-stone-500">Start Date A <span class="text-stone-400">(opt.)</span></label>
             <input
                 type="date"
@@ -187,7 +187,7 @@ new class extends Component
         </div>
 
         {{-- Product B --}}
-        <div class="flex-1 min-w-[180px]" x-data x-on:click.outside="$wire.showDropdownB = false">
+        <div class="w-full min-w-0 sm:flex-1 sm:min-w-45" x-data x-on:click.outside="$wire.showDropdownB = false">
             <label class="mb-1 block text-xs font-medium text-stone-500">Product B</label>
             @if ($selectedB)
                 <div class="flex items-center gap-2 rounded-md border border-[#ff6384] bg-[#ff6384]/5 px-3 py-1.5">
@@ -223,7 +223,7 @@ new class extends Component
         </div>
 
         {{-- Start Date B --}}
-        <div class="w-36">
+        <div class="w-full sm:w-36">
             <label class="mb-1 block text-xs font-medium text-stone-500">Start Date B <span class="text-stone-400">(opt.)</span></label>
             <input
                 type="date"
@@ -234,7 +234,7 @@ new class extends Component
         </div>
 
         {{-- Days --}}
-        <div class="w-24">
+        <div class="w-full sm:w-24">
             <label class="mb-1 block text-xs font-medium text-stone-500">Days</label>
             <select wire:model.live="days" class="w-full rounded-md border border-stone-300 px-3 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]">
                 @foreach ([7, 14, 30, 60, 90] as $d)
@@ -281,7 +281,7 @@ new class extends Component
 
         {{-- Chart canvas --}}
         <div
-            class="h-[280px]"
+            class="h-70"
             wire:key="benchmark-{{ $selectedA }}-{{ $selectedB }}-{{ $days }}-{{ $startA }}-{{ $startB }}"
             x-data="{ chart: null }"
             x-init="

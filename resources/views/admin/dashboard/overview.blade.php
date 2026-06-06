@@ -46,15 +46,15 @@
     <p class="mb-3 text-[13px] text-stone-500">How efficiently are visitors turning into paying customers?</p>
     @if ($siteConversion['visitors'] === 0)
         <div class="grid gap-4 sm:grid-cols-2">
-            <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
-                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Paid Orders</div>
+            <div class="min-w-0 rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+                <div class="wrap-break-word text-[13px] font-medium uppercase tracking-wide text-stone-500">Paid Orders</div>
                 <div class="mt-1 text-2xl font-bold" style="color: #36a2eb">{{ number_format($siteConversion['orders']) }}</div>
-                <div class="mt-1 text-[11px] text-stone-400">Orders with payment confirmed</div>
+                <div class="mt-1 wrap-break-word text-[11px] text-stone-400">Orders with payment confirmed</div>
             </div>
-            <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
-                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Gross Revenue</div>
+            <div class="min-w-0 rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+                <div class="wrap-break-word text-[13px] font-medium uppercase tracking-wide text-stone-500">Gross Revenue</div>
                 <div class="mt-1 text-2xl font-bold" style="color: #4bc0c0">&euro;{{ number_format($siteConversion['revenue'], 2) }}</div>
-                <div class="mt-1 text-[11px] text-stone-400">Total collected from paid orders</div>
+                <div class="mt-1 wrap-break-word text-[11px] text-stone-400">Total collected from paid orders</div>
             </div>
         </div>
         <div class="mt-3 rounded-lg border border-stone-100 bg-stone-50 p-4">
@@ -62,25 +62,25 @@
         </div>
     @else
         <div class="grid gap-4 sm:grid-cols-4">
-            <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
-                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Visitors</div>
+            <div class="min-w-0 rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+                <div class="wrap-break-word text-[13px] font-medium uppercase tracking-wide text-stone-500">Visitors</div>
                 <div class="mt-1 text-2xl font-bold" style="color: #9966ff">{{ number_format($siteConversion['visitors']) }}</div>
-                <div class="mt-1 text-[11px] text-stone-400">Unique sessions per day</div>
+                <div class="mt-1 wrap-break-word text-[11px] text-stone-400">Unique sessions per day</div>
             </div>
-            <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
-                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Paid Orders</div>
+            <div class="min-w-0 rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+                <div class="wrap-break-word text-[13px] font-medium uppercase tracking-wide text-stone-500">Paid Orders</div>
                 <div class="mt-1 text-2xl font-bold" style="color: #36a2eb">{{ number_format($siteConversion['orders']) }}</div>
-                <div class="mt-1 text-[11px] text-stone-400">Orders with payment confirmed</div>
+                <div class="mt-1 wrap-break-word text-[11px] text-stone-400">Orders with payment confirmed</div>
             </div>
-            <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
-                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">CR% <span class="normal-case font-normal">(Conversion Rate)</span></div>
+            <div class="min-w-0 rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+                <div class="wrap-break-word text-[13px] font-medium uppercase tracking-wide text-stone-500">CR% <span class="normal-case font-normal">(Conversion Rate)</span></div>
                 <div class="mt-1 text-2xl font-bold {{ $siteConversion['conversion_pct'] >= 3 ? 'text-[#4bc0c0]' : ($siteConversion['conversion_pct'] >= 1 ? 'text-[#ff9f40]' : 'text-[#ff6384]') }}">{{ $siteConversion['conversion_pct'] }}%</div>
-                <div class="mt-1 text-[11px] text-stone-400">Orders ÷ Visitors × 100</div>
+                <div class="mt-1 wrap-break-word text-[11px] text-stone-400">Orders ÷ Visitors × 100</div>
             </div>
-            <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
-                <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Rev / Visitor</div>
+            <div class="min-w-0 rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
+                <div class="wrap-break-word text-[13px] font-medium uppercase tracking-wide text-stone-500">Rev / Visitor</div>
                 <div class="mt-1 text-2xl font-bold" style="color: #4bc0c0">&euro;{{ number_format($siteConversion['revenue_per_visitor'], 2) }}</div>
-                <div class="mt-1 text-[11px] text-stone-400">Gross Revenue ÷ Visitors</div>
+                <div class="mt-1 wrap-break-word text-[11px] text-stone-400">Gross Revenue ÷ Visitors</div>
             </div>
         </div>
         <div class="mt-2 text-[11px] text-stone-400">

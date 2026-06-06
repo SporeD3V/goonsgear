@@ -186,7 +186,7 @@
             <div id="admin-sidebar-overlay" class="fixed inset-0 z-30 hidden bg-black/50 lg:hidden" onclick="document.getElementById('admin-sidebar').classList.add('-translate-x-full'); this.classList.add('hidden');"></div>
 
             {{-- Main content --}}
-            <div class="flex flex-1 flex-col lg:ml-60">
+            <div class="flex min-w-0 flex-1 flex-col lg:ml-60">
                 {{-- Top bar (mobile toggle + breadcrumb) --}}
                 <header class="sticky top-0 z-20 flex items-center gap-3 border-b border-stone-200 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm sm:gap-4 sm:px-6 sm:py-3.5">
                     <button type="button" class="rounded-lg p-2.5 text-stone-600 hover:bg-stone-100 lg:hidden" aria-label="Open menu"
