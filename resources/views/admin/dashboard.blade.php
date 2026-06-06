@@ -31,7 +31,7 @@
                     @php
                         $pillParams = ['tab' => $tab, 'compare' => $compare ? 1 : 0, 'compare_mode' => $compareMode];
                     @endphp
-                    @foreach (['7d' => '7D', '14d' => '14D', '30d' => '30D', '90d' => '90D', 'year' => '1Y', 'all' => 'All'] as $key => $label)
+                    @foreach (['1d' => '1D', '7d' => '7D', '14d' => '14D', '30d' => '30D', '90d' => '90D', 'year' => '1Y', 'all' => 'All'] as $key => $label)
                         <a href="{{ route('admin.dashboard', array_merge($pillParams, ['period' => $key])) }}"
                            class="rounded-md px-3 py-1.5 text-sm font-medium transition {{ $period === $key ? 'bg-white text-[#36a2eb] shadow-sm' : 'text-stone-500 hover:text-stone-700' }}">
                             {{ $label }}
