@@ -854,7 +854,7 @@ class DashboardStatsService
                 }
             }
 
-            $items = $variants->map(function ($v) use ($salesData, $coProductCounts, $cutoff) {
+            $items = $variants->map(function ($v) use ($salesData, $coProductCounts, $cutoff, $topCompanions) {
                 $sale = $salesData->get($v->id);
                 $lastSaleAt = $sale ? Carbon::parse($sale->last_sale_at) : null;
                 $totalSold = $sale ? (int) $sale->total_sold : 0;
