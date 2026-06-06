@@ -155,7 +155,7 @@
     @else
         <div class="grid gap-5 lg:grid-cols-2">
             <div class="min-w-0 h-[260px]">
-                <canvas id="abandonedProductsChart"></canvas>
+                <canvas id="abandonedProductsChart" data-note-anchor-context="marketing-abandoned-products" data-note-anchor-label="Top Abandoned Products"></canvas>
             </div>
             <div class="min-w-0 -mx-5 overflow-x-auto px-5" x-data="{
                 sortCol: 'times_abandoned',

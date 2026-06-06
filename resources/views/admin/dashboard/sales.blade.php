@@ -31,7 +31,7 @@
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Revenue Over Time — Net vs Gross ({{ $periodLabel }})</h3>
         <div class="h-[280px]">
-            <canvas id="salesRevenueChart"></canvas>
+            <canvas id="salesRevenueChart" data-note-anchor-context="sales-revenue" data-note-anchor-label="Revenue Over Time"></canvas>
         </div>
     </div>
 
@@ -39,7 +39,7 @@
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="4">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Geography Hub</h3>
         <div class="h-[280px]">
-            <canvas id="countryRevenueChart"></canvas>
+            <canvas id="countryRevenueChart" data-note-anchor-context="sales-geography" data-note-anchor-label="Geography Hub"></canvas>
         </div>
     </div>
 </div>
@@ -61,7 +61,7 @@
         @endphp
         <div class="grid gap-5 lg:grid-cols-2">
             <div class="min-w-0 h-[260px]">
-                <canvas id="aovByCountryChart"></canvas>
+                <canvas id="aovByCountryChart" data-note-anchor-context="sales-aov-country" data-note-anchor-label="Gross Revenue, AOV & Customers by Country"></canvas>
             </div>
             <div class="min-w-0 -mx-5 overflow-x-auto px-5" x-data="{
                 sortCol: 'revenue',
@@ -186,7 +186,7 @@
         <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Gross Monthly Revenue — Multi-Year Overlay</h3>
         <p class="mb-2 text-[12px] text-stone-400">Each line is one year's gross monthly revenue. Hover over any point to see the exact amount. The dashed line shows the historical average across all years.</p>
         <div class="h-[300px]">
-            <canvas id="yearlyRevenueChart"></canvas>
+            <canvas id="yearlyRevenueChart" data-note-anchor-context="sales-yearly-revenue" data-note-anchor-label="Gross Monthly Revenue — Multi-Year Overlay"></canvas>
         </div>
     </div>
 
@@ -283,7 +283,7 @@
         <p class="text-[15px] text-stone-500">Not enough order data to show regional trends.</p>
     @else
         <div class="h-[300px]">
-            <canvas id="regionalGrowthChart"></canvas>
+            <canvas id="regionalGrowthChart" data-note-anchor-context="sales-regional-growth" data-note-anchor-label="Regional Growth Trend"></canvas>
         </div>
     @endif
 
@@ -470,7 +470,7 @@
         <p class="text-[15px] text-stone-500">Not enough order data yet.</p>
     @else
         <div class="mb-4 h-[260px]">
-            <canvas id="aovBreakdownChart"></canvas>
+            <canvas id="aovBreakdownChart" data-note-anchor-context="sales-aov-breakdown" data-note-anchor-label="AOV Inflation Adjuster"></canvas>
         </div>
         <div class="-mx-5 overflow-x-auto px-5">
             <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">

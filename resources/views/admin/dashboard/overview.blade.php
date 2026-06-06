@@ -128,7 +128,7 @@
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Gross Revenue ({{ $periodLabel }})</h3>
         <div class="h-[280px]">
-            <canvas id="revenueChart"></canvas>
+            <canvas id="revenueChart" data-note-anchor-context="overview-revenue" data-note-anchor-label="Gross Revenue"></canvas>
         </div>
     </div>
 
@@ -136,7 +136,7 @@
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="4">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Orders by Status</h3>
         <div class="mx-auto h-[250px] max-w-xs">
-            <canvas id="statusChart"></canvas>
+            <canvas id="statusChart" data-note-anchor-context="overview-status" data-note-anchor-label="Orders by Status"></canvas>
         </div>
     </div>
 </div>

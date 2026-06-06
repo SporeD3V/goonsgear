@@ -2,6 +2,7 @@
 
 use App\Models\AdminNote;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -12,6 +13,11 @@ new class extends Component
     public ?int $editingId = null;
     public string $editingContent = '';
     public bool $showForm = false;
+
+    public ?string $anchorKey = null;
+    public ?string $anchorLabel = null;
+    public ?string $anchorValue = null;
+    public array $anchorMeta = [];
 
     /** Optional context key to scope notes to a specific dashboard section */
     public ?string $context = null;
@@ -26,25 +32,43 @@ new class extends Component
         $this->contextLabel = $contextLabel;
     }
 
+    private function userId(): int
+    {
+        return (int) Auth::id();
+    }
+
     public function addNote(): void
     {
         $this->validate(['newNote' => 'required|string|max:1000']);
 
         AdminNote::create([
-            'user_id' => auth()->id(),
+            'user_id' => $this->userId(),
             'content' => $this->newNote,
             'color' => $this->newColor,
             'context' => $this->context,
             'context_label' => $this->contextLabel,
+            'anchor_key' => $this->anchorKey,
+            'anchor_label' => $this->anchorLabel,
+            'anchor_value' => $this->anchorValue,
+            'anchor_meta' => $this->anchorMeta ?: null,
         ]);
 
-        $this->reset('newNote', 'newColor', 'showForm');
+        $this->reset('newNote', 'newColor', 'showForm', 'anchorKey', 'anchorLabel', 'anchorValue', 'anchorMeta');
         unset($this->notes);
+    }
+
+    public function selectAnchor(array $anchor): void
+    {
+        $this->anchorKey = $anchor['anchorKey'] ?? null;
+        $this->anchorLabel = $anchor['anchorLabel'] ?? null;
+        $this->anchorValue = $anchor['anchorValue'] ?? null;
+        $this->anchorMeta = $anchor['anchorMeta'] ?? [];
+        $this->showForm = true;
     }
 
     public function startEditing(int $id): void
     {
-        $note = AdminNote::where('user_id', auth()->id())->findOrFail($id);
+        $note = AdminNote::where('user_id', $this->userId())->findOrFail($id);
         $this->editingId = $id;
         $this->editingContent = $note->content;
     }
@@ -53,7 +77,7 @@ new class extends Component
     {
         $this->validate(['editingContent' => 'required|string|max:1000']);
 
-        AdminNote::where('user_id', auth()->id())
+        AdminNote::where('user_id', $this->userId())
             ->where('id', $this->editingId)
             ->update(['content' => $this->editingContent]);
 
@@ -68,14 +92,14 @@ new class extends Component
 
     public function togglePin(int $id): void
     {
-        $note = AdminNote::where('user_id', auth()->id())->findOrFail($id);
+        $note = AdminNote::where('user_id', $this->userId())->findOrFail($id);
         $note->update(['is_pinned' => ! $note->is_pinned]);
         unset($this->notes);
     }
 
     public function deleteNote(int $id): void
     {
-        AdminNote::where('user_id', auth()->id())->where('id', $id)->delete();
+        AdminNote::where('user_id', $this->userId())->where('id', $id)->delete();
         unset($this->notes);
     }
 
@@ -85,7 +109,7 @@ new class extends Component
     #[Computed]
     public function notes(): Collection
     {
-        return AdminNote::where('user_id', auth()->id())
+        return AdminNote::where('user_id', $this->userId())
             ->when($this->context, fn ($q) => $q->where('context', $this->context))
             ->when(! $this->context, fn ($q) => $q->whereNull('context'))
             ->orderByDesc('is_pinned')
@@ -95,7 +119,7 @@ new class extends Component
     }
 }; ?>
 
-<div>
+<div x-data x-on:dashboard-note-anchor-selected.window="$wire.selectAnchor($event.detail)">
     <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
             <h3 class="text-base font-semibold text-stone-700">{{ $context ? 'Notes' : 'My Notes' }}</h3>
@@ -113,6 +137,13 @@ new class extends Component
     {{-- Add Note Form --}}
     @if ($showForm)
         <form wire:submit="addNote" class="mt-3 space-y-3 rounded-xl border border-stone-200 bg-white p-4 shadow-sm animate-fade-in">
+            @if ($anchorLabel)
+                <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                    <div class="font-medium">Linked to peak</div>
+                    <div class="mt-0.5 text-xs text-amber-700">{{ $anchorLabel }}@if ($anchorValue) · {{ $anchorValue }}@endif</div>
+                </div>
+            @endif
+
             <textarea wire:model="newNote"
                       rows="3"
                       placeholder="Write a note…"
@@ -176,7 +207,15 @@ new class extends Component
                         @if ($note->is_pinned)
                             <svg class="mt-0.5 h-4 w-4 shrink-0 text-amber-500" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
                         @endif
-                        <p class="flex-1 text-base leading-relaxed text-stone-700 whitespace-pre-line">{{ $note->content }}</p>
+                        <div class="flex-1">
+                            @if ($note->anchor_label)
+                                <div class="mb-2 rounded-lg border border-white/60 bg-white/60 px-3 py-2 text-xs text-stone-600">
+                                    <div class="font-medium text-stone-700">Linked to peak</div>
+                                    <div class="mt-0.5 text-stone-500">{{ $note->anchor_label }}@if ($note->anchor_value) · {{ $note->anchor_value }}@endif</div>
+                                </div>
+                            @endif
+                            <p class="text-base leading-relaxed text-stone-700 whitespace-pre-line">{{ $note->content }}</p>
+                        </div>
                     </div>
                     <div class="mt-2 flex items-center justify-between">
                         <span class="text-xs text-stone-400">{{ $note->created_at->diffForHumans() }}</span>

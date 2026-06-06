@@ -20,6 +20,10 @@ class AdminNote extends Model
         'color',
         'context',
         'context_label',
+        'anchor_key',
+        'anchor_label',
+        'anchor_value',
+        'anchor_meta',
     ];
 
     /**
@@ -37,6 +41,7 @@ class AdminNote extends Model
     {
         return [
             'is_pinned' => 'boolean',
+            'anchor_meta' => 'array',
         ];
     }
 }

@@ -3,6 +3,57 @@ import Chart from 'chart.js/auto';
 
 window.Chart = Chart;
 
+window.initDashboardChartNoteAnchors = function () {
+	document.querySelectorAll('canvas[data-note-anchor-context]:not([data-note-anchor-bound])').forEach((canvas) => {
+		canvas.dataset.noteAnchorBound = '1';
+		canvas.classList.add('cursor-pointer');
+
+		canvas.addEventListener('click', (event) => {
+			const chart = Chart.getChart(canvas);
+			if (!chart) {
+				return;
+			}
+
+			const elements = chart.getElementsAtEventForMode(event, 'nearest', { intersect: true }, true);
+			if (!elements.length) {
+				return;
+			}
+
+			const element = elements[0];
+			const datasetIndex = element.datasetIndex;
+			const pointIndex = element.index;
+			const dataset = chart.data.datasets[datasetIndex] || {};
+			const labels = Array.isArray(chart.data.labels) ? chart.data.labels : [];
+			const rawValue = Array.isArray(dataset.data) ? dataset.data[pointIndex] : null;
+			const chartLabel = canvas.dataset.noteAnchorLabel || canvas.id || 'Chart';
+			const pointLabel = labels[pointIndex] ?? dataset.label ?? 'Point';
+			const anchorKey = [canvas.dataset.noteAnchorContext || canvas.id || 'chart', dataset.label || 'series', pointLabel, pointIndex].join('::');
+
+			window.dispatchEvent(new CustomEvent('dashboard-note-anchor-selected', {
+				detail: {
+					anchorKey,
+					anchorLabel: `${chartLabel} - ${pointLabel}`,
+					anchorValue: rawValue === null || rawValue === undefined ? null : String(rawValue),
+					anchorMeta: {
+						chartId: canvas.id || null,
+						chartType: chart.config.type || null,
+						chartLabel,
+						datasetIndex,
+						datasetLabel: dataset.label || null,
+						pointIndex,
+						pointLabel,
+						rawValue,
+					},
+				},
+			}));
+		});
+	});
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+	window.initDashboardChartNoteAnchors();
+});
+
 // Bundle product page: component variant selector
 window.bundleSelector = function () {
 	return {

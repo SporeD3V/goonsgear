@@ -104,7 +104,7 @@
         <p class="text-[15px] text-stone-500">Not enough order history yet.</p>
     @else
         <div class="h-[300px]">
-            <canvas id="cohortRetentionChart"></canvas>
+            <canvas id="cohortRetentionChart" data-note-anchor-context="audience-cohort-retention" data-note-anchor-label="Cohort Retention History"></canvas>
         </div>
         <p class="mt-2 text-[12px] text-stone-400">* = cohort still within 12-month window (retention may still grow)</p>
     @endif
@@ -119,7 +119,7 @@
     @else
         <div class="grid gap-6 lg:grid-cols-2">
             <div class="min-w-0 h-[260px]">
-                <canvas id="rfmChart"></canvas>
+                <canvas id="rfmChart" data-note-anchor-context="audience-rfm" data-note-anchor-label="Customer Segments (RFM)"></canvas>
             </div>
             <div class="min-w-0 -mx-5 overflow-x-auto px-5" x-data="{
                 sortCol: 'count',
@@ -194,7 +194,7 @@
         </div>
         @if (!empty($clv['by_year']))
             <div class="h-[260px]">
-                <canvas id="clvByYearChart"></canvas>
+                <canvas id="clvByYearChart" data-note-anchor-context="audience-clv" data-note-anchor-label="Customer Lifetime Value"></canvas>
             </div>
         @endif
     @endif

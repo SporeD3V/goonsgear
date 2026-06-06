@@ -1886,6 +1886,35 @@ class DashboardControllerTest extends TestCase
             ->assertDontSee('Regional growth note');
     }
 
+    public function test_dashboard_notes_can_attach_to_a_chart_anchor(): void
+    {
+        $user = User::factory()->admin()->create();
+        $this->actingAs($user);
+
+        Livewire::test('admin.dashboard-notes')
+            ->call('selectAnchor', [
+                'anchorKey' => 'overview-revenue::Gross Revenue::2026-06-06::0',
+                'anchorLabel' => 'Gross Revenue - 2026-06-06',
+                'anchorValue' => '€1,245.50',
+                'anchorMeta' => [
+                    'chartId' => 'revenueChart',
+                    'datasetLabel' => 'Gross Revenue',
+                    'pointLabel' => '2026-06-06',
+                ],
+            ])
+            ->set('newNote', 'Revenue peak worth checking')
+            ->call('addNote')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('admin_notes', [
+            'user_id' => $user->id,
+            'content' => 'Revenue peak worth checking',
+            'anchor_key' => 'overview-revenue::Gross Revenue::2026-06-06::0',
+            'anchor_label' => 'Gross Revenue - 2026-06-06',
+            'anchor_value' => '€1,245.50',
+        ]);
+    }
+
     // ── Refund Deduction ───────────────────────────────────────
 
     public function test_net_revenue_deducts_refund_total(): void
