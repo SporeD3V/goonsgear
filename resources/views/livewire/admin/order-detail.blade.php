@@ -239,7 +239,7 @@ new class extends Component
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">Order Items</h3>
         <div class="-mx-5 overflow-x-auto px-5">
-            <table class="min-w-full border border-slate-200 text-sm">
+            <table class="admin-mobile-table min-w-full border border-slate-200 text-sm">
                 <thead class="bg-slate-50">
                     <tr>
                         <th class="border border-slate-200 px-3 py-2 text-left">Thumb</th>
@@ -306,3 +306,4 @@ new class extends Component
         @include('admin.partials.edit-history', ['histories' => $this->editHistories])
     </div>
 </div>
+

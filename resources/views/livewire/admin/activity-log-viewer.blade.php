@@ -113,7 +113,7 @@ new class extends Component
 
         {{-- Log Table --}}
         <div class="-mx-5 overflow-x-auto px-5">
-        <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <table class="admin-mobile-table min-w-full divide-y divide-slate-200 text-sm">
             <thead class="bg-slate-50">
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-slate-600">When</th>
@@ -167,3 +167,4 @@ new class extends Component
     @endif
     </div>
 </div>
+

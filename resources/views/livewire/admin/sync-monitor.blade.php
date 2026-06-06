@@ -243,7 +243,7 @@ new class extends Component
         <div wire:loading.delay class="mb-2 text-xs text-slate-500">Loading…</div>
 
         <div class="-mx-5 overflow-x-auto px-5">
-            <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <table class="admin-mobile-table min-w-full divide-y divide-slate-200 text-sm">
                 <thead class="bg-slate-50">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-slate-600">ID</th>
@@ -323,3 +323,4 @@ new class extends Component
         @endif
     </div>
 </div>
+

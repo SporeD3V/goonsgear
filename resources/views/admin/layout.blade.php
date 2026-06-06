@@ -221,5 +221,49 @@
 
         @livewireScripts
         @stack('scripts')
+        <script>
+            (function () {
+                function applyAdminMobileTableLabels() {
+                    const tables = document.querySelectorAll('table.admin-mobile-table');
+                    tables.forEach((table) => {
+                        const headerCells = Array.from(table.querySelectorAll('thead th')).map((th) => (th.textContent || '').trim());
+                        if (headerCells.length === 0) {
+                            return;
+                        }
+
+                        table.querySelectorAll('tbody tr').forEach((row) => {
+                            const bodyCells = Array.from(row.querySelectorAll('td'));
+                            bodyCells.forEach((cell, index) => {
+                                if (cell.hasAttribute('colspan')) {
+                                    return;
+                                }
+
+                                const fallbackLabel = 'Column ' + (index + 1);
+                                const label = headerCells[index] || fallbackLabel;
+                                cell.setAttribute('data-label', label);
+                            });
+                        });
+                    });
+                }
+
+                document.addEventListener('DOMContentLoaded', function () {
+                    applyAdminMobileTableLabels();
+
+                    const main = document.querySelector('main');
+                    if (!main) {
+                        return;
+                    }
+
+                    const observer = new MutationObserver(function () {
+                        applyAdminMobileTableLabels();
+                    });
+
+                    observer.observe(main, {
+                        childList: true,
+                        subtree: true,
+                    });
+                });
+            })();
+        </script>
     </body>
 </html>

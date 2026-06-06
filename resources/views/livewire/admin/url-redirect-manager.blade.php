@@ -179,7 +179,7 @@ new class extends Component
 
     {{-- Table --}}
     <div class="-mx-5 overflow-x-auto px-5">
-        <table class="min-w-full border border-slate-200 text-sm">
+        <table class="admin-mobile-table min-w-full border border-slate-200 text-sm">
             <thead class="bg-slate-50">
                 <tr>
                     @foreach (['from_path' => 'From Path', 'to_url' => 'Destination', 'status_code' => 'Status', 'is_active' => 'Active'] as $field => $label)
@@ -286,3 +286,4 @@ new class extends Component
         </div>
     @endif
 </div>
+

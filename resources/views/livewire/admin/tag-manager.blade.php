@@ -412,7 +412,7 @@ new class extends Component
 
         {{-- Table --}}
         <div class="-mx-5 overflow-x-auto px-5">
-        <table class="min-w-full border border-slate-200 text-sm">
+        <table class="admin-mobile-table min-w-full border border-slate-200 text-sm">
             <thead class="bg-slate-50">
                 <tr>
                     <th class="border border-slate-200 px-3 py-2 text-left">Name</th>
@@ -583,3 +583,4 @@ new class extends Component
         </div>
     @endif
 </div>
+

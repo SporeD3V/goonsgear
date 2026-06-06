@@ -5,7 +5,29 @@
         <h1 class="text-2xl font-bold text-stone-800 animate-fade-in">Dashboard</h1>
 
         {{-- Tab Navigation --}}
-        <div class="border-b border-stone-200">
+        @php
+            $dashboardTabs = ['overview' => 'Overview', 'sales' => 'Sales & Revenue', 'audience' => 'Audience & CRM', 'inventory' => 'Inventory & Ops', 'marketing' => 'Marketing & Funnel'];
+        @endphp
+
+        <div class="rounded-lg border border-stone-200 bg-white p-3 sm:hidden">
+            <label for="dashboard-tab-select" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-stone-500">Dashboard Section</label>
+            <select id="dashboard-tab-select"
+                    class="w-full rounded-md border border-stone-300 px-3 py-2 text-sm text-stone-700"
+                    onchange="if (this.value) window.location.href = this.value;">
+                @php
+                    $mobileTabParams = ['period' => $period, 'compare' => $compare ? 1 : 0, 'compare_mode' => $compareMode];
+                    if ($period === 'custom' && $customFrom && $customTo) {
+                        $mobileTabParams['custom_from'] = $customFrom;
+                        $mobileTabParams['custom_to'] = $customTo;
+                    }
+                @endphp
+                @foreach ($dashboardTabs as $key => $label)
+                    <option value="{{ route('admin.dashboard', array_merge($mobileTabParams, ['tab' => $key])) }}" {{ $tab === $key ? 'selected' : '' }}>{{ $label }}</option>
+                @endforeach
+            </select>
+        </div>
+
+        <div class="hidden border-b border-stone-200 sm:block">
             <nav class="-mb-px flex gap-1 overflow-x-auto text-[15px] font-medium">
                 @php
                     $tabParams = ['period' => $period, 'compare' => $compare ? 1 : 0, 'compare_mode' => $compareMode];
@@ -14,7 +36,7 @@
                         $tabParams['custom_to'] = $customTo;
                     }
                 @endphp
-                @foreach (['overview' => 'Overview', 'sales' => 'Sales & Revenue', 'audience' => 'Audience & CRM', 'inventory' => 'Inventory & Ops', 'marketing' => 'Marketing & Funnel'] as $key => $label)
+                @foreach ($dashboardTabs as $key => $label)
                     <a href="{{ route('admin.dashboard', array_merge($tabParams, ['tab' => $key])) }}"
                        class="whitespace-nowrap rounded-t-lg border-b-2 px-4 py-3 transition {{ $tab === $key ? 'border-[#36a2eb] bg-[#36a2eb]/10 text-[#36a2eb]' : 'border-transparent text-stone-500 hover:border-stone-300 hover:bg-stone-50 hover:text-stone-700' }}">
                         {{ $label }}
@@ -144,6 +166,60 @@
                 });
             });
         });
+
+        const isMobile = window.matchMedia('(max-width: 767px)').matches;
+        const existingToggle = document.getElementById('dashboard-mobile-sections-toggle');
+        if (existingToggle) {
+            existingToggle.remove();
+        }
+
+        root.querySelectorAll('.dashboard-section-collapsed').forEach((section) => {
+            section.classList.remove('dashboard-section-collapsed', 'dashboard-section-expanded');
+        });
+
+        if (!isMobile) {
+            return;
+        }
+
+        const sections = Array.from(root.children).filter((child) => child.matches('div'));
+        const visibleLimit = 4;
+        if (sections.length <= visibleLimit) {
+            return;
+        }
+
+        sections.forEach((section, index) => {
+            if (index >= visibleLimit) {
+                section.classList.add('dashboard-section-collapsed');
+            }
+        });
+
+        const button = document.createElement('button');
+        button.id = 'dashboard-mobile-sections-toggle';
+        button.type = 'button';
+        button.className = 'dashboard-mobile-sections-toggle mt-2 w-full rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700';
+        button.textContent = 'Show More Sections';
+
+        button.addEventListener('click', function () {
+            const collapsed = root.querySelectorAll('.dashboard-section-collapsed');
+            const expanded = root.querySelectorAll('.dashboard-section-expanded');
+            const shouldExpand = collapsed.length > 0;
+
+            if (shouldExpand) {
+                collapsed.forEach((section) => {
+                    section.classList.remove('dashboard-section-collapsed');
+                    section.classList.add('dashboard-section-expanded');
+                });
+                button.textContent = 'Show Fewer Sections';
+            } else {
+                expanded.forEach((section) => {
+                    section.classList.remove('dashboard-section-expanded');
+                    section.classList.add('dashboard-section-collapsed');
+                });
+                button.textContent = 'Show More Sections';
+            }
+        });
+
+        root.after(button);
     });
 </script>
 @endpush

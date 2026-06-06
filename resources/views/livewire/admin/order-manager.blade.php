@@ -108,7 +108,7 @@ new class extends Component
 
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div class="-mx-5 overflow-x-auto px-5">
-        <table class="min-w-full border border-slate-200 text-sm">
+        <table class="admin-mobile-table min-w-full border border-slate-200 text-sm">
             <thead class="bg-slate-50">
                 <tr>
                     <th class="border border-slate-200 px-3 py-2 text-left">Order</th>
@@ -154,3 +154,4 @@ new class extends Component
         <div class="mt-4">{{ $this->orders->links() }}</div>
     </div>
 </div>
+
