@@ -22,7 +22,7 @@ class DashboardController extends Controller
     ];
 
     /** @var list<string> */
-    private const COMPARE_MODES = ['previous_period', 'yoy', 'custom_interval'];
+    private const COMPARE_MODES = ['previous_period', 'yoy', 'custom_interval', 'custom_range'];
 
     /** @var list<string> */
     private const COMPARE_INTERVAL_UNITS = ['day', 'week', 'month', 'quarter', 'year'];
@@ -35,6 +35,8 @@ class DashboardController extends Controller
         $compareMode = $request->query('compare_mode', 'previous_period');
         $compareIntervalUnit = $request->query('compare_interval_unit', 'week');
         $compareIntervalValue = $request->integer('compare_interval_value', 1);
+        $compareCustomFrom = $request->query('compare_custom_from');
+        $compareCustomTo = $request->query('compare_custom_to');
 
         if (! in_array($compareMode, self::COMPARE_MODES, true)) {
             $compareMode = 'previous_period';
@@ -91,6 +93,21 @@ class DashboardController extends Controller
             } elseif ($compareMode === 'custom_interval') {
                 $prevFrom = $this->shiftDateByInterval($from->copy(), $compareIntervalValue, $compareIntervalUnit);
                 $prevTo = $this->shiftDateByInterval($to->copy(), $compareIntervalValue, $compareIntervalUnit);
+            } elseif ($compareMode === 'custom_range') {
+                [$parsedCompareFrom, $parsedCompareTo] = $this->parseCustomCompareRange($compareCustomFrom, $compareCustomTo);
+
+                if ($parsedCompareFrom && $parsedCompareTo) {
+                    $prevFrom = $parsedCompareFrom;
+                    $prevTo = $parsedCompareTo;
+                    $compareCustomFrom = $parsedCompareFrom->toDateString();
+                    $compareCustomTo = $parsedCompareTo->toDateString();
+                } else {
+                    $days = (int) $from->diffInDays($to);
+                    $prevTo = $from->copy()->subSecond();
+                    $prevFrom = $from->copy()->subDays($days);
+                    $compareCustomFrom = $prevFrom->toDateString();
+                    $compareCustomTo = $prevTo->toDateString();
+                }
             } else {
                 $days = (int) $from->diffInDays($to);
                 $prevTo = $from->copy()->subSecond();
@@ -118,6 +135,8 @@ class DashboardController extends Controller
             'compareMode' => $compareMode,
             'compareIntervalUnit' => $compareIntervalUnit,
             'compareIntervalValue' => $compareIntervalValue,
+            'compareCustomFrom' => $compareCustomFrom,
+            'compareCustomTo' => $compareCustomTo,
             'customFrom' => $customFrom,
             'customTo' => $customTo,
             'periodLabel' => $this->periodLabel($period, $from, $to),
@@ -311,5 +330,28 @@ class DashboardController extends Controller
             'year' => $date->subYearsNoOverflow($value),
             default => $date->subWeeks($value),
         };
+    }
+
+    /**
+     * @return array{0: Carbon|null, 1: Carbon|null}
+     */
+    private function parseCustomCompareRange(?string $from, ?string $to): array
+    {
+        if (! $from || ! $to) {
+            return [null, null];
+        }
+
+        try {
+            $parsedFrom = Carbon::parse($from)->startOfDay();
+            $parsedTo = Carbon::parse($to)->endOfDay();
+
+            if ($parsedFrom->gt($parsedTo)) {
+                return [null, null];
+            }
+
+            return [$parsedFrom, $parsedTo];
+        } catch (\Exception) {
+            return [null, null];
+        }
     }
 }

@@ -21,6 +21,8 @@
                         'compare_mode' => $compareMode,
                         'compare_interval_unit' => $compareIntervalUnit,
                         'compare_interval_value' => $compareIntervalValue,
+                        'compare_custom_from' => $compareCustomFrom,
+                        'compare_custom_to' => $compareCustomTo,
                     ];
                     if ($period === 'custom' && $customFrom && $customTo) {
                         $mobileTabParams['custom_from'] = $customFrom;
@@ -42,6 +44,8 @@
                         'compare_mode' => $compareMode,
                         'compare_interval_unit' => $compareIntervalUnit,
                         'compare_interval_value' => $compareIntervalValue,
+                        'compare_custom_from' => $compareCustomFrom,
+                        'compare_custom_to' => $compareCustomTo,
                     ];
                     if ($period === 'custom' && $customFrom && $customTo) {
                         $tabParams['custom_from'] = $customFrom;
@@ -69,6 +73,8 @@
                             'compare_mode' => $compareMode,
                             'compare_interval_unit' => $compareIntervalUnit,
                             'compare_interval_value' => $compareIntervalValue,
+                            'compare_custom_from' => $compareCustomFrom,
+                            'compare_custom_to' => $compareCustomTo,
                         ];
                     @endphp
                     @foreach (['1d' => '1D', '7d' => '7D', '14d' => '14D', '30d' => '30D', '90d' => '90D', 'year' => '1Y', 'all' => 'All'] as $key => $label)
@@ -93,6 +99,8 @@
                         <input type="hidden" name="compare_mode" value="{{ $compareMode }}">
                         <input type="hidden" name="compare_interval_unit" value="{{ $compareIntervalUnit }}">
                         <input type="hidden" name="compare_interval_value" value="{{ $compareIntervalValue }}">
+                        <input type="hidden" name="compare_custom_from" value="{{ $compareCustomFrom }}">
+                        <input type="hidden" name="compare_custom_to" value="{{ $compareCustomTo }}">
                         <input type="date" name="custom_from" value="{{ $customFrom }}"
                             class="w-full rounded-md border border-stone-300 px-2.5 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb] sm:w-auto"
                             required>
@@ -116,6 +124,8 @@
                             'period' => $period,
                             'compare_interval_unit' => $compareIntervalUnit,
                             'compare_interval_value' => $compareIntervalValue,
+                            'compare_custom_from' => $compareCustomFrom,
+                            'compare_custom_to' => $compareCustomTo,
                         ];
                         if ($period === 'custom' && $customFrom && $customTo) {
                             $baseCompareParams['custom_from'] = $customFrom;
@@ -144,6 +154,12 @@
                                 <svg class="mr-1 inline-block h-3.5 w-3.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15m0 0 4.5-4.5M4.5 12l4.5 4.5M12 4.5v15"/></svg>
                                 vs Custom Interval
                             </a>
+                            <a href="{{ route('admin.dashboard', array_merge($baseCompareParams, ['compare' => 1, 'compare_mode' => 'custom_range'])) }}"
+                               class="rounded-md px-2.5 py-1.5 text-xs font-medium transition {{ $compare && $compareMode === 'custom_range' ? 'bg-white text-[#9966ff] shadow-sm' : 'text-stone-400 hover:text-stone-600' }}"
+                               title="Compare against an explicit date range">
+                                <svg class="mr-1 inline-block h-3.5 w-3.5 -mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3M4 11h16M5 21h14a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1Z"/></svg>
+                                vs Date Range
+                            </a>
                         @endif
                         @if ($compare)
                             <a href="{{ route('admin.dashboard', array_merge($baseCompareParams, ['compare' => 0, 'compare_mode' => $compareMode])) }}"
@@ -160,6 +176,8 @@
                             <input type="hidden" name="period" value="{{ $period }}">
                             <input type="hidden" name="compare" value="1">
                             <input type="hidden" name="compare_mode" value="custom_interval">
+                            <input type="hidden" name="compare_custom_from" value="{{ $compareCustomFrom }}">
+                            <input type="hidden" name="compare_custom_to" value="{{ $compareCustomTo }}">
                             @if ($period === 'custom' && $customFrom && $customTo)
                                 <input type="hidden" name="custom_from" value="{{ $customFrom }}">
                                 <input type="hidden" name="custom_to" value="{{ $customTo }}">
@@ -178,6 +196,37 @@
                                     <option value="{{ $unitKey }}" {{ $compareIntervalUnit === $unitKey ? 'selected' : '' }}>{{ $unitLabel }}</option>
                                 @endforeach
                             </select>
+                            <button type="submit" class="rounded-md bg-[#9966ff] px-2.5 py-1 text-xs font-medium text-white transition hover:bg-[#9966ff]/90">Apply</button>
+                        </form>
+                    @endif
+
+                    @if ($period !== 'all' && $compare && $compareMode === 'custom_range')
+                        <form method="GET" action="{{ route('admin.dashboard') }}" class="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-stone-200 bg-white p-2">
+                            <input type="hidden" name="tab" value="{{ $tab }}">
+                            <input type="hidden" name="period" value="{{ $period }}">
+                            <input type="hidden" name="compare" value="1">
+                            <input type="hidden" name="compare_mode" value="custom_range">
+                            <input type="hidden" name="compare_interval_unit" value="{{ $compareIntervalUnit }}">
+                            <input type="hidden" name="compare_interval_value" value="{{ $compareIntervalValue }}">
+                            @if ($period === 'custom' && $customFrom && $customTo)
+                                <input type="hidden" name="custom_from" value="{{ $customFrom }}">
+                                <input type="hidden" name="custom_to" value="{{ $customTo }}">
+                            @endif
+
+                            <label class="text-xs font-medium text-stone-500" for="compare-custom-from">Compare From</label>
+                            <input id="compare-custom-from"
+                                   type="date"
+                                   name="compare_custom_from"
+                                   value="{{ $compareCustomFrom }}"
+                                   class="rounded-md border border-stone-300 px-2 py-1 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]"
+                                   required>
+                            <span class="text-xs text-stone-400">to</span>
+                            <input id="compare-custom-to"
+                                   type="date"
+                                   name="compare_custom_to"
+                                   value="{{ $compareCustomTo }}"
+                                   class="rounded-md border border-stone-300 px-2 py-1 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]"
+                                   required>
                             <button type="submit" class="rounded-md bg-[#9966ff] px-2.5 py-1 text-xs font-medium text-white transition hover:bg-[#9966ff]/90">Apply</button>
                         </form>
                     @endif

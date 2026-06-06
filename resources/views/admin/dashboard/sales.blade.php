@@ -252,7 +252,7 @@
                     return collect($months)
                         ->map(fn ($value, $month) => [
                             'key' => 'sales-yearly-revenue::' . $year . '::' . $month,
-                            'label' => $year . ' - ' . $month,
+                            'label' => $year . ' - ' . (\Carbon\Carbon::create()->month((int) $month)->format('M')),
                             'value' => '€' . number_format((float) $value, 2),
                             'meta' => [
                                 'year' => $year,
@@ -936,13 +936,8 @@
                         }
 
                         const year = dataset.label;
-                        const month = yearlyRevenue.months[pointIndex] ?? null;
-
-                        if (!month) {
-                            return;
-                        }
-
-                        const anchorKey = 'sales-yearly-revenue::' + year + '::' + month;
+                        const monthNumber = pointIndex + 1;
+                        const anchorKey = 'sales-yearly-revenue::' + year + '::' + monthNumber;
                         selectDashboardNoteAnchor('sales-yearly-revenue', anchorKey);
                     },
                     plugins: {

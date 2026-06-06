@@ -280,6 +280,24 @@ class DashboardControllerTest extends TestCase
             ->assertViewHas('prevRevenueOverTime');
     }
 
+    public function test_compare_mode_accepts_custom_range(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->get(route('admin.dashboard', [
+            'compare' => 1,
+            'compare_mode' => 'custom_range',
+            'compare_custom_from' => '2024-01-01',
+            'compare_custom_to' => '2024-01-31',
+        ]))
+            ->assertOk()
+            ->assertViewHas('compareMode', 'custom_range')
+            ->assertViewHas('compareCustomFrom', '2024-01-01')
+            ->assertViewHas('compareCustomTo', '2024-01-31')
+            ->assertViewHas('deltas')
+            ->assertViewHas('prevRevenueOverTime');
+    }
+
     public function test_invalid_compare_mode_defaults_to_previous_period(): void
     {
         $this->actingAsAdmin();
@@ -303,6 +321,29 @@ class DashboardControllerTest extends TestCase
             ->assertViewHas('compareMode', 'custom_interval')
             ->assertViewHas('compareIntervalUnit', 'week')
             ->assertViewHas('compareIntervalValue', 1);
+    }
+
+    public function test_invalid_custom_range_inputs_fallback_to_previous_period_range(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.dashboard', [
+            'compare' => 1,
+            'compare_mode' => 'custom_range',
+            'compare_custom_from' => 'bad-date',
+            'compare_custom_to' => 'also-bad',
+        ]));
+
+        $response
+            ->assertOk()
+            ->assertViewHas('compareMode', 'custom_range')
+            ->assertViewHas('compareCustomFrom')
+            ->assertViewHas('compareCustomTo')
+            ->assertViewHas('deltas')
+            ->assertViewHas('prevRevenueOverTime');
+
+        $this->assertNotNull($response->viewData('compareCustomFrom'));
+        $this->assertNotNull($response->viewData('compareCustomTo'));
     }
 
     public function test_custom_date_range_sets_period_to_custom(): void
