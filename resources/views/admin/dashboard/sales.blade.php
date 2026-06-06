@@ -29,18 +29,64 @@
 <div class="grid gap-6 lg:grid-cols-2">
     {{-- Revenue Over Time --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
+        @php
+            $salesRevenueNoteOptions = collect($revenueOverTime)
+                ->values()
+                ->flatMap(function ($row, $index) {
+                    $series = [
+                        'net' => ['label' => 'Net Revenue', 'value' => $row['revenue'] ?? null],
+                        'gross' => ['label' => 'Gross Revenue', 'value' => $row['gross'] ?? null],
+                        'discounts' => ['label' => 'Discounts', 'value' => $row['discounts'] ?? null],
+                    ];
+
+                    return collect($series)
+                        ->filter(fn ($item) => $item['value'] !== null)
+                        ->map(function ($item, $seriesKey) use ($row, $index) {
+                            return [
+                                'key' => 'sales-revenue::' . $seriesKey . '::' . ($row['day'] ?? $index) . '::' . $index,
+                                'label' => $item['label'] . ' - ' . ($row['day'] ?? 'Unknown Day'),
+                                'value' => '€' . number_format((float) $item['value'], 2),
+                                'meta' => [
+                                    'series' => $seriesKey,
+                                    'day' => $row['day'] ?? null,
+                                    'raw_value' => $item['value'],
+                                ],
+                            ];
+                        })
+                        ->values();
+                })
+                ->values()
+                ->all();
+        @endphp
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Revenue Over Time — Net vs Gross ({{ $periodLabel }})</h3>
         <div class="h-[280px]">
             <canvas id="salesRevenueChart"></canvas>
         </div>
+        @include('admin.dashboard._contextual-notes', ['context' => 'sales-revenue', 'label' => 'Revenue Over Time', 'anchorOptions' => $salesRevenueNoteOptions])
     </div>
 
     {{-- Geography Hub --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="4">
+        @php
+            $salesGeographyNoteOptions = collect($revenueByCountry)
+                ->values()
+                ->map(fn ($row, $index) => [
+                    'key' => 'sales-geography::' . ($row['country'] ?? 'Unknown') . '::' . $index,
+                    'label' => 'Country - ' . ($row['country'] ?? 'Unknown'),
+                    'value' => '€' . number_format((float) ($row['revenue'] ?? 0), 2),
+                    'meta' => [
+                        'country' => $row['country'] ?? null,
+                        'revenue' => $row['revenue'] ?? null,
+                        'orders' => $row['orders'] ?? null,
+                    ],
+                ])
+                ->all();
+        @endphp
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Geography Hub</h3>
         <div class="h-[280px]">
             <canvas id="countryRevenueChart"></canvas>
         </div>
+        @include('admin.dashboard._contextual-notes', ['context' => 'sales-geography', 'label' => 'Geography Hub', 'anchorOptions' => $salesGeographyNoteOptions])
     </div>
 </div>
 
@@ -58,6 +104,22 @@
                 $row['customers'] = $customerCountMap[$row['country'] ?? ''] ?? $customerCountMap[$row['country']] ?? 0;
                 return $row;
             })->all();
+
+            $salesAovCountryNoteOptions = collect($geoRows)
+                ->values()
+                ->map(fn ($row, $index) => [
+                    'key' => 'sales-aov-country::' . ($row['country'] ?? 'Unknown') . '::' . $index,
+                    'label' => 'Country - ' . ($row['country'] ?? 'Unknown'),
+                    'value' => 'Revenue €' . number_format((float) ($row['revenue'] ?? 0), 2) . ' | AOV €' . number_format((float) ($row['aov'] ?? 0), 2),
+                    'meta' => [
+                        'country' => $row['country'] ?? null,
+                        'revenue' => $row['revenue'] ?? null,
+                        'orders' => $row['orders'] ?? null,
+                        'aov' => $row['aov'] ?? null,
+                        'customers' => $row['customers'] ?? null,
+                    ],
+                ])
+                ->all();
         @endphp
         <div class="grid gap-5 lg:grid-cols-2">
             <div class="min-w-0 h-[260px]">
@@ -116,6 +178,7 @@
             </div>
         </div>
     @endif
+    @include('admin.dashboard._contextual-notes', ['context' => 'sales-aov-country', 'label' => 'Gross Revenue, AOV & Customers by Country', 'anchorOptions' => $salesAovCountryNoteOptions ?? []])
 </div>
 
 {{-- Top Products --}}
@@ -183,11 +246,31 @@
 <div class="grid gap-6 lg:grid-cols-3">
     {{-- Multi-Year Line Overlay --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm lg:col-span-2" data-delay="6">
+        @php
+            $salesYearlyRevenueNoteOptions = collect($yearlyRevenue['years'] ?? [])
+                ->flatMap(function ($months, $year) {
+                    return collect($months)
+                        ->map(fn ($value, $month) => [
+                            'key' => 'sales-yearly-revenue::' . $year . '::' . $month,
+                            'label' => $year . ' - ' . $month,
+                            'value' => '€' . number_format((float) $value, 2),
+                            'meta' => [
+                                'year' => $year,
+                                'month' => $month,
+                                'raw_value' => $value,
+                            ],
+                        ])
+                        ->values();
+                })
+                ->values()
+                ->all();
+        @endphp
         <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Gross Monthly Revenue — Multi-Year Overlay</h3>
         <p class="mb-2 text-[12px] text-stone-400">Each line is one year's gross monthly revenue. Hover over any point to see the exact amount. The dashed line shows the historical average across all years.</p>
         <div class="h-[300px]">
             <canvas id="yearlyRevenueChart"></canvas>
         </div>
+        @include('admin.dashboard._contextual-notes', ['context' => 'sales-yearly-revenue', 'label' => 'Gross Monthly Revenue — Multi-Year Overlay', 'anchorOptions' => $salesYearlyRevenueNoteOptions])
     </div>
 
     {{-- Best-in-Class Month Benchmark --}}
@@ -506,6 +589,23 @@
 
 {{-- AOV Inflation Adjuster --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="12">
+    @php
+        $salesAovBreakdownNoteOptions = collect($aovBreakdown)
+            ->values()
+            ->map(fn ($row, $index) => [
+                'key' => 'sales-aov-breakdown::' . ($row['year'] ?? $index),
+                'label' => 'AOV Breakdown - ' . ($row['year'] ?? 'Unknown Year'),
+                'value' => 'AOV €' . number_format((float) ($row['aov'] ?? 0), 2),
+                'meta' => [
+                    'year' => $row['year'] ?? null,
+                    'total_orders' => $row['total_orders'] ?? null,
+                    'aov' => $row['aov'] ?? null,
+                    'avg_items_per_order' => $row['avg_items_per_order'] ?? null,
+                    'avg_price_per_item' => $row['avg_price_per_item'] ?? null,
+                ],
+            ])
+            ->all();
+    @endphp
     <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">AOV Inflation Adjuster</h3>
     <p class="mb-3 text-[13px] text-stone-500">Are customers buying more items per order, or are price increases driving AOV?</p>
     @if (empty($aovBreakdown))
@@ -539,6 +639,7 @@
             </table>
         </div>
     @endif
+    @include('admin.dashboard._contextual-notes', ['context' => 'sales-aov-breakdown', 'label' => 'AOV Inflation Adjuster', 'anchorOptions' => $salesAovBreakdownNoteOptions ?? []])
 </div>
 
 {{-- Shipping Margins --}}

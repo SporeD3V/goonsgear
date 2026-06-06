@@ -1945,6 +1945,41 @@ class DashboardControllerTest extends TestCase
         ]);
     }
 
+    public function test_dashboard_notes_can_attach_anchor_for_orders_list_context(): void
+    {
+        $user = User::factory()->admin()->create();
+        $this->actingAs($user);
+
+        Livewire::test('admin.dashboard-notes', [
+            'context' => 'orders-list',
+            'contextLabel' => 'Orders List',
+            'anchorOptions' => [[
+                'key' => 'order-list::42',
+                'label' => 'Order GG-42',
+                'value' => '$199.99',
+                'meta' => [
+                    'order_id' => 42,
+                    'status' => 'paid',
+                ],
+            ]],
+        ])
+            ->set('showForm', true)
+            ->set('selectedAnchorKey', 'order-list::42')
+            ->set('newNote', 'Check this high-value order')
+            ->call('addNote')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('admin_notes', [
+            'user_id' => $user->id,
+            'context' => 'orders-list',
+            'context_label' => 'Orders List',
+            'content' => 'Check this high-value order',
+            'anchor_key' => 'order-list::42',
+            'anchor_label' => 'Order GG-42',
+            'anchor_value' => '$199.99',
+        ]);
+    }
+
     // ── Refund Deduction ───────────────────────────────────────
 
     public function test_net_revenue_deducts_refund_total(): void
