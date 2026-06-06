@@ -105,8 +105,45 @@
         </div>
 
         {{-- Tab Content --}}
-        <div class="animate-fade-in space-y-6">
+        <div id="admin-dashboard-content" class="animate-fade-in space-y-6">
             @include("admin.dashboard.{$tab}")
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const root = document.getElementById('admin-dashboard-content');
+        if (!root) {
+            return;
+        }
+
+        const tables = root.querySelectorAll('table');
+        tables.forEach((table) => {
+            table.classList.add('dashboard-mobile-table');
+
+            const headerCells = Array.from(table.querySelectorAll('thead th')).map((th) => {
+                return (th.textContent || '').trim();
+            });
+
+            if (headerCells.length === 0) {
+                return;
+            }
+
+            table.querySelectorAll('tbody tr').forEach((row) => {
+                const bodyCells = Array.from(row.querySelectorAll('td'));
+                bodyCells.forEach((cell, index) => {
+                    if (cell.hasAttribute('colspan')) {
+                        return;
+                    }
+
+                    const fallbackLabel = 'Column ' + (index + 1);
+                    const label = headerCells[index] || fallbackLabel;
+                    cell.setAttribute('data-label', label);
+                });
+            });
+        });
+    });
+</script>
+@endpush
