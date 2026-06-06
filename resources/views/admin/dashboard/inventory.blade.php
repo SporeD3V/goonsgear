@@ -48,7 +48,7 @@
                 <p class="text-3xl font-bold" style="color: #36a2eb">{{ $fulfillmentSpeed['median_days'] }}</p>
                 <span class="text-[15px] text-stone-500">median days to ship</span>
             </div>
-            <div class="mt-3 grid grid-cols-3 gap-3">
+            <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div class="rounded-lg border border-stone-100 bg-stone-50 p-3 text-center">
                     <div class="text-[13px] text-stone-500">Average</div>
                     <div class="text-lg font-bold text-stone-700">{{ $fulfillmentSpeed['avg_days'] }}d</div>
@@ -119,7 +119,7 @@
     </div>
 
     @if (! empty($risk->top_items))
-        <div class="overflow-x-auto" x-data="{
+        <div class="-mx-5 overflow-x-auto px-5" x-data="{
             sortCol: 'monthly_revenue',
             sortAsc: false,
             showAll: false,
@@ -144,7 +144,7 @@
                 return this.sortAsc ? '↑' : '↓';
             }
         }">
-            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+            <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                 <thead class="bg-white/60">
                     <tr>
                         <th @click="toggleSort('product')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Product <span class="text-xs" x-text="sortIcon('product')"></span></th>
@@ -186,7 +186,7 @@
     @if (empty($daysOfStockRemaining))
         <p class="text-[15px] text-stone-500">No low-stock variants (1–20 units) right now. All items are either well-stocked or out of stock.</p>
     @else
-        <div class="overflow-x-auto" x-data="{
+        <div class="-mx-5 overflow-x-auto px-5" x-data="{
             sortCol: 'days_remaining',
             sortAsc: true,
             showAll: false,
@@ -214,7 +214,7 @@
                 return this.sortAsc ? '↑' : '↓';
             }
         }">
-            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+            <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                 <thead class="bg-stone-50">
                     <tr>
                         <th @click="toggleSort('product')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Product <span class="text-xs" x-text="sortIcon('product')"></span></th>
@@ -260,7 +260,7 @@
         @if (empty($stockAlertDemand))
             <p class="text-[15px] text-stone-500">No active stock alert subscriptions.</p>
         @else
-            <div class="overflow-x-auto" x-data="{
+            <div class="-mx-5 overflow-x-auto px-5" x-data="{
                 sortCol: 'waiting',
                 sortAsc: false,
                 showAll: false,
@@ -285,7 +285,7 @@
                     return this.sortAsc ? '↑' : '↓';
                 }
             }">
-                <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
                             <th @click="toggleSort('product')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Product <span class="text-xs" x-text="sortIcon('product')"></span></th>
@@ -343,7 +343,7 @@
                 <div class="mt-1 text-2xl font-bold text-amber-700">{{ count($dead->items) }}</div>
             </div>
         </div>
-        <div class="overflow-x-auto" x-data="{
+        <div class="-mx-5 overflow-x-auto px-5" x-data="{
             sortCol: 'stock_value',
             sortAsc: false,
             showAll: false,
@@ -371,7 +371,7 @@
                 return this.sortAsc ? '↑' : '↓';
             }
         }">
-            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+            <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                 <thead class="bg-stone-50">
                     <tr>
                         <th @click="toggleSort('product')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Product <span class="text-xs" x-text="sortIcon('product')"></span></th>
@@ -447,3 +447,4 @@
     });
 </script>
 @endpush
+

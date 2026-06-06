@@ -38,7 +38,7 @@
     @if (empty($tagFollows))
         <p class="text-[15px] text-stone-500">No tag follow data yet.</p>
     @else
-        <div class="overflow-x-auto" x-data="{
+        <div class="-mx-5 overflow-x-auto px-5" x-data="{
             sortCol: 'followers',
             sortAsc: false,
             showAll: false,
@@ -67,7 +67,7 @@
                 $typeColors = ['artist' => 'bg-[#ff9f40]/15 text-[#ff9f40]', 'brand' => 'bg-[#4bc0c0]/15 text-[#4bc0c0]', 'custom' => 'bg-stone-100 text-stone-700'];
                 $typeColorsJs = Js::from($typeColors);
             @endphp
-            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+            <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                 <thead class="bg-stone-50">
                     <tr>
                         <th @click="toggleSort('name')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Tag <span class="text-xs" x-text="sortIcon('name')"></span></th>
@@ -118,10 +118,10 @@
         <p class="text-[15px] text-stone-500">Not enough order data for segmentation.</p>
     @else
         <div class="grid gap-6 lg:grid-cols-2">
-            <div class="h-[260px]">
+            <div class="min-w-0 h-[260px]">
                 <canvas id="rfmChart"></canvas>
             </div>
-            <div class="overflow-x-auto" x-data="{
+            <div class="min-w-0 -mx-5 overflow-x-auto px-5" x-data="{
                 sortCol: 'count',
                 sortAsc: false,
                 items: {{ Js::from(collect($rfmSegmentation['segments'])->map(fn ($data, $segment) => array_merge($data, ['segment' => $segment]))->values()->all()) }},
@@ -141,7 +141,7 @@
                     return this.sortAsc ? '↑' : '↓';
                 }
             }">
-                <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
                             <th @click="toggleSort('segment')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Segment <span class="text-xs" x-text="sortIcon('segment')"></span></th>
@@ -212,7 +212,7 @@
             <p class="mt-1 text-[13px] text-emerald-600">VIP threshold: &euro;{{ number_format($vipChurn['vip_threshold'], 2) }}+ total spend</p>
         </div>
     @else
-        <div class="mb-3 flex items-center gap-4">
+        <div class="mb-3 flex flex-wrap items-center gap-4">
             @if (!empty($vipChurn['at_risk_vips']))
                 <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">
                     {{ count($vipChurn['at_risk_vips']) }} at risk
@@ -228,7 +228,7 @@
 
         <div x-data="{ churnTab: 'at_risk' }">
             {{-- Tab buttons --}}
-            <div class="mb-3 flex gap-2 border-b border-stone-200 pb-2">
+            <div class="mb-3 flex flex-wrap gap-2 border-b border-stone-200 pb-2">
                 <button @click="churnTab = 'at_risk'"
                     :class="churnTab === 'at_risk' ? 'border-b-2 border-amber-500 text-amber-700 font-semibold' : 'text-stone-500 hover:text-stone-700'"
                     class="px-3 py-1.5 text-sm transition">
@@ -246,7 +246,7 @@
                 @if (empty($vipChurn['at_risk_vips']))
                     <p class="py-4 text-center text-[15px] text-stone-500">No at-risk VIPs — all churning VIPs have been silent 365+ days.</p>
                 @else
-                    <div class="overflow-x-auto" x-data="{
+                    <div class="-mx-5 overflow-x-auto px-5" x-data="{
                         sortCol: 'days_since_last',
                         sortAsc: false,
                         page: 1,
@@ -276,7 +276,7 @@
                         }
                     }">
                         <p class="mb-2 text-[12px] text-stone-400">Exceeded churn threshold but silent &lt; 365 days — still recoverable with re-engagement campaigns.</p>
-                        <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                        <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                             <thead class="bg-stone-50">
                                 <tr>
                                     <th @click="toggleSort('email')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Customer <span class="text-xs" x-text="sortIcon('email')"></span></th>
@@ -315,7 +315,7 @@
                 @if (empty($vipChurn['lost_vips']))
                     <p class="py-4 text-center text-[15px] text-stone-500">No lost VIPs — all churning customers ordered within the last year.</p>
                 @else
-                    <div class="overflow-x-auto" x-data="{
+                    <div class="-mx-5 overflow-x-auto px-5" x-data="{
                         sortCol: 'days_since_last',
                         sortAsc: false,
                         page: 1,
@@ -345,7 +345,7 @@
                         }
                     }">
                         <p class="mb-2 text-[12px] text-stone-400">Silent 365+ days — likely permanently lost. Consider win-back campaigns or write-off.</p>
-                        <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                        <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                             <thead class="bg-stone-50">
                                 <tr>
                                     <th @click="toggleSort('email')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Customer <span class="text-xs" x-text="sortIcon('email')"></span></th>
@@ -538,3 +538,4 @@
     });
 </script>
 @endpush
+

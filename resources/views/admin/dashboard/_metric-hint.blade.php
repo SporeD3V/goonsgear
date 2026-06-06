@@ -9,3 +9,4 @@
         <p class="font-mono text-[11px] text-stone-400/80">{{ $formula }}</p>
     @endif
 </div>
+

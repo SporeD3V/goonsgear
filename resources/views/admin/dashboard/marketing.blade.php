@@ -24,7 +24,7 @@
         @if (empty($couponLeaderboard))
             <p class="text-[15px] text-stone-500">No coupon usage data.</p>
         @else
-            <div class="overflow-x-auto" x-data="{
+            <div class="-mx-5 overflow-x-auto px-5" x-data="{
                 sortCol: 'total_discounted',
                 sortAsc: false,
                 showAll: false,
@@ -49,7 +49,7 @@
                     return this.sortAsc ? '↑' : '↓';
                 }
             }">
-                <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
                             <th @click="toggleSort('code')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Code <span class="text-xs" x-text="sortIcon('code')"></span></th>
@@ -154,10 +154,10 @@
         <p class="text-[15px] text-stone-500">No abandoned cart data for this period.</p>
     @else
         <div class="grid gap-5 lg:grid-cols-2">
-            <div class="h-[260px]">
+            <div class="min-w-0 h-[260px]">
                 <canvas id="abandonedProductsChart"></canvas>
             </div>
-            <div class="overflow-x-auto" x-data="{
+            <div class="min-w-0 -mx-5 overflow-x-auto px-5" x-data="{
                 sortCol: 'times_abandoned',
                 sortAsc: false,
                 showAll: false,
@@ -182,7 +182,7 @@
                     return this.sortAsc ? '↑' : '↓';
                 }
             }">
-                <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
                             <th @click="toggleSort('product_name')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Product <span class="text-xs" x-text="sortIcon('product_name')"></span></th>
@@ -251,3 +251,4 @@
     });
 </script>
 @endpush
+

@@ -154,8 +154,8 @@
         @if ($recentOrders->isEmpty())
             <p class="text-[15px] text-stone-500">No orders yet.</p>
         @else
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+            <div class="-mx-5 overflow-x-auto px-5">
+                <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
                             <th class="px-4 py-2.5 text-left font-medium text-stone-600">Order</th>
@@ -291,3 +291,4 @@
     });
 </script>
 @endpush
+

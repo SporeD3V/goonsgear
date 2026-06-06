@@ -60,10 +60,10 @@
             })->all();
         @endphp
         <div class="grid gap-5 lg:grid-cols-2">
-            <div class="h-[260px]">
+            <div class="min-w-0 h-[260px]">
                 <canvas id="aovByCountryChart"></canvas>
             </div>
-            <div class="overflow-x-auto" x-data="{
+            <div class="min-w-0 -mx-5 overflow-x-auto px-5" x-data="{
                 sortCol: 'revenue',
                 sortAsc: false,
                 showAll: false,
@@ -88,7 +88,7 @@
                     return this.sortAsc ? '↑' : '↓';
                 }
             }">
-                <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
                             <th @click="toggleSort('country')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Country <span class="text-xs" x-text="sortIcon('country')"></span></th>
@@ -150,8 +150,8 @@
                 return this.sortAsc ? '↑' : '↓';
             }
         }">
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+            <div class="-mx-5 overflow-x-auto px-5">
+                <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
                             <th class="px-4 py-2.5 text-left font-medium text-stone-600">#</th>
@@ -297,8 +297,8 @@
     @if (empty($productDecay))
         <p class="text-[15px] text-stone-500">No products with a published date more than 2 months old.</p>
     @else
-        <div class="overflow-x-auto" x-data="{ showAll: false, limit: 8 }">
-            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+        <div class="-mx-5 overflow-x-auto px-5" x-data="{ showAll: false, limit: 8 }">
+            <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                 <thead class="bg-stone-50">
                     <tr>
                         <th class="px-4 py-2.5 text-left font-medium text-stone-600">Product</th>
@@ -352,11 +352,11 @@
         <p class="text-[15px] text-stone-500">No first-purchase data available yet.</p>
     @else
         <div class="grid gap-5 lg:grid-cols-2">
-            <div class="h-[260px]">
+            <div class="min-w-0 h-[260px]">
                 <canvas id="firstPurchaseChart"></canvas>
             </div>
-            <div class="overflow-x-auto" x-data="{ showAll: false, limit: 10 }">
-                <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+            <div class="min-w-0 -mx-5 overflow-x-auto px-5" x-data="{ showAll: false, limit: 10 }">
+                <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
                             <th class="px-4 py-2.5 text-left font-medium text-stone-600">Product</th>
@@ -391,7 +391,7 @@
     @if (empty($productAffinity))
         <p class="text-[15px] text-stone-500">No multi-product order data yet. Affinity appears once customers start buying 2+ products together.</p>
     @else
-        <div class="overflow-x-auto" x-data="{
+        <div class="-mx-5 overflow-x-auto px-5" x-data="{
             sortCol: 'affinity_pct',
             sortAsc: false,
             showAll: false,
@@ -416,7 +416,7 @@
                 return this.sortAsc ? '↑' : '↓';
             }
         }">
-            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+            <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                 <thead class="bg-stone-50">
                     <tr>
                         <th @click="toggleSort('product_a')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Product A <span class="text-xs" x-text="sortIcon('product_a')"></span></th>
@@ -472,8 +472,8 @@
         <div class="mb-4 h-[260px]">
             <canvas id="aovBreakdownChart"></canvas>
         </div>
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+        <div class="-mx-5 overflow-x-auto px-5">
+            <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                 <thead class="bg-stone-50">
                     <tr>
                         <th class="px-4 py-2.5 text-left font-medium text-stone-600">Year</th>
@@ -507,7 +507,7 @@
     @if (empty($shipping->by_country))
         <p class="text-[15px] text-stone-500">No shipping revenue data yet.</p>
     @else
-        <div class="mb-4 grid grid-cols-3 gap-4">
+        <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div class="rounded-lg border border-stone-100 bg-stone-50 p-4 text-center">
                 <div class="text-[13px] font-medium uppercase tracking-wide text-stone-500">Collected</div>
                 <div class="mt-1 text-2xl font-bold text-stone-700">&euro;{{ number_format($shipping->total_collected, 2) }}</div>
@@ -521,7 +521,7 @@
                 <div class="mt-1 text-2xl font-bold text-emerald-600">&euro;{{ number_format($shipping->total_margin, 2) }}</div>
             </div>
         </div>
-        <div class="overflow-x-auto" x-data="{
+        <div class="-mx-5 overflow-x-auto px-5" x-data="{
             sortCol: 'collected',
             sortAsc: false,
             showAll: false,
@@ -546,7 +546,7 @@
                 return this.sortAsc ? '↑' : '↓';
             }
         }">
-            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+            <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                 <thead class="bg-stone-50">
                     <tr>
                         <th @click="toggleSort('country')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Country <span class="text-xs" x-text="sortIcon('country')"></span></th>
@@ -907,3 +907,4 @@
     });
 </script>
 @endpush
+

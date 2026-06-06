@@ -12,3 +12,4 @@
         <livewire:admin.dashboard-notes :context="$context" :context-label="$label" :key="'notes-' . $context" />
     </div>
 </div>
+

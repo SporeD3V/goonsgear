@@ -41,7 +41,7 @@
         @if (empty($tagFollows))
             <p class="text-[15px] text-stone-500">No tag follow data yet.</p>
         @else
-            <div class="overflow-x-auto" x-data="{
+            <div class="-mx-5 overflow-x-auto px-5" x-data="{
                 sortCol: 'followers',
                 sortAsc: false,
                 showAll: false,
@@ -70,7 +70,7 @@
                     $typeColors = ['artist' => 'bg-[#ff9f40]/15 text-[#ff9f40]', 'brand' => 'bg-[#4bc0c0]/15 text-[#4bc0c0]', 'custom' => 'bg-stone-100 text-stone-700'];
                     $typeColorsJs = Js::from($typeColors);
                 @endphp
-                <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
                             <th @click="toggleSort('name')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Tag <span class="text-xs" x-text="sortIcon('name')"></span></th>
@@ -124,8 +124,8 @@
         <div class="mb-4 h-[260px]">
             <canvas id="aovBreakdownChart"></canvas>
         </div>
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+        <div class="-mx-5 overflow-x-auto px-5">
+            <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                 <thead class="bg-stone-50">
                     <tr>
                         <th class="px-4 py-2.5 text-left font-medium text-stone-600">Year</th>
@@ -199,7 +199,7 @@
             <div class="h-[260px]">
                 <canvas id="rfmChart"></canvas>
             </div>
-            <div class="overflow-x-auto" x-data="{
+            <div class="-mx-5 overflow-x-auto px-5" x-data="{
                 sortCol: 'count',
                 sortAsc: false,
                 items: {{ Js::from(collect($rfmSegmentation['segments'])->map(fn ($data, $segment) => array_merge($data, ['segment' => $segment]))->values()->all()) }},
@@ -219,7 +219,7 @@
                     return this.sortAsc ? '↑' : '↓';
                 }
             }">
-                <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+                <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                     <thead class="bg-stone-50">
                         <tr>
                             <th @click="toggleSort('segment')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Segment <span class="text-xs" x-text="sortIcon('segment')"></span></th>
@@ -296,7 +296,7 @@
             </span>
             <span class="text-[13px] text-stone-500">of {{ $vipChurn['vip_total'] }} VIPs (threshold: &euro;{{ number_format($vipChurn['vip_threshold'], 2) }})</span>
         </div>
-        <div class="overflow-x-auto" x-data="{
+        <div class="-mx-5 overflow-x-auto px-5" x-data="{
             sortCol: 'days_since_last',
             sortAsc: false,
             page: 1,
@@ -325,7 +325,7 @@
                 return this.sortAsc ? '↑' : '↓';
             }
         }">
-            <table class="min-w-full divide-y divide-stone-200 text-[15px]">
+            <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
                 <thead class="bg-stone-50">
                     <tr>
                         <th @click="toggleSort('email')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Customer <span class="text-xs" x-text="sortIcon('email')"></span></th>
@@ -593,3 +593,4 @@
     });
 </script>
 @endpush
+
