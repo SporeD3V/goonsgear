@@ -142,7 +142,7 @@ new class extends Component
 
 <div class="space-y-6">
     {{-- Header --}}
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h2 class="text-lg font-semibold">Order {{ $this->order->order_number }}</h2>
             <p class="text-sm text-slate-600">Placed {{ optional($this->order->placed_at)->format('Y-m-d H:i') ?? '-' }}</p>
@@ -159,7 +159,7 @@ new class extends Component
     {{-- Customer & Order Info --}}
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">Order Information</h3>
-        <div class="grid gap-4 md:grid-cols-4">
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div class="rounded border border-slate-200 p-3">
                 <h4 class="text-xs font-semibold uppercase text-slate-500">Customer</h4>
                 <p class="mt-2 text-sm">{{ $this->order->first_name }} {{ $this->order->last_name }}</p>
@@ -199,7 +199,7 @@ new class extends Component
     {{-- Actions --}}
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">Actions</h3>
-        <div class="grid gap-3 md:grid-cols-4">
+        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div>
                 <label for="status" class="mb-1 block text-xs font-medium text-slate-700">Order status</label>
                 <select id="status" wire:model="status" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
@@ -238,7 +238,7 @@ new class extends Component
     {{-- Order Items --}}
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">Order Items</h3>
-        <div class="overflow-x-auto">
+        <div class="-mx-5 overflow-x-auto px-5">
             <table class="min-w-full border border-slate-200 text-sm">
                 <thead class="bg-slate-50">
                     <tr>

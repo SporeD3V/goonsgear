@@ -14,7 +14,7 @@
     <body class="bg-stone-50 text-stone-900">
         <div class="flex min-h-screen">
             {{-- Sidebar --}}
-            <aside id="admin-sidebar" class="fixed inset-y-0 left-0 z-40 flex w-60 -translate-x-full flex-col border-r border-stone-200 bg-stone-900 text-stone-300 transition-transform lg:translate-x-0">
+            <aside id="admin-sidebar" class="fixed inset-y-0 left-0 z-40 flex w-72 max-w-[88vw] -translate-x-full flex-col border-r border-stone-200 bg-stone-900 text-stone-300 transition-transform lg:w-60 lg:max-w-none lg:translate-x-0">
                 {{-- Logo --}}
                 <div class="flex items-center gap-2.5 border-b border-stone-700 px-4 py-5">
                     <svg class="h-6 w-6 text-[#36a2eb]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
@@ -188,16 +188,16 @@
             {{-- Main content --}}
             <div class="flex flex-1 flex-col lg:ml-60">
                 {{-- Top bar (mobile toggle + breadcrumb) --}}
-                <header class="sticky top-0 z-20 flex items-center gap-4 border-b border-stone-200 bg-white/80 px-6 py-3.5 shadow-sm backdrop-blur-sm">
+                <header class="sticky top-0 z-20 flex items-center gap-3 border-b border-stone-200 bg-white/80 px-4 py-3 shadow-sm backdrop-blur-sm sm:gap-4 sm:px-6 sm:py-3.5">
                     <button type="button" class="rounded-lg p-2.5 text-stone-600 hover:bg-stone-100 lg:hidden" aria-label="Open menu"
                             onclick="document.getElementById('admin-sidebar').classList.remove('-translate-x-full'); document.getElementById('admin-sidebar-overlay').classList.remove('hidden');">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
                     </button>
-                    <h1 class="text-xl font-semibold text-stone-800">{{ $title ?? 'Admin' }}</h1>
+                    <h1 class="truncate text-lg font-semibold text-stone-800 sm:text-xl">{{ $title ?? 'Admin' }}</h1>
                 </header>
 
                 {{-- Page content --}}
-                <main class="flex-1 p-6">
+                <main class="flex-1 p-4 sm:p-6">
                     @if (session('status'))
                         <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 animate-fade-in">
                             {{ session('status') }}

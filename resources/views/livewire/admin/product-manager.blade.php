@@ -249,14 +249,14 @@ new class extends Component
 }; ?>
 
 <div class="space-y-6">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-lg font-semibold">Products</h2>
         <a href="{{ route('admin.products.create') }}" class="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">New Product</a>
     </div>
 
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">Filters</h3>
-        <div class="grid gap-3 md:grid-cols-7">
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
         <div>
             <label class="mb-1 block text-xs font-medium text-slate-700">Search</label>
             <input type="text" wire:model.live.debounce.300ms="search" placeholder="Name / slug / excerpt" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
@@ -308,7 +308,7 @@ new class extends Component
     </div>
 
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div class="overflow-x-auto">
+        <div class="-mx-5 overflow-x-auto px-5">
         <table class="min-w-full border border-slate-200 text-sm">
             <thead class="bg-slate-50">
                 <tr>

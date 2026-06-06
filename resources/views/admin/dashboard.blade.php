@@ -24,7 +24,7 @@
         </div>
 
         {{-- Period Picker, Custom Range & Compare Toggle --}}
-        <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="flex flex-wrap items-center gap-2">
                 {{-- Preset Pills --}}
                 <div class="flex items-center gap-1 rounded-lg bg-stone-100 p-1">
@@ -40,25 +40,25 @@
                 </div>
 
                 {{-- Custom Date Range --}}
-                <div x-data="{ open: {{ $period === 'custom' ? 'true' : 'false' }} }" class="flex items-center gap-2">
+                <div x-data="{ open: {{ $period === 'custom' ? 'true' : 'false' }} }" class="flex flex-wrap items-center gap-2">
                     <button @click="open = !open"
                         class="rounded-md px-3 py-1.5 text-sm font-medium transition {{ $period === 'custom' ? 'bg-white text-[#36a2eb] shadow-sm ring-1 ring-stone-200' : 'text-stone-500 hover:text-stone-700' }}">
                         <svg class="inline-block h-4 w-4 -mt-0.5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>
                         Custom
                     </button>
 
-                    <form x-show="open" x-cloak method="GET" action="{{ route('admin.dashboard') }}" class="flex items-center gap-2">
+                    <form x-show="open" x-cloak method="GET" action="{{ route('admin.dashboard') }}" class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                         <input type="hidden" name="tab" value="{{ $tab }}">
                         <input type="hidden" name="compare" value="{{ $compare ? 1 : 0 }}">
                         <input type="hidden" name="compare_mode" value="{{ $compareMode }}">
                         <input type="date" name="custom_from" value="{{ $customFrom }}"
-                            class="rounded-md border border-stone-300 px-2.5 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]"
+                            class="w-full rounded-md border border-stone-300 px-2.5 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb] sm:w-auto"
                             required>
-                        <span class="text-sm text-stone-400">to</span>
+                        <span class="hidden text-sm text-stone-400 sm:inline">to</span>
                         <input type="date" name="custom_to" value="{{ $customTo }}"
-                            class="rounded-md border border-stone-300 px-2.5 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb]"
+                            class="w-full rounded-md border border-stone-300 px-2.5 py-1.5 text-sm text-stone-700 focus:border-[#36a2eb] focus:ring-1 focus:ring-[#36a2eb] sm:w-auto"
                             required>
-                        <button type="submit" class="rounded-md bg-[#36a2eb] px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#36a2eb]/90">
+                        <button type="submit" class="w-full rounded-md bg-[#36a2eb] px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-[#36a2eb]/90 sm:w-auto">
                             Apply
                         </button>
                     </form>
@@ -67,7 +67,7 @@
 
             {{-- Compare Toggle & Mode --}}
             @if ($tab !== 'inventory')
-                <div class="flex items-center gap-2" x-data>
+                <div class="w-full sm:w-auto" x-data>
                     @php
                         $baseCompareParams = ['tab' => $tab, 'period' => $period];
                         if ($period === 'custom' && $customFrom && $customTo) {
@@ -77,7 +77,7 @@
                     @endphp
 
                     {{-- Mode pills — always visible; clicking a mode auto-enables compare --}}
-                    <div class="flex items-center gap-0.5 rounded-lg bg-stone-100 p-0.5">
+                    <div class="inline-flex flex-wrap items-center gap-0.5 rounded-lg bg-stone-100 p-0.5">
                         @if ($period !== 'all')
                             <a href="{{ route('admin.dashboard', array_merge($baseCompareParams, ['compare' => 1, 'compare_mode' => 'previous_period'])) }}"
                                class="rounded-md px-2.5 py-1.5 text-xs font-medium transition {{ $compare && $compareMode === 'previous_period' ? 'bg-white text-[#9966ff] shadow-sm' : 'text-stone-400 hover:text-stone-600' }}"

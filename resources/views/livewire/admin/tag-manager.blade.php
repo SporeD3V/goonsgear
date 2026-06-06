@@ -382,7 +382,7 @@ new class extends Component
     {{-- Header row --}}
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-lg font-semibold">Tags{{ $filterType ? ': ' . ucfirst($filterType) . 's' : '' }}</h2>
-        <div class="flex items-center gap-3">
+        <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
             <input
                 wire:model.live.debounce.300ms="search"
                 type="text"
@@ -398,7 +398,7 @@ new class extends Component
     {{-- Filters & Table --}}
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         {{-- Type filter tabs --}}
-        <div class="mb-4 flex gap-2 text-sm">
+        <div class="mb-4 flex flex-wrap gap-2 text-sm">
             @foreach (['' => 'All', 'artist' => 'Artists', 'brand' => 'Brands', 'custom' => 'Custom'] as $value => $label)
                 <button
                     wire:click="$set('filterType', '{{ $value }}')"
@@ -411,7 +411,7 @@ new class extends Component
         <div wire:loading.delay class="mb-2 text-xs text-slate-500">Loading…</div>
 
         {{-- Table --}}
-        <div class="overflow-x-auto">
+        <div class="-mx-5 overflow-x-auto px-5">
         <table class="min-w-full border border-slate-200 text-sm">
             <thead class="bg-slate-50">
                 <tr>

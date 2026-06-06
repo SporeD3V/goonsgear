@@ -72,13 +72,13 @@ new class extends Component
 }; ?>
 
 <div class="space-y-6">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-lg font-semibold">Orders</h2>
     </div>
 
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">Filters</h3>
-        <div class="grid gap-3 md:grid-cols-4">
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div>
             <label for="search" class="mb-1 block text-xs font-medium text-slate-700">Search</label>
             <input id="search" type="text" wire:model.live.debounce.300ms="search" placeholder="Order no / email / customer" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
@@ -107,7 +107,7 @@ new class extends Component
     </div>
 
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div class="overflow-x-auto">
+        <div class="-mx-5 overflow-x-auto px-5">
         <table class="min-w-full border border-slate-200 text-sm">
             <thead class="bg-slate-50">
                 <tr>

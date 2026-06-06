@@ -132,7 +132,7 @@ new class extends Component
     </div>
 
     {{-- Health Cards --}}
-    <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {{-- Total --}}
         <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Total Payloads</p>
@@ -204,7 +204,7 @@ new class extends Component
     {{-- Filters --}}
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">Filters</h3>
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div>
                 <label class="block text-sm font-medium text-slate-700">Search</label>
                 <input
@@ -242,7 +242,7 @@ new class extends Component
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div wire:loading.delay class="mb-2 text-xs text-slate-500">Loading…</div>
 
-        <div class="overflow-x-auto">
+        <div class="-mx-5 overflow-x-auto px-5">
             <table class="min-w-full divide-y divide-slate-200 text-sm">
                 <thead class="bg-slate-50">
                     <tr>
