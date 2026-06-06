@@ -29,6 +29,22 @@ class ProductInlineEditTest extends TestCase
         $this->assertDatabaseHas('products', ['id' => $product->id, 'name' => 'New Name']);
     }
 
+    public function test_product_manager_hydrates_filters_from_query_params(): void
+    {
+        Livewire::withQueryParams([
+            'search' => 'hoodie',
+            'status' => 'active',
+            'sales' => 'sold',
+            'stock' => 'in_stock',
+            'preorder' => 'only_preorder',
+        ])->test('admin.product-manager')
+            ->assertSet('search', 'hoodie')
+            ->assertSet('filterStatus', 'active')
+            ->assertSet('filterSales', 'sold')
+            ->assertSet('filterStock', 'in_stock')
+            ->assertSet('filterPreorder', 'only_preorder');
+    }
+
     public function test_inline_update_changes_slug_and_normalizes_it(): void
     {
         $product = Product::factory()->create(['slug' => 'old-slug']);

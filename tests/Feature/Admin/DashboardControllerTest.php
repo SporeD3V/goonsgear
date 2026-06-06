@@ -1558,6 +1558,8 @@ class DashboardControllerTest extends TestCase
         $this->assertNotNull($found);
         $this->assertEquals(10.0, $found['days_remaining']);
         $this->assertEquals(1.0, $found['daily_velocity']);
+        $this->assertSame($product->id, $found['product_id']);
+        $this->assertSame($variant->id, $found['variant_id']);
     }
 
     public function test_days_of_stock_remaining_empty_when_healthy(): void
@@ -1634,6 +1636,8 @@ class DashboardControllerTest extends TestCase
         $this->assertArrayHasKey('monthly_revenue', $risk['top_items'][0]);
         $this->assertArrayHasKey('avg_daily_units', $risk['top_items'][0]);
         $this->assertArrayHasKey('avg_price', $risk['top_items'][0]);
+        $this->assertArrayHasKey('product_id', $risk['top_items'][0]);
+        $this->assertArrayHasKey('variant_id', $risk['top_items'][0]);
     }
 
     public function test_revenue_at_risk_empty_without_sold_out_variants(): void

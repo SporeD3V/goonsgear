@@ -49,6 +49,38 @@ class BundleDiscountTest extends TestCase
         ]);
     }
 
+    public function test_bundle_manager_prefills_product_mode_from_query_params(): void
+    {
+        $productA = Product::factory()->create(['status' => 'active']);
+        ProductVariant::factory()->create([
+            'product_id' => $productA->id,
+            'is_active' => true,
+            'price' => 49.99,
+        ]);
+
+        $productB = Product::factory()->create(['status' => 'active']);
+        ProductVariant::factory()->create([
+            'product_id' => $productB->id,
+            'is_active' => true,
+            'price' => 59.99,
+        ]);
+
+        Livewire::withQueryParams([
+            'prefill_products' => $productA->id.','.$productB->id,
+            'prefill_name' => 'Affinity Bundle',
+            'prefill_description' => 'Generated from dashboard insight',
+            'bundle_mode' => 'product',
+        ])->test('admin.bundle-discount-manager')
+            ->assertSet('showModal', true)
+            ->assertSet('bundle_mode', 'product')
+            ->assertSet('name', 'Affinity Bundle')
+            ->assertSet('description', 'Generated from dashboard insight')
+            ->assertSet('selectedProducts.'.$productA->id, true)
+            ->assertSet('selectedProducts.'.$productB->id, true)
+            ->assertSet('productQuantities.'.$productA->id, 1)
+            ->assertSet('productQuantities.'.$productB->id, 1);
+    }
+
     public function test_bundle_discount_applies_when_cart_matches_requirements(): void
     {
         $variant = ProductVariant::factory()->create([

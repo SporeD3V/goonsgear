@@ -55,6 +55,53 @@ new class extends Component
 
     public string $variantSearch = '';
 
+    public function mount(): void
+    {
+        $prefillProducts = $this->parsePrefillIds((string) request()->query('prefill_products', ''));
+
+        if ($prefillProducts === []) {
+            return;
+        }
+
+        $this->openCreate();
+        $this->bundle_mode = request()->query('bundle_mode', 'product') === 'rule' ? 'rule' : 'product';
+
+        $name = trim((string) request()->query('prefill_name', ''));
+        if ($name !== '') {
+            $this->name = $name;
+        }
+
+        $description = trim((string) request()->query('prefill_description', ''));
+        if ($description !== '') {
+            $this->description = $description;
+        }
+
+        if ($this->bundle_mode === 'product') {
+            foreach ($prefillProducts as $productId) {
+                $this->selectedProducts[$productId] = true;
+                $this->productQuantities[$productId] = 1;
+            }
+
+            $prefillBundleProductId = (int) request()->query('prefill_bundle_product_id', 0);
+            if ($prefillBundleProductId > 0) {
+                $this->product_id = $prefillBundleProductId;
+            }
+        }
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function parsePrefillIds(string $raw): array
+    {
+        return collect(explode(',', $raw))
+            ->map(fn (string $id): int => (int) trim($id))
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     public function updatedSearch(): void
     {
         $this->resetPage();

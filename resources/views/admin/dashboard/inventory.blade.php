@@ -125,6 +125,7 @@
             showAll: false,
             limit: 10,
             items: {{ Js::from($risk->top_items) }},
+            productsBaseUrl: {{ Js::from(url('/admin/products')) }},
             get sorted() {
                 const col = this.sortCol;
                 const dir = this.sortAsc ? 1 : -1;
@@ -142,6 +143,10 @@
             sortIcon(col) {
                 if (this.sortCol !== col) return '↕';
                 return this.sortAsc ? '↑' : '↓';
+            },
+            editUrl(productId) {
+                if (!productId) return null;
+                return this.productsBaseUrl + '/' + productId + '/edit?source=dashboard-revenue-at-risk';
             }
         }">
             <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
@@ -153,6 +158,7 @@
                         <th @click="toggleSort('days_in_stock')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Days In Stock <span class="text-xs" x-text="sortIcon('days_in_stock')"></span></th>
                         <th @click="toggleSort('avg_price')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Avg Price <span class="text-xs" x-text="sortIcon('avg_price')"></span></th>
                         <th @click="toggleSort('monthly_revenue')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Monthly Loss <span class="text-xs" x-text="sortIcon('monthly_revenue')"></span></th>
+                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Action</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-stone-100">
@@ -164,6 +170,13 @@
                             <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="row.days_in_stock + 'd'"></td>
                             <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="'€' + row.avg_price.toFixed(2)"></td>
                             <td class="whitespace-nowrap px-4 py-2.5 text-right font-semibold text-red-700" x-text="'€' + row.monthly_revenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right">
+                                <a x-show="editUrl(row.product_id)"
+                                   :href="editUrl(row.product_id)"
+                                   class="rounded-md bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700 transition hover:bg-stone-200">
+                                    Edit Product
+                                </a>
+                            </td>
                         </tr>
                     </template>
                 </tbody>
@@ -192,6 +205,7 @@
             showAll: false,
             limit: 10,
             items: {{ Js::from($daysOfStockRemaining) }},
+            productsBaseUrl: {{ Js::from(url('/admin/products')) }},
             get sorted() {
                 const col = this.sortCol;
                 const dir = this.sortAsc ? 1 : -1;
@@ -212,6 +226,10 @@
             sortIcon(col) {
                 if (this.sortCol !== col) return '↕';
                 return this.sortAsc ? '↑' : '↓';
+            },
+            editUrl(productId) {
+                if (!productId) return null;
+                return this.productsBaseUrl + '/' + productId + '/edit?source=dashboard-days-of-stock';
             }
         }">
             <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
@@ -223,6 +241,7 @@
                         <th @click="toggleSort('daily_velocity')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Daily Sales <span class="text-xs" x-text="sortIcon('daily_velocity')"></span></th>
                         <th @click="toggleSort('days_remaining')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Days Left <span class="text-xs" x-text="sortIcon('days_remaining')"></span></th>
                         <th class="px-4 py-2.5 text-right font-medium text-stone-400 text-[11px]">Window</th>
+                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Action</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-stone-100">
@@ -236,6 +255,13 @@
                                 :class="row.days_remaining === null ? 'text-stone-400' : (row.days_remaining <= 3 ? 'text-[#ff6384]' : (row.days_remaining <= 7 ? 'text-[#ff9f40]' : 'text-stone-700'))"
                                 x-text="row.days_remaining !== null ? '~' + row.days_remaining + ' days' : 'No sales'"></td>
                             <td class="whitespace-nowrap px-4 py-2.5 text-right text-[11px] text-stone-400" x-text="row.velocity_window ? '(' + row.velocity_window + ')' : ''"></td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right">
+                                <a x-show="editUrl(row.product_id)"
+                                   :href="editUrl(row.product_id)"
+                                   class="rounded-md bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700 transition hover:bg-stone-200">
+                                    Edit Product
+                                </a>
+                            </td>
                         </tr>
                     </template>
                 </tbody>
@@ -266,6 +292,7 @@
                 showAll: false,
                 limit: 10,
                 items: {{ Js::from($stockAlertDemand) }},
+                productsBaseUrl: {{ Js::from(url('/admin/products')) }},
                 get sorted() {
                     const col = this.sortCol;
                     const dir = this.sortAsc ? 1 : -1;
@@ -283,6 +310,10 @@
                 sortIcon(col) {
                     if (this.sortCol !== col) return '↕';
                     return this.sortAsc ? '↑' : '↓';
+                },
+                editUrl(productId) {
+                    if (!productId) return null;
+                    return this.productsBaseUrl + '/' + productId + '/edit?source=dashboard-stock-alert';
                 }
             }">
                 <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
@@ -292,6 +323,7 @@
                             <th @click="toggleSort('variant')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Variant <span class="text-xs" x-text="sortIcon('variant')"></span></th>
                             <th @click="toggleSort('sku')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">SKU <span class="text-xs" x-text="sortIcon('sku')"></span></th>
                             <th @click="toggleSort('waiting')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Waiting <span class="text-xs" x-text="sortIcon('waiting')"></span></th>
+                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Action</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-stone-100">
@@ -301,6 +333,13 @@
                                 <td class="px-4 py-2.5 text-stone-500" x-text="row.variant"></td>
                                 <td class="whitespace-nowrap px-4 py-2.5 font-mono text-xs text-stone-400" x-text="row.sku"></td>
                                 <td class="whitespace-nowrap px-4 py-2.5 text-right font-medium text-stone-700" x-text="row.waiting"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right">
+                                    <a x-show="editUrl(row.product_id)"
+                                       :href="editUrl(row.product_id)"
+                                       class="rounded-md bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700 transition hover:bg-stone-200">
+                                        Edit Product
+                                    </a>
+                                </td>
                             </tr>
                         </template>
                     </tbody>
@@ -366,6 +405,9 @@
             showAll: false,
             limit: 15,
             items: {{ Js::from($dead->items) }},
+            quickViewItem: null,
+            bundleBaseUrl: {{ Js::from(route('admin.bundle-discounts.index')) }},
+            productsBaseUrl: {{ Js::from(url('/admin/products')) }},
             get sorted() {
                 const col = this.sortCol;
                 const dir = this.sortAsc ? 1 : -1;
@@ -386,6 +428,40 @@
             sortIcon(col) {
                 if (this.sortCol !== col) return '↕';
                 return this.sortAsc ? '↑' : '↓';
+            },
+            editUrl(productId) {
+                if (!productId) return null;
+                return this.productsBaseUrl + '/' + productId + '/edit?source=dashboard-dead-stock';
+            },
+            bundlePrefillUrl(row) {
+                if (!row?.product_id) return null;
+
+                const productIds = [row.product_id];
+                if (row.companion_product_id) {
+                    productIds.push(row.companion_product_id);
+                }
+
+                const params = new URLSearchParams({
+                    create_bundle: '1',
+                    bundle_mode: 'product',
+                    prefill_products: productIds.join(','),
+                    prefill_name: row.companion_product
+                        ? row.product + ' + ' + row.companion_product + ' Bundle'
+                        : row.product + ' Bundle Draft',
+                    prefill_description: 'Generated from Dead Stock recommendation',
+                });
+
+                return this.bundleBaseUrl + '?' + params.toString();
+            },
+            primaryActionUrl(row) {
+                if (row.suggestion === 'Bundle Inclusion' && this.bundlePrefillUrl(row)) {
+                    return this.bundlePrefillUrl(row);
+                }
+
+                return this.editUrl(row.product_id);
+            },
+            primaryActionLabel(row) {
+                return row.suggestion === 'Bundle Inclusion' ? 'Create Bundle' : 'Edit Product';
             }
         }">
             <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
@@ -399,6 +475,7 @@
                         <th @click="toggleSort('days_since_last_sale')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Last Sale <span class="text-xs" x-text="sortIcon('days_since_last_sale')"></span></th>
                         <th @click="toggleSort('total_ever_sold')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Total Sold <span class="text-xs" x-text="sortIcon('total_ever_sold')"></span></th>
                         <th @click="toggleSort('suggestion')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Suggestion <span class="text-xs" x-text="sortIcon('suggestion')"></span></th>
+                        <th class="px-4 py-2.5 text-right font-medium text-stone-600">Action</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-stone-100">
@@ -420,6 +497,17 @@
                                     :class="row.suggestion === 'Bundle Inclusion' ? 'bg-[#36a2eb]/10 text-[#36a2eb]' : 'bg-[#ff6384]/10 text-[#ff6384]'"
                                     x-text="row.suggestion"></span>
                             </td>
+                            <td class="whitespace-nowrap px-4 py-2.5 text-right">
+                                <div class="inline-flex items-center gap-1.5">
+                                    <button @click="quickViewItem = row"
+                                            class="rounded-md bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700 transition hover:bg-stone-200">
+                                        Quick View
+                                    </button>
+                                    <a :href="primaryActionUrl(row)"
+                                       class="rounded-md bg-[#36a2eb]/10 px-2.5 py-1 text-xs font-semibold text-[#36a2eb] transition hover:bg-[#36a2eb]/20"
+                                       x-text="primaryActionLabel(row)"></a>
+                                </div>
+                            </td>
                         </tr>
                     </template>
                 </tbody>
@@ -427,6 +515,43 @@
             <template x-if="items.length > limit">
                 <button @click="showAll = !showAll" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="showAll ? 'Show less' : 'Show all ' + items.length + ' items'"></button>
             </template>
+
+            <div x-show="quickViewItem" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="quickViewItem = null">
+                <div class="absolute inset-0 bg-black/40"></div>
+                <div class="relative z-10 w-full max-w-lg rounded-xl border border-stone-200 bg-white p-5 shadow-xl">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <h4 class="text-base font-semibold text-stone-800" x-text="quickViewItem?.product"></h4>
+                            <p class="mt-1 text-xs text-stone-500" x-text="quickViewItem?.variant"></p>
+                        </div>
+                        <button @click="quickViewItem = null" class="rounded-md p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-700">✕</button>
+                    </div>
+
+                    <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+                        <div class="rounded-lg border border-stone-200 bg-stone-50 p-3">
+                            <div class="text-xs uppercase tracking-wide text-stone-500">SKU</div>
+                            <div class="mt-1 font-medium text-stone-800" x-text="quickViewItem?.sku"></div>
+                        </div>
+                        <div class="rounded-lg border border-stone-200 bg-stone-50 p-3">
+                            <div class="text-xs uppercase tracking-wide text-stone-500">Stock Value</div>
+                            <div class="mt-1 font-medium text-stone-800" x-text="'€' + Number(quickViewItem?.stock_value ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></div>
+                        </div>
+                        <div class="rounded-lg border border-stone-200 bg-stone-50 p-3">
+                            <div class="text-xs uppercase tracking-wide text-stone-500">Suggested Action</div>
+                            <div class="mt-1 font-medium text-stone-800" x-text="quickViewItem?.suggestion"></div>
+                        </div>
+                        <div class="rounded-lg border border-stone-200 bg-stone-50 p-3">
+                            <div class="text-xs uppercase tracking-wide text-stone-500">Best Companion</div>
+                            <div class="mt-1 font-medium text-stone-800" x-text="quickViewItem?.companion_product || 'None detected'"></div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 flex flex-wrap justify-end gap-2">
+                        <a x-show="editUrl(quickViewItem?.product_id)" :href="editUrl(quickViewItem?.product_id)" class="rounded-md bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-200">Edit Product</a>
+                        <a x-show="quickViewItem?.suggestion === 'Bundle Inclusion' && bundlePrefillUrl(quickViewItem)" :href="bundlePrefillUrl(quickViewItem)" class="rounded-md bg-[#36a2eb] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#2f8fd1]">Create Bundle</a>
+                    </div>
+                </div>
+            </div>
         </div>
         <p class="mt-3 text-[12px] text-stone-400">
             <span class="font-semibold text-[#ff6384]">Clearance Sale</span> = few co-purchases historically, discount to move units.

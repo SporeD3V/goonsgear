@@ -131,6 +131,7 @@
                 showAll: false,
                 limit: 10,
                 items: {{ Js::from($geoRows) }},
+                ordersBaseUrl: {{ Js::from(route('admin.orders.index')) }},
                 get sorted() {
                     const col = this.sortCol;
                     const dir = this.sortAsc ? 1 : -1;
@@ -148,6 +149,17 @@
                 sortIcon(col) {
                     if (this.sortCol !== col) return '↕';
                     return this.sortAsc ? '↑' : '↓';
+                },
+                ordersByCountryUrl(country) {
+                    if (!country) return null;
+
+                    const params = new URLSearchParams({
+                        search: country,
+                        payment_status: 'paid',
+                        source: 'dashboard-country-performance',
+                    });
+
+                    return this.ordersBaseUrl + '?' + params.toString();
                 }
             }">
                 <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
@@ -158,6 +170,7 @@
                             <th @click="toggleSort('orders')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Orders <span class="text-xs" x-text="sortIcon('orders')"></span></th>
                             <th @click="toggleSort('aov')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">AOV <span class="text-xs" x-text="sortIcon('aov')"></span></th>
                             <th @click="toggleSort('customers')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Customers <span class="text-xs" x-text="sortIcon('customers')"></span></th>
+                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Action</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-stone-100">
@@ -168,6 +181,13 @@
                                 <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="Number(row.orders).toLocaleString()"></td>
                                 <td class="whitespace-nowrap px-4 py-2.5 text-right font-semibold" style="color: #36a2eb" x-text="'€' + Number(row.aov).toFixed(2)"></td>
                                 <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-500" x-text="Number(row.customers).toLocaleString()"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right">
+                                    <a x-show="ordersByCountryUrl(row.country)"
+                                       :href="ordersByCountryUrl(row.country)"
+                                       class="rounded-md bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700 transition hover:bg-stone-200">
+                                        View Orders
+                                    </a>
+                                </td>
                             </tr>
                         </template>
                     </tbody>
@@ -194,6 +214,7 @@
             showAll: false,
             limit: 10,
             items: {{ Js::from($topProducts) }},
+            productsBaseUrl: {{ Js::from(url('/admin/products')) }},
             get sorted() {
                 const col = this.sortCol;
                 const dir = this.sortAsc ? 1 : -1;
@@ -211,6 +232,10 @@
             sortIcon(col) {
                 if (this.sortCol !== col) return '↕';
                 return this.sortAsc ? '↑' : '↓';
+            },
+            editUrl(productId) {
+                if (!productId) return null;
+                return this.productsBaseUrl + '/' + productId + '/edit?source=dashboard-top-products';
             }
         }">
             <div class="-mx-5 overflow-x-auto px-5">
@@ -221,6 +246,7 @@
                             <th @click="toggleSort('name')" class="cursor-pointer select-none px-4 py-2.5 text-left font-medium text-stone-600 hover:text-[#36a2eb]">Product <span class="text-xs" x-text="sortIcon('name')"></span></th>
                             <th @click="toggleSort('units')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Units <span class="text-xs" x-text="sortIcon('units')"></span></th>
                             <th @click="toggleSort('revenue')" class="cursor-pointer select-none px-4 py-2.5 text-right font-medium text-stone-600 hover:text-[#36a2eb]">Gross Rev. <span class="text-xs" x-text="sortIcon('revenue')"></span></th>
+                            <th class="px-4 py-2.5 text-right font-medium text-stone-600">Action</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-stone-100">
@@ -230,6 +256,13 @@
                                 <td class="px-4 py-2.5 text-stone-700" x-text="product.name"></td>
                                 <td class="whitespace-nowrap px-4 py-2.5 text-right font-medium text-stone-700" x-text="product.units"></td>
                                 <td class="whitespace-nowrap px-4 py-2.5 text-right text-stone-700" x-text="'€' + Number(product.revenue).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></td>
+                                <td class="whitespace-nowrap px-4 py-2.5 text-right">
+                                    <a x-show="editUrl(product.product_id)"
+                                       :href="editUrl(product.product_id)"
+                                       class="rounded-md bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700 transition hover:bg-stone-200">
+                                        Edit Product
+                                    </a>
+                                </td>
                             </tr>
                         </template>
                     </tbody>
@@ -522,6 +555,9 @@
             showAll: false,
             limit: 10,
             items: {{ Js::from($productAffinity) }},
+            quickViewPair: null,
+            bundleBaseUrl: {{ Js::from(route('admin.bundle-discounts.index')) }},
+            productsBaseUrl: {{ Js::from(url('/admin/products')) }},
             get sorted() {
                 const col = this.sortCol;
                 const dir = this.sortAsc ? 1 : -1;
@@ -539,6 +575,24 @@
             sortIcon(col) {
                 if (this.sortCol !== col) return '↕';
                 return this.sortAsc ? '↑' : '↓';
+            },
+            editUrl(productId) {
+                if (!productId) return null;
+                return this.productsBaseUrl + '/' + productId + '/edit?source=dashboard-market-basket';
+            },
+            bundlePrefillUrl(pair) {
+                const productIds = [pair.product_a_id, pair.product_b_id].filter(id => Number.isInteger(id) && id > 0);
+                if (productIds.length < 2) return null;
+
+                const params = new URLSearchParams({
+                    create_bundle: '1',
+                    bundle_mode: 'product',
+                    prefill_products: productIds.join(','),
+                    prefill_name: pair.product_a + ' + ' + pair.product_b + ' Bundle',
+                    prefill_description: 'Generated from Product Affinity (Market Basket) insight',
+                });
+
+                return this.bundleBaseUrl + '?' + params.toString();
             }
         }">
             <table class="min-w-[640px] divide-y divide-stone-200 text-[15px]">
@@ -569,12 +623,18 @@
                                     x-text="pair.lift + '×'"></span>
                             </td>
                             <td class="whitespace-nowrap px-4 py-2.5 text-right">
-                                <template x-if="pair.co_purchases >= 10">
-                                    <a :href="'{{ route('admin.products.create') }}?bundle_a=' + encodeURIComponent(pair.product_a) + '&bundle_b=' + encodeURIComponent(pair.product_b)"
-                                        class="inline-flex items-center gap-1 rounded-md bg-[#36a2eb]/10 px-2.5 py-1 text-xs font-semibold text-[#36a2eb] transition hover:bg-[#36a2eb]/20">
-                                        Create Bundle
-                                    </a>
-                                </template>
+                                <div class="inline-flex items-center gap-1.5">
+                                    <button @click="quickViewPair = pair"
+                                            class="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-700 transition hover:bg-stone-200">
+                                        Quick View
+                                    </button>
+                                    <template x-if="pair.co_purchases >= 10 && bundlePrefillUrl(pair)">
+                                        <a :href="bundlePrefillUrl(pair)"
+                                            class="inline-flex items-center gap-1 rounded-md bg-[#36a2eb]/10 px-2.5 py-1 text-xs font-semibold text-[#36a2eb] transition hover:bg-[#36a2eb]/20">
+                                            Create Bundle
+                                        </a>
+                                    </template>
+                                </div>
                             </td>
                         </tr>
                     </template>
@@ -583,6 +643,40 @@
             <template x-if="items.length > limit">
                 <button @click="showAll = !showAll" class="mt-2 text-sm font-medium text-[#36a2eb] hover:underline" x-text="showAll ? 'Show less' : 'Show all ' + items.length + ' pairs'"></button>
             </template>
+
+            <div x-show="quickViewPair" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="quickViewPair = null">
+                <div class="absolute inset-0 bg-black/40"></div>
+                <div class="relative z-10 w-full max-w-lg rounded-xl border border-stone-200 bg-white p-5 shadow-xl">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <h4 class="text-base font-semibold text-stone-800" x-text="quickViewPair?.product_a + ' + ' + quickViewPair?.product_b"></h4>
+                            <p class="mt-1 text-xs text-stone-500">Market Basket quick view</p>
+                        </div>
+                        <button @click="quickViewPair = null" class="rounded-md p-1 text-stone-500 hover:bg-stone-100 hover:text-stone-700">✕</button>
+                    </div>
+
+                    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                        <div class="rounded-lg border border-stone-200 bg-stone-50 p-3 text-center">
+                            <div class="text-xs uppercase tracking-wide text-stone-500">Bought Together</div>
+                            <div class="mt-1 text-lg font-semibold text-stone-800" x-text="quickViewPair?.co_purchases + '×'"></div>
+                        </div>
+                        <div class="rounded-lg border border-stone-200 bg-stone-50 p-3 text-center">
+                            <div class="text-xs uppercase tracking-wide text-stone-500">Affinity</div>
+                            <div class="mt-1 text-lg font-semibold text-stone-800" x-text="quickViewPair?.affinity_pct + '%'"></div>
+                        </div>
+                        <div class="rounded-lg border border-stone-200 bg-stone-50 p-3 text-center">
+                            <div class="text-xs uppercase tracking-wide text-stone-500">Lift</div>
+                            <div class="mt-1 text-lg font-semibold text-stone-800" x-text="quickViewPair?.lift + '×'"></div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 flex flex-wrap justify-end gap-2">
+                        <a x-show="editUrl(quickViewPair?.product_a_id)" :href="editUrl(quickViewPair?.product_a_id)" class="rounded-md bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-200">Edit Product A</a>
+                        <a x-show="editUrl(quickViewPair?.product_b_id)" :href="editUrl(quickViewPair?.product_b_id)" class="rounded-md bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-200">Edit Product B</a>
+                        <a x-show="bundlePrefillUrl(quickViewPair)" :href="bundlePrefillUrl(quickViewPair)" class="rounded-md bg-[#36a2eb] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#2f8fd1]">Create Bundle</a>
+                    </div>
+                </div>
+            </div>
         </div>
     @endif
 </div>

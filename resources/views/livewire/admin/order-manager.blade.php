@@ -15,6 +15,24 @@ new class extends Component
 
     public string $filterPaymentStatus = '';
 
+    public function mount(): void
+    {
+        $search = trim((string) request()->query('search', ''));
+        if ($search !== '') {
+            $this->search = $search;
+        }
+
+        $status = trim((string) request()->query('status', request()->query('filterStatus', '')));
+        if (in_array($status, $this->statusOptions(), true)) {
+            $this->filterStatus = $status;
+        }
+
+        $paymentStatus = trim((string) request()->query('payment_status', request()->query('filterPaymentStatus', '')));
+        if (in_array($paymentStatus, $this->paymentStatusOptions(), true)) {
+            $this->filterPaymentStatus = $paymentStatus;
+        }
+    }
+
     public function updatedSearch(): void
     {
         $this->resetPage();
@@ -63,7 +81,8 @@ new class extends Component
                         ->where('order_number', 'like', "%{$this->search}%")
                         ->orWhere('email', 'like', "%{$this->search}%")
                         ->orWhere('first_name', 'like', "%{$this->search}%")
-                        ->orWhere('last_name', 'like', "%{$this->search}%");
+                        ->orWhere('last_name', 'like', "%{$this->search}%")
+                        ->orWhere('country', 'like', "%{$this->search}%");
                 });
             })
             ->latest('id')

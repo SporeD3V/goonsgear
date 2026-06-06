@@ -385,7 +385,7 @@ class DashboardStatsService
     }
 
     /**
-     * @return array<int, array{name: string, units: int, revenue: float}>
+     * @return array<int, array{product_id: int|null, name: string, units: int, revenue: float}>
      */
     public function topSellingProducts(int $limit = 10, ?Carbon $from = null, ?Carbon $to = null): array
     {
@@ -399,12 +399,13 @@ class DashboardStatsService
             $this->applyPeriod($query, $from, $to, 'orders.placed_at');
 
             return $query
-                ->selectRaw('order_items.product_name as name, SUM(order_items.quantity) as units, SUM(order_items.line_total) as revenue')
+                ->selectRaw('order_items.product_id, order_items.product_name as name, SUM(order_items.quantity) as units, SUM(order_items.line_total) as revenue')
                 ->groupBy('order_items.product_id', 'order_items.product_name')
                 ->orderByDesc('units')
                 ->take($limit)
                 ->get()
                 ->map(fn ($row) => [
+                    'product_id' => $row->product_id ? (int) $row->product_id : null,
                     'name' => $row->name,
                     'units' => (int) $row->units,
                     'revenue' => (float) $row->revenue,
@@ -570,7 +571,7 @@ class DashboardStatsService
     /**
      * Days of stock remaining for low-stock variants based on 30-day sales velocity.
      *
-     * @return array<int, array{product: string, variant: string, sku: string, stock: int, daily_velocity: float, days_remaining: float|null}>
+     * @return array<int, array{product_id: int, variant_id: int, product: string, variant: string, sku: string, stock: int, daily_velocity: float, days_remaining: float|null}>
      */
     public function daysOfStockRemaining(int $limit = 20): array
     {
@@ -581,7 +582,7 @@ class DashboardStatsService
                 ->where('pv.is_active', true)
                 ->where('pv.stock_quantity', '>', 0)
                 ->where('pv.stock_quantity', '<=', 20)
-                ->select('pv.id', 'pv.sku', 'pv.name as variant', 'p.name as product', 'pv.stock_quantity as stock')
+                ->select('pv.id', 'pv.product_id', 'pv.sku', 'pv.name as variant', 'p.name as product', 'pv.stock_quantity as stock')
                 ->get();
 
             if ($variants->isEmpty()) {
@@ -608,6 +609,8 @@ class DashboardStatsService
 
                 if (! $sale) {
                     return [
+                        'product_id' => (int) $v->product_id,
+                        'variant_id' => (int) $v->id,
                         'product' => $v->product,
                         'variant' => $v->variant,
                         'sku' => $v->sku,
@@ -644,6 +647,8 @@ class DashboardStatsService
                 }
 
                 return [
+                    'product_id' => (int) $v->product_id,
+                    'variant_id' => (int) $v->id,
                     'product' => $v->product,
                     'variant' => $v->variant,
                     'sku' => $v->sku,
@@ -663,7 +668,7 @@ class DashboardStatsService
     /**
      * Revenue at risk from sold-out variants: estimated monthly revenue loss based on historical sales velocity.
      *
-     * @return array{total_monthly_revenue: float, variant_count: int, product_count: int, top_items: list<array{product: string, variant: string, sku: string, monthly_revenue: float, avg_daily_units: float, avg_price: float}>}
+     * @return array{total_monthly_revenue: float, variant_count: int, product_count: int, top_items: list<array{product_id: int, variant_id: int, product: string, variant: string, sku: string, monthly_revenue: float, avg_daily_units: float, avg_price: float}>}
      */
     public function revenueAtRisk(int $topLimit = 20): array
     {
@@ -724,6 +729,8 @@ class DashboardStatsService
                 $monthlyRevenue = round($avgDailyUnits * 30 * $avgPrice, 2);
 
                 return [
+                    'product_id' => (int) $v->product_id,
+                    'variant_id' => (int) $v->id,
                     'product' => $v->product,
                     'variant' => $v->variant,
                     'sku' => $v->sku,
@@ -747,7 +754,7 @@ class DashboardStatsService
     }
 
     /**
-     * @return array<int, array{sku: string, product: string, variant: string, waiting: int}>
+     * @return array<int, array{product_id: int, variant_id: int, sku: string, product: string, variant: string, waiting: int}>
      */
     public function stockAlertDemand(int $limit = 15): array
     {
@@ -757,12 +764,14 @@ class DashboardStatsService
                 ->join('products as p', 'p.id', '=', 'pv.product_id')
                 ->where('stock_alert_subscriptions.is_active', true)
                 ->whereNull('stock_alert_subscriptions.notified_at')
-                ->selectRaw('pv.sku, p.name as product, pv.name as variant, COUNT(*) as waiting')
-                ->groupBy('stock_alert_subscriptions.product_variant_id', 'pv.sku', 'p.name', 'pv.name')
+                ->selectRaw('p.id as product_id, pv.id as variant_id, pv.sku, p.name as product, pv.name as variant, COUNT(*) as waiting')
+                ->groupBy('stock_alert_subscriptions.product_variant_id', 'p.id', 'pv.id', 'pv.sku', 'p.name', 'pv.name')
                 ->orderByDesc('waiting')
                 ->take($limit)
                 ->get()
                 ->map(fn ($row) => [
+                    'product_id' => (int) $row->product_id,
+                    'variant_id' => (int) $row->variant_id,
                     'sku' => $row->sku,
                     'product' => $row->product,
                     'variant' => $row->variant,
@@ -776,7 +785,7 @@ class DashboardStatsService
      * Dead stock: active variants with stock > 10 that haven't sold in 180+ days (or never).
      * Suggests "Clearance Sale" for items with no recent affinity, "Bundle Inclusion" for items that pair well.
      *
-     * @return array{total_units: int, total_value: float, items: list<array{product: string, variant: string, sku: string, stock: int, unit_price: float, stock_value: float, days_since_last_sale: int|null, total_ever_sold: int, suggestion: string}>}
+     * @return array{total_units: int, total_value: float, items: list<array{product_id: int, variant_id: int, product: string, variant: string, sku: string, stock: int, unit_price: float, stock_value: float, days_since_last_sale: int|null, total_ever_sold: int, suggestion: string, companion_product_id: int|null, companion_product: string|null}>}
      */
     public function deadStock(int $limit = 50): array
     {
@@ -788,7 +797,7 @@ class DashboardStatsService
                 ->join('products as p', 'p.id', '=', 'pv.product_id')
                 ->where('pv.is_active', true)
                 ->where('pv.stock_quantity', '>', self::DEAD_STOCK_MIN_UNITS)
-                ->select('pv.id', 'pv.sku', 'pv.name as variant', 'p.name as product', 'pv.stock_quantity as stock', 'pv.price')
+                ->select('pv.id', 'pv.product_id', 'pv.sku', 'pv.name as variant', 'p.name as product', 'pv.stock_quantity as stock', 'pv.price')
                 ->get();
 
             if ($variants->isEmpty()) {
@@ -819,6 +828,32 @@ class DashboardStatsService
                 ->selectRaw('oi1.product_variant_id, COUNT(DISTINCT oi1.order_id) as co_orders')
                 ->pluck('co_orders', 'product_variant_id');
 
+            $topCompanionRows = DB::table('order_items as oi1')
+                ->join('order_items as oi2', function ($join) {
+                    $join->on('oi1.order_id', '=', 'oi2.order_id')
+                        ->whereColumn('oi1.product_id', '!=', 'oi2.product_id');
+                })
+                ->join('orders', 'orders.id', '=', 'oi1.order_id')
+                ->whereIn('orders.payment_status', self::PAID_STATUSES)
+                ->whereIn('oi1.product_variant_id', $variants->pluck('id'))
+                ->whereNotNull('oi2.product_id')
+                ->groupBy('oi1.product_variant_id', 'oi2.product_id', 'oi2.product_name')
+                ->selectRaw('oi1.product_variant_id, oi2.product_id as companion_product_id, oi2.product_name as companion_product, COUNT(DISTINCT oi1.order_id) as pair_orders')
+                ->orderBy('oi1.product_variant_id')
+                ->orderByDesc('pair_orders')
+                ->get();
+
+            $topCompanions = [];
+            foreach ($topCompanionRows as $row) {
+                $variantId = (int) $row->product_variant_id;
+                if (! isset($topCompanions[$variantId])) {
+                    $topCompanions[$variantId] = [
+                        'companion_product_id' => $row->companion_product_id ? (int) $row->companion_product_id : null,
+                        'companion_product' => $row->companion_product,
+                    ];
+                }
+            }
+
             $items = $variants->map(function ($v) use ($salesData, $coProductCounts, $cutoff) {
                 $sale = $salesData->get($v->id);
                 $lastSaleAt = $sale ? Carbon::parse($sale->last_sale_at) : null;
@@ -837,6 +872,8 @@ class DashboardStatsService
                 $suggestion = $coOrders >= self::DEAD_STOCK_BUNDLE_THRESHOLD ? 'Bundle Inclusion' : 'Clearance Sale';
 
                 return [
+                    'product_id' => (int) $v->product_id,
+                    'variant_id' => (int) $v->id,
                     'product' => $v->product,
                     'variant' => $v->variant,
                     'sku' => $v->sku,
@@ -846,6 +883,8 @@ class DashboardStatsService
                     'days_since_last_sale' => $daysSinceLastSale,
                     'total_ever_sold' => $totalSold,
                     'suggestion' => $suggestion,
+                    'companion_product_id' => $topCompanions[$v->id]['companion_product_id'] ?? null,
+                    'companion_product' => $topCompanions[$v->id]['companion_product'] ?? null,
                 ];
             })
                 ->filter()
@@ -2146,11 +2185,11 @@ class DashboardStatsService
      * Product Affinity (Market Basket): products frequently bought together.
      * Includes lift score: lift = P(A∩B) / (P(A) × P(B)). Lift > 1 means genuine affinity.
      *
-     * @return list<array{product_a: string, product_b: string, co_purchases: int, affinity_pct: float, lift: float}>
+     * @return list<array{product_a: string, product_a_id: int|null, product_b: string, product_b_id: int|null, co_purchases: int, affinity_pct: float, lift: float}>
      */
     public function productAffinity(int $limit = 10): array
     {
-        /** @var list<array{product_a: string, product_b: string, co_purchases: int, affinity_pct: float, lift: float}> */
+        /** @var list<array{product_a: string, product_a_id: int|null, product_b: string, product_b_id: int|null, co_purchases: int, affinity_pct: float, lift: float}> */
         return Cache::remember('dashboard:product-affinity', 300, function () use ($limit): array {
             // Step 1: SQL co-purchase pairs via self-join (avoids loading all items into PHP)
             $coPurchases = DB::table('order_items as oi1')
@@ -2161,8 +2200,8 @@ class DashboardStatsService
                 ->join('orders as o', 'o.id', '=', 'oi1.order_id')
                 ->whereIn('o.payment_status', self::PAID_STATUSES)
                 ->whereNotNull('o.placed_at')
-                ->selectRaw('oi1.product_name as product_a, oi2.product_name as product_b, COUNT(DISTINCT oi1.order_id) as co_purchases')
-                ->groupBy('oi1.product_name', 'oi2.product_name')
+                ->selectRaw('oi1.product_name as product_a, oi1.product_id as product_a_id, oi2.product_name as product_b, oi2.product_id as product_b_id, COUNT(DISTINCT oi1.order_id) as co_purchases')
+                ->groupBy('oi1.product_name', 'oi1.product_id', 'oi2.product_name', 'oi2.product_id')
                 ->orderByDesc('co_purchases')
                 ->limit($limit)
                 ->get();
@@ -2204,7 +2243,9 @@ class DashboardStatsService
 
                 return [
                     'product_a' => $row->product_a,
+                    'product_a_id' => $row->product_a_id ? (int) $row->product_a_id : null,
                     'product_b' => $row->product_b,
+                    'product_b_id' => $row->product_b_id ? (int) $row->product_b_id : null,
                     'co_purchases' => $coPurch,
                     'affinity_pct' => round(($coPurch / $minCount) * 100, 1),
                     'lift' => $lift,

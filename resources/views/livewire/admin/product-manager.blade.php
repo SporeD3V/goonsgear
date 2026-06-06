@@ -27,6 +27,39 @@ new class extends Component
 
     public string $filterPreorder = '';
 
+    public function mount(): void
+    {
+        $search = trim((string) request()->query('search', ''));
+        if ($search !== '') {
+            $this->search = $search;
+        }
+
+        $status = trim((string) request()->query('status', request()->query('filterStatus', '')));
+        if (in_array($status, ['draft', 'active', 'archived'], true)) {
+            $this->filterStatus = $status;
+        }
+
+        $category = (string) request()->query('category', request()->query('filterCategory', ''));
+        if ($category !== '' && ctype_digit($category)) {
+            $this->filterCategory = $category;
+        }
+
+        $sales = trim((string) request()->query('sales', request()->query('filterSales', '')));
+        if (in_array($sales, ['never_sold', 'sold'], true)) {
+            $this->filterSales = $sales;
+        }
+
+        $stock = trim((string) request()->query('stock', request()->query('filterStock', '')));
+        if (in_array($stock, ['zero_stock', 'in_stock'], true)) {
+            $this->filterStock = $stock;
+        }
+
+        $preorder = trim((string) request()->query('preorder', request()->query('filterPreorder', '')));
+        if (in_array($preorder, ['only_preorder'], true)) {
+            $this->filterPreorder = $preorder;
+        }
+    }
+
     public function updatedSearch(): void
     {
         $this->resetPage();

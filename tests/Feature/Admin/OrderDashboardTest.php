@@ -65,6 +65,18 @@ class OrderDashboardTest extends TestCase
             ->assertDontSee('GG-OTHER-999');
     }
 
+    public function test_order_manager_hydrates_filters_from_query_params(): void
+    {
+        Livewire::withQueryParams([
+            'search' => 'Romania',
+            'status' => 'pending',
+            'payment_status' => 'paid',
+        ])->test('admin.order-manager')
+            ->assertSet('search', 'Romania')
+            ->assertSet('filterStatus', 'pending')
+            ->assertSet('filterPaymentStatus', 'paid');
+    }
+
     public function test_admin_order_show_displays_order_items(): void
     {
         $order = Order::factory()->create([
