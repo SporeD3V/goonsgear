@@ -4,6 +4,7 @@ use App\Models\AdminNote;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 new class extends Component
@@ -87,6 +88,24 @@ new class extends Component
 
         return collect($this->anchorOptions)
             ->first(fn ($option) => ($option['key'] ?? null) === $this->selectedAnchorKey);
+    }
+
+    #[On('dashboard-note-anchor-selected')]
+    public function selectAnchorFromChart(string $context, string $anchorKey): void
+    {
+        if ($this->context !== $context || $anchorKey === '') {
+            return;
+        }
+
+        $anchorExists = collect($this->anchorOptions)
+            ->contains(fn ($option) => ($option['key'] ?? null) === $anchorKey);
+
+        if (! $anchorExists) {
+            return;
+        }
+
+        $this->selectedAnchorKey = $anchorKey;
+        $this->showForm = true;
     }
 
     public function startEditing(int $id): void

@@ -729,6 +729,20 @@
         const yearlyRevenue = @json($yearlyRevenue);
         const regionalGrowth = @json($regionalGrowth);
 
+        function selectDashboardNoteAnchor(context, anchorKey) {
+            if (!anchorKey) {
+                return;
+            }
+
+            window.dispatchEvent(new CustomEvent('dashboard-note-anchor', {
+                detail: { context, anchorKey }
+            }));
+
+            if (window.Livewire?.dispatch) {
+                window.Livewire.dispatch('dashboard-note-anchor-selected', { context, anchorKey });
+            }
+        }
+
         // Revenue line chart with gross/net/discounts — Chart.js palette
         const salesDatasets = [
             {
@@ -785,6 +799,34 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                onClick: function (_, elements) {
+                    if (!elements.length) {
+                        return;
+                    }
+
+                    const pointIndex = elements[0].index;
+                    const datasetIndex = elements[0].datasetIndex;
+                    const point = revenueData[pointIndex];
+
+                    if (!point) {
+                        return;
+                    }
+
+                    const seriesMap = {
+                        0: 'net',
+                        1: 'gross',
+                        2: 'discounts',
+                    };
+
+                    const series = seriesMap[datasetIndex];
+
+                    if (!series) {
+                        return;
+                    }
+
+                    const anchorKey = 'sales-revenue::' + series + '::' + point.day + '::' + pointIndex;
+                    selectDashboardNoteAnchor('sales-revenue', anchorKey);
+                },
                 plugins: { legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 }, color: '#57534e' } } },
                 scales: {
                     x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 12 }, color: '#78716c' } },
@@ -810,6 +852,21 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 indexAxis: 'y',
+                onClick: function (_, elements) {
+                    if (!elements.length) {
+                        return;
+                    }
+
+                    const pointIndex = elements[0].index;
+                    const row = countryChartData[pointIndex];
+
+                    if (!row) {
+                        return;
+                    }
+
+                    const anchorKey = 'sales-geography::' + (row.country || 'Unknown') + '::' + pointIndex;
+                    selectDashboardNoteAnchor('sales-geography', anchorKey);
+                },
                 plugins: { legend: { display: false } },
                 scales: {
                     x: { beginAtZero: true, ticks: { callback: v => '€' + v.toLocaleString(), font: { size: 12 }, color: '#78716c' }, grid: { color: '#f5f5f4' } },
@@ -865,6 +922,29 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    onClick: function (_, elements) {
+                        if (!elements.length) {
+                            return;
+                        }
+
+                        const pointIndex = elements[0].index;
+                        const datasetIndex = elements[0].datasetIndex;
+                        const dataset = yearDatasets[datasetIndex] ?? null;
+
+                        if (!dataset || dataset.label === 'Hist. Average') {
+                            return;
+                        }
+
+                        const year = dataset.label;
+                        const month = yearlyRevenue.months[pointIndex] ?? null;
+
+                        if (!month) {
+                            return;
+                        }
+
+                        const anchorKey = 'sales-yearly-revenue::' + year + '::' + month;
+                        selectDashboardNoteAnchor('sales-yearly-revenue', anchorKey);
+                    },
                     plugins: {
                         legend: { position: 'bottom', labels: { padding: 16, font: { size: 11 }, color: '#57534e' } },
                         tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': €' + (ctx.parsed.y ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) } }
@@ -917,6 +997,29 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    onClick: function (_, elements) {
+                        if (!elements.length) {
+                            return;
+                        }
+
+                        const pointIndex = elements[0].index;
+                        const datasetIndex = elements[0].datasetIndex;
+                        const activeDataset = regionalChart.data.datasets[datasetIndex] ?? null;
+                        const quarter = regionalGrowth.quarters[pointIndex] ?? null;
+
+                        if (!activeDataset || !quarter) {
+                            return;
+                        }
+
+                        const isAovSeries = activeDataset.label.endsWith(' AOV');
+                        const country = isAovSeries
+                            ? activeDataset.label.replace(/ AOV$/, '')
+                            : activeDataset.label;
+                        const series = isAovSeries ? 'aov' : 'revenue';
+
+                        const anchorKey = 'sales-regional-growth::' + series + '::' + country + '::' + quarter + '::' + pointIndex;
+                        selectDashboardNoteAnchor('sales-regional-growth', anchorKey);
+                    },
                     plugins: {
                         legend: { position: 'bottom', labels: { padding: 16, font: { size: 11 }, color: '#57534e' } },
                         tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': €' + ctx.parsed.y.toLocaleString() } }
@@ -953,6 +1056,21 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    onClick: function (_, elements) {
+                        if (!elements.length) {
+                            return;
+                        }
+
+                        const pointIndex = elements[0].index;
+                        const row = aovChartData[pointIndex];
+
+                        if (!row) {
+                            return;
+                        }
+
+                        const anchorKey = 'sales-aov-country::' + (row.country || 'Unknown') + '::' + pointIndex;
+                        selectDashboardNoteAnchor('sales-aov-country', anchorKey);
+                    },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -1037,6 +1155,21 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    onClick: function (_, elements) {
+                        if (!elements.length) {
+                            return;
+                        }
+
+                        const pointIndex = elements[0].index;
+                        const row = aovData[pointIndex];
+
+                        if (!row) {
+                            return;
+                        }
+
+                        const anchorKey = 'sales-aov-breakdown::' + (row.year ?? pointIndex);
+                        selectDashboardNoteAnchor('sales-aov-breakdown', anchorKey);
+                    },
                     plugins: {
                         legend: { position: 'bottom', labels: { font: { size: 12 }, color: '#57534e', padding: 16 } },
                     },

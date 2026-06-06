@@ -1,7 +1,9 @@
 {{-- Contextual Notes Toggle --}}
 @props(['context', 'label', 'anchorOptions' => []])
 
-<div x-data="{ open: false }" class="mt-3 border-t border-stone-100 pt-2">
+<div x-data="{ open: false }"
+    x-on:dashboard-note-anchor.window="if (($event.detail?.context ?? null) === @js($context)) { open = true; }"
+    class="mt-3 border-t border-stone-100 pt-2">
     <button @click="open = !open"
             class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-stone-400 transition hover:bg-amber-50 hover:text-amber-600"
             :class="open && 'bg-amber-50 text-amber-600'">

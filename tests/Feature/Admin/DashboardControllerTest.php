@@ -1980,6 +1980,25 @@ class DashboardControllerTest extends TestCase
         ]);
     }
 
+    public function test_dashboard_notes_chart_selection_prefills_anchor_and_opens_form(): void
+    {
+        $user = User::factory()->admin()->create();
+        $this->actingAs($user);
+
+        Livewire::test('admin.dashboard-notes', [
+            'context' => 'sales-revenue',
+            'contextLabel' => 'Revenue Over Time',
+            'anchorOptions' => [[
+                'key' => 'sales-revenue::gross::2026-06-06::0',
+                'label' => 'Gross Revenue - 2026-06-06',
+                'value' => '€1,245.50',
+            ]],
+        ])
+            ->call('selectAnchorFromChart', 'sales-revenue', 'sales-revenue::gross::2026-06-06::0')
+            ->assertSet('selectedAnchorKey', 'sales-revenue::gross::2026-06-06::0')
+            ->assertSet('showForm', true);
+    }
+
     // ── Refund Deduction ───────────────────────────────────────
 
     public function test_net_revenue_deducts_refund_total(): void

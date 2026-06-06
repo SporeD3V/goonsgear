@@ -195,6 +195,21 @@
     document.addEventListener('DOMContentLoaded', function () {
         const abandonedData = @json($topAbandonedProducts);
         const abandonedChartData = abandonedData.slice(0, 10);
+
+        function selectDashboardNoteAnchor(context, anchorKey) {
+            if (!anchorKey) {
+                return;
+            }
+
+            window.dispatchEvent(new CustomEvent('dashboard-note-anchor', {
+                detail: { context, anchorKey }
+            }));
+
+            if (window.Livewire?.dispatch) {
+                window.Livewire.dispatch('dashboard-note-anchor-selected', { context, anchorKey });
+            }
+        }
+
         if (abandonedChartData.length && document.getElementById('abandonedProductsChart')) {
             new Chart(document.getElementById('abandonedProductsChart'), {
                 type: 'bar',
@@ -211,6 +226,21 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     indexAxis: 'y',
+                    onClick: function (_, elements) {
+                        if (!elements.length) {
+                            return;
+                        }
+
+                        const pointIndex = elements[0].index;
+                        const row = abandonedChartData[pointIndex];
+
+                        if (!row) {
+                            return;
+                        }
+
+                        const anchorKey = 'promotions-abandoned-products::' + (row.product_name ?? pointIndex) + '::' + pointIndex;
+                        selectDashboardNoteAnchor('promotions-abandoned-products', anchorKey);
+                    },
                     plugins: {
                         legend: { display: false },
                         tooltip: {

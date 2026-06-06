@@ -437,6 +437,20 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        function selectDashboardNoteAnchor(context, anchorKey) {
+            if (!anchorKey) {
+                return;
+            }
+
+            window.dispatchEvent(new CustomEvent('dashboard-note-anchor', {
+                detail: { context, anchorKey }
+            }));
+
+            if (window.Livewire?.dispatch) {
+                window.Livewire.dispatch('dashboard-note-anchor-selected', { context, anchorKey });
+            }
+        }
+
         {{-- Cohort Retention Chart --}}
         const cohortData = @json($cohortRetention);
         if (cohortData.length) {
@@ -464,6 +478,21 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    onClick: function (_, elements) {
+                        if (!elements.length) {
+                            return;
+                        }
+
+                        const pointIndex = elements[0].index;
+                        const row = cohortData[pointIndex];
+
+                        if (!row) {
+                            return;
+                        }
+
+                        const anchorKey = 'audience-cohort-retention::' + row.year + '::' + pointIndex;
+                        selectDashboardNoteAnchor('audience-cohort-retention', anchorKey);
+                    },
                     plugins: {
                         legend: { position: 'bottom', labels: { font: { size: 12 }, color: '#57534e', padding: 16 } },
                         tooltip: {
@@ -516,6 +545,21 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    onClick: function (_, elements) {
+                        if (!elements.length) {
+                            return;
+                        }
+
+                        const pointIndex = elements[0].index;
+                        const segment = labels[pointIndex];
+
+                        if (!segment) {
+                            return;
+                        }
+
+                        const anchorKey = 'audience-rfm::' + segment;
+                        selectDashboardNoteAnchor('audience-rfm', anchorKey);
+                    },
                     plugins: {
                         legend: { position: 'bottom', labels: { font: { size: 12 }, color: '#57534e', padding: 12 } },
                         tooltip: {
@@ -559,6 +603,21 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    onClick: function (_, elements) {
+                        if (!elements.length) {
+                            return;
+                        }
+
+                        const pointIndex = elements[0].index;
+                        const row = clvData.by_year[pointIndex];
+
+                        if (!row) {
+                            return;
+                        }
+
+                        const anchorKey = 'audience-clv::' + (row.year ?? pointIndex) + '::' + pointIndex;
+                        selectDashboardNoteAnchor('audience-clv', anchorKey);
+                    },
                     plugins: {
                         legend: { position: 'bottom', labels: { font: { size: 12 }, color: '#57534e', padding: 16 } },
                         tooltip: {

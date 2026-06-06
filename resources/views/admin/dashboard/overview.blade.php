@@ -236,6 +236,20 @@
         const statusData = @json($ordersByStatus);
         const prevRevenueData = @json($prevRevenueOverTime ?? null);
 
+        function selectDashboardNoteAnchor(context, anchorKey) {
+            if (!anchorKey) {
+                return;
+            }
+
+            window.dispatchEvent(new CustomEvent('dashboard-note-anchor', {
+                detail: { context, anchorKey }
+            }));
+
+            if (window.Livewire?.dispatch) {
+                window.Livewire.dispatch('dashboard-note-anchor-selected', { context, anchorKey });
+            }
+        }
+
         // Revenue Line Chart — with optional comparison overlay
         const revenueDatasets = [{
             label: 'Gross Revenue',
@@ -272,6 +286,21 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                onClick: function (_, elements) {
+                    if (!elements.length) {
+                        return;
+                    }
+
+                    const pointIndex = elements[0].index;
+                    const point = revenueData[pointIndex];
+
+                    if (!point) {
+                        return;
+                    }
+
+                    const anchorKey = 'overview-revenue::gross::' + point.day + '::' + pointIndex;
+                    selectDashboardNoteAnchor('overview-revenue', anchorKey);
+                },
                 plugins: { legend: { display: !!prevRevenueData, position: 'bottom', labels: { padding: 16, font: { size: 12 }, color: '#57534e' } } },
                 scales: {
                     x: { grid: { display: false }, ticks: { maxTicksLimit: 8, font: { size: 12 }, color: '#78716c' } },

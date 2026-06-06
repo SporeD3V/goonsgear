@@ -442,6 +442,20 @@
         const colorMap = { active: '#4bc0c0', draft: '#ff9f40', archived: '#c9cbcf' };
         const labels = Object.keys(statusData);
 
+        function selectDashboardNoteAnchor(context, anchorKey) {
+            if (!anchorKey) {
+                return;
+            }
+
+            window.dispatchEvent(new CustomEvent('dashboard-note-anchor', {
+                detail: { context, anchorKey }
+            }));
+
+            if (window.Livewire?.dispatch) {
+                window.Livewire.dispatch('dashboard-note-anchor-selected', { context, anchorKey });
+            }
+        }
+
         new Chart(document.getElementById('productStatusChart'), {
             type: 'doughnut',
             data: {
@@ -456,6 +470,21 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                onClick: function (_, elements) {
+                    if (!elements.length) {
+                        return;
+                    }
+
+                    const pointIndex = elements[0].index;
+                    const status = labels[pointIndex];
+
+                    if (!status) {
+                        return;
+                    }
+
+                    const anchorKey = 'inventory-product-status::' + status;
+                    selectDashboardNoteAnchor('inventory-product-status', anchorKey);
+                },
                 plugins: {
                     legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 }, color: '#57534e' } }
                 }
