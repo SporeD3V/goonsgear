@@ -111,6 +111,22 @@
 
 {{-- Top Abandoned Products --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="4">
+    @php
+        $promotionsAbandonedNoteOptions = collect($topAbandonedProducts)
+            ->values()
+            ->map(fn ($row, $index) => [
+                'key' => 'promotions-abandoned-products::' . ($row['product_name'] ?? $index) . '::' . $index,
+                'label' => 'Abandoned - ' . ($row['product_name'] ?? 'Unknown Product'),
+                'value' => ($row['times_abandoned'] ?? 0) . ' abandons',
+                'meta' => [
+                    'product_name' => $row['product_name'] ?? null,
+                    'times_abandoned' => $row['times_abandoned'] ?? null,
+                    'total_qty' => $row['total_qty'] ?? null,
+                    'avg_price' => $row['avg_price'] ?? null,
+                ],
+            ])
+            ->all();
+    @endphp
     <h3 class="mb-1 text-sm font-semibold uppercase tracking-wide text-stone-600">Top Abandoned Products</h3>
     <p class="mb-3 text-[13px] text-stone-500">Which items are left behind? If a product shows up here often, investigate price or shipping barriers.</p>
     @if (empty($topAbandonedProducts))
@@ -118,7 +134,7 @@
     @else
         <div class="grid gap-5 lg:grid-cols-2">
             <div class="h-[260px]">
-                <canvas id="abandonedProductsChart" data-note-anchor-context="promotions-abandoned-products" data-note-anchor-label="Top Abandoned Products"></canvas>
+                <canvas id="abandonedProductsChart"></canvas>
             </div>
             <div class="-mx-5 overflow-x-auto px-5" x-data="{
                 sortCol: 'times_abandoned',
@@ -171,6 +187,7 @@
             </div>
         </div>
     @endif
+    @include('admin.dashboard._contextual-notes', ['context' => 'promotions-abandoned-products', 'label' => 'Top Abandoned Products', 'anchorOptions' => $promotionsAbandonedNoteOptions])
 </div>
 
 @push('scripts')

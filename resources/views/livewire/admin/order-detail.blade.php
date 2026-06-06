@@ -252,13 +252,11 @@ new class extends Component
             ->all();
     @endphp
 
-    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <livewire:admin.dashboard-notes
-            :context="'order-' . $this->order->id"
-            :context-label="'Order ' . $this->order->order_number"
-            :anchor-options="$orderNoteOptions"
-            :key="'order-notes-' . $this->order->id" />
-    </div>
+    @include('admin._page-notes-card', [
+        'context' => 'order-' . $this->order->id,
+        'label' => 'Order ' . $this->order->order_number,
+        'anchorOptions' => $orderNoteOptions,
+    ])
 
     {{-- Order Items --}}
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

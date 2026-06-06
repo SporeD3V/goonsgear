@@ -254,6 +254,29 @@ new class extends Component
         <a href="{{ route('admin.products.create') }}" class="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">New Product</a>
     </div>
 
+    @php
+        $productListNoteOptions = $this->products->getCollection()
+            ->map(fn ($product) => [
+                'key' => 'products-list::' . $product->id,
+                'label' => 'Product - ' . $product->name,
+                'value' => ucfirst($product->status),
+                'meta' => [
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'status' => $product->status,
+                    'slug' => $product->slug,
+                ],
+            ])
+            ->values()
+            ->all();
+    @endphp
+
+    @include('admin._page-notes-card', [
+        'context' => 'products-list',
+        'label' => 'Products List',
+        'anchorOptions' => $productListNoteOptions,
+    ])
+
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">Filters</h3>
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">

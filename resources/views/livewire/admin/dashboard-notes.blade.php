@@ -18,11 +18,6 @@ new class extends Component
     public array $anchorOptions = [];
     public string $selectedAnchorKey = '';
 
-    public ?string $anchorKey = null;
-    public ?string $anchorLabel = null;
-    public ?string $anchorValue = null;
-    public array $anchorMeta = [];
-
     /** Optional context key to scope notes to a specific dashboard section */
     public ?string $context = null;
     public ?string $contextLabel = null;

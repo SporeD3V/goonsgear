@@ -314,10 +314,27 @@
 
     {{-- Product Status Breakdown --}}
     <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="3">
+        @php
+            $inventoryStatusNoteOptions = collect($productStatus)
+                ->map(function ($count, $status) {
+                    return [
+                        'key' => 'inventory-product-status::' . $status,
+                        'label' => ucfirst($status),
+                        'value' => number_format((int) $count) . ' products',
+                        'meta' => [
+                            'status' => $status,
+                            'count' => (int) $count,
+                        ],
+                    ];
+                })
+                ->values()
+                ->all();
+        @endphp
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Product Status</h3>
         <div class="mx-auto h-[250px] max-w-xs">
-            <canvas id="productStatusChart" data-note-anchor-context="inventory-product-status" data-note-anchor-label="Product Status"></canvas>
+            <canvas id="productStatusChart"></canvas>
         </div>
+        @include('admin.dashboard._contextual-notes', ['context' => 'inventory-product-status', 'label' => 'Product Status', 'anchorOptions' => $inventoryStatusNoteOptions])
     </div>
 </div>
 

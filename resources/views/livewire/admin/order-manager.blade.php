@@ -76,6 +76,29 @@ new class extends Component
         <h2 class="text-lg font-semibold">Orders</h2>
     </div>
 
+    @php
+        $orderListNoteOptions = $this->orders->getCollection()
+            ->map(fn ($order) => [
+                'key' => 'order-list::' . $order->id,
+                'label' => 'Order ' . $order->order_number,
+                'value' => '$' . number_format((float) $order->total, 2),
+                'meta' => [
+                    'order_id' => $order->id,
+                    'order_number' => $order->order_number,
+                    'status' => $order->status,
+                    'payment_status' => $order->payment_status,
+                ],
+            ])
+            ->values()
+            ->all();
+    @endphp
+
+    @include('admin._page-notes-card', [
+        'context' => 'orders-list',
+        'label' => 'Orders List',
+        'anchorOptions' => $orderListNoteOptions,
+    ])
+
     <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">Filters</h3>
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

@@ -98,20 +98,55 @@
 
 {{-- Cohort Retention History --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="4">
+    @php
+        $audienceCohortNoteOptions = collect($cohortRetention)
+            ->values()
+            ->map(fn ($row, $index) => [
+                'key' => 'audience-cohort-retention::' . $row['year'] . '::' . $index,
+                'label' => 'Cohort ' . $row['year'],
+                'value' => ($row['retention_pct'] ?? 0) . '%',
+                'meta' => [
+                    'year' => $row['year'] ?? null,
+                    'retention_pct' => $row['retention_pct'] ?? null,
+                    'retained' => $row['retained'] ?? null,
+                    'total_customers' => $row['total_customers'] ?? null,
+                ],
+            ])
+            ->all();
+    @endphp
     <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Cohort Retention History</h3>
     <p class="mb-3 text-[13px] text-stone-500">12-month return rate by acquisition year — is the brand getting stickier?</p>
     @if (empty($cohortRetention))
         <p class="text-[15px] text-stone-500">Not enough order history yet.</p>
     @else
         <div class="h-[300px]">
-            <canvas id="cohortRetentionChart" data-note-anchor-context="audience-cohort-retention" data-note-anchor-label="Cohort Retention History"></canvas>
+            <canvas id="cohortRetentionChart"></canvas>
         </div>
         <p class="mt-2 text-[12px] text-stone-400">* = cohort still within 12-month window (retention may still grow)</p>
     @endif
+    @include('admin.dashboard._contextual-notes', ['context' => 'audience-cohort-retention', 'label' => 'Cohort Retention History', 'anchorOptions' => $audienceCohortNoteOptions])
 </div>
 
 {{-- RFM Segmentation --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="5">
+    @php
+        $audienceRfmNoteOptions = collect($rfmSegmentation['segments'] ?? [])
+            ->map(function ($row, $segment) {
+                return [
+                    'key' => 'audience-rfm::' . $segment,
+                    'label' => 'Segment - ' . $segment,
+                    'value' => ($row['count'] ?? 0) . ' customers',
+                    'meta' => [
+                        'segment' => $segment,
+                        'count' => $row['count'] ?? null,
+                        'avg_revenue' => $row['avg_revenue'] ?? null,
+                        'avg_orders' => $row['avg_orders'] ?? null,
+                    ],
+                ];
+            })
+            ->values()
+            ->all();
+    @endphp
     <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Customer Segments (RFM)</h3>
     <p class="mb-3 text-[13px] text-stone-500">Customers grouped by Recency, Frequency & Monetary value. Based on {{ number_format($rfmSegmentation['customers_analyzed']) }} customers.</p>
     @if (empty($rfmSegmentation['segments']))
@@ -119,7 +154,7 @@
     @else
         <div class="grid gap-6 lg:grid-cols-2">
             <div class="min-w-0 h-[260px]">
-                <canvas id="rfmChart" data-note-anchor-context="audience-rfm" data-note-anchor-label="Customer Segments (RFM)"></canvas>
+                <canvas id="rfmChart"></canvas>
             </div>
             <div class="min-w-0 -mx-5 overflow-x-auto px-5" x-data="{
                 sortCol: 'count',
@@ -169,10 +204,26 @@
             </div>
         </div>
     @endif
+    @include('admin.dashboard._contextual-notes', ['context' => 'audience-rfm', 'label' => 'Customer Segments (RFM)', 'anchorOptions' => $audienceRfmNoteOptions])
 </div>
 
 {{-- Customer Lifetime Value --}}
 <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="6">
+    @php
+        $audienceClvNoteOptions = collect($clv['by_year'] ?? [])
+            ->values()
+            ->map(fn ($row, $index) => [
+                'key' => 'audience-clv::' . ($row['year'] ?? $index) . '::' . $index,
+                'label' => 'CLV - ' . ($row['year'] ?? 'Unknown'),
+                'value' => '€' . number_format((float) ($row['clv'] ?? 0), 2),
+                'meta' => [
+                    'year' => $row['year'] ?? null,
+                    'clv' => $row['clv'] ?? null,
+                    'avg_orders' => $row['avg_orders'] ?? null,
+                ],
+            ])
+            ->all();
+    @endphp
     <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-600">Customer Lifetime Value</h3>
     <p class="mb-3 text-[13px] text-stone-500">Average total spend per customer — how much is a customer worth over their lifetime?</p>
     @if ($clv['total_customers'] === 0)
@@ -194,10 +245,11 @@
         </div>
         @if (!empty($clv['by_year']))
             <div class="h-[260px]">
-                <canvas id="clvByYearChart" data-note-anchor-context="audience-clv" data-note-anchor-label="Customer Lifetime Value"></canvas>
+                <canvas id="clvByYearChart"></canvas>
             </div>
         @endif
     @endif
+    @include('admin.dashboard._contextual-notes', ['context' => 'audience-clv', 'label' => 'Customer Lifetime Value', 'anchorOptions' => $audienceClvNoteOptions])
 </div>
 
 {{-- VIP Churn Warning --}}
