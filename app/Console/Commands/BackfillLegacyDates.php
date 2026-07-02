@@ -115,7 +115,7 @@ class BackfillLegacyDates extends Command
                 continue;
             }
 
-            $shippedAt = Carbon::createFromTimestamp((int) $dateCompleted);
+            $shippedAt = Carbon::createFromTimestamp((int) $dateCompleted)->setTimezone(config('app.timezone'));
 
             if ($dryRun) {
                 $this->line("  Would set order #{$order->id} ({$order->order_number}): shipped_at → {$shippedAt}");

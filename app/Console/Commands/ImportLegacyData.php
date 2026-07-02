@@ -822,7 +822,7 @@ class ImportLegacyData extends Command
                     'coupon_code' => $couponCode,
                     'placed_at' => $legacyOrder->post_date,
                     'shipped_at' => in_array($status, ['completed']) && ! empty($meta['_date_completed'])
-                        ? Carbon::createFromTimestamp((int) $meta['_date_completed'])
+                        ? Carbon::createFromTimestamp((int) $meta['_date_completed'])->setTimezone(config('app.timezone'))
                         : null,
                     'billing_first_name' => $meta['_billing_first_name'] ?? null,
                     'billing_last_name' => $meta['_billing_last_name'] ?? null,

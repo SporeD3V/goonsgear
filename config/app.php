@@ -62,12 +62,14 @@ return [
     |--------------------------------------------------------------------------
     |
     | Here you may specify the default timezone for your application, which
-    | will be used by the PHP date and date-time functions. The timezone
-    | is set to "UTC" by default as it is suitable for most use cases.
+    | will be used by the PHP date and date-time functions. Set to the store's
+    | business timezone: all WooCommerce-era data (import + webhook sync) is
+    | stored as Berlin wall-clock time, so this keeps every era consistent and
+    | makes dashboard day/month boundaries match the business day.
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'Europe/Berlin'),
 
     /*
     |--------------------------------------------------------------------------

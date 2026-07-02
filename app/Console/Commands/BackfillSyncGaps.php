@@ -658,7 +658,7 @@ class BackfillSyncGaps extends Command
 
             $expiresTimestamp = $meta['date_expires'] ?? null;
             $endsAt = $expiresTimestamp && $expiresTimestamp > 0
-                ? Carbon::createFromTimestamp((int) $expiresTimestamp)
+                ? Carbon::createFromTimestamp((int) $expiresTimestamp)->setTimezone(config('app.timezone'))
                 : null;
 
             if (! $dryRun) {

@@ -656,7 +656,7 @@ class SyncFromWordPress extends Command
                         $dateCompleted = $completedMeta[$mapping->legacy_wc_order_id] ?? null;
 
                         if ($dateCompleted) {
-                            $updates['shipped_at'] = Carbon::createFromTimestamp((int) $dateCompleted);
+                            $updates['shipped_at'] = Carbon::createFromTimestamp((int) $dateCompleted)->setTimezone(config('app.timezone'));
                         }
                     }
                 }
@@ -778,7 +778,7 @@ class SyncFromWordPress extends Command
                     'coupon_code' => $couponItem?->order_item_name,
                     'placed_at' => $legacyOrder->post_date,
                     'shipped_at' => $status === 'completed' && ! empty($meta['_date_completed'])
-                        ? Carbon::createFromTimestamp((int) $meta['_date_completed'])
+                        ? Carbon::createFromTimestamp((int) $meta['_date_completed'])->setTimezone(config('app.timezone'))
                         : null,
                     'billing_first_name' => $meta['_billing_first_name'] ?? null,
                     'billing_last_name' => $meta['_billing_last_name'] ?? null,
