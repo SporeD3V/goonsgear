@@ -503,7 +503,7 @@ class DashboardStatsService
      */
     public function shippingMargins(int $limit = 30): array
     {
-        return Cache::remember('dashboard:shipping-margins', 300, function () use ($limit): array {
+        return Cache::remember("dashboard:shipping-margins:{$limit}", 300, function () use ($limit): array {
             $rows = DB::table('orders')
                 ->whereIn('payment_status', self::PAID_STATUSES)
                 ->whereNotNull('placed_at')
@@ -530,7 +530,12 @@ class DashboardStatsService
                 'margin_pct' => round((1 - $costPct) * 100, 1),
             ])->all();
 
-            $totalCollected = (float) $rows->sum('collected');
+            // Headline totals cover ALL countries, not just the top-N breakdown rows.
+            $totalCollected = (float) DB::table('orders')
+                ->whereIn('payment_status', self::PAID_STATUSES)
+                ->whereNotNull('placed_at')
+                ->where('shipping_total', '>', 0)
+                ->sum('shipping_total');
 
             return [
                 'total_collected' => round($totalCollected, 2),

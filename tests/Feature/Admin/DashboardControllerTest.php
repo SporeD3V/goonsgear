@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StockAlertSubscription;
 use App\Models\User;
+use App\Support\DashboardStatsService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -2138,5 +2139,103 @@ class DashboardControllerTest extends TestCase
         $aov = $response->viewData('aov');
         // AOV = (155 + 92) / 2 = 123.5
         $this->assertEquals(123.5, $aov);
+    }
+
+    public function test_unknown_tab_falls_back_to_overview(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->get(route('admin.dashboard', ['tab' => 'promotions']))
+            ->assertOk()
+            ->assertViewHas('tab', 'overview')
+            ->assertViewHas('overview');
+    }
+
+    public function test_previous_period_window_matches_current_duration(): void
+    {
+        $this->actingAsAdmin();
+
+        // Current window: Jun 1–30 (30 days). The previous window must be
+        // May 2 00:00 – May 31 23:59:59 (also 30 days). The old truncating
+        // math produced May 3 – May 31 (29 days), missing this order.
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'total' => 100.00,
+            'placed_at' => Carbon::parse('2026-05-02 12:00:00'),
+        ]);
+
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'total' => 100.00,
+            'placed_at' => Carbon::parse('2026-06-15 12:00:00'),
+        ]);
+
+        $response = $this->get(route('admin.dashboard', [
+            'custom_from' => '2026-06-01',
+            'custom_to' => '2026-06-30',
+            'compare' => 1,
+        ]));
+
+        $response->assertOk()->assertViewHas('deltas');
+
+        // Equal revenue in both windows → 0% delta. A 29-day previous window
+        // would exclude the May 2 order and report +100% instead.
+        $this->assertEquals(0.0, $response->viewData('deltas')['revenue']);
+    }
+
+    public function test_one_day_period_uses_rolling_24_hour_window(): void
+    {
+        $this->actingAsAdmin();
+
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => now()->subHours(25),
+        ]);
+
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'placed_at' => now()->subHours(2),
+        ]);
+
+        $response = $this->get(route('admin.dashboard', ['period' => '1d']));
+
+        $response->assertOk()->assertViewHas('periodLabel', 'Last 24 Hours');
+
+        // Only the order within the last 24 hours counts.
+        $this->assertEquals(1, $response->viewData('overview')['total_orders']);
+    }
+
+    public function test_shipping_margins_totals_include_countries_beyond_limit(): void
+    {
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'country' => 'DE',
+            'shipping_total' => 10.00,
+            'placed_at' => now()->subDays(2),
+        ]);
+
+        Order::factory()->create([
+            'payment_status' => 'paid',
+            'country' => 'FR',
+            'shipping_total' => 4.00,
+            'placed_at' => now()->subDays(2),
+        ]);
+
+        $margins = app(DashboardStatsService::class)->shippingMargins(1);
+
+        // Breakdown is limited, but headline totals cover all countries.
+        $this->assertCount(1, $margins['by_country']);
+        $this->assertEquals(14.0, $margins['total_collected']);
+        $this->assertEquals(8.4, $margins['total_estimated_cost']);
+        $this->assertEquals(5.6, $margins['total_margin']);
+    }
+
+    public function test_sales_chart_binds_net_revenue_series(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->get(route('admin.dashboard', ['tab' => 'sales']))
+            ->assertOk()
+            ->assertSee('revenueData.map(r => r.net_revenue)', false);
     }
 }

@@ -34,7 +34,7 @@
                 ->values()
                 ->flatMap(function ($row, $index) {
                     $series = [
-                        'net' => ['label' => 'Net Revenue', 'value' => $row['revenue'] ?? null],
+                        'net' => ['label' => 'Net Revenue', 'value' => $row['net_revenue'] ?? null],
                         'gross' => ['label' => 'Gross Revenue', 'value' => $row['gross'] ?? null],
                         'discounts' => ['label' => 'Discounts', 'value' => $row['discounts'] ?? null],
                     ];
@@ -850,7 +850,7 @@
         const salesDatasets = [
             {
                 label: 'Net Revenue',
-                data: revenueData.map(r => r.revenue),
+                data: revenueData.map(r => r.net_revenue),
                 borderColor: '#36a2eb',
                 backgroundColor: 'rgba(54, 162, 235, 0.08)',
                 fill: true,
@@ -883,7 +883,7 @@
         if (prevRevenueData) {
             salesDatasets.push({
                 label: 'Prev. Net Revenue',
-                data: prevRevenueData.map(r => r.revenue),
+                data: prevRevenueData.map(r => r.net_revenue),
                 borderColor: '#9966ff',
                 borderDash: [6, 4],
                 backgroundColor: 'transparent',

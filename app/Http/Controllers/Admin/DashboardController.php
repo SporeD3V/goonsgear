@@ -10,6 +10,9 @@ use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
+    /** @var list<string> */
+    private const TABS = ['overview', 'sales', 'audience', 'inventory', 'marketing'];
+
     /** @var array<string, int|null> */
     private const PERIOD_PRESETS = [
         '1d' => 1,
@@ -30,6 +33,11 @@ class DashboardController extends Controller
     public function index(Request $request, DashboardStatsService $stats): View
     {
         $tab = $request->query('tab', 'overview');
+
+        if (! in_array($tab, self::TABS, true)) {
+            $tab = 'overview';
+        }
+
         $period = $request->query('period', '30d');
         $compare = $request->boolean('compare', false);
         $compareMode = $request->query('compare_mode', 'previous_period');
@@ -79,8 +87,15 @@ class DashboardController extends Controller
             }
 
             $days = self::PERIOD_PRESETS[$period];
-            $from = $days ? Carbon::today()->subDays($days) : null;
-            $to = $days ? Carbon::now() : null;
+
+            if ($period === '1d') {
+                // Rolling 24-hour window so the data matches the "Last 24 Hours" label.
+                $from = Carbon::now()->subDay();
+                $to = Carbon::now();
+            } else {
+                $from = $days ? Carbon::today()->subDays($days) : null;
+                $to = $days ? Carbon::now() : null;
+            }
         }
 
         $prevFrom = null;
@@ -102,16 +117,12 @@ class DashboardController extends Controller
                     $compareCustomFrom = $parsedCompareFrom->toDateString();
                     $compareCustomTo = $parsedCompareTo->toDateString();
                 } else {
-                    $days = (int) $from->diffInDays($to);
-                    $prevTo = $from->copy()->subSecond();
-                    $prevFrom = $from->copy()->subDays($days);
+                    [$prevFrom, $prevTo] = $this->previousPeriodRange($from, $to);
                     $compareCustomFrom = $prevFrom->toDateString();
                     $compareCustomTo = $prevTo->toDateString();
                 }
             } else {
-                $days = (int) $from->diffInDays($to);
-                $prevTo = $from->copy()->subSecond();
-                $prevFrom = $from->copy()->subDays($days);
+                [$prevFrom, $prevTo] = $this->previousPeriodRange($from, $to);
             }
         }
 
@@ -318,6 +329,26 @@ class DashboardController extends Controller
             'all' => 'All Time',
             default => 'Last 30 Days',
         };
+    }
+
+    /**
+     * Adjacent previous window with exactly the same duration as [from, to].
+     *
+     * Duration is measured in seconds (rounded up) rather than truncated days:
+     * a day-aligned custom range (e.g. Apr 1–30) shifts back by exactly 30 days
+     * instead of 29, and preset windows — which include a partial "today" — are
+     * compared against an equally long window instead of N whole days.
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function previousPeriodRange(Carbon $from, Carbon $to): array
+    {
+        $durationSeconds = (int) ceil($from->diffInSeconds($to));
+
+        return [
+            $from->copy()->subSeconds($durationSeconds),
+            $from->copy()->subSecond(),
+        ];
     }
 
     private function shiftDateByInterval(Carbon $date, int $value, string $unit): Carbon
