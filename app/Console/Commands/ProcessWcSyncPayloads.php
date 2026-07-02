@@ -968,6 +968,31 @@ class ProcessWcSyncPayloads extends Command
                 return false;
             }
 
+            [$scopeType, $scopeId, $reviewReasons] = $this->resolveCouponScope($data);
+
+            // Features WC enforces that GG cannot represent — quarantine for review.
+            if (($data['discount_type'] ?? 'fixed_cart') === 'fixed_product') {
+                $reviewReasons[] = 'per-product fixed discount (fixed_product)';
+            }
+            if ((int) ($data['usage_limit_per_user'] ?? 0) > 0) {
+                $reviewReasons[] = 'per-user usage limit';
+            }
+            if ((float) ($data['maximum_amount'] ?? 0) > 0) {
+                $reviewReasons[] = 'maximum spend limit';
+            }
+            if (! empty($data['exclude_sale_items'])) {
+                $reviewReasons[] = 'excludes sale items';
+            }
+
+            $isPublished = ($data['post_status'] ?? 'publish') === 'publish';
+            $isUnexpired = ! isset($data['date_expires']) || Carbon::parse($data['date_expires'])->isFuture();
+
+            $description = $data['description'] ?? null;
+
+            if ($reviewReasons !== []) {
+                $description = '[Needs review: '.implode('; ', $reviewReasons).'] '.($description ?? '');
+            }
+
             Coupon::updateOrCreate(
                 ['code' => $code],
                 [
@@ -976,8 +1001,11 @@ class ProcessWcSyncPayloads extends Command
                     'minimum_subtotal' => $data['minimum_amount'] ?? 0,
                     'usage_limit' => $data['usage_limit'] ?? null,
                     'used_count' => $data['usage_count'] ?? 0,
-                    'is_active' => ! isset($data['date_expires']) || Carbon::parse($data['date_expires'])->isFuture(),
-                    'description' => $data['description'] ?? null,
+                    'is_active' => $isPublished && $isUnexpired && $reviewReasons === [],
+                    'is_stackable' => empty($data['individual_use']),
+                    'scope_type' => $scopeType,
+                    'scope_id' => $scopeId,
+                    'description' => trim((string) $description) ?: null,
                     'ends_at' => isset($data['date_expires']) ? Carbon::parse($data['date_expires']) : null,
                 ]
             );
@@ -986,6 +1014,52 @@ class ProcessWcSyncPayloads extends Command
         }
 
         return false;
+    }
+
+    /**
+     * Map WC coupon restrictions to GG's single-scope model.
+     * Exactly one product (or one category) with no excludes maps cleanly;
+     * anything else is flagged for manual review.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{0: string, 1: int|null, 2: list<string>}
+     */
+    private function resolveCouponScope(array $data): array
+    {
+        $productIds = array_values(array_filter((array) ($data['product_ids'] ?? [])));
+        $categoryIds = array_values(array_filter((array) ($data['product_categories'] ?? [])));
+        $excludedProducts = array_values(array_filter((array) ($data['excluded_product_ids'] ?? [])));
+        $excludedCategories = array_values(array_filter((array) ($data['excluded_product_categories'] ?? [])));
+
+        if ($excludedProducts !== [] || $excludedCategories !== []) {
+            return [Coupon::SCOPE_ALL, null, ['product/category exclusions']];
+        }
+
+        if ($productIds === [] && $categoryIds === []) {
+            return [Coupon::SCOPE_ALL, null, []];
+        }
+
+        if (count($productIds) === 1 && $categoryIds === []) {
+            $productId = DB::table('import_legacy_products')
+                ->where('legacy_wp_post_id', $productIds[0])
+                ->value('product_id');
+
+            return $productId
+                ? [Coupon::SCOPE_PRODUCT, (int) $productId, []]
+                : [Coupon::SCOPE_ALL, null, ["unmapped WC product #{$productIds[0]}"]];
+        }
+
+        if (count($categoryIds) === 1 && $productIds === []) {
+            $categoryId = DB::table('import_legacy_categories')
+                ->where('legacy_term_id', $categoryIds[0])
+                ->value('category_id');
+
+            return $categoryId
+                ? [Coupon::SCOPE_CATEGORY, (int) $categoryId, []]
+                : [Coupon::SCOPE_ALL, null, ["unmapped WC category #{$categoryIds[0]}"]];
+        }
+
+        return [Coupon::SCOPE_ALL, null, ['multiple product/category restrictions']];
     }
 
     /* ------------------------------------------------------------------

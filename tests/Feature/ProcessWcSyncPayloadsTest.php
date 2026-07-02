@@ -578,6 +578,129 @@ class ProcessWcSyncPayloadsTest extends TestCase
         $this->assertDatabaseMissing('coupons', ['code' => 'DELETEME']);
     }
 
+    public function test_coupon_saved_with_single_product_restriction_maps_scope(): void
+    {
+        $product = Product::factory()->create();
+
+        DB::table('import_legacy_products')->insert([
+            'legacy_wp_post_id' => 7001,
+            'product_id' => $product->id,
+            'synced_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->createPayload('coupon.saved', [
+            'wc_coupon_id' => 310,
+            'code' => 'PRODUCT10',
+            'discount_type' => 'percent',
+            'amount' => 10,
+            'product_ids' => [7001],
+        ], 310);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $coupon = Coupon::where('code', 'PRODUCT10')->first();
+        $this->assertNotNull($coupon);
+        $this->assertSame(Coupon::SCOPE_PRODUCT, $coupon->scope_type);
+        $this->assertSame($product->id, $coupon->scope_id);
+        $this->assertTrue($coupon->is_active);
+    }
+
+    public function test_coupon_saved_with_unrepresentable_restrictions_is_quarantined(): void
+    {
+        $this->createPayload('coupon.saved', [
+            'wc_coupon_id' => 311,
+            'code' => 'MULTI20',
+            'discount_type' => 'percent',
+            'amount' => 20,
+            'product_ids' => [7001, 7002],
+            'description' => 'Two shirts deal',
+        ], 311);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $coupon = Coupon::where('code', 'MULTI20')->first();
+        $this->assertNotNull($coupon);
+        $this->assertFalse($coupon->is_active);
+        $this->assertSame(Coupon::SCOPE_ALL, $coupon->scope_type);
+        $this->assertStringContainsString('[Needs review:', (string) $coupon->description);
+        $this->assertStringContainsString('Two shirts deal', (string) $coupon->description);
+    }
+
+    public function test_coupon_saved_fixed_product_type_is_quarantined(): void
+    {
+        $this->createPayload('coupon.saved', [
+            'wc_coupon_id' => 312,
+            'code' => 'PERITEM5',
+            'discount_type' => 'fixed_product',
+            'amount' => 5,
+        ], 312);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $coupon = Coupon::where('code', 'PERITEM5')->first();
+        $this->assertNotNull($coupon);
+        $this->assertSame('fixed', $coupon->type);
+        $this->assertFalse($coupon->is_active);
+        $this->assertStringContainsString('fixed_product', (string) $coupon->description);
+    }
+
+    public function test_coupon_saved_individual_use_maps_to_not_stackable(): void
+    {
+        $this->createPayload('coupon.saved', [
+            'wc_coupon_id' => 313,
+            'code' => 'SOLO15',
+            'discount_type' => 'percent',
+            'amount' => 15,
+            'individual_use' => true,
+        ], 313);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $coupon = Coupon::where('code', 'SOLO15')->first();
+        $this->assertNotNull($coupon);
+        $this->assertFalse($coupon->is_stackable);
+        $this->assertTrue($coupon->is_active);
+    }
+
+    public function test_coupon_saved_draft_status_is_inactive(): void
+    {
+        $this->createPayload('coupon.saved', [
+            'wc_coupon_id' => 314,
+            'code' => 'DRAFT10',
+            'discount_type' => 'percent',
+            'amount' => 10,
+            'post_status' => 'draft',
+        ], 314);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $coupon = Coupon::where('code', 'DRAFT10')->first();
+        $this->assertNotNull($coupon);
+        $this->assertFalse($coupon->is_active);
+        // Draft status is a faithful mapping, not a review case.
+        $this->assertStringNotContainsString('[Needs review:', (string) $coupon->description);
+    }
+
+    public function test_coupon_saved_per_user_limit_is_quarantined(): void
+    {
+        $this->createPayload('coupon.saved', [
+            'wc_coupon_id' => 315,
+            'code' => 'ONEEACH',
+            'discount_type' => 'percent',
+            'amount' => 5,
+            'usage_limit_per_user' => 1,
+        ], 315);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $coupon = Coupon::where('code', 'ONEEACH')->first();
+        $this->assertNotNull($coupon);
+        $this->assertFalse($coupon->is_active);
+        $this->assertStringContainsString('per-user usage limit', (string) $coupon->description);
+    }
+
     /* ---------------------------------------------------------------
      *  Customer processing
      * ---------------------------------------------------------------*/
