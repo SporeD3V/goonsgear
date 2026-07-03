@@ -402,7 +402,7 @@ class BackfillSyncGapsTest extends TestCase
 
     // ─── Pre-Order Flags Backfill ──────────────────────────────────
 
-    public function test_backfill_preorders_flags_variants_and_products(): void
+    public function test_backfill_preorders_flags_variants_with_future_release_dates(): void
     {
         $product = Product::factory()->create(['is_preorder' => false]);
         $variant = ProductVariant::factory()->create([
@@ -419,6 +419,7 @@ class BackfillSyncGapsTest extends TestCase
 
         DB::connection('legacy')->table('wp_postmeta')->insert([
             ['post_id' => 501, 'meta_key' => '_is_pre_order', 'meta_value' => 'yes'],
+            ['post_id' => 501, 'meta_key' => '_pre_order_date', 'meta_value' => now()->addMonth()->format('Y-m-d')],
         ]);
 
         $this->artisan('app:backfill-sync-gaps', ['--only' => 'preorders'])
@@ -427,7 +428,37 @@ class BackfillSyncGapsTest extends TestCase
         $variant->refresh();
         $product->refresh();
         $this->assertTrue($variant->is_preorder);
+        $this->assertNotNull($variant->preorder_available_from);
         $this->assertTrue($product->is_preorder);
+    }
+
+    public function test_backfill_preorders_skips_historical_preorders(): void
+    {
+        $product = Product::factory()->create(['is_preorder' => false]);
+        $variant = ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'is_preorder' => false,
+        ]);
+
+        DB::table('import_legacy_variants')->insert([
+            'legacy_wp_post_id' => 502,
+            'product_variant_id' => $variant->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Flagged in WC, but the release date passed years ago — the item
+        // shipped and must not resurface as a pre-order.
+        DB::connection('legacy')->table('wp_postmeta')->insert([
+            ['post_id' => 502, 'meta_key' => '_is_pre_order', 'meta_value' => 'yes'],
+            ['post_id' => 502, 'meta_key' => '_pre_order_date', 'meta_value' => '2022-06-01'],
+        ]);
+
+        $this->artisan('app:backfill-sync-gaps', ['--only' => 'preorders'])
+            ->assertSuccessful();
+
+        $this->assertFalse($variant->fresh()->is_preorder);
+        $this->assertFalse($product->fresh()->is_preorder);
     }
 
     // ─── Dry Run ───────────────────────────────────────────────────

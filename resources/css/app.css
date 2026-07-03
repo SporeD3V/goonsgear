@@ -46,6 +46,18 @@
     display: none !important;
 }
 
+/* Sticky footer: on short storefront pages, pin the footer to the
+   bottom of the viewport instead of leaving a gap below it. */
+body:has(> footer) {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+}
+
+body:has(> footer) > footer {
+    margin-top: auto;
+}
+
 /* Hide scrollbar but keep scroll functionality */
 .no-scrollbar {
     -ms-overflow-style: none;

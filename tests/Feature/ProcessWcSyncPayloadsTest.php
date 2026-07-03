@@ -645,6 +645,92 @@ class ProcessWcSyncPayloadsTest extends TestCase
         $this->assertSame(5, $variant->stock_quantity);
     }
 
+    public function test_variant_sync_ignores_stale_preorder_flags(): void
+    {
+        $this->createPayload('product.created', [
+            'wc_product_id' => 2040,
+            'name' => 'Old Preorder Tee',
+            'slug' => 'old-preorder-tee',
+            'status' => 'publish',
+            'variants' => [
+                [
+                    'wc_variation_id' => 2041,
+                    'name' => 'M',
+                    'sku' => 'OPT-M',
+                    'price' => 30,
+                    'stock_quantity' => 5,
+                    'is_preorder' => true,
+                    'preorder_available_from' => '2023-01-15',
+                ],
+            ],
+        ], 2040);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        // The release date passed — this shipped long ago and is a normal product now.
+        $variant = ProductVariant::where('sku', 'OPT-M')->first();
+        $this->assertNotNull($variant);
+        $this->assertFalse($variant->is_preorder);
+        $this->assertNull($variant->preorder_available_from);
+    }
+
+    public function test_variant_sync_keeps_live_preorders(): void
+    {
+        $futureDate = now()->addMonth()->format('Y-m-d');
+
+        $this->createPayload('product.created', [
+            'wc_product_id' => 2050,
+            'name' => 'Upcoming Vinyl',
+            'slug' => 'upcoming-vinyl',
+            'status' => 'publish',
+            'variants' => [
+                [
+                    'wc_variation_id' => 2051,
+                    'name' => 'LP',
+                    'sku' => 'UV-LP',
+                    'price' => 25,
+                    'stock_quantity' => 0,
+                    'is_preorder' => true,
+                    'preorder_available_from' => $futureDate,
+                ],
+            ],
+        ], 2050);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $variant = ProductVariant::where('sku', 'UV-LP')->first();
+        $this->assertNotNull($variant);
+        $this->assertTrue($variant->is_preorder);
+        $this->assertNotNull($variant->preorder_available_from);
+    }
+
+    public function test_variant_sync_requires_release_date_for_preorder(): void
+    {
+        $this->createPayload('product.created', [
+            'wc_product_id' => 2060,
+            'name' => 'Dateless Preorder',
+            'slug' => 'dateless-preorder',
+            'status' => 'publish',
+            'variants' => [
+                [
+                    'wc_variation_id' => 2061,
+                    'name' => 'One Size',
+                    'sku' => 'DP-OS',
+                    'price' => 20,
+                    'stock_quantity' => 3,
+                    'is_preorder' => true,
+                ],
+            ],
+        ], 2060);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        // Same rule as the import: no future release date, no pre-order.
+        $variant = ProductVariant::where('sku', 'DP-OS')->first();
+        $this->assertNotNull($variant);
+        $this->assertFalse($variant->is_preorder);
+    }
+
     public function test_variant_sync_maps_stock_management_flags(): void
     {
         $this->createPayload('product.created', [

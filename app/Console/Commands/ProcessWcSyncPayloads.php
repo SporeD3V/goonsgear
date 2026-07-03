@@ -410,14 +410,12 @@ class ProcessWcSyncPayloads extends Command
             'excerpt' => $data['excerpt'] ?? null,
             'description' => $data['description'] ?? null,
             'is_featured' => $data['is_featured'] ?? false,
-            'is_preorder' => $data['is_preorder'] ?? false,
-            'preorder_available_from' => isset($data['preorder_available_from']) ? Carbon::parse($data['preorder_available_from']) : null,
             'weight' => $data['weight'] ?? null,
             'length' => $data['length'] ?? null,
             'width' => $data['width'] ?? null,
             'height' => $data['height'] ?? null,
             'published_at' => isset($data['published_at']) ? Carbon::parse($data['published_at']) : null,
-        ];
+        ] + $this->preorderAttributes($data);
 
         if ($existingProductId) {
             $product = Product::find($existingProductId);
@@ -492,9 +490,7 @@ class ProcessWcSyncPayloads extends Command
                 'price' => $variantData['price'] ?? 0,
                 'compare_at_price' => $variantData['regular_price'] ?? null,
                 'stock_quantity' => $variantData['stock_quantity'] ?? 0,
-                'is_preorder' => $variantData['is_preorder'] ?? false,
-                'preorder_available_from' => isset($variantData['preorder_available_from']) ? Carbon::parse($variantData['preorder_available_from']) : null,
-            ] + $this->stockManagementAttributes($variantData);
+            ] + $this->preorderAttributes($variantData) + $this->stockManagementAttributes($variantData);
 
             if ($existingVariantId) {
                 // Clear SKU from any other variant to prevent unique constraint conflicts.
@@ -550,9 +546,7 @@ class ProcessWcSyncPayloads extends Command
             'price' => $price > 0 ? $price : $regularPrice,
             'compare_at_price' => $regularPrice > $price && $price > 0 ? $regularPrice : null,
             'stock_quantity' => (int) ($data['stock_quantity'] ?? 0),
-            'is_preorder' => $data['is_preorder'] ?? false,
-            'preorder_available_from' => isset($data['preorder_available_from']) ? Carbon::parse($data['preorder_available_from']) : null,
-        ] + $this->stockManagementAttributes($data);
+        ] + $this->preorderAttributes($data) + $this->stockManagementAttributes($data);
 
         // Check if this product already has a default variant.
         $existingVariant = ProductVariant::where('product_id', $product->id)
@@ -1006,6 +1000,31 @@ class ProcessWcSyncPayloads extends Command
             ->each(fn (ProductVariant $conflict) => $conflict->update([
                 'sku' => "{$conflict->sku}-moved-{$conflict->id}",
             ]));
+    }
+
+    /**
+     * Derive pre-order fields with the same rule as the legacy import:
+     * something is only a pre-order while its availability date is in the
+     * future. A passed (or missing) date means the item has been released,
+     * regardless of what the stale WC flag still claims.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{is_preorder: bool, preorder_available_from: Carbon|null}
+     */
+    private function preorderAttributes(array $data): array
+    {
+        $availableFrom = ! empty($data['preorder_available_from'])
+            ? Carbon::parse($data['preorder_available_from'])
+            : null;
+
+        $isPreorder = (bool) ($data['is_preorder'] ?? false)
+            && $availableFrom !== null
+            && $availableFrom->endOfDay()->isFuture();
+
+        return [
+            'is_preorder' => $isPreorder,
+            'preorder_available_from' => $isPreorder ? $availableFrom : null,
+        ];
     }
 
     /**

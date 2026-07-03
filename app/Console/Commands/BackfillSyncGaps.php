@@ -569,6 +569,14 @@ class BackfillSyncGaps extends Command
 
         $this->line("  Found {$preorderWcIds->count()} WC variations with pre-order flag.");
 
+        // A pre-order is only live while its release date is in the future —
+        // most flagged WC variations are historical pre-orders that shipped
+        // long ago and must not resurface as pre-orders in the shop.
+        $preorderDates = $legacy->table('wp_postmeta')
+            ->whereIn('post_id', $preorderWcIds)
+            ->where('meta_key', '_pre_order_date')
+            ->pluck('meta_value', 'post_id');
+
         $variantsUpdated = 0;
         $productsUpdated = 0;
 
@@ -581,6 +589,18 @@ class BackfillSyncGaps extends Command
         $productIds = collect();
 
         foreach ($variantMappings as $mapping) {
+            $rawDate = trim((string) ($preorderDates[$mapping->legacy_wp_post_id] ?? ''));
+
+            try {
+                $availableFrom = $rawDate !== '' ? Carbon::parse($rawDate) : null;
+            } catch (\Throwable) {
+                $availableFrom = null;
+            }
+
+            if ($availableFrom === null || $availableFrom->endOfDay()->isPast()) {
+                continue;
+            }
+
             $variant = ProductVariant::find($mapping->product_variant_id);
 
             if ($variant === null || $variant->is_preorder) {
@@ -588,7 +608,10 @@ class BackfillSyncGaps extends Command
             }
 
             if (! $dryRun) {
-                $variant->update(['is_preorder' => true]);
+                $variant->update([
+                    'is_preorder' => true,
+                    'preorder_available_from' => $availableFrom->startOfDay(),
+                ]);
             }
 
             $variantsUpdated++;
