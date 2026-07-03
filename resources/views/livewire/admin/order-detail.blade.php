@@ -34,14 +34,14 @@ new class extends Component
     #[Computed]
     public function statusOptions(): array
     {
-        return ['pending', 'paid', 'processing', 'shipped', 'completed', 'cancelled', 'refunded'];
+        return ['pending', 'paid', 'processing', 'on-hold', 'pre-ordered', 'shipped', 'completed', 'cancelled', 'refunded'];
     }
 
     /** @return list<string> */
     #[Computed]
     public function paymentStatusOptions(): array
     {
-        return ['pending', 'paid', 'failed', 'refunded'];
+        return ['pending', 'paid', 'failed', 'refunded', 'cancelled'];
     }
 
     #[Computed]

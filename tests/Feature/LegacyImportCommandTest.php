@@ -470,15 +470,17 @@ class LegacyImportCommandTest extends TestCase
         ]);
     }
 
-    public function test_completed_order_gets_completed_payment_status(): void
+    public function test_completed_order_gets_paid_payment_status(): void
     {
         $this->insertLegacyOrder(601, 'wc-completed');
 
         $this->artisan('import:legacy-data', ['--only' => 'orders'])->assertSuccessful();
 
+        // Normalized to 'paid' so import and webhook sync agree and the
+        // admin payment-status dropdown can represent every order.
         $this->assertDatabaseHas('orders', [
             'order_number' => 'WC-601',
-            'payment_status' => 'completed',
+            'payment_status' => 'paid',
         ]);
     }
 

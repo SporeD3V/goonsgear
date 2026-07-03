@@ -184,6 +184,112 @@ class ProcessWcSyncPayloadsTest extends TestCase
         $this->assertSame('TH-L', $order->items->first()->sku);
     }
 
+    public function test_order_created_records_coupon_usages(): void
+    {
+        $coupon = Coupon::factory()->create(['code' => 'SNOW5']);
+
+        $this->createPayload('order.created', [
+            'wc_order_id' => 5101,
+            'order_number' => '#5101',
+            'status' => 'processing',
+            'email' => 'buyer@example.com',
+            'subtotal' => 100.00,
+            'total' => 95.00,
+            'discount_total' => 5.00,
+            'coupon_codes' => ['SNOW5'],
+            'coupons' => [
+                ['code' => 'SNOW5', 'discount' => 5.00],
+            ],
+            'shipping' => ['country' => 'DE'],
+            'placed_at' => '2026-07-01T12:00:00+02:00',
+        ], 5101);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $order = Order::where('order_number', '#5101')->first();
+        $this->assertNotNull($order);
+        $this->assertDatabaseHas('order_coupon_usages', [
+            'order_id' => $order->id,
+            'coupon_id' => $coupon->id,
+            'coupon_code' => 'SNOW5',
+            'discount_total' => 5.00,
+        ]);
+    }
+
+    public function test_order_created_falls_back_to_coupon_codes_for_usages(): void
+    {
+        // Older plugin payloads carry codes only — a single code gets the
+        // order-level discount attributed to it.
+        $this->createPayload('order.created', [
+            'wc_order_id' => 5102,
+            'order_number' => '#5102',
+            'status' => 'processing',
+            'email' => 'buyer@example.com',
+            'subtotal' => 50.00,
+            'total' => 45.00,
+            'discount_total' => 5.00,
+            'coupon_codes' => ['LEGACY5'],
+            'shipping' => ['country' => 'DE'],
+            'placed_at' => '2026-07-01T12:00:00+02:00',
+        ], 5102);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $order = Order::where('order_number', '#5102')->first();
+        $this->assertNotNull($order);
+        $this->assertDatabaseHas('order_coupon_usages', [
+            'order_id' => $order->id,
+            'coupon_code' => 'LEGACY5',
+            'discount_total' => 5.00,
+        ]);
+    }
+
+    public function test_order_replay_does_not_duplicate_coupon_usages(): void
+    {
+        $payload = [
+            'wc_order_id' => 5103,
+            'order_number' => '#5103',
+            'status' => 'processing',
+            'email' => 'buyer@example.com',
+            'subtotal' => 100.00,
+            'total' => 90.00,
+            'discount_total' => 10.00,
+            'coupons' => [['code' => 'TEN', 'discount' => 10.00]],
+            'shipping' => ['country' => 'DE'],
+            'placed_at' => '2026-07-01T12:00:00+02:00',
+        ];
+
+        $this->createPayload('order.created', $payload, 5103);
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $this->createPayload('order.created', $payload, 5103);
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $order = Order::where('order_number', '#5103')->first();
+        $this->assertNotNull($order);
+        $this->assertSame(1, $order->couponUsages()->count());
+    }
+
+    public function test_unknown_wc_status_maps_to_pending(): void
+    {
+        $this->createPayload('order.created', [
+            'wc_order_id' => 5104,
+            'order_number' => '#5104',
+            'status' => 'partially-shipped',
+            'email' => 'buyer@example.com',
+            'subtotal' => 10.00,
+            'total' => 10.00,
+            'shipping' => ['country' => 'DE'],
+            'placed_at' => '2026-07-01T12:00:00+02:00',
+        ], 5104);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $order = Order::where('order_number', '#5104')->first();
+        $this->assertNotNull($order);
+        $this->assertSame('pending', $order->status);
+    }
+
     public function test_order_created_updates_existing_mapped_order(): void
     {
         $order = Order::forceCreate([
@@ -482,9 +588,90 @@ class ProcessWcSyncPayloadsTest extends TestCase
         $this->assertSame('59.99', $variantL->compare_at_price);
         $this->assertTrue($variantL->is_active);
 
+        // Out-of-stock is represented by stock_quantity, not by deactivating
+        // the variant — inventory analytics rely on active-but-sold-out state.
         $variantS = ProductVariant::where('sku', 'VH-S')->first();
         $this->assertNotNull($variantS);
-        $this->assertFalse($variantS->is_active);
+        $this->assertTrue($variantS->is_active);
+        $this->assertSame(0, $variantS->stock_quantity);
+    }
+
+    public function test_variant_sync_preserves_gg_side_deactivation(): void
+    {
+        $product = Product::factory()->create();
+        $variant = ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'sku' => 'RETIRED-1',
+            'is_active' => false,
+        ]);
+
+        DB::table('import_legacy_products')->insert([
+            'legacy_wp_post_id' => 2020,
+            'product_id' => $product->id,
+            'synced_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('import_legacy_variants')->insert([
+            'legacy_wp_post_id' => 2021,
+            'product_variant_id' => $variant->id,
+            'synced_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->createPayload('product.updated', [
+            'wc_product_id' => 2020,
+            'name' => $product->name,
+            'slug' => $product->slug,
+            'status' => 'publish',
+            'variants' => [
+                [
+                    'wc_variation_id' => 2021,
+                    'name' => $variant->name,
+                    'sku' => 'RETIRED-1',
+                    'price' => 20,
+                    'stock_quantity' => 5,
+                    'stock_status' => 'instock',
+                ],
+            ],
+        ], 2020);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $variant->refresh();
+        $this->assertFalse($variant->is_active);
+        $this->assertSame(5, $variant->stock_quantity);
+    }
+
+    public function test_variant_sync_maps_stock_management_flags(): void
+    {
+        $this->createPayload('product.created', [
+            'wc_product_id' => 2030,
+            'name' => 'Managed Cap',
+            'slug' => 'managed-cap',
+            'status' => 'publish',
+            'variants' => [
+                [
+                    'wc_variation_id' => 2031,
+                    'name' => 'One Size',
+                    'sku' => 'MC-OS',
+                    'price' => 25,
+                    'stock_quantity' => 4,
+                    'stock_status' => 'instock',
+                    'manage_stock' => false,
+                    'backorders' => 'notify',
+                ],
+            ],
+        ], 2030);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $variant = ProductVariant::where('sku', 'MC-OS')->first();
+        $this->assertNotNull($variant);
+        $this->assertFalse($variant->track_inventory);
+        $this->assertTrue($variant->allow_backorder);
     }
 
     public function test_variant_stock_changed_updates_stock(): void
@@ -515,6 +702,39 @@ class ProcessWcSyncPayloadsTest extends TestCase
 
         $variant->refresh();
         $this->assertSame(3, $variant->stock_quantity);
+        $this->assertTrue($variant->is_active);
+    }
+
+    public function test_variant_stock_changed_to_out_of_stock_keeps_variant_active(): void
+    {
+        $product = Product::factory()->create();
+        $variant = ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'stock_quantity' => 2,
+            'is_active' => true,
+        ]);
+
+        DB::table('import_legacy_variants')->insert([
+            'legacy_wp_post_id' => 4002,
+            'product_variant_id' => $variant->id,
+            'synced_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->createPayload('product.stock_changed', [
+            'wc_product_id' => 2098,
+            'wc_variation_id' => 4002,
+            'stock_quantity' => 0,
+            'stock_status' => 'outofstock',
+        ], 2098);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        // Sold out ≠ deactivated: the variant must stay visible to inventory
+        // analytics (out-of-stock KPI, revenue at risk) and stock alerts.
+        $variant->refresh();
+        $this->assertSame(0, $variant->stock_quantity);
         $this->assertTrue($variant->is_active);
     }
 
@@ -828,6 +1048,98 @@ class ProcessWcSyncPayloadsTest extends TestCase
         $this->assertSame('DHL', $order->shipping_carrier);
         $this->assertSame('DHL123456', $order->tracking_number);
         $this->assertNotNull($order->shipped_at);
+    }
+
+    public function test_note_created_stores_human_note_as_admin_note(): void
+    {
+        User::factory()->create(['is_admin' => true]);
+
+        $order = Order::forceCreate([
+            'order_number' => '#N001',
+            'status' => 'processing',
+            'payment_status' => 'paid',
+            'email' => 'n@n.com',
+            'first_name' => 'N',
+            'last_name' => 'N',
+            'country' => 'DE',
+            'city' => 'Berlin',
+            'postal_code' => '10115',
+            'street_name' => 'Hauptstr.',
+            'street_number' => '1',
+            'currency' => 'EUR',
+            'subtotal' => 50,
+            'total' => 50,
+            'placed_at' => now(),
+        ]);
+
+        DB::table('import_legacy_orders')->insert([
+            'legacy_wc_order_id' => 9902,
+            'order_id' => $order->id,
+            'synced_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->createPayload('note.created', [
+            'wc_order_id' => 9902,
+            'wc_note_id' => 1,
+            'content' => 'Customer asked to gift-wrap the vinyl.',
+            'author' => 'shopadmin',
+            'is_customer_note' => false,
+        ], 9902);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $this->assertDatabaseHas('admin_notes', [
+            'context' => "order:{$order->id}",
+            'context_label' => 'Order ##N001',
+            'content' => 'Customer asked to gift-wrap the vinyl.',
+        ]);
+    }
+
+    public function test_note_created_drops_system_notes(): void
+    {
+        User::factory()->create(['is_admin' => true]);
+
+        $order = Order::forceCreate([
+            'order_number' => '#N002',
+            'status' => 'processing',
+            'payment_status' => 'paid',
+            'email' => 'n2@n.com',
+            'first_name' => 'N',
+            'last_name' => 'N',
+            'country' => 'DE',
+            'city' => 'Berlin',
+            'postal_code' => '10115',
+            'street_name' => 'Hauptstr.',
+            'street_number' => '1',
+            'currency' => 'EUR',
+            'subtotal' => 50,
+            'total' => 50,
+            'placed_at' => now(),
+        ]);
+
+        DB::table('import_legacy_orders')->insert([
+            'legacy_wc_order_id' => 9903,
+            'order_id' => $order->id,
+            'synced_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->createPayload('note.created', [
+            'wc_order_id' => 9903,
+            'wc_note_id' => 2,
+            'content' => 'Order status changed from Processing to Completed.',
+            'author' => 'WooCommerce',
+            'is_customer_note' => false,
+        ], 9903);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $this->assertDatabaseCount('admin_notes', 0);
+        // Marked processed so it doesn't get re-scanned forever.
+        $this->assertDatabaseMissing('wc_sync_payloads', ['processed_at' => null]);
     }
 
     /* ---------------------------------------------------------------

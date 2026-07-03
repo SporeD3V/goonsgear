@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\AdminNote;
 use App\Models\Category;
 use App\Models\Coupon;
 use App\Models\Order;
@@ -195,6 +196,8 @@ class ProcessWcSyncPayloads extends Command
             $this->syncOrderItems($order, $data['items']);
         }
 
+        $this->syncCouponUsages($order, $data);
+
         // Update tracking if present.
         if (! empty($data['tracking'])) {
             $order->update([
@@ -281,6 +284,57 @@ class ProcessWcSyncPayloads extends Command
         ])->save();
 
         return true;
+    }
+
+    /**
+     * Record coupon usage rows so promotion analytics cover synced WC orders,
+     * mirroring the one-time import's order_coupon_usages backfill.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function syncCouponUsages(Order $order, array $data): void
+    {
+        // Only populate once — avoids duplicating rows on replays.
+        if ($order->couponUsages()->count() > 0) {
+            return;
+        }
+
+        /** @var list<array{code?: string, discount?: float|string}> $coupons */
+        $coupons = is_array($data['coupons'] ?? null) ? $data['coupons'] : [];
+
+        if ($coupons === []) {
+            // Older plugin payloads only carry codes. A single code gets the
+            // order-level discount; amounts for multiple codes are unknown.
+            $codes = array_values(array_filter((array) ($data['coupon_codes'] ?? [])));
+            $orderDiscount = (float) ($data['discount_total'] ?? 0);
+
+            $coupons = array_map(fn (string $code) => [
+                'code' => $code,
+                'discount' => count($codes) === 1 ? $orderDiscount : 0.0,
+            ], $codes);
+        }
+
+        if ($coupons === []) {
+            return;
+        }
+
+        $couponIds = Coupon::whereIn('code', array_column($coupons, 'code'))
+            ->pluck('id', 'code');
+
+        foreach ($coupons as $position => $coupon) {
+            $code = $coupon['code'] ?? null;
+
+            if (! $code) {
+                continue;
+            }
+
+            $order->couponUsages()->create([
+                'coupon_id' => $couponIds[$code] ?? null,
+                'coupon_code' => $code,
+                'discount_total' => (float) ($coupon['discount'] ?? 0),
+                'applied_position' => $position,
+            ]);
+        }
     }
 
     /**
@@ -438,16 +492,13 @@ class ProcessWcSyncPayloads extends Command
                 'price' => $variantData['price'] ?? 0,
                 'compare_at_price' => $variantData['regular_price'] ?? null,
                 'stock_quantity' => $variantData['stock_quantity'] ?? 0,
-                'is_active' => ($variantData['stock_status'] ?? 'instock') !== 'outofstock',
                 'is_preorder' => $variantData['is_preorder'] ?? false,
                 'preorder_available_from' => isset($variantData['preorder_available_from']) ? Carbon::parse($variantData['preorder_available_from']) : null,
-            ];
+            ] + $this->stockManagementAttributes($variantData);
 
             if ($existingVariantId) {
                 // Clear SKU from any other variant to prevent unique constraint conflicts.
-                ProductVariant::where('sku', $attrs['sku'])
-                    ->where('id', '!=', $existingVariantId)
-                    ->update(['sku' => DB::raw("CONCAT(sku, '-moved-', id)")]);
+                $this->releaseSkuConflicts($attrs['sku'], (int) $existingVariantId);
 
                 ProductVariant::where('id', $existingVariantId)->update($attrs);
             } else {
@@ -460,13 +511,13 @@ class ProcessWcSyncPayloads extends Command
                 if ($variant) {
                     // Clear conflicting SKU before updating.
                     if ($variant->sku !== $attrs['sku']) {
-                        ProductVariant::where('sku', $attrs['sku'])
-                            ->where('id', '!=', $variant->id)
-                            ->update(['sku' => DB::raw("CONCAT(sku, '-moved-', id)")]);
+                        $this->releaseSkuConflicts($attrs['sku'], (int) $variant->id);
                     }
                     $variant->update($attrs);
                 } else {
-                    $variant = ProductVariant::create($attrs);
+                    // is_active only on create — stock state lives in stock_quantity,
+                    // and GG-side deactivations must survive syncs (import convention).
+                    $variant = ProductVariant::create($attrs + ['is_active' => true]);
                 }
 
                 DB::table('import_legacy_variants')->insert([
@@ -499,10 +550,9 @@ class ProcessWcSyncPayloads extends Command
             'price' => $price > 0 ? $price : $regularPrice,
             'compare_at_price' => $regularPrice > $price && $price > 0 ? $regularPrice : null,
             'stock_quantity' => (int) ($data['stock_quantity'] ?? 0),
-            'is_active' => ($data['stock_status'] ?? 'instock') !== 'outofstock',
             'is_preorder' => $data['is_preorder'] ?? false,
             'preorder_available_from' => isset($data['preorder_available_from']) ? Carbon::parse($data['preorder_available_from']) : null,
-        ];
+        ] + $this->stockManagementAttributes($data);
 
         // Check if this product already has a default variant.
         $existingVariant = ProductVariant::where('product_id', $product->id)
@@ -533,7 +583,7 @@ class ProcessWcSyncPayloads extends Command
             $skuVariant->update($attrs);
             $variant = $skuVariant;
         } else {
-            $variant = ProductVariant::create($attrs);
+            $variant = ProductVariant::create($attrs + ['is_active' => true]);
         }
 
         DB::table('import_legacy_variants')->insert([
@@ -935,12 +985,50 @@ class ProcessWcSyncPayloads extends Command
             return false;
         }
 
+        // Stock state lives in stock_quantity only — is_active is a GG-side
+        // visibility flag and must not be toggled by WC stock events.
         ProductVariant::where('id', $variantId)->update([
             'stock_quantity' => $data['stock_quantity'] ?? 0,
-            'is_active' => ($data['stock_status'] ?? 'instock') !== 'outofstock',
         ]);
 
         return true;
+    }
+
+    /**
+     * Rename any other variant holding this SKU so a sync update cannot hit
+     * the unique constraint. Runs per-row in PHP for driver portability.
+     */
+    private function releaseSkuConflicts(string $sku, int $exceptVariantId): void
+    {
+        ProductVariant::where('sku', $sku)
+            ->where('id', '!=', $exceptVariantId)
+            ->get()
+            ->each(fn (ProductVariant $conflict) => $conflict->update([
+                'sku' => "{$conflict->sku}-moved-{$conflict->id}",
+            ]));
+    }
+
+    /**
+     * Map WC stock-management flags onto GG variant fields when present.
+     * Old payloads without these fields leave the existing values untouched.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, bool>
+     */
+    private function stockManagementAttributes(array $data): array
+    {
+        $attrs = [];
+
+        if (array_key_exists('manage_stock', $data)) {
+            // WC variations report 'parent' when inheriting stock management.
+            $attrs['track_inventory'] = $data['manage_stock'] === 'parent' || (bool) $data['manage_stock'];
+        }
+
+        if (array_key_exists('backorders', $data)) {
+            $attrs['allow_backorder'] = in_array($data['backorders'], ['yes', 'notify'], true);
+        }
+
+        return $attrs;
     }
 
     /* ------------------------------------------------------------------
@@ -1152,13 +1240,42 @@ class ProcessWcSyncPayloads extends Command
             return true;
         }
 
-        // note.created — store as a log entry; the app doesn't have per-order notes yet.
+        // note.created — store human notes as AdminNotes, same convention as
+        // the legacy import ("order:{id}" context). System-generated notes
+        // (author "WooCommerce": status changes etc.) are intentionally dropped.
         if ($event === 'note.created') {
-            Log::info("[WC Sync] Order note for order #{$orderId}", [
-                'wc_order_id' => $wcOrderId,
-                'content' => $data['content'] ?? '',
-                'author' => $data['author'] ?? '',
-                'is_customer_note' => $data['is_customer_note'] ?? false,
+            if (($data['author'] ?? '') === 'WooCommerce') {
+                return true;
+            }
+
+            $content = trim((string) ($data['content'] ?? ''));
+
+            if ($content === '') {
+                return true;
+            }
+
+            $adminUser = User::where('is_admin', true)->first();
+
+            if (! $adminUser) {
+                return false;
+            }
+
+            $contextKey = "order:{$orderId}";
+
+            // Same context + content = duplicate delivery; skip.
+            if (AdminNote::where('context', $contextKey)->where('content', $content)->exists()) {
+                return true;
+            }
+
+            $orderNumber = Order::where('id', $orderId)->value('order_number');
+
+            AdminNote::create([
+                'user_id' => $adminUser->id,
+                'content' => $content,
+                'is_pinned' => false,
+                'color' => 'warm',
+                'context' => $contextKey,
+                'context_label' => $orderNumber ? "Order #{$orderNumber}" : "Order (ID:{$orderId})",
             ]);
 
             return true;
@@ -1182,7 +1299,9 @@ class ProcessWcSyncPayloads extends Command
             'refunded' => 'refunded',
             'failed' => 'failed',
             'pre-ordered' => 'pre-ordered',
-            default => $wcStatus,
+            // Unknown/custom WC statuses must not leak into orders.status —
+            // default to pending, same as the legacy import.
+            default => 'pending',
         };
     }
 

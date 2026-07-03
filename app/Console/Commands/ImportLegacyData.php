@@ -767,7 +767,7 @@ class ImportLegacyData extends Command
 
                 // Map payment status based on WC order status
                 $paymentStatusMap = [
-                    'wc-completed' => 'completed',
+                    'wc-completed' => 'paid',
                     'wc-processing' => 'paid',
                     'wc-on-hold' => 'pending',
                     'wc-pending' => 'pending',
