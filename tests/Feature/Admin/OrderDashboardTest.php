@@ -164,4 +164,66 @@ class OrderDashboardTest extends TestCase
             'payment_status' => $order->payment_status,
         ]);
     }
+
+    public function test_order_quick_filter_tiles_toggle_filters(): void
+    {
+        Order::factory()->create(['status' => 'pending']);
+
+        Livewire::test('admin.order-manager')
+            ->call('quickFilter', 'pending')
+            ->assertSet('filterStatus', 'pending')
+            ->call('quickFilter', 'pending')
+            ->assertSet('filterStatus', '')
+            ->call('quickFilter', 'to_ship')
+            ->assertSet('filterFulfillment', 'to_ship')
+            ->call('quickFilter', 'today')
+            ->assertSet('filterPlaced', 'today')
+            ->call('quickFilter', 'preorders')
+            ->assertSet('filterStatus', 'pre-ordered');
+    }
+
+    public function test_to_ship_filter_matches_unshipped_paid_orders(): void
+    {
+        $toShip = Order::factory()->create([
+            'order_number' => 'GG-TOSHIP-1',
+            'status' => 'paid',
+            'payment_status' => 'paid',
+            'shipped_at' => null,
+        ]);
+
+        Order::factory()->create([
+            'order_number' => 'GG-SHIPPED-1',
+            'status' => 'shipped',
+            'payment_status' => 'paid',
+            'shipped_at' => now()->subDay(),
+        ]);
+
+        Order::factory()->create([
+            'order_number' => 'GG-UNPAID-1',
+            'status' => 'pending',
+            'payment_status' => 'pending',
+            'shipped_at' => null,
+        ]);
+
+        Livewire::test('admin.order-manager')
+            ->call('quickFilter', 'to_ship')
+            ->assertSee('GG-TOSHIP-1')
+            ->assertDontSee('GG-SHIPPED-1')
+            ->assertDontSee('GG-UNPAID-1');
+    }
+
+    public function test_order_stats_count_operational_state(): void
+    {
+        Order::factory()->create(['status' => 'pending', 'placed_at' => now()->subDays(3)]);
+        Order::factory()->create(['status' => 'pre-ordered', 'payment_status' => 'paid', 'placed_at' => now()->subDays(2)]);
+        Order::factory()->create(['status' => 'paid', 'payment_status' => 'paid', 'shipped_at' => null, 'placed_at' => now()]);
+
+        $component = Livewire::test('admin.order-manager');
+        $stats = $component->instance()->stats;
+
+        $this->assertSame(1, $stats['today']);
+        $this->assertSame(1, $stats['pending']);
+        $this->assertSame(1, $stats['to_ship']);
+        $this->assertSame(1, $stats['preorders']);
+    }
 }

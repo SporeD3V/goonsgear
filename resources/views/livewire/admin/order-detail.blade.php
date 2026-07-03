@@ -157,13 +157,29 @@ new class extends Component
 }; ?>
 
 <div class="space-y-6">
+    @php
+        $statusBadge = fn (string $status): string => match ($status) {
+            'paid', 'completed', 'delivered' => 'bg-emerald-100 text-emerald-700',
+            'processing', 'shipped', 'pre-ordered' => 'bg-blue-100 text-blue-700',
+            'pending', 'on-hold' => 'bg-amber-100 text-amber-700',
+            'cancelled', 'refunded', 'failed' => 'bg-red-100 text-red-700',
+            default => 'bg-stone-100 text-stone-600',
+        };
+    @endphp
+
     {{-- Header --}}
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-            <h2 class="text-lg font-semibold">Order {{ $this->order->order_number }}</h2>
-            <p class="text-sm text-stone-600">Placed {{ optional($this->order->placed_at)->format('Y-m-d H:i') ?? '-' }}</p>
+            <div class="flex flex-wrap items-center gap-2">
+                <h2 class="text-lg font-semibold text-stone-800">Order {{ $this->order->order_number }}</h2>
+                <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $statusBadge($this->order->status) }}">{{ ucfirst($this->order->status) }}</span>
+                @if ($this->order->payment_status !== $this->order->status)
+                    <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $statusBadge($this->order->payment_status) }}">{{ ucfirst($this->order->payment_status) }}</span>
+                @endif
+            </div>
+            <p class="text-sm text-stone-500">Placed {{ optional($this->order->placed_at)->format('Y-m-d H:i') ?? '-' }}</p>
         </div>
-        <a href="{{ route('admin.orders.index') }}" class="text-sm text-[#36a2eb] hover:underline">&larr; Back to orders</a>
+        <a href="{{ route('admin.orders.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium text-stone-500 transition hover:bg-stone-100 hover:text-stone-700">&larr; Back to orders</a>
     </div>
 
     @if (session()->has('status'))
