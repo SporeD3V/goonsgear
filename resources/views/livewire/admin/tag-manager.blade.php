@@ -389,7 +389,7 @@ new class extends Component
                 placeholder="Search tags…"
                 class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm sm:w-64"
             >
-            <button wire:click="openCreate" class="shrink-0 rounded bg-[#36a2eb] px-3 py-2 text-sm text-white hover:bg-[#2b8ac9]">
+            <button wire:click="openCreate" class="shrink-0 rounded-lg bg-[#36a2eb] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2b8ac9]">
                 New Tag
             </button>
         </div>
@@ -410,52 +410,40 @@ new class extends Component
         {{-- Loading indicator --}}
         <div wire:loading.delay class="mb-2 text-xs text-stone-500">Loading…</div>
 
-        {{-- Table --}}
-        <div class="-mx-5 overflow-x-auto px-5">
-        <table class="admin-mobile-table min-w-full border border-stone-200 text-sm">
-            <thead class="bg-stone-50">
-                <tr>
-                    <th class="border border-stone-200 px-3 py-2 text-left">Name</th>
-                    <th class="border border-stone-200 px-3 py-2 text-left">Type</th>
-                    <th class="hidden border border-stone-200 px-3 py-2 text-left lg:table-cell">Slug</th>
-                    <th class="hidden border border-stone-200 px-3 py-2 text-center lg:table-cell">Followers</th>
-                    <th class="hidden border border-stone-200 px-3 py-2 text-center lg:table-cell">Active Products</th>
-                    <th class="border border-stone-200 px-3 py-2 text-left">Status</th>
-                    <th class="border border-stone-200 px-3 py-2 text-right">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($this->tags as $tag)
-                    <tr wire:key="tag-{{ $tag->id }}" class="hover:bg-stone-50">
-                        <td class="border border-stone-200 px-3 py-2">{{ $tag->name }}</td>
-                        <td class="border border-stone-200 px-3 py-2">{{ ucfirst($tag->type) }}</td>
-                        <td class="hidden border border-stone-200 px-3 py-2 lg:table-cell">{{ $tag->slug }}</td>
-                        <td class="hidden border border-stone-200 px-3 py-2 text-center lg:table-cell">{{ $tag->followers_count }}</td>
-                        <td class="hidden border border-stone-200 px-3 py-2 text-center lg:table-cell">{{ $tag->active_products_count }}</td>
-                        <td class="border border-stone-200 px-3 py-2">
-                            <button wire:click="toggleActive({{ $tag->id }})" class="text-xs font-medium">
-                                @if ($tag->is_active)
-                                    <span class="rounded bg-emerald-100 px-2 py-0.5 text-emerald-800">Active</span>
-                                @else
-                                    <span class="rounded bg-stone-100 px-2 py-0.5 text-stone-500">Inactive</span>
-                                @endif
-                            </button>
-                        </td>
-                        <td class="border border-stone-200 px-3 py-2 text-right">
-                            <button wire:click="openEdit({{ $tag->id }})" class="text-[#36a2eb] hover:underline">Edit</button>
-                            <button wire:click="delete({{ $tag->id }})" wire:confirm="Delete this tag?" class="ml-2 text-red-700 hover:underline">Delete</button>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="7" class="border border-stone-200 px-3 py-6 text-center text-stone-500">
-                            {{ $search || $filterType ? 'No tags match your filters.' : 'No tags found.' }}
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+        {{-- Tag list --}}
+        <ul class="divide-y divide-stone-100">
+            @forelse ($this->tags as $tag)
+                <li wire:key="tag-{{ $tag->id }}" class="flex flex-wrap items-center gap-x-4 gap-y-2 py-3 transition hover:bg-stone-50/60">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-semibold text-stone-800">{{ $tag->name }}</p>
+                        <p class="mt-0.5 truncate font-mono text-xs text-stone-400">{{ $tag->slug }}</p>
+                        <div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+                            <span class="rounded-full bg-stone-100 px-2 py-0.5 font-medium text-stone-600">{{ ucfirst($tag->type) }}</span>
+                            <span class="rounded-full bg-stone-100 px-2 py-0.5 font-medium text-stone-600">{{ $tag->followers_count }} {{ \Illuminate\Support\Str::plural('follower', $tag->followers_count) }}</span>
+                            <span class="rounded-full bg-stone-100 px-2 py-0.5 font-medium text-stone-600">{{ $tag->active_products_count }} active {{ \Illuminate\Support\Str::plural('product', $tag->active_products_count) }}</span>
+                        </div>
+                    </div>
+
+                    <button wire:click="toggleActive({{ $tag->id }})" title="{{ $tag->is_active ? 'Click to deactivate' : 'Click to activate' }}"
+                            class="rounded-full px-2.5 py-0.5 text-xs font-semibold transition hover:ring-1 hover:ring-stone-300 {{ $tag->is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-500' }}">
+                        {{ $tag->is_active ? 'Active' : 'Inactive' }}
+                    </button>
+
+                    <div class="flex items-center gap-1">
+                        <button wire:click="openEdit({{ $tag->id }})" class="flex h-9 w-9 items-center justify-center rounded-lg text-stone-500 transition hover:bg-[#36a2eb]/10 hover:text-[#36a2eb]" title="Edit tag">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"/></svg>
+                        </button>
+                        <button wire:click="delete({{ $tag->id }})" wire:confirm="Delete this tag?" class="flex h-9 w-9 items-center justify-center rounded-lg text-stone-500 transition hover:bg-red-50 hover:text-red-600" title="Delete tag">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                        </button>
+                    </div>
+                </li>
+            @empty
+                <li class="px-6 py-10 text-center text-sm text-stone-500">
+                    {{ $search || $filterType ? 'No tags match your filters.' : 'No tags found.' }}
+                </li>
+            @endforelse
+        </ul>
 
     {{-- Pagination --}}
         <div class="mt-4">{{ $this->tags->links() }}</div>

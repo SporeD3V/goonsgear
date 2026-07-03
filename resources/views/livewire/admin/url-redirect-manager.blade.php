@@ -167,7 +167,7 @@ new class extends Component
                 placeholder="Search redirects…"
                 class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm sm:w-64"
             >
-            <button wire:click="openCreate" class="shrink-0 rounded bg-[#36a2eb] px-3 py-2 text-sm text-white hover:bg-[#2b8ac9]">
+            <button wire:click="openCreate" class="shrink-0 rounded-lg bg-[#36a2eb] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2b8ac9]">
                 New Redirect
             </button>
         </div>
@@ -177,58 +177,53 @@ new class extends Component
         {{-- Loading indicator --}}
         <div wire:loading.delay class="mb-2 text-xs text-stone-500">Loading…</div>
 
-    {{-- Table --}}
-    <div class="-mx-5 overflow-x-auto px-5">
-        <table class="admin-mobile-table min-w-full border border-stone-200 text-sm">
-            <thead class="bg-stone-50">
-                <tr>
-                    @foreach (['from_path' => 'From Path', 'to_url' => 'Destination', 'status_code' => 'Status', 'is_active' => 'Active'] as $field => $label)
-                        <th wire:click="sortBy('{{ $field }}')" class="cursor-pointer border border-stone-200 px-3 py-2 text-left select-none hover:bg-stone-100">
-                            {{ $label }}
-                            @if ($sortField === $field)
-                                <span class="ml-1">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                            @endif
-                        </th>
-                    @endforeach
-                    <th class="border border-stone-200 px-3 py-2 text-right">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($this->redirects as $redirect)
-                    <tr wire:key="redirect-{{ $redirect->id }}" class="hover:bg-stone-50">
-                        <td class="border border-stone-200 px-3 py-2 font-medium text-stone-900">{{ $redirect->from_path }}</td>
-                        <td class="border border-stone-200 px-3 py-2 break-all">{{ $redirect->to_url }}</td>
-                        <td class="border border-stone-200 px-3 py-2">
-                            <span @class([
-                                'inline-block rounded px-2 py-0.5 text-xs font-medium',
-                                'bg-purple-100 text-purple-800' => $redirect->status_code === 301,
-                                'bg-amber-100 text-amber-800' => $redirect->status_code === 302,
-                            ])>{{ $redirect->status_code }}</span>
-                        </td>
-                        <td class="border border-stone-200 px-3 py-2">
-                            <button wire:click="toggleActive({{ $redirect->id }})" class="text-xs font-medium">
-                                @if ($redirect->is_active)
-                                    <span class="rounded bg-emerald-100 px-2 py-0.5 text-emerald-800">Active</span>
-                                @else
-                                    <span class="rounded bg-stone-100 px-2 py-0.5 text-stone-500">Inactive</span>
-                                @endif
-                            </button>
-                        </td>
-                        <td class="border border-stone-200 px-3 py-2 text-right">
-                            <button wire:click="openEdit({{ $redirect->id }})" class="text-[#36a2eb] hover:underline">Edit</button>
-                            <button wire:click="delete({{ $redirect->id }})" wire:confirm="Delete this redirect?" class="ml-2 text-red-700 hover:underline">Delete</button>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="border border-stone-200 px-3 py-6 text-center text-stone-500">
-                            {{ $search ? 'No redirects match your search.' : 'No URL redirects yet.' }}
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
+    {{-- Redirect list --}}
+    <div class="mb-2 flex flex-wrap items-center gap-2 text-[11px] text-stone-400">
+        <span>Sort:</span>
+        @foreach (['from_path' => 'From Path', 'status_code' => 'Status', 'is_active' => 'Active'] as $field => $label)
+            <button wire:click="sortBy('{{ $field }}')" class="rounded-full px-2 py-0.5 font-medium transition {{ $sortField === $field ? 'bg-[#36a2eb]/10 text-[#36a2eb]' : 'text-stone-500 hover:bg-stone-100' }}">
+                {{ $label }}@if ($sortField === $field) {{ $sortDirection === 'asc' ? '↑' : '↓' }}@endif
+            </button>
+        @endforeach
     </div>
+
+    <ul class="divide-y divide-stone-100">
+        @forelse ($this->redirects as $redirect)
+            <li wire:key="redirect-{{ $redirect->id }}" class="flex flex-wrap items-center gap-x-4 gap-y-2 py-3 transition hover:bg-stone-50/60">
+                <div class="min-w-0 flex-1">
+                    <p class="break-all font-mono text-sm font-semibold text-stone-800">{{ $redirect->from_path }}</p>
+                    <p class="mt-0.5 flex items-center gap-1.5 break-all font-mono text-xs text-stone-400">
+                        <svg class="h-3 w-3 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+                        {{ $redirect->to_url }}
+                    </p>
+                </div>
+
+                <span @class([
+                    'rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                    'bg-purple-100 text-purple-800' => $redirect->status_code === 301,
+                    'bg-amber-100 text-amber-800' => $redirect->status_code === 302,
+                ])>{{ $redirect->status_code }}</span>
+
+                <button wire:click="toggleActive({{ $redirect->id }})" title="{{ $redirect->is_active ? 'Click to deactivate' : 'Click to activate' }}"
+                        class="rounded-full px-2.5 py-0.5 text-xs font-semibold transition hover:ring-1 hover:ring-stone-300 {{ $redirect->is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-500' }}">
+                    {{ $redirect->is_active ? 'Active' : 'Inactive' }}
+                </button>
+
+                <div class="flex items-center gap-1">
+                    <button wire:click="openEdit({{ $redirect->id }})" class="flex h-9 w-9 items-center justify-center rounded-lg text-stone-500 transition hover:bg-[#36a2eb]/10 hover:text-[#36a2eb]" title="Edit redirect">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"/></svg>
+                    </button>
+                    <button wire:click="delete({{ $redirect->id }})" wire:confirm="Delete this redirect?" class="flex h-9 w-9 items-center justify-center rounded-lg text-stone-500 transition hover:bg-red-50 hover:text-red-600" title="Delete redirect">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                    </button>
+                </div>
+            </li>
+        @empty
+            <li class="px-6 py-10 text-center text-sm text-stone-500">
+                {{ $search ? 'No redirects match your search.' : 'No URL redirects yet.' }}
+            </li>
+        @endforelse
+    </ul>
 
         {{-- Pagination --}}
         <div class="mt-4">{{ $this->redirects->links() }}</div>
