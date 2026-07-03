@@ -17,6 +17,7 @@ use App\Models\SizeProfile;
 use App\Models\User;
 use App\Support\CartPricing;
 use App\Support\Countries;
+use App\Support\InvoiceService;
 use App\Support\PayPalClient;
 use App\Support\RecaptchaVerifier;
 use Illuminate\Http\JsonResponse;
@@ -24,6 +25,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -296,6 +298,18 @@ class CheckoutController extends Controller
 
         $email = strtolower((string) data_get($pendingOrder, 'payload.email', ''));
         $recaptchaVerifier->clearSignals('checkout', $request, $email);
+
+        // Issue the invoice for the captured payment. Never let invoice
+        // problems break checkout — admins can generate one manually later.
+        try {
+            $invoiceService = app(InvoiceService::class);
+
+            if ($invoiceService->settingsComplete()) {
+                $invoiceService->generateFor($order);
+            }
+        } catch (\Throwable $e) {
+            Log::error("Invoice auto-generation failed for order #{$order->order_number}: {$e->getMessage()}");
+        }
 
         Mail::to($order->email)->send(new OrderConfirmation($order->load('items')));
 

@@ -4,7 +4,9 @@ use App\Models\AdminActivityLog;
 use App\Models\EditHistory;
 use App\Models\Order;
 use App\Support\DhlTracking;
+use App\Support\InvoiceService;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -131,6 +133,20 @@ new class extends Component
             "Updated order #{$order->order_number}",
         );
 
+        // Auto-issue the invoice when payment lands on a native order.
+        // Imported WC orders received their invoices from the old store, so
+        // those only get one via the explicit button on this page.
+        if ($this->payment_status === 'paid'
+            && str_starts_with($order->order_number, 'GG-')
+            && $order->invoice()->doesntExist()
+            && app(InvoiceService::class)->settingsComplete()) {
+            try {
+                app(InvoiceService::class)->generateFor($order->refresh());
+            } catch (\Throwable $e) {
+                Log::error("Invoice auto-generation failed for order #{$order->order_number}: {$e->getMessage()}");
+            }
+        }
+
         // Clear computed caches so the view reflects the new values
         unset($this->order, $this->dhlTrackingUrl, $this->editHistories);
 
@@ -233,6 +249,36 @@ new class extends Component
                 </button>
             </div>
         </div>
+    </div>
+
+    {{-- Invoice --}}
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">Invoice</h3>
+        @if ($this->order->invoice)
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-sm font-medium text-slate-800">{{ $this->order->invoice->invoice_number }}</p>
+                    <p class="text-sm text-slate-600">Issued {{ $this->order->invoice->issued_at->format('Y-m-d') }}</p>
+                </div>
+                <a href="{{ route('admin.orders.invoice.download', $this->order) }}"
+                   class="inline-flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                    Download Invoice (PDF)
+                </a>
+            </div>
+        @elseif ($this->order->payment_status === 'paid')
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm text-slate-600">No invoice has been issued for this order yet.</p>
+                <form method="POST" action="{{ route('admin.orders.invoice.generate', $this->order) }}">
+                    @csrf
+                    <button type="submit" class="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+                        Generate Invoice
+                    </button>
+                </form>
+            </div>
+        @else
+            <p class="text-sm text-slate-500">An invoice can be issued once this order is marked as paid.</p>
+        @endif
     </div>
 
     @php

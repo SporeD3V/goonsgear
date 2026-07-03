@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FallbackMediaController;
 use App\Http\Controllers\Admin\IntegrationSettingsController;
+use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Admin\MaintenanceController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
@@ -156,6 +157,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin', 'admin.noin
     Route::get('coupons', [CouponController::class, 'index'])->name('coupons.index');
     Route::get('bundle-discounts', [BundleDiscountController::class, 'index'])->name('bundle-discounts.index');
     Route::resource('orders', OrderController::class)->only(['index', 'show']);
+    Route::post('orders/{order}/invoice', [InvoiceController::class, 'generate'])
+        ->name('orders.invoice.generate');
+    Route::get('orders/{order}/invoice', [InvoiceController::class, 'download'])
+        ->name('orders.invoice.download');
+    Route::get('maintenance/invoice-settings', [InvoiceController::class, 'editSettings'])
+        ->name('invoices.settings.edit');
+    Route::post('maintenance/invoice-settings', [InvoiceController::class, 'updateSettings'])
+        ->name('invoices.settings.update');
     Route::resource('products', ProductController::class)->only(['index', 'create', 'store', 'edit', 'update']);
     Route::get('tags', [TagController::class, 'index'])->name('tags.index');
     Route::get('products/{product}/stock-alerts', [ProductController::class, 'stockAlerts'])
