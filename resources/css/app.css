@@ -41,6 +41,11 @@
     animation: lightbox-media-fade 150ms ease-out;
 }
 
+/* Hide Alpine-controlled elements until Alpine initializes */
+[x-cloak] {
+    display: none !important;
+}
+
 /* Hide scrollbar but keep scroll functionality */
 .no-scrollbar {
     -ms-overflow-style: none;
