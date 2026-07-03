@@ -2,217 +2,56 @@
 
 @section('content')
     <div class="space-y-6">
-        <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold">Edit Product: {{ $product->name }}</h2>
-            <a href="{{ route('admin.products.index') }}" class="text-sm text-slate-600 hover:underline">&larr; Back to Products</a>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                    <h2 class="truncate text-lg font-semibold text-stone-800">{{ $product->name }}</h2>
+                    <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold {{ match ($product->status) {
+                        'active' => 'bg-emerald-100 text-emerald-700',
+                        'draft' => 'bg-amber-100 text-amber-700',
+                        'archived' => 'bg-stone-200 text-stone-600',
+                        default => 'bg-stone-100 text-stone-500',
+                    } }}">{{ ucfirst($product->status) }}</span>
+                </div>
+                <p class="text-[13px] text-stone-500">
+                    <span class="font-mono">{{ $product->slug }}</span>
+                    @if ($product->status === 'active')
+                        &middot; <a href="{{ route('shop.show', $product) }}" target="_blank" rel="noreferrer" class="text-[#36a2eb] hover:underline">View in shop ↗</a>
+                    @endif
+                </p>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="{{ route('admin.products.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium text-stone-500 transition hover:bg-stone-100 hover:text-stone-700">
+                    &larr; Back to Products
+                </a>
+                <button type="submit" form="product-form" class="rounded-lg bg-[#36a2eb] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2b8ac9]">
+                    Save changes
+                </button>
+            </div>
         </div>
 
-        <form method="POST" action="{{ route('admin.products.update', $product) }}" class="space-y-6" enctype="multipart/form-data" novalidate>
-            @csrf
-            @method('PUT')
+        @include('admin.products._form', ['product' => $product])
 
-            {{-- Identity --}}
-            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">Identity</h3>
-                <div class="space-y-4">
-                    <div class="grid gap-4 md:grid-cols-2">
-                        <div>
-                            <label class="mb-1 block text-sm font-medium">Name</label>
-                            <input type="text" name="name" value="{{ old('name', $product->name) }}" class="w-full rounded border border-slate-300 px-3 py-2" required>
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-sm font-medium">Slug</label>
-                            <input type="text" name="slug" value="{{ old('slug', $product->slug) }}" class="w-full rounded border border-slate-300 px-3 py-2" required>
-                        </div>
-                    </div>
-
-                    <div class="grid gap-4 md:grid-cols-3">
-                        <div>
-                            <label class="mb-1 block text-sm font-medium">Status</label>
-                            <select name="status" class="w-full rounded border border-slate-300 px-3 py-2" required>
-                                <option value="draft" @selected(old('status', $product->status) === 'draft')>Draft</option>
-                                <option value="active" @selected(old('status', $product->status) === 'active')>Active</option>
-                                <option value="archived" @selected(old('status', $product->status) === 'archived')>Archived</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-sm font-medium">Primary Category</label>
-                            <select name="primary_category_id" class="w-full rounded border border-slate-300 px-3 py-2">
-                                <option value="">None</option>
-                                @foreach ($categories as $category)
-                                    <option value="{{ $category->id }}" @selected((string) old('primary_category_id', $product->primary_category_id) === (string) $category->id)>{{ $category->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-sm font-medium">Published At</label>
-                            <input type="datetime-local" name="published_at" value="{{ old('published_at', optional($product->published_at)->format('Y-m-d\TH:i')) }}" class="w-full rounded border border-slate-300 px-3 py-2">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Content --}}
-            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">Content</h3>
-                <div class="space-y-4">
-                    <div>
-                        <label class="mb-1 block text-sm font-medium">Excerpt</label>
-                        <textarea name="excerpt" rows="2" class="w-full rounded border border-slate-300 px-3 py-2">{{ old('excerpt', $product->excerpt) }}</textarea>
-                    </div>
-                    <div>
-                        <label class="mb-1 block text-sm font-medium">Description</label>
-                        <textarea name="description" rows="6" class="w-full rounded border border-slate-300 px-3 py-2">{{ old('description', $product->description) }}</textarea>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Categorization --}}
-            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">Categorization</h3>
-                <div class="space-y-4">
-                    <div>
-                        <label class="mb-1 block text-sm font-medium">Additional Categories</label>
-                        <select name="category_ids[]" multiple class="w-full rounded border border-slate-300 px-3 py-2">
-                            @php
-                                $selectedCategories = array_map('strval', old('category_ids', $product->categories->pluck('id')->all()));
-                            @endphp
-                            @foreach ($categories as $category)
-                                <option value="{{ $category->id }}" @selected(in_array((string) $category->id, $selectedCategories, true))>{{ $category->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label class="mb-1 block text-sm font-medium">Artists / Brands</label>
-                        <select name="tag_ids[]" multiple class="w-full rounded border border-slate-300 px-3 py-2">
-                            @php
-                                $selectedTags = array_map('strval', old('tag_ids', $product->tags->pluck('id')->all()));
-                            @endphp
-                            @foreach ($tags as $tag)
-                                <option value="{{ $tag->id }}" @selected(in_array((string) $tag->id, $selectedTags, true))>
-                                    {{ ucfirst($tag->type) }}: {{ $tag->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <p class="mt-1 text-xs text-slate-500">Followers of these artists/brands can receive drop and discount notifications.</p>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Settings & Flags --}}
-            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">Settings</h3>
-                <div class="space-y-4">
-                    <div class="flex flex-wrap gap-6">
-                        <label class="inline-flex items-center gap-2 text-sm">
-                            <input type="checkbox" name="is_featured" value="1" @checked((string) old('is_featured', $product->is_featured ? '1' : '0') === '1')>
-                            Featured
-                        </label>
-                        <label class="inline-flex items-center gap-2 text-sm">
-                            <input type="checkbox" name="is_preorder" value="1" @checked((string) old('is_preorder', $product->is_preorder ? '1' : '0') === '1')>
-                            Preorder Enabled
-                        </label>
-                        <label class="inline-flex items-center gap-2 text-sm">
-                            <input type="checkbox" name="is_bundle_exclusive" value="1" @checked((string) old('is_bundle_exclusive', $product->is_bundle_exclusive ? '1' : '0') === '1')>
-                            Bundle Exclusive
-                        </label>
-                    </div>
-                    <div class="grid gap-4 md:grid-cols-2">
-                        <div>
-                            <label class="mb-1 block text-sm font-medium">Preorder Available From</label>
-                            <input type="datetime-local" name="preorder_available_from" value="{{ old('preorder_available_from', optional($product->preorder_available_from)->format('Y-m-d\TH:i')) }}" class="w-full rounded border border-slate-300 px-3 py-2">
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-sm font-medium">Expected Ship At</label>
-                            <input type="datetime-local" name="expected_ship_at" value="{{ old('expected_ship_at', optional($product->expected_ship_at)->format('Y-m-d\TH:i')) }}" class="w-full rounded border border-slate-300 px-3 py-2">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- SEO --}}
-            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">SEO</h3>
-                <div class="space-y-4">
-                    @include('admin.partials.seo-field', [
-                        'name'  => 'meta_title',
-                        'label' => 'Meta Title',
-                        'value' => old('meta_title', $product->meta_title ?? ''),
-                        'min'   => 50,
-                        'max'   => 60,
-                        'hint'  => 'Recommended 50–60 characters. This appears as the clickable headline in search results.',
-                    ])
-
-                    @include('admin.partials.seo-field', [
-                        'name'  => 'meta_description',
-                        'label' => 'Meta Description',
-                        'value' => old('meta_description', $product->meta_description ?? ''),
-                        'type'  => 'textarea',
-                        'rows'  => 3,
-                        'min'   => 120,
-                        'max'   => 160,
-                        'hint'  => 'Recommended 120–160 characters. This appears below the title in search results.',
-                    ])
-                </div>
-            </div>
-
-            {{-- Media Upload --}}
-            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">Upload Media</h3>
-                <div class="space-y-4">
-                    <div class="grid gap-4 md:grid-cols-2">
-                        <div>
-                            <label class="mb-1 block text-sm font-medium">Upload Images / Videos</label>
-                            <input type="file" name="media_files[]" accept="image/*,video/*" multiple class="w-full rounded border border-slate-300 px-3 py-2">
-                            <p class="mt-1 text-xs text-slate-500">Allowed: JPG, JPEG, PNG, WEBP, AVIF, MP4, WEBM, MOV. Max 50MB per file.</p>
-                        </div>
-                        <div>
-                            <label class="mb-1 block text-sm font-medium">Assign Uploaded Media To Variant</label>
-                            <select name="media_variant_id" class="w-full rounded border border-slate-300 px-3 py-2">
-                                <option value="">All Variants (Product Gallery)</option>
-                                @foreach ($product->variants as $variant)
-                                    <option value="{{ $variant->id }}">{{ $variant->name }} ({{ $variant->sku }})</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="mb-1 block text-sm font-medium">Alt Text (optional)</label>
-                        <input type="text" name="media_alt_text" value="" class="w-full rounded border border-slate-300 px-3 py-2" placeholder="e.g. Black tee front view">
-                    </div>
-                    <p class="text-xs text-slate-500">Media management (preview, set primary, delete) is available below after saving.</p>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-3">
-                <button type="submit" class="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Update</button>
-                <a href="{{ route('admin.products.index') }}" class="text-sm text-slate-600 hover:underline">Cancel</a>
-            </div>
-        </form>
-
-        {{-- Media Gallery --}}
+        {{-- Current Media --}}
         @if ($product->media->isNotEmpty())
             @php
                 $primaryMedia = $product->media->first();
             @endphp
 
-            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm" data-media-gallery>
-                <h3 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-700">Current Media</h3>
-
-            <div class="grid gap-3 md:grid-cols-2">
-                <div>
-                    <label class="mb-1 block text-sm font-medium">Preview Variant</label>
-                    <select data-media-variant-filter class="w-full rounded border border-slate-300 px-3 py-2">
-                        <option value="all">All Variants</option>
-                        @foreach ($product->variants as $variant)
-                            <option value="{{ $variant->id }}">{{ $variant->name }} ({{ $variant->sku }})</option>
-                        @endforeach
-                    </select>
+            <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="5" data-media-gallery>
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <h3 class="text-sm font-semibold uppercase tracking-wide text-stone-600">Current Media</h3>
+                    @if ($product->variants->isNotEmpty())
+                        <select data-media-variant-filter class="rounded-lg border border-stone-200 px-3 py-1.5 text-sm text-stone-600 focus:border-[#36a2eb] focus:outline-none">
+                            <option value="all">All variants</option>
+                            @foreach ($product->variants as $variant)
+                                <option value="{{ $variant->id }}">{{ $variant->name }} ({{ $variant->sku }})</option>
+                            @endforeach
+                        </select>
+                    @endif
                 </div>
-            </div>
 
-            <div class="rounded border border-slate-200 p-3">
-                <div class="mb-3 overflow-hidden rounded border border-slate-200 bg-slate-50">
+                <div class="mb-4 overflow-hidden rounded-xl border border-stone-100 bg-stone-50">
                     @if ($primaryMedia !== null)
                         @php
                             $primaryMediaUrl = route('media.show', ['path' => $primaryMedia->path]);
@@ -245,7 +84,7 @@
                         @endphp
 
                         <div
-                            class="rounded border border-slate-200 p-2 text-left"
+                            class="group rounded-xl border border-stone-200 p-2 transition hover:border-stone-300 hover:shadow-sm"
                             tabindex="0"
                             data-media-thumb
                             data-media-url="{{ $mediaUrl }}"
@@ -253,30 +92,38 @@
                             data-media-variant-id="{{ $media->product_variant_id ?? '' }}"
                             data-media-alt="{{ $media->alt_text ?: $product->name }}"
                         >
-                            @if ($isVideo)
-                                <div class="mb-2 flex h-20 items-center justify-center rounded bg-slate-900 text-xs font-medium text-white">VIDEO</div>
-                            @else
-                                <img src="{{ $mediaUrl }}" alt="{{ $media->alt_text ?: $product->name }}" class="mb-2 h-20 w-full rounded object-cover">
-                            @endif
-                            <p class="text-xs text-slate-600">{{ $media->alt_text ?: 'No alt text' }}</p>
-                            <p class="mt-1 text-xs text-slate-500">
-                                {{ $media->variant?->name ?? 'All Variants' }} · {{ $media->is_primary ? 'Primary' : 'Gallery' }}
-                            </p>
-                            <p class="mt-1 text-xs {{ $media->is_converted ? 'text-emerald-700' : 'text-amber-700' }}">
-                                {{ $media->is_converted ? 'Converted: '.strtoupper((string) $media->converted_to) : 'Not converted (original/fallback)' }}
+                            <div class="relative mb-2">
+                                @if ($isVideo)
+                                    <div class="flex h-24 items-center justify-center rounded-lg bg-stone-800 text-xs font-semibold text-white">VIDEO</div>
+                                @else
+                                    <img src="{{ $mediaUrl }}" alt="{{ $media->alt_text ?: $product->name }}" class="h-24 w-full rounded-lg bg-stone-50 object-cover">
+                                @endif
+                                @if ($media->is_primary)
+                                    <span class="absolute left-1.5 top-1.5 rounded-full bg-[#36a2eb] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">Primary</span>
+                                @endif
+                            </div>
+
+                            <p class="truncate text-xs text-stone-600">{{ $media->alt_text ?: 'No alt text' }}</p>
+                            <p class="mt-0.5 text-[11px] text-stone-400">
+                                {{ $media->variant?->name ?? 'All variants' }}
+                                &middot; <span class="{{ $media->is_converted ? 'text-emerald-600' : 'text-amber-600' }}">{{ $media->is_converted ? strtoupper((string) $media->converted_to) : 'Original' }}</span>
                             </p>
 
-                            <div class="mt-2 flex items-center gap-2">
+                            <div class="mt-2 flex items-center gap-1">
                                 @if (! $media->is_primary)
                                     <form method="POST" action="{{ route('admin.products.media.primary', [$product, $media]) }}">
                                         @csrf
-                                        <button type="submit" class="text-xs text-blue-700 hover:underline">Set Primary</button>
+                                        <button type="submit" class="flex h-8 w-8 items-center justify-center rounded-lg text-stone-400 transition hover:bg-amber-50 hover:text-amber-500" title="Set as primary">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"/></svg>
+                                        </button>
                                     </form>
                                 @endif
 
                                 <form method="POST" action="{{ route('admin.products.media.destroy', [$product, $media]) }}">
                                     @csrf
-                                    <button type="submit" class="text-xs text-red-700 hover:underline" onclick="return confirm('Delete this media item?')">Delete</button>
+                                    <button type="submit" class="flex h-8 w-8 items-center justify-center rounded-lg text-stone-400 transition hover:bg-red-50 hover:text-red-600" title="Delete" onclick="return confirm('Delete this media item?')">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                                    </button>
                                 </form>
                             </div>
                         </div>
@@ -284,59 +131,70 @@
                 </div>
             </div>
         @else
-            <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 class="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-700">Current Media</h3>
-                <p class="text-xs text-slate-500">No media uploaded yet.</p>
+            <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="5">
+                <h3 class="mb-2 text-sm font-semibold uppercase tracking-wide text-stone-600">Current Media</h3>
+                <p class="text-sm text-stone-400">No media uploaded yet — use the upload card above.</p>
             </div>
         @endif
 
         {{-- Variants --}}
-        <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div class="mb-4 flex items-center justify-between">
-                <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-700">Variants</h3>
-                <a href="{{ route('admin.products.variants.create', $product) }}" class="rounded bg-emerald-600 px-3 py-2 text-sm text-white hover:bg-emerald-700">Add Variant</a>
+        <div class="admin-card overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm" data-delay="6">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 px-5 py-4">
+                <h3 class="text-sm font-semibold uppercase tracking-wide text-stone-600">Variants</h3>
+                <a href="{{ route('admin.products.variants.create', $product) }}" class="inline-flex items-center gap-1.5 rounded-lg bg-[#36a2eb] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#2b8ac9]">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                    Add Variant
+                </a>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="min-w-full border border-slate-200 text-sm">
-                    <thead class="bg-slate-50">
-                        <tr>
-                            <th class="border border-slate-200 px-3 py-2 text-left">Name</th>
-                            <th class="border border-slate-200 px-3 py-2 text-left">SKU</th>
-                            <th class="border border-slate-200 px-3 py-2 text-left">Price</th>
-                            <th class="border border-slate-200 px-3 py-2 text-left">Stock</th>
-                            <th class="border border-slate-200 px-3 py-2 text-left">Preorder</th>
-                            <th class="border border-slate-200 px-3 py-2 text-right">Actions</th>
-                        </tr>
-            </thead>
-            <tbody>
+            <ul class="divide-y divide-stone-100">
                 @forelse ($product->variants as $variant)
-                    <tr>
-                        <td class="border border-slate-200 px-3 py-2">{{ $variant->name }}</td>
-                        <td class="border border-slate-200 px-3 py-2">{{ $variant->sku }}</td>
-                        <td class="border border-slate-200 px-3 py-2">{{ number_format((float) $variant->price, 2) }}</td>
-                        <td class="border border-slate-200 px-3 py-2">{{ $variant->stock_quantity }}</td>
-                        <td class="border border-slate-200 px-3 py-2">{{ $variant->is_preorder ? 'Yes' : 'No' }}</td>
-                        <td class="border border-slate-200 px-3 py-2 text-right">
-                            <a href="{{ route('admin.products.variants.edit', [$product, $variant]) }}" class="text-blue-700 hover:underline">Edit</a>
-                            <form method="POST" action="{{ route('admin.products.variants.destroy', [$product, $variant]) }}" class="ml-2 inline">
+                    <li class="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 transition hover:bg-stone-50/60">
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-semibold text-stone-800">{{ $variant->name }}</p>
+                            <p class="mt-0.5 font-mono text-xs text-stone-400">{{ $variant->sku }}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-semibold text-stone-700">&euro;{{ number_format((float) $variant->price, 2) }}</span>
+                            @php
+                                $stockTone = $variant->stock_quantity === 0
+                                    ? 'bg-red-100 text-red-700'
+                                    : ($variant->stock_quantity <= 5 ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-600');
+                            @endphp
+                            <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $stockTone }}">
+                                {{ $variant->stock_quantity === 0 ? 'Out of stock' : $variant->stock_quantity.' in stock' }}
+                            </span>
+                            @if ($variant->is_preorder)
+                                <span class="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">Pre-order</span>
+                            @endif
+                            @unless ($variant->is_active)
+                                <span class="rounded-full bg-stone-200 px-2.5 py-0.5 text-xs font-semibold text-stone-600">Inactive</span>
+                            @endunless
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <a href="{{ route('admin.products.variants.edit', [$product, $variant]) }}" class="flex h-9 w-9 items-center justify-center rounded-lg text-stone-500 transition hover:bg-[#36a2eb]/10 hover:text-[#36a2eb]" title="Edit variant">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"/></svg>
+                            </a>
+                            <form method="POST" action="{{ route('admin.products.variants.destroy', [$product, $variant]) }}">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="text-red-700 hover:underline" onclick="return confirm('Delete this variant?')">Delete</button>
+                                <button type="submit" class="flex h-9 w-9 items-center justify-center rounded-lg text-stone-500 transition hover:bg-red-50 hover:text-red-600" title="Delete variant" onclick="return confirm('Delete this variant?')">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+                                </button>
                             </form>
-                        </td>
-                    </tr>
+                        </div>
+                    </li>
                 @empty
-                    <tr>
-                        <td colspan="6" class="border border-slate-200 px-3 py-6 text-center text-slate-500">No variants yet.</td>
-                    </tr>
+                    <li class="px-6 py-10 text-center">
+                        <p class="text-sm text-stone-500">No variants yet — the product can't be purchased until it has at least one.</p>
+                        <a href="{{ route('admin.products.variants.create', $product) }}" class="mt-3 inline-block rounded-lg bg-[#36a2eb] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#2b8ac9]">Add the first variant</a>
+                    </li>
                 @endforelse
-            </tbody>
-            </table>
+            </ul>
         </div>
 
         {{-- Edit History --}}
-        <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm" data-delay="7">
             @include('admin.partials.edit-history', ['histories' => $editHistories])
         </div>
     </div>

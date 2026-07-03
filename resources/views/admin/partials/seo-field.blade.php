@@ -29,20 +29,20 @@
     update(e) { this.count = e.target.value.length },
     get pct() { return Math.min(100, Math.round(this.count / this.max * 100)) },
     get color() {
-        if (this.count === 0) return 'bg-slate-200';
+        if (this.count === 0) return 'bg-stone-200';
         if (this.count < this.min) return 'bg-amber-400';
         if (this.count <= this.max) return 'bg-emerald-500';
         return 'bg-red-500';
     },
     get textColor() {
-        if (this.count === 0) return 'text-slate-400';
+        if (this.count === 0) return 'text-stone-400';
         if (this.count < this.min) return 'text-amber-600';
         if (this.count <= this.max) return 'text-emerald-600';
         return 'text-red-600';
     }
 }">
     <div class="mb-1 flex items-baseline justify-between">
-        <label class="block text-sm font-medium">{{ $label }}</label>
+        <label class="block text-sm font-medium text-stone-700">{{ $label }}</label>
         <span class="text-xs" :class="textColor">
             <span x-text="count">{{ strlen($value) }}</span>/<span>{{ $max }}</span>
         </span>
@@ -52,7 +52,7 @@
         <textarea
             name="{{ $name }}"
             rows="{{ $rows }}"
-            class="w-full rounded border border-slate-300 px-3 py-2"
+            class="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm text-stone-700 focus:border-[#36a2eb] focus:outline-none focus:ring-1 focus:ring-[#36a2eb]"
             x-on:input="update($event)"
             @if ($wireModel) wire:model="{{ $wireModel }}" @endif
         >{{ $value }}</textarea>
@@ -61,17 +61,17 @@
             type="text"
             name="{{ $name }}"
             value="{{ $value }}"
-            class="w-full rounded border border-slate-300 px-3 py-2"
+            class="w-full rounded-lg border border-stone-200 px-3 py-2 text-sm text-stone-700 focus:border-[#36a2eb] focus:outline-none focus:ring-1 focus:ring-[#36a2eb]"
             x-on:input="update($event)"
             @if ($wireModel) wire:model="{{ $wireModel }}" @endif
         >
     @endif
 
     {{-- Progress bar --}}
-    <div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+    <div class="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-stone-100">
         <div class="h-full rounded-full transition-all duration-200" :class="color" :style="'width:' + pct + '%'"></div>
     </div>
 
     {{-- Hint --}}
-    <p class="mt-1 text-xs text-slate-500">{{ $hint }}</p>
+    <p class="mt-1 text-xs text-stone-400">{{ $hint }}</p>
 </div>
