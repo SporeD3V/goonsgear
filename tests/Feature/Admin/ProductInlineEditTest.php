@@ -4,6 +4,8 @@ namespace Tests\Feature\Admin;
 
 use App\Models\EditHistory;
 use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\StockAlertSubscription;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -223,5 +225,59 @@ class ProductInlineEditTest extends TestCase
 
         $this->get(route('admin.products.index'))
             ->assertRedirect(route('login'));
+    }
+
+    public function test_stock_alerts_waiting_filter_matches_variant_subscriptions(): void
+    {
+        $waiting = Product::factory()->create(['name' => 'Waiting Product']);
+        $waitingVariant = ProductVariant::factory()->create(['product_id' => $waiting->id]);
+        StockAlertSubscription::factory()->create([
+            'product_variant_id' => $waitingVariant->id,
+            'is_active' => true,
+            'notified_at' => null,
+        ]);
+
+        Product::factory()->create(['name' => 'Quiet Product']);
+
+        Livewire::test('admin.product-manager')
+            ->set('filterStockAlerts', 'waiting')
+            ->assertSeeText('Waiting Product')
+            ->assertDontSeeText('Quiet Product');
+    }
+
+    public function test_quick_filter_tiles_toggle_filters(): void
+    {
+        Product::factory()->create(['status' => 'active']);
+
+        Livewire::test('admin.product-manager')
+            ->call('quickFilter', 'active')
+            ->assertSet('filterStatus', 'active')
+            ->call('quickFilter', 'active')
+            ->assertSet('filterStatus', '')
+            ->call('quickFilter', 'out_of_stock')
+            ->assertSet('filterStock', 'out_of_stock')
+            ->call('quickFilter', 'alerts')
+            ->assertSet('filterStockAlerts', 'waiting');
+    }
+
+    public function test_stats_counts_catalog_state(): void
+    {
+        Product::factory()->count(2)->create(['status' => 'active']);
+        Product::factory()->create(['status' => 'draft']);
+
+        $soldOut = Product::factory()->create(['status' => 'active']);
+        ProductVariant::factory()->create([
+            'product_id' => $soldOut->id,
+            'is_active' => true,
+            'stock_quantity' => 0,
+        ]);
+
+        $component = Livewire::test('admin.product-manager');
+        $stats = $component->instance()->stats;
+
+        $this->assertSame(3, $stats['active']);
+        $this->assertSame(1, $stats['draft']);
+        $this->assertSame(1, $stats['out_of_stock']);
+        $this->assertSame(0, $stats['alerts']);
     }
 }
