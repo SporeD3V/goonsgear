@@ -15,6 +15,8 @@
     $preorderEnabled = (string) old('is_preorder', $editing && $product->is_preorder ? '1' : '0') === '1';
 @endphp
 
+@vite('resources/js/editor.js')
+
 @if ($errors->any())
     <div class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
         <p class="font-semibold">Please fix the following before saving:</p>
@@ -85,8 +87,35 @@
                         <textarea id="product-excerpt" name="excerpt" rows="2" class="{{ $inputClasses }}" placeholder="Short teaser shown on listing cards">{{ old('excerpt', $product->excerpt ?? '') }}</textarea>
                     </div>
                     <div>
-                        <label for="product-description" class="mb-1 block text-sm font-medium text-stone-700">Description</label>
-                        <textarea id="product-description" name="description" rows="7" class="{{ $inputClasses }}">{{ old('description', $product->description ?? '') }}</textarea>
+                        <label class="mb-1 block text-sm font-medium text-stone-700">Description</label>
+                        <div x-data="richEditor(@js(old('description', $product->description ?? '')))"
+                             class="overflow-hidden rounded-lg border border-stone-200 transition focus-within:border-[#36a2eb] focus-within:ring-1 focus-within:ring-[#36a2eb]">
+                            <div class="flex flex-wrap items-center gap-0.5 border-b border-stone-100 bg-stone-50/60 px-2 py-1.5">
+                                <button type="button" x-on:click="command('toggleBold')" :class="active('bold') ? 'bg-[#36a2eb]/10 text-[#36a2eb]' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-700'" class="flex h-8 w-8 items-center justify-center rounded-md text-sm font-bold transition" title="Bold">
+                                    B
+                                </button>
+                                <button type="button" x-on:click="command('toggleItalic')" :class="active('italic') ? 'bg-[#36a2eb]/10 text-[#36a2eb]' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-700'" class="flex h-8 w-8 items-center justify-center rounded-md text-sm italic transition" title="Italic">
+                                    I
+                                </button>
+                                <span class="mx-1 h-5 w-px bg-stone-200"></span>
+                                <button type="button" x-on:click="command('toggleBulletList')" :class="active('bulletList') ? 'bg-[#36a2eb]/10 text-[#36a2eb]' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-700'" class="flex h-8 w-8 items-center justify-center rounded-md transition" title="Bullet list">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>
+                                </button>
+                                <button type="button" x-on:click="command('toggleOrderedList')" :class="active('orderedList') ? 'bg-[#36a2eb]/10 text-[#36a2eb]' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-700'" class="flex h-8 w-8 items-center justify-center rounded-md transition" title="Numbered list">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.242 5.992h12m-12 6.003H20.24m-12 5.999h12M4.117 7.495v-3.75H2.99m1.125 3.75H2.99m1.125 0H5.24m-1.92 2.577a1.125 1.125 0 1 1 1.591 1.59l-1.83 1.83h2.16M2.99 15.745h1.125a1.125 1.125 0 0 1 0 2.25H3.74m0-.002h.375a1.125 1.125 0 0 1 0 2.25H2.99"/></svg>
+                                </button>
+                                <span class="mx-1 h-5 w-px bg-stone-200"></span>
+                                <button type="button" x-on:click="command('undo')" class="flex h-8 w-8 items-center justify-center rounded-md text-stone-500 transition hover:bg-stone-100 hover:text-stone-700" title="Undo">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
+                                </button>
+                                <button type="button" x-on:click="command('redo')" class="flex h-8 w-8 items-center justify-center rounded-md text-stone-500 transition hover:bg-stone-100 hover:text-stone-700" title="Redo">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3"/></svg>
+                                </button>
+                            </div>
+                            <div x-ref="editor"></div>
+                            <textarea name="description" x-ref="input" class="hidden" aria-hidden="true" tabindex="-1">{{ old('description', $product->description ?? '') }}</textarea>
+                        </div>
+                        <p class="mt-1 text-xs text-stone-400">Bold, italics, and lists — exactly what the shop page can display.</p>
                     </div>
                 </div>
             </div>

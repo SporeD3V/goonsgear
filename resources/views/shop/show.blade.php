@@ -230,11 +230,11 @@
                 <section class="rounded border border-black/10 bg-white p-5">
                     <p class="text-sm text-black/50">Category: {{ $product->primaryCategory?->name ?? 'Uncategorized' }}</p>
                     @if ($product->formattedExcerpt() !== '')
-                        <div class="mt-3 text-black/70">{!! $product->formattedExcerpt() !!}</div>
+                        <div class="rich-text mt-3 text-black/70">{!! $product->formattedExcerpt() !!}</div>
                     @endif
 
                     @if ($product->formattedDescription() !== '')
-                        <div class="mt-4 text-sm leading-6 text-black/70">
+                        <div class="rich-text mt-4 text-sm leading-6 text-black/70">
                             {!! $product->formattedDescription() !!}
                         </div>
                     @endif
