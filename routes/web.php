@@ -76,6 +76,18 @@ Route::get('/account', [AccountController::class, 'index'])
     ->middleware('auth')
     ->name('account.index');
 
+Route::get('/account/orders/{order}', [AccountController::class, 'showOrder'])
+    ->middleware('auth')
+    ->name('account.orders.show');
+
+Route::get('/account/orders/{order}/invoice', [AccountController::class, 'downloadInvoice'])
+    ->middleware('auth')
+    ->name('account.orders.invoice');
+
+Route::delete('/account', [AccountController::class, 'destroy'])
+    ->middleware(['auth', 'throttle:5,1'])
+    ->name('account.destroy');
+
 Route::patch('/account/profile', [AccountController::class, 'updateProfile'])
     ->middleware('auth')
     ->name('account.profile.update');

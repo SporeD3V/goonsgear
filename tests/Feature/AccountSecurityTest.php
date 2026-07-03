@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\NewsletterSubscriber;
+use App\Models\Order;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -142,6 +144,51 @@ class AccountSecurityTest extends TestCase
             ->assertOk()
             ->assertSee('Profile & Security')
             ->assertSee('Change password')
-            ->assertSee('Current password');
+            ->assertSee('Current password')
+            ->assertSee('Delete account');
+    }
+
+    public function test_user_can_delete_account_with_correct_password(): void
+    {
+        $user = $this->customer(['email' => 'leaving@example.com']);
+        $user->sizeProfiles()->create(['name' => 'Me', 'is_self' => true, 'top_size' => 'M']);
+        NewsletterSubscriber::factory()->create(['email' => 'leaving@example.com']);
+        $order = Order::factory()->create(['email' => 'leaving@example.com', 'payment_status' => 'paid']);
+
+        $response = $this->actingAs($user)
+            ->delete(route('account.destroy'), ['current_password' => 'old-password-123']);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect('/');
+
+        $this->assertGuest();
+        $this->assertDatabaseMissing('users', ['id' => $user->id]);
+        $this->assertDatabaseMissing('size_profiles', ['user_id' => $user->id]);
+        $this->assertDatabaseMissing('newsletter_subscribers', ['email' => 'leaving@example.com']);
+        // Orders and their invoices are retained for statutory record-keeping.
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'email' => 'leaving@example.com']);
+    }
+
+    public function test_account_deletion_rejects_wrong_password(): void
+    {
+        $user = $this->customer();
+
+        $this->actingAs($user)
+            ->delete(route('account.destroy'), ['current_password' => 'not-my-password'])
+            ->assertSessionHasErrorsIn('deleteAccount', ['current_password']);
+
+        $this->assertDatabaseHas('users', ['id' => $user->id]);
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_admin_cannot_self_delete_via_storefront(): void
+    {
+        $admin = $this->customer(['is_admin' => true]);
+
+        $this->actingAs($admin)
+            ->delete(route('account.destroy'), ['current_password' => 'old-password-123'])
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('users', ['id' => $admin->id]);
     }
 }

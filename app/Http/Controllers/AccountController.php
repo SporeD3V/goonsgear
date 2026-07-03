@@ -5,8 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Tag;
 use App\Models\TagFollow;
+use App\Support\DhlTracking;
+use App\Support\InvoiceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\View\View;
 
@@ -71,6 +76,66 @@ class AccountController extends Controller
             'availableCoupons' => $availableCoupons,
             'sizeProfiles' => $sizeProfiles,
         ]);
+    }
+
+    public function showOrder(Request $request, Order $order): View
+    {
+        abort_unless(strcasecmp($order->email, $request->user()->email) === 0, 404);
+
+        $order->load(['items' => fn ($query) => $query->orderBy('id'), 'invoice']);
+
+        return view('account.orders.show', [
+            'order' => $order,
+            'dhlTrackingUrl' => app(DhlTracking::class)->trackingUrl($order->tracking_number),
+        ]);
+    }
+
+    public function downloadInvoice(Request $request, Order $order, InvoiceService $invoices): Response
+    {
+        abort_unless(strcasecmp($order->email, $request->user()->email) === 0, 404);
+
+        $invoice = $order->invoice;
+
+        abort_unless($invoice !== null, 404);
+
+        return response($invoices->pdfContents($invoice), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$invoices->downloadFilename($invoice).'"',
+        ]);
+    }
+
+    public function destroy(Request $request): RedirectResponse
+    {
+        $request->validateWithBag('deleteAccount', [
+            'current_password' => ['required', 'current_password'],
+        ]);
+
+        $user = $request->user();
+
+        // Admin accounts are managed internally, never self-deleted here.
+        abort_if($user->is_admin, 403);
+
+        // Log out BEFORE deleting: logout cycles the remember token via
+        // $user->save(), which would re-insert a freshly deleted row.
+        Auth::logout();
+
+        DB::transaction(function () use ($user): void {
+            // Marketing data tied to the email is removed outright. Orders and
+            // invoices are retained: statutory record-keeping (GoBD/§147 AO)
+            // overrides erasure per GDPR Art. 17(3)(b).
+            DB::table('cart_abandonments')->where('email', $user->email)->delete();
+            DB::table('newsletter_subscribers')->where('email', $user->email)->delete();
+            DB::table('stock_alert_subscriptions')->where('email', $user->email)->delete();
+
+            // Cart items, size profiles, tag follows, stock alerts, and coupon
+            // assignments are removed via their cascading foreign keys.
+            $user->delete();
+        });
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/')->with('status', 'Your account has been deleted.');
     }
 
     public function updateProfile(Request $request): RedirectResponse

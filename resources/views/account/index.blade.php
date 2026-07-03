@@ -26,15 +26,36 @@
                 default => 'bg-black/10 text-black/70',
             };
 
-            $navSections = [
-                'orders' => 'My Orders',
-                'discounts' => 'Discount Codes',
-                'favorites' => 'Favorites',
-                'sizes' => 'Size Profiles',
-                'address' => 'Delivery Address',
-                'notifications' => 'Notifications',
-                'profile' => 'Profile & Security',
+            $navGroups = [
+                'Shopping' => [
+                    'orders' => 'My Orders',
+                    'discounts' => 'Discount Codes',
+                    'favorites' => 'Favorites',
+                    'sizes' => 'Size Profiles',
+                ],
+                'Settings' => [
+                    'address' => 'Delivery Address',
+                    'notifications' => 'Notifications',
+                    'profile' => 'Profile & Security',
+                ],
             ];
+            $navSections = collect($navGroups)->collapse()->all();
+
+            // After a failed form submit, land the visitor on the tab that
+            // contains the errors instead of the default one.
+            $errorTab = null;
+            if ($errors->updateProfile->isNotEmpty() || $errors->updatePassword->isNotEmpty() || $errors->deleteAccount->isNotEmpty()) {
+                $errorTab = 'profile';
+            } elseif ($errors->any()) {
+                $errorKeys = collect(array_keys($errors->getBag('default')->toArray()));
+                $errorTab = match (true) {
+                    $errorKeys->contains(fn ($key) => str_starts_with($key, 'delivery_')) => 'address',
+                    $errorKeys->contains(fn ($key) => str_starts_with($key, 'notify_cart_')) => 'notifications',
+                    $errorKeys->contains('tag_id') => 'favorites',
+                    $errorKeys->contains(fn ($key) => in_array($key, ['name', 'top_size', 'bottom_size', 'shoe_size', 'is_self'], true)) => 'sizes',
+                    default => null,
+                };
+            }
 
             $hasApartmentDetails = collect(['delivery_apartment_block', 'delivery_entrance', 'delivery_floor', 'delivery_apartment_number'])
                 ->contains(fn ($field) => filled(old($field, $user?->{$field})));
@@ -64,15 +85,42 @@
                 </div>
             @endif
 
-            <div class="mt-8 grid gap-8 lg:grid-cols-[210px_minmax(0,1fr)]">
+            <div
+                class="mt-8 grid gap-8 lg:grid-cols-[210px_minmax(0,1fr)]"
+                x-data="{
+                    tab: 'orders',
+                    sections: @js(array_keys($navSections)),
+                    init() {
+                        const hinted = @js($errorTab);
+                        const fromHash = window.location.hash.replace('#', '');
+                        const stored = sessionStorage.getItem('account-tab');
+                        this.tab = hinted && this.sections.includes(hinted) ? hinted
+                            : this.sections.includes(fromHash) ? fromHash
+                            : this.sections.includes(stored) ? stored
+                            : 'orders';
+                        sessionStorage.setItem('account-tab', this.tab);
+                        history.replaceState(null, '', '#' + this.tab);
+                        this.$watch('tab', (value) => {
+                            sessionStorage.setItem('account-tab', value);
+                            history.replaceState(null, '', '#' + value);
+                        });
+                    },
+                }"
+            >
 
                 {{-- Section navigation: sticky rail on desktop, scrollable chips on mobile --}}
                 <nav aria-label="Account sections" class="lg:sticky lg:top-24 lg:self-start">
                     <ul class="no-scrollbar -mx-6 flex gap-2 overflow-x-auto px-6 lg:mx-0 lg:flex-col lg:gap-1 lg:px-0">
-                        @foreach ($navSections as $anchor => $label)
+                        @foreach ($navGroups as $groupLabel => $groupSections)
+                            <li class="hidden lg:block {{ $loop->first ? '' : 'pt-4' }}">
+                                <p class="px-3 pb-1 text-xs font-bold uppercase tracking-wider text-black/40">{{ $groupLabel }}</p>
+                            </li>
+                            @foreach ($groupSections as $anchor => $label)
                             <li class="shrink-0">
-                                <a href="#{{ $anchor }}"
-                                   class="flex items-center gap-2.5 whitespace-nowrap rounded-lg border border-black/10 px-3 py-2 text-sm font-medium text-black/60 transition hover:bg-black/5 hover:text-black lg:border-transparent">
+                                <button type="button"
+                                   x-on:click="tab = @js($anchor)"
+                                   :class="tab === @js($anchor) ? 'bg-black text-white lg:border-black' : 'text-black/60 hover:bg-black/5 hover:text-black'"
+                                   class="flex w-full items-center gap-2.5 whitespace-nowrap rounded-lg border border-black/10 px-3 py-2 text-sm font-medium transition lg:border-transparent">
                                     @switch($anchor)
                                         @case('orders')
                                             <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007Z"/></svg>
@@ -96,8 +144,9 @@
                                             <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg>
                                     @endswitch
                                     {{ $label }}
-                                </a>
+                                </button>
                             </li>
+                            @endforeach
                         @endforeach
                     </ul>
                 </nav>
@@ -105,7 +154,7 @@
                 <div class="min-w-0 space-y-8">
 
                     {{-- My Orders --}}
-                    <section id="orders" class="scroll-mt-28 rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+                    <section id="orders" x-show="tab === 'orders'" x-cloak class="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
                         <div class="mb-4">
                             <h2 class="text-lg font-bold tracking-tight">My Orders</h2>
                             <p class="mt-0.5 text-sm text-black/50">Recent orders placed with your account email.</p>
@@ -114,23 +163,27 @@
                         @if ($recentOrders->isNotEmpty())
                             <ul class="divide-y divide-black/5">
                                 @foreach ($recentOrders as $order)
-                                    <li class="flex flex-wrap items-center gap-x-4 gap-y-2 py-4 first:pt-0 last:pb-0">
-                                        <div class="min-w-0 flex-1">
-                                            <p class="truncate text-sm font-bold">{{ $order->order_number }}</p>
-                                            <p class="mt-0.5 text-xs text-black/50">
-                                                {{ optional($order->placed_at)->format('M d, Y') ?? '—' }}
-                                                &middot; {{ $order->items_count }} {{ \Illuminate\Support\Str::plural('item', $order->items_count) }}
+                                    <li>
+                                        <a href="{{ route('account.orders.show', $order) }}"
+                                           class="group -mx-2 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg px-2 py-4 transition hover:bg-black/[0.03]">
+                                            <div class="min-w-0 flex-1">
+                                                <p class="truncate text-sm font-bold group-hover:underline">{{ $order->order_number }}</p>
+                                                <p class="mt-0.5 text-xs text-black/50">
+                                                    {{ optional($order->placed_at)->format('M d, Y') ?? '—' }}
+                                                    &middot; {{ $order->items_count }} {{ \Illuminate\Support\Str::plural('item', $order->items_count) }}
+                                                </p>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $statusBadge($order->status) }}">{{ ucfirst($order->status) }}</span>
+                                                @if ($order->payment_status !== $order->status)
+                                                    <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $statusBadge($order->payment_status) }}">{{ ucfirst($order->payment_status) }}</span>
+                                                @endif
+                                            </div>
+                                            <p class="w-24 text-right text-sm font-bold">
+                                                {{ $order->currency === 'EUR' ? '€' : $order->currency.' ' }}{{ number_format((float) $order->total, 2) }}
                                             </p>
-                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $statusBadge($order->status) }}">{{ ucfirst($order->status) }}</span>
-                                            @if ($order->payment_status !== $order->status)
-                                                <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $statusBadge($order->payment_status) }}">{{ ucfirst($order->payment_status) }}</span>
-                                            @endif
-                                        </div>
-                                        <p class="w-24 text-right text-sm font-bold">
-                                            {{ $order->currency === 'EUR' ? '€' : $order->currency.' ' }}{{ number_format((float) $order->total, 2) }}
-                                        </p>
+                                            <svg class="h-4 w-4 shrink-0 text-black/30 transition group-hover:translate-x-0.5 group-hover:text-black" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5"/></svg>
+                                        </a>
                                     </li>
                                 @endforeach
                             </ul>
@@ -145,7 +198,7 @@
                     </section>
 
                     {{-- My Discount Codes --}}
-                    <section id="discounts" class="scroll-mt-28 rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+                    <section id="discounts" x-show="tab === 'discounts'" x-cloak class="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
                         <div class="mb-4">
                             <h2 class="text-lg font-bold tracking-tight">My Discount Codes</h2>
                             <p class="mt-0.5 text-sm text-black/50">Active coupons assigned to your account — apply them in your cart.</p>
@@ -195,7 +248,7 @@
                     </section>
 
                     {{-- My Favorites --}}
-                    <section id="favorites" class="scroll-mt-28 rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+                    <section id="favorites" x-show="tab === 'favorites'" x-cloak class="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
                         <div class="mb-4">
                             <h2 class="text-lg font-bold tracking-tight">My Favorites</h2>
                             <p class="mt-0.5 text-sm text-black/50">Follow artists, brands, and tags — get emails for new drops and discounts.</p>
@@ -303,7 +356,7 @@
                     </section>
 
                     {{-- Size Profiles --}}
-                    <section id="sizes" class="scroll-mt-28 rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+                    <section id="sizes" x-show="tab === 'sizes'" x-cloak class="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
                         <div class="mb-4">
                             <h2 class="text-lg font-bold tracking-tight">Size Profiles</h2>
                             <p class="mt-0.5 text-sm text-black/50">Save your sizes and sizes for people you buy for — then filter the shop by size.</p>
@@ -468,7 +521,7 @@
                     </section>
 
                     {{-- Saved Delivery Address --}}
-                    <section id="address" class="scroll-mt-28 rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+                    <section id="address" x-show="tab === 'address'" x-cloak class="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
                         <div class="mb-4">
                             <h2 class="text-lg font-bold tracking-tight">Saved Delivery Address</h2>
                             <p class="mt-0.5 text-sm text-black/50">Pre-filled at checkout when you are logged in.</p>
@@ -549,7 +602,7 @@
                     </section>
 
                     {{-- Email Notifications --}}
-                    <section id="notifications" class="scroll-mt-28 rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+                    <section id="notifications" x-show="tab === 'notifications'" x-cloak class="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
                         <div class="mb-4">
                             <h2 class="text-lg font-bold tracking-tight">Email Notifications</h2>
                             <p class="mt-0.5 text-sm text-black/50">Choose which emails you'd like to receive about items in your cart.</p>
@@ -602,7 +655,7 @@
                     </section>
 
                     {{-- Profile & Security --}}
-                    <section id="profile" class="scroll-mt-28 rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+                    <section id="profile" x-show="tab === 'profile'" x-cloak class="rounded-xl border border-black/10 bg-white p-6 shadow-sm">
                         <div class="mb-4">
                             <h2 class="text-lg font-bold tracking-tight">Profile &amp; Security</h2>
                             <p class="mt-0.5 text-sm text-black/50">Update your name or change your password.</p>
@@ -664,6 +717,45 @@
                                 <button type="submit" class="rounded-lg bg-black px-5 py-2 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-black/80">Update password</button>
                             </div>
                         </form>
+
+                        <div class="my-6 border-t border-black/5"></div>
+
+                        <details class="group rounded-lg border border-red-200" @if ($errors->deleteAccount->isNotEmpty()) open @endif>
+                            <summary class="flex cursor-pointer list-none items-center justify-between gap-2 p-4 text-sm font-bold text-red-700 transition hover:text-red-800 [&::-webkit-details-marker]:hidden">
+                                Delete account
+                                <svg class="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/></svg>
+                            </summary>
+                            <div class="border-t border-red-200 p-4">
+                                <p class="text-sm text-black/70">
+                                    This permanently deletes your account, saved addresses, size profiles, favorites,
+                                    cart, and email subscriptions. <strong>This cannot be undone.</strong>
+                                </p>
+                                <p class="mt-2 text-xs text-black/50">
+                                    Records of past orders and their invoices are kept for the statutory retention
+                                    period required by German commercial law, but are no longer linked to an account.
+                                </p>
+
+                                @if ($errors->deleteAccount->isNotEmpty())
+                                    <div class="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                        {{ $errors->deleteAccount->first() }}
+                                    </div>
+                                @endif
+
+                                <form method="POST" action="{{ route('account.destroy') }}" class="mt-4"
+                                      onsubmit="return confirm('Delete your account permanently? This cannot be undone.')">
+                                    @csrf
+                                    @method('DELETE')
+
+                                    <label for="delete_current_password" class="mb-1 block text-sm font-medium text-black/70">Confirm with your password</label>
+                                    <div class="flex flex-wrap items-center gap-3">
+                                        <input id="delete_current_password" type="password" name="current_password" required autocomplete="current-password" class="w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:border-red-500 focus:outline-none sm:max-w-xs">
+                                        <button type="submit" class="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-red-700">
+                                            Delete my account
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </details>
                     </section>
                 </div>
             </div>
