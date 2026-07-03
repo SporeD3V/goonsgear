@@ -354,50 +354,50 @@ new class extends Component
 <div class="space-y-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-lg font-semibold">Coupons</h2>
-        <button wire:click="openCreate" class="rounded bg-slate-800 px-3 py-2 text-sm text-white hover:bg-slate-900">New Coupon</button>
+        <button wire:click="openCreate" class="rounded bg-stone-800 px-3 py-2 text-sm text-white hover:bg-stone-900">New Coupon</button>
     </div>
 
-    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
         <div class="mb-4">
-            <input type="text" wire:model.live.debounce.300ms="search" placeholder="Search by code or description…" class="w-full rounded border border-slate-300 px-3 py-2 text-sm md:w-1/2 lg:w-1/3">
+            <input type="text" wire:model.live.debounce.300ms="search" placeholder="Search by code or description…" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm md:w-1/2 lg:w-1/3">
         </div>
 
         <div class="-mx-5 overflow-x-auto px-5">
-        <table class="admin-mobile-table min-w-full border border-slate-200 text-sm">
-            <thead class="bg-slate-50">
+        <table class="admin-mobile-table min-w-full border border-stone-200 text-sm">
+            <thead class="bg-stone-50">
                 <tr>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Code</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Type</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Value</th>
-                    <th class="hidden border border-slate-200 px-3 py-2 text-left lg:table-cell">Rules</th>
-                    <th class="hidden border border-slate-200 px-3 py-2 text-left lg:table-cell">Usage</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Status</th>
-                    <th class="border border-slate-200 px-3 py-2 text-right">Actions</th>
+                    <th class="border border-stone-200 px-3 py-2 text-left">Code</th>
+                    <th class="border border-stone-200 px-3 py-2 text-left">Type</th>
+                    <th class="border border-stone-200 px-3 py-2 text-left">Value</th>
+                    <th class="hidden border border-stone-200 px-3 py-2 text-left lg:table-cell">Rules</th>
+                    <th class="hidden border border-stone-200 px-3 py-2 text-left lg:table-cell">Usage</th>
+                    <th class="border border-stone-200 px-3 py-2 text-left">Status</th>
+                    <th class="border border-stone-200 px-3 py-2 text-right">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse ($this->coupons as $coupon)
                     <tr wire:key="coupon-{{ $coupon->id }}">
-                        <td class="border border-slate-200 px-3 py-2">
-                            <div class="font-medium text-slate-900">{{ $coupon->code }}</div>
+                        <td class="border border-stone-200 px-3 py-2">
+                            <div class="font-medium text-stone-900">{{ $coupon->code }}</div>
                             @if ($coupon->description)
-                                <div class="text-xs text-slate-500">{{ Str::limit($coupon->description, 40) }}</div>
+                                <div class="text-xs text-stone-500">{{ Str::limit($coupon->description, 40) }}</div>
                             @endif
                         </td>
-                        <td class="border border-slate-200 px-3 py-2">{{ ucfirst($coupon->type) }}</td>
-                        <td class="border border-slate-200 px-3 py-2">
+                        <td class="border border-stone-200 px-3 py-2">{{ ucfirst($coupon->type) }}</td>
+                        <td class="border border-stone-200 px-3 py-2">
                             @if ($coupon->type === App\Models\Coupon::TYPE_PERCENT)
                                 {{ $coupon->value }}%
                             @else
                                 ${{ number_format((float) $coupon->value, 2) }}
                             @endif
                         </td>
-                        <td class="hidden border border-slate-200 px-3 py-2 text-xs text-slate-600 lg:table-cell">
+                        <td class="hidden border border-stone-200 px-3 py-2 text-xs text-stone-600 lg:table-cell">
                             @if ($coupon->is_stackable)
                                 <span class="rounded bg-blue-100 px-1.5 py-0.5 text-blue-700">Stackable</span>
                             @endif
                             @if ($coupon->stack_group)
-                                <span class="rounded bg-slate-200 px-1.5 py-0.5">{{ $coupon->stack_group }}</span>
+                                <span class="rounded bg-stone-200 px-1.5 py-0.5">{{ $coupon->stack_group }}</span>
                             @endif
                             @if ($coupon->scope_type !== 'all')
                                 <span class="rounded bg-amber-100 px-1.5 py-0.5 text-amber-700">{{ ucfirst($coupon->scope_type) }}</span>
@@ -406,20 +406,20 @@ new class extends Component
                                 <span class="rounded bg-purple-100 px-1.5 py-0.5 text-purple-700">Personal</span>
                             @endif
                         </td>
-                        <td class="hidden border border-slate-200 px-3 py-2 lg:table-cell">{{ $coupon->used_count }} / {{ $coupon->usage_limit ?? '∞' }}</td>
-                        <td class="border border-slate-200 px-3 py-2">
+                        <td class="hidden border border-stone-200 px-3 py-2 lg:table-cell">{{ $coupon->used_count }} / {{ $coupon->usage_limit ?? '∞' }}</td>
+                        <td class="border border-stone-200 px-3 py-2">
                             <span class="rounded px-1.5 py-0.5 text-xs {{ $coupon->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700' }}">
                                 {{ $coupon->is_active ? 'Active' : 'Inactive' }}
                             </span>
                         </td>
-                        <td class="border border-slate-200 px-3 py-2 text-right">
-                            <button wire:click="openEdit({{ $coupon->id }})" class="text-blue-700 hover:underline">Edit</button>
+                        <td class="border border-stone-200 px-3 py-2 text-right">
+                            <button wire:click="openEdit({{ $coupon->id }})" class="text-[#36a2eb] hover:underline">Edit</button>
                             <button wire:click="deleteCoupon({{ $coupon->id }})" wire:confirm="Delete coupon {{ $coupon->code }}?" class="ml-2 text-red-600 hover:underline">Delete</button>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="border border-slate-200 px-3 py-6 text-center text-slate-500">No coupons found.</td>
+                        <td colspan="7" class="border border-stone-200 px-3 py-6 text-center text-stone-500">No coupons found.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -440,12 +440,12 @@ new class extends Component
                     <div class="grid gap-4 md:grid-cols-2">
                         <div>
                             <label class="mb-1 block text-sm font-medium">Code</label>
-                            <input type="text" wire:model="code" class="w-full rounded border border-slate-300 px-3 py-2 uppercase">
+                            <input type="text" wire:model="code" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 uppercase">
                             @error('code') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="mb-1 block text-sm font-medium">Description</label>
-                            <input type="text" wire:model="description" class="w-full rounded border border-slate-300 px-3 py-2">
+                            <input type="text" wire:model="description" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2">
                             @error('description') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                     </div>
@@ -454,7 +454,7 @@ new class extends Component
                     <div class="grid gap-4 md:grid-cols-2">
                         <div>
                             <label class="mb-1 block text-sm font-medium">Type</label>
-                            <select wire:model="type" class="w-full rounded border border-slate-300 px-3 py-2">
+                            <select wire:model="type" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2">
                                 @foreach (App\Models\Coupon::supportedTypes() as $typeOption)
                                     <option value="{{ $typeOption }}">{{ ucfirst($typeOption) }}</option>
                                 @endforeach
@@ -463,7 +463,7 @@ new class extends Component
                         </div>
                         <div>
                             <label class="mb-1 block text-sm font-medium">Value</label>
-                            <input type="number" step="0.01" min="0.01" wire:model="value" class="w-full rounded border border-slate-300 px-3 py-2">
+                            <input type="number" step="0.01" min="0.01" wire:model="value" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2">
                             @error('value') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                     </div>
@@ -472,17 +472,17 @@ new class extends Component
                     <div class="grid gap-4 md:grid-cols-3">
                         <div>
                             <label class="mb-1 block text-sm font-medium">Minimum Subtotal</label>
-                            <input type="number" step="0.01" min="0" wire:model="minimum_subtotal" class="w-full rounded border border-slate-300 px-3 py-2">
+                            <input type="number" step="0.01" min="0" wire:model="minimum_subtotal" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2">
                             @error('minimum_subtotal') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="mb-1 block text-sm font-medium">Usage Limit</label>
-                            <input type="number" min="1" wire:model="usage_limit" class="w-full rounded border border-slate-300 px-3 py-2">
+                            <input type="number" min="1" wire:model="usage_limit" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2">
                             @error('usage_limit') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="mb-1 block text-sm font-medium">Used Count</label>
-                            <input type="number" min="0" wire:model="used_count" class="w-full rounded border border-slate-300 px-3 py-2">
+                            <input type="number" min="0" wire:model="used_count" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2">
                             @error('used_count') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                     </div>
@@ -491,19 +491,19 @@ new class extends Component
                     <div class="grid gap-4 md:grid-cols-2">
                         <div>
                             <label class="mb-1 block text-sm font-medium">Starts At</label>
-                            <input type="datetime-local" wire:model="starts_at" class="w-full rounded border border-slate-300 px-3 py-2">
+                            <input type="datetime-local" wire:model="starts_at" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2">
                             @error('starts_at') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="mb-1 block text-sm font-medium">Ends At</label>
-                            <input type="datetime-local" wire:model="ends_at" class="w-full rounded border border-slate-300 px-3 py-2">
+                            <input type="datetime-local" wire:model="ends_at" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2">
                             @error('ends_at') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                     </div>
 
                     {{-- Stacking Rules --}}
-                    <div class="rounded border border-slate-200 p-4">
-                        <h4 class="text-sm font-semibold text-slate-800">Stacking Rules</h4>
+                    <div class="rounded-lg border border-stone-200 p-4">
+                        <h4 class="text-sm font-semibold text-stone-800">Stacking Rules</h4>
                         <div class="mt-3 grid gap-4 md:grid-cols-2">
                             <label class="inline-flex items-center gap-2 text-sm">
                                 <input type="checkbox" wire:model="is_stackable">
@@ -511,19 +511,19 @@ new class extends Component
                             </label>
                             <div>
                                 <label class="mb-1 block text-sm font-medium">Stack Group</label>
-                                <input type="text" wire:model="stack_group" class="w-full rounded border border-slate-300 px-3 py-2" placeholder="Example: LOYALTY">
-                                <p class="mt-1 text-xs text-slate-500">Coupons in the same stack group cannot be combined with each other.</p>
+                                <input type="text" wire:model="stack_group" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2" placeholder="Example: LOYALTY">
+                                <p class="mt-1 text-xs text-stone-500">Coupons in the same stack group cannot be combined with each other.</p>
                             </div>
                         </div>
                     </div>
 
                     {{-- Scope --}}
-                    <div class="rounded border border-slate-200 p-4">
-                        <h4 class="text-sm font-semibold text-slate-800">Scope</h4>
+                    <div class="rounded-lg border border-stone-200 p-4">
+                        <h4 class="text-sm font-semibold text-stone-800">Scope</h4>
                         <div class="mt-3 grid gap-4 md:grid-cols-2">
                             <div>
                                 <label class="mb-1 block text-sm font-medium">Applies To</label>
-                                <select wire:model.live="scope_type" class="w-full rounded border border-slate-300 px-3 py-2">
+                                <select wire:model.live="scope_type" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2">
                                     @foreach (App\Models\Coupon::supportedScopes() as $scopeOption)
                                         <option value="{{ $scopeOption }}">{{ ucfirst($scopeOption) }}</option>
                                     @endforeach
@@ -539,7 +539,7 @@ new class extends Component
                         @if ($scope_type === App\Models\Coupon::SCOPE_PRODUCT)
                             <div class="mt-4">
                                 <label class="mb-1 block text-sm font-medium">Target Product</label>
-                                <select wire:model="scope_product_id" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <select wire:model="scope_product_id" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
                                     <option value="">Select a product</option>
                                     @foreach ($this->products as $product)
                                         <option value="{{ $product->id }}">{{ $product->name }}</option>
@@ -550,7 +550,7 @@ new class extends Component
                         @elseif ($scope_type === App\Models\Coupon::SCOPE_CATEGORY)
                             <div class="mt-4">
                                 <label class="mb-1 block text-sm font-medium">Target Category</label>
-                                <select wire:model="scope_category_id" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <select wire:model="scope_category_id" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
                                     <option value="">Select a category</option>
                                     @foreach ($this->categories as $category)
                                         <option value="{{ $category->id }}">{{ $category->name }}</option>
@@ -561,7 +561,7 @@ new class extends Component
                         @elseif ($scope_type === App\Models\Coupon::SCOPE_TAG)
                             <div class="mt-4">
                                 <label class="mb-1 block text-sm font-medium">Target Tag</label>
-                                <select wire:model="scope_tag_id" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <select wire:model="scope_tag_id" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
                                     <option value="">Select a tag</option>
                                     @foreach ($this->tags as $tag)
                                         <option value="{{ $tag->id }}">{{ ucfirst($tag->type) }}: {{ $tag->name }}</option>
@@ -573,19 +573,19 @@ new class extends Component
                     </div>
 
                     {{-- Assigned Users --}}
-                    <div class="rounded border border-slate-200 p-4">
-                        <h4 class="text-sm font-semibold text-slate-800">Assigned Users</h4>
-                        <p class="mt-1 text-xs text-slate-500">Search by email to find users, then select one or more.</p>
+                    <div class="rounded-lg border border-stone-200 p-4">
+                        <h4 class="text-sm font-semibold text-stone-800">Assigned Users</h4>
+                        <p class="mt-1 text-xs text-stone-500">Search by email to find users, then select one or more.</p>
 
                         <div class="mt-3">
                             <label class="mb-1 block text-sm font-medium">User Search</label>
-                            <input type="text" wire:model.live.debounce.300ms="userSearch" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" placeholder="Search by email…">
+                            <input type="text" wire:model.live.debounce.300ms="userSearch" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm" placeholder="Search by email…">
                         </div>
 
                         @if ($this->searchableUsers->isNotEmpty())
                             <div class="mt-3">
                                 <label class="mb-1 block text-sm font-medium">Users</label>
-                                <select wire:model="assigned_user_ids" multiple size="6" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <select wire:model="assigned_user_ids" multiple size="6" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
                                     @foreach ($this->searchableUsers as $user)
                                         <option value="{{ $user->id }}">{{ $user->email }}</option>
                                     @endforeach
@@ -596,7 +596,7 @@ new class extends Component
 
                         <div class="mt-3">
                             <label class="mb-1 block text-sm font-medium">Per-user usage limit</label>
-                            <input type="number" min="1" wire:model="user_usage_limit" class="w-full rounded border border-slate-300 px-3 py-2" placeholder="Leave blank for unlimited">
+                            <input type="number" min="1" wire:model="user_usage_limit" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2" placeholder="Leave blank for unlimited">
                             @error('user_usage_limit') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                     </div>
@@ -609,8 +609,8 @@ new class extends Component
                 </div>
 
                 <div class="mt-6 flex justify-end gap-3">
-                    <button wire:click="$set('showModal', false)" class="rounded border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-100">Cancel</button>
-                    <button wire:click="save" class="rounded bg-slate-800 px-4 py-2 text-sm text-white hover:bg-slate-900">
+                    <button wire:click="$set('showModal', false)" class="rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-4 py-2 text-sm text-stone-700 hover:bg-stone-100">Cancel</button>
+                    <button wire:click="save" class="rounded bg-stone-800 px-4 py-2 text-sm text-white hover:bg-stone-900">
                         <span wire:loading.remove wire:target="save">{{ $editingId ? 'Update Coupon' : 'Create Coupon' }}</span>
                         <span wire:loading wire:target="save">Saving…</span>
                     </button>

@@ -134,29 +134,29 @@ new class extends Component
     {{-- Health Cards --}}
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {{-- Total --}}
-        <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Total Payloads</p>
-            <p class="mt-1 text-2xl font-bold text-slate-800">{{ number_format($this->health['total']) }}</p>
+        <div class="admin-card rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+            <p class="text-xs font-medium uppercase tracking-wide text-stone-500">Total Payloads</p>
+            <p class="mt-1 text-2xl font-bold text-stone-800">{{ number_format($this->health['total']) }}</p>
         </div>
         {{-- Processed --}}
-        <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Processed</p>
+        <div class="admin-card rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
+            <p class="text-xs font-medium uppercase tracking-wide text-stone-500">Processed</p>
             <p class="mt-1 text-2xl font-bold text-emerald-600">{{ number_format($this->health['processed']) }}</p>
         </div>
         {{-- Pending --}}
-        <div class="rounded-lg border {{ $this->health['pending'] > 0 ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-white' }} p-4 shadow-sm">
-            <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Pending</p>
-            <p class="mt-1 text-2xl font-bold {{ $this->health['pending'] > 0 ? 'text-amber-600' : 'text-slate-800' }}">{{ $this->health['pending'] }}</p>
+        <div class="rounded-lg border {{ $this->health['pending'] > 0 ? 'border-amber-200 bg-amber-50' : 'border-stone-200 bg-white' }} p-4 shadow-sm">
+            <p class="text-xs font-medium uppercase tracking-wide text-stone-500">Pending</p>
+            <p class="mt-1 text-2xl font-bold {{ $this->health['pending'] > 0 ? 'text-amber-600' : 'text-stone-800' }}">{{ $this->health['pending'] }}</p>
         </div>
         {{-- Failed --}}
-        <div class="rounded-lg border {{ $this->health['failed'] > 0 ? 'border-red-200 bg-red-50' : 'border-slate-200 bg-white' }} p-4 shadow-sm">
-            <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Failed</p>
-            <p class="mt-1 text-2xl font-bold {{ $this->health['failed'] > 0 ? 'text-red-600' : 'text-slate-800' }}">{{ $this->health['failed'] }}</p>
+        <div class="rounded-lg border {{ $this->health['failed'] > 0 ? 'border-red-200 bg-red-50' : 'border-stone-200 bg-white' }} p-4 shadow-sm">
+            <p class="text-xs font-medium uppercase tracking-wide text-stone-500">Failed</p>
+            <p class="mt-1 text-2xl font-bold {{ $this->health['failed'] > 0 ? 'text-red-600' : 'text-stone-800' }}">{{ $this->health['failed'] }}</p>
         </div>
     </div>
 
     {{-- Health Status + Timestamps --}}
-    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
         <div class="flex items-center gap-3">
             @if ($this->health['is_healthy'])
                 <span class="flex h-3 w-3">
@@ -174,7 +174,7 @@ new class extends Component
                 </span>
             @endif
         </div>
-        <div class="mt-3 grid grid-cols-1 gap-4 text-sm text-slate-600 sm:grid-cols-2">
+        <div class="mt-3 grid grid-cols-1 gap-4 text-sm text-stone-600 sm:grid-cols-2">
             <div>
                 <span class="font-medium">Last Received:</span>
                 {{ $this->health['latest_received'] ? \Carbon\Carbon::parse($this->health['latest_received'])->diffForHumans() : 'Never' }}
@@ -187,13 +187,13 @@ new class extends Component
 
         {{-- Event breakdown --}}
         @if (count($this->eventBreakdown) > 0)
-            <div class="mt-4 border-t border-slate-100 pt-4">
-                <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">By Domain</p>
+            <div class="mt-4 border-t border-stone-100 pt-4">
+                <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">By Domain</p>
                 <div class="flex flex-wrap gap-2">
                     @foreach ($this->eventBreakdown as $item)
-                        <span class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">
                             {{ $item['event'] }}
-                            <span class="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px]">{{ $item['count'] }}</span>
+                            <span class="rounded-full bg-stone-200 px-1.5 py-0.5 text-[10px]">{{ $item['count'] }}</span>
                         </span>
                     @endforeach
                 </div>
@@ -202,21 +202,21 @@ new class extends Component
     </div>
 
     {{-- Filters --}}
-    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">Filters</h3>
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-700">Filters</h3>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div>
-                <label class="block text-sm font-medium text-slate-700">Search</label>
+                <label class="block text-sm font-medium text-stone-700">Search</label>
                 <input
                     type="text"
                     wire:model.live.debounce.300ms="search"
                     placeholder="Search events…"
-                    class="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    class="mt-1 block w-full rounded-md border-stone-300 text-sm shadow-sm focus:border-blue-500 focus:ring-[#36a2eb]"
                 >
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-700">Event</label>
-                <select wire:model.live="eventFilter" class="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <label class="block text-sm font-medium text-stone-700">Event</label>
+                <select wire:model.live="eventFilter" class="mt-1 block w-full rounded-md border-stone-300 text-sm shadow-sm focus:border-blue-500 focus:ring-[#36a2eb]">
                     <option value="">All Events</option>
                     @foreach ($this->eventTypes as $type)
                         <option value="{{ $type }}">{{ $type }}</option>
@@ -224,8 +224,8 @@ new class extends Component
                 </select>
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-700">Status</label>
-                <select wire:model.live="statusFilter" class="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <label class="block text-sm font-medium text-stone-700">Status</label>
+                <select wire:model.live="statusFilter" class="mt-1 block w-full rounded-md border-stone-300 text-sm shadow-sm focus:border-blue-500 focus:ring-[#36a2eb]">
                     <option value="">All</option>
                     <option value="processed">Processed</option>
                     <option value="pending">Pending</option>
@@ -233,31 +233,31 @@ new class extends Component
                 </select>
             </div>
             <div class="flex items-end gap-2">
-                <button wire:click="resetFilters" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">Reset</button>
+                <button wire:click="resetFilters" class="rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm hover:bg-stone-50">Reset</button>
             </div>
         </div>
     </div>
 
     {{-- Payload Table --}}
-    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div wire:loading.delay class="mb-2 text-xs text-slate-500">Loading…</div>
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+        <div wire:loading.delay class="mb-2 text-xs text-stone-500">Loading…</div>
 
         <div class="-mx-5 overflow-x-auto px-5">
-            <table class="admin-mobile-table min-w-full divide-y divide-slate-200 text-sm">
-                <thead class="bg-slate-50">
+            <table class="admin-mobile-table min-w-full divide-y divide-stone-200 text-sm">
+                <thead class="bg-stone-50">
                     <tr>
-                        <th class="px-4 py-3 text-left font-medium text-slate-600">ID</th>
-                        <th class="px-4 py-3 text-left font-medium text-slate-600">Event</th>
-                        <th class="px-4 py-3 text-left font-medium text-slate-600">Entity</th>
-                        <th class="px-4 py-3 text-left font-medium text-slate-600">Received</th>
-                        <th class="px-4 py-3 text-left font-medium text-slate-600">Status</th>
-                        <th class="px-4 py-3 text-left font-medium text-slate-600">Error</th>
+                        <th class="px-4 py-3 text-left font-medium text-stone-600">ID</th>
+                        <th class="px-4 py-3 text-left font-medium text-stone-600">Event</th>
+                        <th class="px-4 py-3 text-left font-medium text-stone-600">Entity</th>
+                        <th class="px-4 py-3 text-left font-medium text-stone-600">Received</th>
+                        <th class="px-4 py-3 text-left font-medium text-stone-600">Status</th>
+                        <th class="px-4 py-3 text-left font-medium text-stone-600">Error</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
+                <tbody class="divide-y divide-stone-100">
                     @forelse ($this->payloads as $payload)
-                        <tr wire:key="payload-{{ $payload->id }}" class="hover:bg-slate-50">
-                            <td class="whitespace-nowrap px-4 py-3 text-slate-500">#{{ $payload->id }}</td>
+                        <tr wire:key="payload-{{ $payload->id }}" class="hover:bg-stone-50">
+                            <td class="whitespace-nowrap px-4 py-3 text-stone-500">#{{ $payload->id }}</td>
                             <td class="whitespace-nowrap px-4 py-3">
                                 @php
                                     $eventColors = [
@@ -265,24 +265,24 @@ new class extends Component
                                         'product' => 'bg-purple-100 text-purple-700',
                                         'customer' => 'bg-teal-100 text-teal-700',
                                         'coupon' => 'bg-amber-100 text-amber-700',
-                                        'note' => 'bg-slate-100 text-slate-700',
+                                        'note' => 'bg-stone-100 text-stone-700',
                                         'ping' => 'bg-green-100 text-green-700',
                                     ];
                                     $domain = explode('.', $payload->event)[0] ?? '';
-                                    $color = $eventColors[$domain] ?? 'bg-slate-100 text-slate-700';
+                                    $color = $eventColors[$domain] ?? 'bg-stone-100 text-stone-700';
                                 @endphp
                                 <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium {{ $color }}">
                                     {{ $payload->event }}
                                 </span>
                             </td>
-                            <td class="whitespace-nowrap px-4 py-3 text-slate-600">
+                            <td class="whitespace-nowrap px-4 py-3 text-stone-600">
                                 @if ($payload->wc_entity_type && $payload->wc_entity_id)
                                     {{ ucfirst($payload->wc_entity_type) }} #{{ $payload->wc_entity_id }}
                                 @else
-                                    <span class="text-slate-400">—</span>
+                                    <span class="text-stone-400">—</span>
                                 @endif
                             </td>
-                            <td class="whitespace-nowrap px-4 py-3 text-slate-500" title="{{ $payload->received_at?->toDateTimeString() }}">
+                            <td class="whitespace-nowrap px-4 py-3 text-stone-500" title="{{ $payload->received_at?->toDateTimeString() }}">
                                 {{ $payload->received_at?->diffForHumans() ?? '—' }}
                             </td>
                             <td class="whitespace-nowrap px-4 py-3">
@@ -309,7 +309,7 @@ new class extends Component
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-slate-400">
+                            <td colspan="6" class="px-4 py-8 text-center text-stone-400">
                                 {{ $search || $eventFilter || $statusFilter ? 'No payloads match your filters.' : 'No webhook payloads received yet.' }}
                             </td>
                         </tr>

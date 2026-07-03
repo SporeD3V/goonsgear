@@ -4,23 +4,23 @@
     <div class="space-y-6">
     <h2 class="text-lg font-semibold">New Category</h2>
 
-    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
     <form method="POST" action="{{ route('admin.categories.store') }}" class="space-y-4" novalidate>
         @csrf
 
         <div>
             <label class="mb-1 block text-sm font-medium">Name</label>
-            <input type="text" name="name" value="{{ old('name') }}" class="w-full rounded border border-slate-300 px-3 py-2" required>
+            <input type="text" name="name" value="{{ old('name') }}" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2" required>
         </div>
 
         <div>
             <label class="mb-1 block text-sm font-medium">Slug</label>
-            <input type="text" name="slug" value="{{ old('slug') }}" class="w-full rounded border border-slate-300 px-3 py-2" required>
+            <input type="text" name="slug" value="{{ old('slug') }}" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2" required>
         </div>
 
         <div>
             <label class="mb-1 block text-sm font-medium">Parent Category</label>
-            <select name="parent_id" class="w-full rounded border border-slate-300 px-3 py-2">
+            <select name="parent_id" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2">
                 <option value="">None</option>
                 @foreach ($parentCategories as $parentCategory)
                     <option value="{{ $parentCategory->id }}" @selected((string) old('parent_id') === (string) $parentCategory->id)>{{ $parentCategory->name }}</option>
@@ -30,15 +30,15 @@
 
         <div>
             <label class="mb-1 block text-sm font-medium">Description</label>
-            <textarea name="description" rows="4" class="w-full rounded border border-slate-300 px-3 py-2">{{ old('description') }}</textarea>
+            <textarea name="description" rows="4" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2">{{ old('description') }}</textarea>
         </div>
 
         <div>
             <label class="mb-1 block text-sm font-medium">Sort Order</label>
-            <input type="number" min="0" name="sort_order" value="{{ old('sort_order', 0) }}" class="w-full rounded border border-slate-300 px-3 py-2">
+            <input type="number" min="0" name="sort_order" value="{{ old('sort_order', 0) }}" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2">
         </div>
 
-        <div class="space-y-4 rounded border border-slate-200 p-4">
+        <div class="space-y-4 rounded-lg border border-stone-200 p-4">
             <h3 class="text-sm font-semibold">SEO</h3>
 
             @include('admin.partials.seo-field', [
@@ -64,7 +64,7 @@
 
         <div>
             <label class="mb-1 block text-sm font-medium">Size Type</label>
-            <select name="size_type" class="w-full rounded border border-slate-300 px-3 py-2">
+            <select name="size_type" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2">
                 <option value="">None (not sized)</option>
                 <option value="top" @selected(old('size_type') === 'top')>Top (shirts, hoodies)</option>
                 <option value="bottom" @selected(old('size_type') === 'bottom')>Bottom (pants, shorts)</option>
@@ -78,8 +78,8 @@
         </label>
 
         <div class="flex items-center gap-3">
-            <button type="submit" class="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">Create</button>
-            <a href="{{ route('admin.categories.index') }}" class="text-sm text-slate-600 hover:underline">Cancel</a>
+            <button type="submit" class="rounded bg-[#36a2eb] px-4 py-2 text-white hover:bg-[#2b8ac9]">Create</button>
+            <a href="{{ route('admin.categories.index') }}" class="text-sm text-stone-600 hover:underline">Cancel</a>
         </div>
     </form>
     </div>

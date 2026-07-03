@@ -630,58 +630,58 @@ new class extends Component
                 wire:model.live.debounce.300ms="search"
                 type="text"
                 placeholder="Search bundles…"
-                class="w-full rounded border border-slate-300 px-3 py-2 text-sm sm:w-64"
+                class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm sm:w-64"
             >
-            <button wire:click="openCreate" class="shrink-0 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">
+            <button wire:click="openCreate" class="shrink-0 rounded bg-[#36a2eb] px-3 py-2 text-sm text-white hover:bg-[#2b8ac9]">
                 New Bundle
             </button>
         </div>
     </div>
 
     {{-- Table --}}
-    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
         {{-- Loading indicator --}}
-        <div wire:loading.delay class="mb-2 text-xs text-slate-500">Loading…</div>
+        <div wire:loading.delay class="mb-2 text-xs text-stone-500">Loading…</div>
 
         <div class="-mx-5 overflow-x-auto px-5">
-        <table class="admin-mobile-table min-w-full border border-slate-200 text-sm">
-            <thead class="bg-slate-50">
+        <table class="admin-mobile-table min-w-full border border-stone-200 text-sm">
+            <thead class="bg-stone-50">
                 <tr>
-                    <th wire:click="sortBy('name')" class="cursor-pointer border border-slate-200 px-3 py-2 text-left select-none hover:bg-slate-100">
+                    <th wire:click="sortBy('name')" class="cursor-pointer border border-stone-200 px-3 py-2 text-left select-none hover:bg-stone-100">
                         Name
                         @if ($sortField === 'name')
                             <span class="ml-1">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
                         @endif
                     </th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Mode</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Price / Discount</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Items</th>
-                    <th wire:click="sortBy('is_active')" class="cursor-pointer border border-slate-200 px-3 py-2 text-left select-none hover:bg-slate-100">
+                    <th class="border border-stone-200 px-3 py-2 text-left">Mode</th>
+                    <th class="border border-stone-200 px-3 py-2 text-left">Price / Discount</th>
+                    <th class="border border-stone-200 px-3 py-2 text-left">Items</th>
+                    <th wire:click="sortBy('is_active')" class="cursor-pointer border border-stone-200 px-3 py-2 text-left select-none hover:bg-stone-100">
                         Status
                         @if ($sortField === 'is_active')
                             <span class="ml-1">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
                         @endif
                     </th>
-                    <th class="border border-slate-200 px-3 py-2 text-right">Actions</th>
+                    <th class="border border-stone-200 px-3 py-2 text-right">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse ($this->bundleDiscounts as $bundle)
-                    <tr wire:key="bundle-{{ $bundle->id }}" class="hover:bg-slate-50">
-                        <td class="border border-slate-200 px-3 py-2">
-                            <p class="font-medium text-slate-900">{{ $bundle->name }}</p>
+                    <tr wire:key="bundle-{{ $bundle->id }}" class="hover:bg-stone-50">
+                        <td class="border border-stone-200 px-3 py-2">
+                            <p class="font-medium text-stone-900">{{ $bundle->name }}</p>
                             @if ($bundle->description)
-                                <p class="text-xs text-slate-500">{{ $bundle->description }}</p>
+                                <p class="text-xs text-stone-500">{{ $bundle->description }}</p>
                             @endif
                         </td>
-                        <td class="border border-slate-200 px-3 py-2">
+                        <td class="border border-stone-200 px-3 py-2">
                             @if ($bundle->bundle_price !== null)
                                 <span class="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">Bundle</span>
                             @else
-                                <span class="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Rule</span>
+                                <span class="rounded bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">Rule</span>
                             @endif
                         </td>
-                        <td class="border border-slate-200 px-3 py-2">
+                        <td class="border border-stone-200 px-3 py-2">
                             @if ($bundle->bundle_price !== null)
                                 &euro;{{ number_format((float) $bundle->bundle_price, 2) }}
                             @elseif ($bundle->discount_type === \App\Models\BundleDiscount::TYPE_PERCENT)
@@ -690,24 +690,24 @@ new class extends Component
                                 &euro;{{ number_format((float) $bundle->discount_value, 2) }}
                             @endif
                         </td>
-                        <td class="border border-slate-200 px-3 py-2">{{ $bundle->items_count }}</td>
-                        <td class="border border-slate-200 px-3 py-2">
+                        <td class="border border-stone-200 px-3 py-2">{{ $bundle->items_count }}</td>
+                        <td class="border border-stone-200 px-3 py-2">
                             <button wire:click="toggleActive({{ $bundle->id }})" class="text-xs font-medium">
                                 @if ($bundle->is_active)
                                     <span class="rounded bg-emerald-100 px-2 py-0.5 text-emerald-800">Active</span>
                                 @else
-                                    <span class="rounded bg-slate-100 px-2 py-0.5 text-slate-500">Inactive</span>
+                                    <span class="rounded bg-stone-100 px-2 py-0.5 text-stone-500">Inactive</span>
                                 @endif
                             </button>
                         </td>
-                        <td class="border border-slate-200 px-3 py-2 text-right">
-                            <button wire:click="openEdit({{ $bundle->id }})" class="text-blue-700 hover:underline">Edit</button>
+                        <td class="border border-stone-200 px-3 py-2 text-right">
+                            <button wire:click="openEdit({{ $bundle->id }})" class="text-[#36a2eb] hover:underline">Edit</button>
                             <button wire:click="delete({{ $bundle->id }})" wire:confirm="Delete this bundle discount?" class="ml-2 text-red-700 hover:underline">Delete</button>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="border border-slate-200 px-3 py-6 text-center text-slate-500">
+                        <td colspan="6" class="border border-stone-200 px-3 py-6 text-center text-stone-500">
                             {{ $search ? 'No bundles match your search.' : 'No bundle discounts yet.' }}
                         </td>
                     </tr>
@@ -735,14 +735,14 @@ new class extends Component
                     <button
                         type="button"
                         wire:click="$set('bundle_mode', 'product')"
-                        class="rounded px-3 py-1.5 text-sm font-medium {{ $bundle_mode === 'product' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}"
+                        class="rounded px-3 py-1.5 text-sm font-medium {{ $bundle_mode === 'product' ? 'bg-[#36a2eb] text-white' : 'bg-stone-100 text-stone-700 hover:bg-stone-200' }}"
                     >
                         Product Bundle
                     </button>
                     <button
                         type="button"
                         wire:click="$set('bundle_mode', 'rule')"
-                        class="rounded px-3 py-1.5 text-sm font-medium {{ $bundle_mode === 'rule' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}"
+                        class="rounded px-3 py-1.5 text-sm font-medium {{ $bundle_mode === 'rule' ? 'bg-[#36a2eb] text-white' : 'bg-stone-100 text-stone-700 hover:bg-stone-200' }}"
                     >
                         Discount Rule
                     </button>
@@ -752,13 +752,13 @@ new class extends Component
                     {{-- Common: Name + Description --}}
                     <div>
                         <label class="mb-1 block text-sm font-medium">Bundle name</label>
-                        <input type="text" wire:model="name" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" maxlength="120">
+                        <input type="text" wire:model="name" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm" maxlength="120">
                         @error('name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
                         <label class="mb-1 block text-sm font-medium">Description</label>
-                        <input type="text" wire:model="description" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" maxlength="500">
+                        <input type="text" wire:model="description" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm" maxlength="500">
                         @error('description') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
@@ -766,9 +766,9 @@ new class extends Component
                         {{-- PRODUCT BUNDLE MODE --}}
 
                         {{-- Link product page --}}
-                        <div class="rounded border border-slate-200 p-4">
-                            <p class="mb-2 text-sm font-medium text-slate-900">Linked product page</p>
-                            <p class="mb-3 text-xs text-slate-500">Link this bundle to an existing product so it has its own shop page with photos.</p>
+                        <div class="rounded-lg border border-stone-200 p-4">
+                            <p class="mb-2 text-sm font-medium text-stone-900">Linked product page</p>
+                            <p class="mb-3 text-xs text-stone-500">Link this bundle to an existing product so it has its own shop page with photos.</p>
 
                             @if ($this->linkedProduct)
                                 <div class="flex items-center justify-between rounded bg-blue-50 px-3 py-2">
@@ -783,19 +783,19 @@ new class extends Component
                                     wire:model.live.debounce.300ms="productLinkSearch"
                                     type="text"
                                     placeholder="Search product by name…"
-                                    class="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                                    class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm"
                                 >
                                 @if (count($this->linkableProducts) > 0)
-                                    <div class="mt-1 max-h-40 overflow-auto rounded border border-slate-200 bg-white">
+                                    <div class="mt-1 max-h-40 overflow-auto rounded-lg border border-stone-200 bg-white">
                                         @foreach ($this->linkableProducts as $option)
                                             <button
                                                 type="button"
                                                 wire:click="selectLinkedProduct({{ $option['id'] }})"
                                                 wire:key="link-product-{{ $option['id'] }}"
-                                                class="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50"
+                                                class="block w-full px-3 py-2 text-left text-sm hover:bg-stone-50"
                                             >
                                                 {{ $option['label'] }}
-                                                <span class="text-xs text-slate-400">/shop/{{ $option['slug'] }}</span>
+                                                <span class="text-xs text-stone-400">/shop/{{ $option['slug'] }}</span>
                                             </button>
                                         @endforeach
                                     </div>
@@ -805,34 +805,34 @@ new class extends Component
                         </div>
 
                         {{-- Bundle price + savings --}}
-                        <div class="rounded border border-slate-200 p-4">
-                            <p class="mb-2 text-sm font-medium text-slate-900">Bundle pricing</p>
+                        <div class="rounded-lg border border-stone-200 p-4">
+                            <p class="mb-2 text-sm font-medium text-stone-900">Bundle pricing</p>
 
                             <div class="grid gap-4 md:grid-cols-2">
                                 <div>
                                     <label class="mb-1 block text-sm font-medium">Bundle price (&euro;)</label>
-                                    <input type="number" step="0.01" min="0.01" wire:model.live.debounce.500ms="bundle_price" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                    <input type="number" step="0.01" min="0.01" wire:model.live.debounce.500ms="bundle_price" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
                                     @error('bundle_price') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                                 </div>
                                 <div class="flex items-center gap-2 pt-7">
-                                    <input type="checkbox" wire:model="is_active" id="modal-is-active" class="h-4 w-4 rounded border-slate-300">
+                                    <input type="checkbox" wire:model="is_active" id="modal-is-active" class="h-4 w-4 rounded border-stone-300">
                                     <label for="modal-is-active" class="text-sm font-medium">Active</label>
                                 </div>
                             </div>
 
                             {{-- Live savings display --}}
                             @if ($this->componentTotal > 0)
-                                <div class="mt-3 rounded bg-slate-50 p-3 text-sm">
+                                <div class="mt-3 rounded bg-stone-50 p-3 text-sm">
                                     <div class="flex justify-between">
-                                        <span class="text-slate-600">Components total:</span>
+                                        <span class="text-stone-600">Components total:</span>
                                         <span class="font-medium">&euro;{{ number_format($this->componentTotal, 2) }}</span>
                                     </div>
                                     @if ((float) $bundle_price > 0)
                                         <div class="flex justify-between">
-                                            <span class="text-slate-600">Bundle price:</span>
+                                            <span class="text-stone-600">Bundle price:</span>
                                             <span class="font-medium">&euro;{{ number_format((float) $bundle_price, 2) }}</span>
                                         </div>
-                                        <div class="mt-1 flex justify-between border-t border-slate-200 pt-1">
+                                        <div class="mt-1 flex justify-between border-t border-stone-200 pt-1">
                                             <span class="font-medium text-emerald-700">Customer saves:</span>
                                             <span class="font-bold text-emerald-700">&euro;{{ number_format($this->calculatedSavings, 2) }}</span>
                                         </div>
@@ -842,9 +842,9 @@ new class extends Component
                         </div>
 
                         {{-- Component products --}}
-                        <div class="rounded border border-slate-200 p-4">
-                            <p class="mb-2 text-sm font-medium text-slate-900">Component products</p>
-                            <p class="mb-3 text-xs text-slate-500">Select the products included in this bundle. Customers will choose specific variants (size/color) on the bundle page.</p>
+                        <div class="rounded-lg border border-stone-200 p-4">
+                            <p class="mb-2 text-sm font-medium text-stone-900">Component products</p>
+                            <p class="mb-3 text-xs text-stone-500">Select the products included in this bundle. Customers will choose specific variants (size/color) on the bundle page.</p>
 
                             @error('selectedProducts') <p class="mb-2 text-xs text-red-600">{{ $message }}</p> @enderror
 
@@ -852,38 +852,38 @@ new class extends Component
                                 wire:model.live.debounce.300ms="productSearch"
                                 type="text"
                                 placeholder="Search by product name…"
-                                class="mb-3 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                                class="mb-3 w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm"
                             >
 
-                            <div class="max-h-72 overflow-auto border border-slate-200">
+                            <div class="max-h-72 overflow-auto border border-stone-200">
                                 <table class="admin-mobile-table min-w-full text-sm">
-                                    <thead class="bg-slate-50 sticky top-0">
+                                    <thead class="bg-stone-50 sticky top-0">
                                         <tr>
-                                            <th class="border-b border-slate-200 px-3 py-2 text-left">Use</th>
-                                            <th class="border-b border-slate-200 px-3 py-2 text-left">Product</th>
-                                            <th class="border-b border-slate-200 px-3 py-2 text-left">From price</th>
-                                            <th class="border-b border-slate-200 px-3 py-2 text-left">Min Qty</th>
+                                            <th class="border-b border-stone-200 px-3 py-2 text-left">Use</th>
+                                            <th class="border-b border-stone-200 px-3 py-2 text-left">Product</th>
+                                            <th class="border-b border-stone-200 px-3 py-2 text-left">From price</th>
+                                            <th class="border-b border-stone-200 px-3 py-2 text-left">Min Qty</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach ($this->productOptions as $product)
                                             <tr wire:key="product-{{ $product['id'] }}">
-                                                <td class="border-b border-slate-200 px-3 py-2">
+                                                <td class="border-b border-stone-200 px-3 py-2">
                                                     <input
                                                         type="checkbox"
                                                         wire:model.live="selectedProducts.{{ $product['id'] }}"
-                                                        class="h-4 w-4 rounded border-slate-300"
+                                                        class="h-4 w-4 rounded border-stone-300"
                                                     >
                                                 </td>
-                                                <td class="border-b border-slate-200 px-3 py-2">{{ $product['label'] }}</td>
-                                                <td class="border-b border-slate-200 px-3 py-2 text-slate-500">&euro;{{ number_format($product['price'], 2) }}</td>
-                                                <td class="border-b border-slate-200 px-3 py-2">
+                                                <td class="border-b border-stone-200 px-3 py-2">{{ $product['label'] }}</td>
+                                                <td class="border-b border-stone-200 px-3 py-2 text-stone-500">&euro;{{ number_format($product['price'], 2) }}</td>
+                                                <td class="border-b border-stone-200 px-3 py-2">
                                                     <input
                                                         type="number"
                                                         min="1"
                                                         max="99"
                                                         wire:model.live="productQuantities.{{ $product['id'] }}"
-                                                        class="w-20 rounded border border-slate-300 px-2 py-1 text-sm"
+                                                        class="w-20 rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-2 py-1 text-sm"
                                                     >
                                                 </td>
                                             </tr>
@@ -899,7 +899,7 @@ new class extends Component
                         <div class="grid gap-4 md:grid-cols-2">
                             <div>
                                 <label class="mb-1 block text-sm font-medium">Discount type</label>
-                                <select wire:model="discount_type" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <select wire:model="discount_type" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
                                     @foreach (\App\Models\BundleDiscount::supportedTypes() as $type)
                                         <option value="{{ $type }}">{{ ucfirst($type) }}</option>
                                     @endforeach
@@ -908,20 +908,20 @@ new class extends Component
                             </div>
                             <div>
                                 <label class="mb-1 block text-sm font-medium">Discount value</label>
-                                <input type="number" step="0.01" min="0.01" wire:model="discount_value" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                                <input type="number" step="0.01" min="0.01" wire:model="discount_value" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
                                 @error('discount_value') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
                         </div>
 
                         <div class="flex items-center gap-2">
-                            <input type="checkbox" wire:model="is_active" id="modal-is-active-rule" class="h-4 w-4 rounded border-slate-300">
+                            <input type="checkbox" wire:model="is_active" id="modal-is-active-rule" class="h-4 w-4 rounded border-stone-300">
                             <label for="modal-is-active-rule" class="text-sm font-medium">Active</label>
                         </div>
 
                         {{-- Variant requirements --}}
-                        <div class="rounded border border-slate-200 p-4">
-                            <p class="mb-2 text-sm font-medium text-slate-900">Variant requirements</p>
-                            <p class="mb-3 text-xs text-slate-500">Search and select variants required for this bundle. Set minimum quantities per variant.</p>
+                        <div class="rounded-lg border border-stone-200 p-4">
+                            <p class="mb-2 text-sm font-medium text-stone-900">Variant requirements</p>
+                            <p class="mb-3 text-xs text-stone-500">Search and select variants required for this bundle. Set minimum quantities per variant.</p>
 
                             @error('selectedVariants') <p class="mb-2 text-xs text-red-600">{{ $message }}</p> @enderror
 
@@ -929,36 +929,36 @@ new class extends Component
                                 wire:model.live.debounce.300ms="variantSearch"
                                 type="text"
                                 placeholder="Search by product name, variant, or SKU…"
-                                class="mb-3 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                                class="mb-3 w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm"
                             >
 
-                            <div class="max-h-72 overflow-auto border border-slate-200">
+                            <div class="max-h-72 overflow-auto border border-stone-200">
                                 <table class="admin-mobile-table min-w-full text-sm">
-                                    <thead class="bg-slate-50 sticky top-0">
+                                    <thead class="bg-stone-50 sticky top-0">
                                         <tr>
-                                            <th class="border-b border-slate-200 px-3 py-2 text-left">Use</th>
-                                            <th class="border-b border-slate-200 px-3 py-2 text-left">Variant</th>
-                                            <th class="border-b border-slate-200 px-3 py-2 text-left">Min Qty</th>
+                                            <th class="border-b border-stone-200 px-3 py-2 text-left">Use</th>
+                                            <th class="border-b border-stone-200 px-3 py-2 text-left">Variant</th>
+                                            <th class="border-b border-stone-200 px-3 py-2 text-left">Min Qty</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach ($this->variantOptions as $variant)
                                             <tr wire:key="variant-{{ $variant['id'] }}">
-                                                <td class="border-b border-slate-200 px-3 py-2">
+                                                <td class="border-b border-stone-200 px-3 py-2">
                                                     <input
                                                         type="checkbox"
                                                         wire:model="selectedVariants.{{ $variant['id'] }}"
-                                                        class="h-4 w-4 rounded border-slate-300"
+                                                        class="h-4 w-4 rounded border-stone-300"
                                                     >
                                                 </td>
-                                                <td class="border-b border-slate-200 px-3 py-2">{{ $variant['label'] }}</td>
-                                                <td class="border-b border-slate-200 px-3 py-2">
+                                                <td class="border-b border-stone-200 px-3 py-2">{{ $variant['label'] }}</td>
+                                                <td class="border-b border-stone-200 px-3 py-2">
                                                     <input
                                                         type="number"
                                                         min="1"
                                                         max="99"
                                                         wire:model="quantities.{{ $variant['id'] }}"
-                                                        class="w-20 rounded border border-slate-300 px-2 py-1 text-sm"
+                                                        class="w-20 rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-2 py-1 text-sm"
                                                     >
                                                 </td>
                                             </tr>
@@ -970,8 +970,8 @@ new class extends Component
                     @endif
 
                     <div class="flex items-center justify-end gap-3 pt-2">
-                        <button type="button" wire:click="closeModal" class="rounded border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Cancel</button>
-                        <button type="submit" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">
+                        <button type="button" wire:click="closeModal" class="rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-4 py-2 text-sm text-stone-700 hover:bg-stone-50">Cancel</button>
+                        <button type="submit" class="rounded bg-stone-800 px-4 py-2 text-sm font-medium text-white hover:bg-stone-900">
                             <span wire:loading.remove wire:target="save">{{ $editingId ? 'Save Changes' : 'Create Bundle' }}</span>
                             <span wire:loading wire:target="save">Saving…</span>
                         </button>

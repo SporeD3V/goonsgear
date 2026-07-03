@@ -237,20 +237,20 @@ new class extends Component
                 wire:model.live.debounce.300ms="search"
                 type="text"
                 placeholder="Search categories…"
-                class="w-full rounded border border-slate-300 px-3 py-2 text-sm sm:w-64"
+                class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm sm:w-64"
             >
-            <button wire:click="openCreate" class="shrink-0 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">
+            <button wire:click="openCreate" class="shrink-0 rounded bg-[#36a2eb] px-3 py-2 text-sm text-white hover:bg-[#2b8ac9]">
                 New Category
             </button>
         </div>
     </div>
 
     {{-- Sortable List --}}
-    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <p class="mb-4 text-sm text-slate-500">Drag the handle to reorder categories. Changes are saved automatically.</p>
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+        <p class="mb-4 text-sm text-stone-500">Drag the handle to reorder categories. Changes are saved automatically.</p>
 
         {{-- Loading indicator --}}
-        <div wire:loading.delay class="mb-2 text-xs text-slate-500">Loading…</div>
+        <div wire:loading.delay class="mb-2 text-xs text-stone-500">Loading…</div>
 
     {{-- Sortable list --}}
     <div wire:sort="handleSort" class="space-y-1">
@@ -258,16 +258,16 @@ new class extends Component
             <div
                 wire:key="category-{{ $category->id }}"
                 wire:sort:item="{{ $category->id }}"
-                class="flex flex-wrap items-center gap-3 rounded-md border border-slate-200 bg-white px-4 py-3 {{ $category->parent_id ? 'ml-4 sm:ml-8' : '' }}"
+                class="flex flex-wrap items-center gap-3 rounded-md border border-stone-200 bg-white px-4 py-3 {{ $category->parent_id ? 'ml-4 sm:ml-8' : '' }}"
             >
-                <span wire:sort:handle class="cursor-grab text-slate-400 hover:text-slate-600 active:cursor-grabbing">
+                <span wire:sort:handle class="cursor-grab text-stone-400 hover:text-stone-600 active:cursor-grabbing">
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
                 </span>
                 <div class="min-w-0 flex-1">
                     <span class="font-medium">{{ $category->name }}</span>
-                    <span class="ml-2 text-xs text-slate-400">/{{ $category->slug }}</span>
+                    <span class="ml-2 text-xs text-stone-400">/{{ $category->slug }}</span>
                     @if ($category->parent)
-                        <span class="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">{{ $category->parent->name }}</span>
+                        <span class="ml-2 rounded bg-stone-100 px-1.5 py-0.5 text-xs text-stone-500">{{ $category->parent->name }}</span>
                     @endif
                     @if ($category->size_type)
                         <span class="ml-2 rounded bg-indigo-50 px-1.5 py-0.5 text-xs text-indigo-600">{{ $category->size_type }}</span>
@@ -278,15 +278,15 @@ new class extends Component
                         @if ($category->is_active)
                             <span class="rounded bg-emerald-100 px-2 py-0.5 text-emerald-800">Active</span>
                         @else
-                            <span class="rounded bg-slate-100 px-2 py-0.5 text-slate-500">Inactive</span>
+                            <span class="rounded bg-stone-100 px-2 py-0.5 text-stone-500">Inactive</span>
                         @endif
                     </button>
-                    <button wire:click="openEdit({{ $category->id }})" class="text-sm text-blue-600 hover:underline">Edit</button>
+                    <button wire:click="openEdit({{ $category->id }})" class="text-sm text-[#36a2eb] hover:underline">Edit</button>
                     <button wire:click="delete({{ $category->id }})" wire:confirm="Delete this category?" class="text-sm text-red-600 hover:underline">Delete</button>
                 </div>
             </div>
         @empty
-            <p class="py-8 text-center text-slate-500">
+            <p class="py-8 text-center text-stone-500">
                 {{ $search ? 'No categories match your search.' : 'No categories yet.' }}
             </p>
         @endforelse
@@ -320,12 +320,12 @@ new class extends Component
                     <div class="grid gap-4 md:grid-cols-2">
                         <div>
                             <label class="mb-1 block text-sm font-medium">Name</label>
-                            <input type="text" wire:model.live.debounce.300ms="name" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" maxlength="255">
+                            <input type="text" wire:model.live.debounce.300ms="name" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm" maxlength="255">
                             @error('name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="mb-1 block text-sm font-medium">Slug</label>
-                            <input type="text" wire:model="slug" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" maxlength="255">
+                            <input type="text" wire:model="slug" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm" maxlength="255">
                             @error('slug') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                     </div>
@@ -333,7 +333,7 @@ new class extends Component
                     <div class="grid gap-4 md:grid-cols-2">
                         <div>
                             <label class="mb-1 block text-sm font-medium">Parent Category</label>
-                            <select wire:model="parent_id" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                            <select wire:model="parent_id" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
                                 <option value="">None</option>
                                 @foreach ($this->parentOptions as $parent)
                                     <option value="{{ $parent['id'] }}">{{ $parent['name'] }}</option>
@@ -343,7 +343,7 @@ new class extends Component
                         </div>
                         <div>
                             <label class="mb-1 block text-sm font-medium">Size Type</label>
-                            <select wire:model="size_type" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                            <select wire:model="size_type" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
                                 <option value="">None (not sized)</option>
                                 <option value="top">Top (shirts, hoodies)</option>
                                 <option value="bottom">Bottom (pants, shorts)</option>
@@ -355,37 +355,37 @@ new class extends Component
 
                     <div>
                         <label class="mb-1 block text-sm font-medium">Description</label>
-                        <textarea wire:model="description" rows="3" class="w-full rounded border border-slate-300 px-3 py-2 text-sm"></textarea>
+                        <textarea wire:model="description" rows="3" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm"></textarea>
                         @error('description') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="grid gap-4 md:grid-cols-2">
                         <div>
                             <label class="mb-1 block text-sm font-medium">Meta Title</label>
-                            <input type="text" wire:model="meta_title" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" maxlength="255">
+                            <input type="text" wire:model="meta_title" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm" maxlength="255">
                             @error('meta_title') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="mb-1 block text-sm font-medium">Sort Order</label>
-                            <input type="number" min="0" wire:model="sort_order" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                            <input type="number" min="0" wire:model="sort_order" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
                             @error('sort_order') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                     </div>
 
                     <div>
                         <label class="mb-1 block text-sm font-medium">Meta Description</label>
-                        <textarea wire:model="meta_description" rows="2" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" maxlength="1000"></textarea>
+                        <textarea wire:model="meta_description" rows="2" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm" maxlength="1000"></textarea>
                         @error('meta_description') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <input type="checkbox" wire:model="is_active" id="modal-is-active" class="h-4 w-4 rounded border-slate-300">
+                        <input type="checkbox" wire:model="is_active" id="modal-is-active" class="h-4 w-4 rounded border-stone-300">
                         <label for="modal-is-active" class="text-sm font-medium">Active</label>
                     </div>
 
                     <div class="flex items-center justify-end gap-3 pt-2">
-                        <button type="button" wire:click="closeModal" class="rounded border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Cancel</button>
-                        <button type="submit" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">
+                        <button type="button" wire:click="closeModal" class="rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-4 py-2 text-sm text-stone-700 hover:bg-stone-50">Cancel</button>
+                        <button type="submit" class="rounded bg-stone-800 px-4 py-2 text-sm font-medium text-white hover:bg-stone-900">
                             <span wire:loading.remove wire:target="save">{{ $editingId ? 'Save Changes' : 'Create Category' }}</span>
                             <span wire:loading wire:target="save">Saving…</span>
                         </button>

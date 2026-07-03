@@ -71,21 +71,21 @@ new class extends Component
     </div>
 
     {{-- Filters --}}
-    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">Filters</h3>
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-700">Filters</h3>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div>
-            <label class="block text-sm font-medium text-slate-700">Search</label>
+            <label class="block text-sm font-medium text-stone-700">Search</label>
             <input
                 type="text"
                 wire:model.live.debounce.300ms="search"
                 placeholder="Search descriptions…"
-                class="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                class="mt-1 block w-full rounded-md border-stone-300 text-sm shadow-sm focus:border-blue-500 focus:ring-[#36a2eb]"
             >
         </div>
         <div>
-            <label class="block text-sm font-medium text-slate-700">Action</label>
-            <select wire:model.live="action" class="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            <label class="block text-sm font-medium text-stone-700">Action</label>
+            <select wire:model.live="action" class="mt-1 block w-full rounded-md border-stone-300 text-sm shadow-sm focus:border-blue-500 focus:ring-[#36a2eb]">
                 <option value="">All Actions</option>
                 <option value="created">Created</option>
                 <option value="updated">Updated</option>
@@ -93,8 +93,8 @@ new class extends Component
             </select>
         </div>
         <div>
-            <label class="block text-sm font-medium text-slate-700">Type</label>
-            <select wire:model.live="subjectType" class="mt-1 block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            <label class="block text-sm font-medium text-stone-700">Type</label>
+            <select wire:model.live="subjectType" class="mt-1 block w-full rounded-md border-stone-300 text-sm shadow-sm focus:border-blue-500 focus:ring-[#36a2eb]">
                 <option value="">All Types</option>
                 @foreach ($this->subjectTypes as $type)
                     <option value="{{ $type['value'] }}">{{ $type['label'] }}</option>
@@ -102,31 +102,31 @@ new class extends Component
             </select>
         </div>
         <div class="flex items-end gap-2">
-            <button wire:click="resetFilters" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">Reset</button>
+            <button wire:click="resetFilters" class="rounded-md border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm hover:bg-stone-50">Reset</button>
         </div>
         </div>
     </div>
 
-    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
         {{-- Loading indicator --}}
-        <div wire:loading.delay class="mb-2 text-xs text-slate-500">Loading…</div>
+        <div wire:loading.delay class="mb-2 text-xs text-stone-500">Loading…</div>
 
         {{-- Log Table --}}
         <div class="-mx-5 overflow-x-auto px-5">
-        <table class="admin-mobile-table min-w-full divide-y divide-slate-200 text-sm">
-            <thead class="bg-slate-50">
+        <table class="admin-mobile-table min-w-full divide-y divide-stone-200 text-sm">
+            <thead class="bg-stone-50">
                 <tr>
-                    <th class="px-4 py-3 text-left font-medium text-slate-600">When</th>
-                    <th class="px-4 py-3 text-left font-medium text-slate-600">User</th>
-                    <th class="px-4 py-3 text-left font-medium text-slate-600">Action</th>
-                    <th class="px-4 py-3 text-left font-medium text-slate-600">Type</th>
-                    <th class="px-4 py-3 text-left font-medium text-slate-600">Description</th>
+                    <th class="px-4 py-3 text-left font-medium text-stone-600">When</th>
+                    <th class="px-4 py-3 text-left font-medium text-stone-600">User</th>
+                    <th class="px-4 py-3 text-left font-medium text-stone-600">Action</th>
+                    <th class="px-4 py-3 text-left font-medium text-stone-600">Type</th>
+                    <th class="px-4 py-3 text-left font-medium text-stone-600">Description</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody class="divide-y divide-stone-100">
                 @forelse ($this->logs as $log)
-                    <tr wire:key="log-{{ $log->id }}" class="hover:bg-slate-50">
-                        <td class="whitespace-nowrap px-4 py-3 text-slate-500" title="{{ $log->created_at->toDateTimeString() }}">
+                    <tr wire:key="log-{{ $log->id }}" class="hover:bg-stone-50">
+                        <td class="whitespace-nowrap px-4 py-3 text-stone-500" title="{{ $log->created_at->toDateTimeString() }}">
                             {{ $log->created_at->diffForHumans() }}
                         </td>
                         <td class="whitespace-nowrap px-4 py-3">
@@ -140,20 +140,20 @@ new class extends Component
                                     'deleted' => 'bg-red-100 text-red-700',
                                 ];
                             @endphp
-                            <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium {{ $actionColors[$log->action] ?? 'bg-slate-100 text-slate-700' }}">
+                            <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium {{ $actionColors[$log->action] ?? 'bg-stone-100 text-stone-700' }}">
                                 {{ ucfirst($log->action) }}
                             </span>
                         </td>
-                        <td class="whitespace-nowrap px-4 py-3 text-slate-600">
+                        <td class="whitespace-nowrap px-4 py-3 text-stone-600">
                             {{ class_basename($log->subject_type) }}
                         </td>
-                        <td class="px-4 py-3 text-slate-700">
+                        <td class="px-4 py-3 text-stone-700">
                             {{ $log->description }}
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-slate-400">
+                        <td colspan="5" class="px-4 py-8 text-center text-stone-400">
                             {{ $search || $action || $subjectType ? 'No logs match your filters.' : 'No activity recorded yet.' }}
                         </td>
                     </tr>

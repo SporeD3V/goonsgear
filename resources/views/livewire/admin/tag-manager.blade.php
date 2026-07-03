@@ -387,68 +387,68 @@ new class extends Component
                 wire:model.live.debounce.300ms="search"
                 type="text"
                 placeholder="Search tags…"
-                class="w-full rounded border border-slate-300 px-3 py-2 text-sm sm:w-64"
+                class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm sm:w-64"
             >
-            <button wire:click="openCreate" class="shrink-0 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">
+            <button wire:click="openCreate" class="shrink-0 rounded bg-[#36a2eb] px-3 py-2 text-sm text-white hover:bg-[#2b8ac9]">
                 New Tag
             </button>
         </div>
     </div>
 
     {{-- Filters & Table --}}
-    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
         {{-- Type filter tabs --}}
         <div class="mb-4 flex flex-wrap gap-2 text-sm">
             @foreach (['' => 'All', 'artist' => 'Artists', 'brand' => 'Brands', 'custom' => 'Custom'] as $value => $label)
                 <button
                     wire:click="$set('filterType', '{{ $value }}')"
-                    class="rounded px-3 py-1 {{ $filterType === $value ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}"
+                    class="rounded px-3 py-1 {{ $filterType === $value ? 'bg-stone-800 text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200' }}"
                 >{{ $label }}</button>
             @endforeach
         </div>
 
         {{-- Loading indicator --}}
-        <div wire:loading.delay class="mb-2 text-xs text-slate-500">Loading…</div>
+        <div wire:loading.delay class="mb-2 text-xs text-stone-500">Loading…</div>
 
         {{-- Table --}}
         <div class="-mx-5 overflow-x-auto px-5">
-        <table class="admin-mobile-table min-w-full border border-slate-200 text-sm">
-            <thead class="bg-slate-50">
+        <table class="admin-mobile-table min-w-full border border-stone-200 text-sm">
+            <thead class="bg-stone-50">
                 <tr>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Name</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Type</th>
-                    <th class="hidden border border-slate-200 px-3 py-2 text-left lg:table-cell">Slug</th>
-                    <th class="hidden border border-slate-200 px-3 py-2 text-center lg:table-cell">Followers</th>
-                    <th class="hidden border border-slate-200 px-3 py-2 text-center lg:table-cell">Active Products</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Status</th>
-                    <th class="border border-slate-200 px-3 py-2 text-right">Actions</th>
+                    <th class="border border-stone-200 px-3 py-2 text-left">Name</th>
+                    <th class="border border-stone-200 px-3 py-2 text-left">Type</th>
+                    <th class="hidden border border-stone-200 px-3 py-2 text-left lg:table-cell">Slug</th>
+                    <th class="hidden border border-stone-200 px-3 py-2 text-center lg:table-cell">Followers</th>
+                    <th class="hidden border border-stone-200 px-3 py-2 text-center lg:table-cell">Active Products</th>
+                    <th class="border border-stone-200 px-3 py-2 text-left">Status</th>
+                    <th class="border border-stone-200 px-3 py-2 text-right">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse ($this->tags as $tag)
-                    <tr wire:key="tag-{{ $tag->id }}" class="hover:bg-slate-50">
-                        <td class="border border-slate-200 px-3 py-2">{{ $tag->name }}</td>
-                        <td class="border border-slate-200 px-3 py-2">{{ ucfirst($tag->type) }}</td>
-                        <td class="hidden border border-slate-200 px-3 py-2 lg:table-cell">{{ $tag->slug }}</td>
-                        <td class="hidden border border-slate-200 px-3 py-2 text-center lg:table-cell">{{ $tag->followers_count }}</td>
-                        <td class="hidden border border-slate-200 px-3 py-2 text-center lg:table-cell">{{ $tag->active_products_count }}</td>
-                        <td class="border border-slate-200 px-3 py-2">
+                    <tr wire:key="tag-{{ $tag->id }}" class="hover:bg-stone-50">
+                        <td class="border border-stone-200 px-3 py-2">{{ $tag->name }}</td>
+                        <td class="border border-stone-200 px-3 py-2">{{ ucfirst($tag->type) }}</td>
+                        <td class="hidden border border-stone-200 px-3 py-2 lg:table-cell">{{ $tag->slug }}</td>
+                        <td class="hidden border border-stone-200 px-3 py-2 text-center lg:table-cell">{{ $tag->followers_count }}</td>
+                        <td class="hidden border border-stone-200 px-3 py-2 text-center lg:table-cell">{{ $tag->active_products_count }}</td>
+                        <td class="border border-stone-200 px-3 py-2">
                             <button wire:click="toggleActive({{ $tag->id }})" class="text-xs font-medium">
                                 @if ($tag->is_active)
                                     <span class="rounded bg-emerald-100 px-2 py-0.5 text-emerald-800">Active</span>
                                 @else
-                                    <span class="rounded bg-slate-100 px-2 py-0.5 text-slate-500">Inactive</span>
+                                    <span class="rounded bg-stone-100 px-2 py-0.5 text-stone-500">Inactive</span>
                                 @endif
                             </button>
                         </td>
-                        <td class="border border-slate-200 px-3 py-2 text-right">
-                            <button wire:click="openEdit({{ $tag->id }})" class="text-blue-700 hover:underline">Edit</button>
+                        <td class="border border-stone-200 px-3 py-2 text-right">
+                            <button wire:click="openEdit({{ $tag->id }})" class="text-[#36a2eb] hover:underline">Edit</button>
                             <button wire:click="delete({{ $tag->id }})" wire:confirm="Delete this tag?" class="ml-2 text-red-700 hover:underline">Delete</button>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="border border-slate-200 px-3 py-6 text-center text-slate-500">
+                        <td colspan="7" class="border border-stone-200 px-3 py-6 text-center text-stone-500">
                             {{ $search || $filterType ? 'No tags match your filters.' : 'No tags found.' }}
                         </td>
                     </tr>
@@ -475,12 +475,12 @@ new class extends Component
                     <div class="grid gap-4 md:grid-cols-2">
                         <div>
                             <label class="mb-1 block text-sm font-medium">Name</label>
-                            <input type="text" wire:model="name" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" maxlength="255">
+                            <input type="text" wire:model="name" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm" maxlength="255">
                             @error('name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="mb-1 block text-sm font-medium">Slug</label>
-                            <input type="text" wire:model="slug" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" maxlength="255">
+                            <input type="text" wire:model="slug" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm" maxlength="255">
                             @error('slug') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                     </div>
@@ -488,7 +488,7 @@ new class extends Component
                     <div class="grid gap-4 md:grid-cols-2">
                         <div>
                             <label class="mb-1 block text-sm font-medium">Type</label>
-                            <select wire:model.live="type" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                            <select wire:model.live="type" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
                                 <option value="artist">Artist</option>
                                 <option value="brand">Brand</option>
                                 <option value="custom">Custom</option>
@@ -496,19 +496,19 @@ new class extends Component
                             @error('type') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                         <div class="flex items-center gap-2 pt-7">
-                            <input type="checkbox" wire:model="is_active" id="modal-is-active" class="h-4 w-4 rounded border-slate-300">
+                            <input type="checkbox" wire:model="is_active" id="modal-is-active" class="h-4 w-4 rounded border-stone-300">
                             <label for="modal-is-active" class="text-sm font-medium">Active</label>
                         </div>
                     </div>
 
                     <div>
                         <label class="mb-1 block text-sm font-medium">Description</label>
-                        <textarea wire:model="description" rows="3" class="w-full rounded border border-slate-300 px-3 py-2 text-sm"></textarea>
+                        <textarea wire:model="description" rows="3" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm"></textarea>
                         @error('description') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     {{-- SEO fields with character counters --}}
-                    <div class="space-y-4 rounded border border-slate-200 p-4">
+                    <div class="space-y-4 rounded-lg border border-stone-200 p-4">
                         <h4 class="text-sm font-semibold">SEO</h4>
 
                         @include('admin.partials.seo-field', [
@@ -536,7 +536,7 @@ new class extends Component
 
                     {{-- Logo section: artist & brand only --}}
                     @if (in_array($type, ['artist', 'brand']))
-                        <div class="space-y-3 rounded border border-slate-200 p-4">
+                        <div class="space-y-3 rounded-lg border border-stone-200 p-4">
                             <h4 class="text-sm font-semibold">Logo Image (200×200)</h4>
 
                             @if ($currentLogoPath && ! $remove_logo)
@@ -544,10 +544,10 @@ new class extends Component
                                     <img
                                         src="{{ route('media.show', ['path' => $currentLogoPath]) }}"
                                         alt="{{ $name }} logo"
-                                        class="h-16 w-16 rounded border border-slate-200 object-cover"
+                                        class="h-16 w-16 rounded-lg border border-stone-200 object-cover"
                                     >
                                     <label class="inline-flex items-center gap-2 text-sm text-rose-600">
-                                        <input type="checkbox" wire:model="remove_logo" class="h-4 w-4 rounded border-slate-300">
+                                        <input type="checkbox" wire:model="remove_logo" class="h-4 w-4 rounded border-stone-300">
                                         Remove current logo
                                     </label>
                                 </div>
@@ -555,25 +555,25 @@ new class extends Component
 
                             <div>
                                 <label class="mb-1 block text-sm font-medium">{{ $currentLogoPath ? 'Upload new logo' : 'Upload logo' }}</label>
-                                <input type="file" wire:model="logo" accept="image/*" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
-                                <p class="mt-1 text-xs text-slate-500">JPG, PNG or WebP. Will be converted to AVIF 200×200. Max 5 MB.</p>
+                                <input type="file" wire:model="logo" accept="image/*" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
+                                <p class="mt-1 text-xs text-stone-500">JPG, PNG or WebP. Will be converted to AVIF 200×200. Max 5 MB.</p>
                                 @error('logo') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                                 <div wire:loading wire:target="logo" class="mt-1 text-xs text-blue-600">Uploading…</div>
                             </div>
 
                             <label class="inline-flex items-center gap-2 text-sm">
-                                <input type="checkbox" wire:model="show_on_homepage" class="h-4 w-4 rounded border-slate-300">
+                                <input type="checkbox" wire:model="show_on_homepage" class="h-4 w-4 rounded border-stone-300">
                                 Display in "Shop by Artist" carousel on homepage
                                 @if (! $currentLogoPath && $logo === null)
-                                    <span class="text-xs text-slate-400">(requires a logo)</span>
+                                    <span class="text-xs text-stone-400">(requires a logo)</span>
                                 @endif
                             </label>
                         </div>
                     @endif
 
                     <div class="flex items-center justify-end gap-3 pt-2">
-                        <button type="button" wire:click="closeModal" class="rounded border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Cancel</button>
-                        <button type="submit" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">
+                        <button type="button" wire:click="closeModal" class="rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-4 py-2 text-sm text-stone-700 hover:bg-stone-50">Cancel</button>
+                        <button type="submit" class="rounded bg-stone-800 px-4 py-2 text-sm font-medium text-white hover:bg-stone-900">
                             <span wire:loading.remove wire:target="save">{{ $editingId ? 'Save Changes' : 'Create Tag' }}</span>
                             <span wire:loading wire:target="save">Saving…</span>
                         </button>

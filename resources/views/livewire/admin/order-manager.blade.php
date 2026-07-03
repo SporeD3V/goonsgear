@@ -118,16 +118,16 @@ new class extends Component
         'anchorOptions' => $orderListNoteOptions,
     ])
 
-    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-700">Filters</h3>
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+        <h3 class="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-700">Filters</h3>
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-            <label for="search" class="mb-1 block text-xs font-medium text-slate-700">Search</label>
-            <input id="search" type="text" wire:model.live.debounce.300ms="search" placeholder="Order no / email / customer" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+            <label for="search" class="mb-1 block text-xs font-medium text-stone-700">Search</label>
+            <input id="search" type="text" wire:model.live.debounce.300ms="search" placeholder="Order no / email / customer" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
         </div>
         <div>
-            <label for="filterStatus" class="mb-1 block text-xs font-medium text-slate-700">Order status</label>
-            <select id="filterStatus" wire:model.live="filterStatus" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+            <label for="filterStatus" class="mb-1 block text-xs font-medium text-stone-700">Order status</label>
+            <select id="filterStatus" wire:model.live="filterStatus" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
                 <option value="">All</option>
                 @foreach ($this->statusOptions as $statusOption)
                     <option value="{{ $statusOption }}">{{ ucfirst($statusOption) }}</option>
@@ -135,8 +135,8 @@ new class extends Component
             </select>
         </div>
         <div>
-            <label for="filterPaymentStatus" class="mb-1 block text-xs font-medium text-slate-700">Payment status</label>
-            <select id="filterPaymentStatus" wire:model.live="filterPaymentStatus" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+            <label for="filterPaymentStatus" class="mb-1 block text-xs font-medium text-stone-700">Payment status</label>
+            <select id="filterPaymentStatus" wire:model.live="filterPaymentStatus" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
                 <option value="">All</option>
                 @foreach ($this->paymentStatusOptions as $paymentStatusOption)
                     <option value="{{ $paymentStatusOption }}">{{ ucfirst($paymentStatusOption) }}</option>
@@ -144,49 +144,49 @@ new class extends Component
             </select>
         </div>
         <div class="flex items-end gap-2">
-            <button type="button" wire:click="resetFilters" class="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-100">Reset</button>
+            <button type="button" wire:click="resetFilters" class="rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none bg-white px-3 py-2 text-sm text-stone-700 hover:bg-stone-100">Reset</button>
         </div>
     </div>
 
-    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
         <div class="-mx-5 overflow-x-auto px-5">
-        <table class="admin-mobile-table min-w-full border border-slate-200 text-sm">
-            <thead class="bg-slate-50">
+        <table class="admin-mobile-table min-w-full border border-stone-200 text-sm">
+            <thead class="bg-stone-50">
                 <tr>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Order</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Customer</th>
-                    <th class="hidden border border-slate-200 px-3 py-2 text-left lg:table-cell">Payment</th>
-                    <th class="hidden border border-slate-200 px-3 py-2 text-left lg:table-cell">Items</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Total</th>
-                    <th class="border border-slate-200 px-3 py-2 text-left">Placed</th>
-                    <th class="border border-slate-200 px-3 py-2 text-right">Actions</th>
+                    <th class="border border-stone-200 px-3 py-2 text-left">Order</th>
+                    <th class="border border-stone-200 px-3 py-2 text-left">Customer</th>
+                    <th class="hidden border border-stone-200 px-3 py-2 text-left lg:table-cell">Payment</th>
+                    <th class="hidden border border-stone-200 px-3 py-2 text-left lg:table-cell">Items</th>
+                    <th class="border border-stone-200 px-3 py-2 text-left">Total</th>
+                    <th class="border border-stone-200 px-3 py-2 text-left">Placed</th>
+                    <th class="border border-stone-200 px-3 py-2 text-right">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse ($this->orders as $order)
                     <tr wire:key="order-{{ $order->id }}">
-                        <td class="border border-slate-200 px-3 py-2">
-                            <div class="font-medium text-slate-900">{{ $order->order_number }}</div>
-                            <div class="text-xs text-slate-500">{{ ucfirst($order->status) }}</div>
+                        <td class="border border-stone-200 px-3 py-2">
+                            <div class="font-medium text-stone-900">{{ $order->order_number }}</div>
+                            <div class="text-xs text-stone-500">{{ ucfirst($order->status) }}</div>
                         </td>
-                        <td class="border border-slate-200 px-3 py-2">
+                        <td class="border border-stone-200 px-3 py-2">
                             <div>{{ $order->first_name }} {{ $order->last_name }}</div>
-                            <div class="text-xs text-slate-500">{{ $order->email }}</div>
+                            <div class="text-xs text-stone-500">{{ $order->email }}</div>
                         </td>
-                        <td class="hidden border border-slate-200 px-3 py-2 lg:table-cell">
+                        <td class="hidden border border-stone-200 px-3 py-2 lg:table-cell">
                             <div>{{ ucfirst($order->payment_method) }}</div>
-                            <div class="text-xs text-slate-500">{{ ucfirst($order->payment_status) }}</div>
+                            <div class="text-xs text-stone-500">{{ ucfirst($order->payment_status) }}</div>
                         </td>
-                        <td class="hidden border border-slate-200 px-3 py-2 lg:table-cell">{{ $order->items_count }}</td>
-                        <td class="border border-slate-200 px-3 py-2">${{ number_format((float) $order->total, 2) }}</td>
-                        <td class="border border-slate-200 px-3 py-2">{{ optional($order->placed_at)->format('Y-m-d H:i') ?? '-' }}</td>
-                        <td class="border border-slate-200 px-3 py-2 text-right">
-                            <a href="{{ route('admin.orders.show', $order) }}" class="text-blue-700 hover:underline">View</a>
+                        <td class="hidden border border-stone-200 px-3 py-2 lg:table-cell">{{ $order->items_count }}</td>
+                        <td class="border border-stone-200 px-3 py-2">${{ number_format((float) $order->total, 2) }}</td>
+                        <td class="border border-stone-200 px-3 py-2">{{ optional($order->placed_at)->format('Y-m-d H:i') ?? '-' }}</td>
+                        <td class="border border-stone-200 px-3 py-2 text-right">
+                            <a href="{{ route('admin.orders.show', $order) }}" class="text-[#36a2eb] hover:underline">View</a>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="border border-slate-200 px-3 py-6 text-center text-slate-500">No orders found.</td>
+                        <td colspan="7" class="border border-stone-200 px-3 py-6 text-center text-stone-500">No orders found.</td>
                     </tr>
                 @endforelse
             </tbody>

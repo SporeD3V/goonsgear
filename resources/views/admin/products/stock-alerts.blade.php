@@ -4,45 +4,45 @@
     <div class="space-y-6">
     <div class="flex items-center justify-between gap-3">
         <h2 class="text-lg font-semibold">Customers Waiting for {{ $product->name }}</h2>
-        <a href="{{ route('admin.products.index') }}" class="text-sm text-blue-700 hover:underline">Back to Products</a>
+        <a href="{{ route('admin.products.index') }}" class="text-sm text-[#36a2eb] hover:underline">Back to Products</a>
     </div>
 
-    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <p class="text-sm text-slate-600">Total customers waiting: <strong>{{ $subscriptions->total() }}</strong></p>
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+        <p class="text-sm text-stone-600">Total customers waiting: <strong>{{ $subscriptions->total() }}</strong></p>
     </div>
 
     @if ($subscriptions->isEmpty())
-        <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm text-sm text-slate-600">
+        <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm text-sm text-stone-600">
             No customers are currently waiting for this product.
         </div>
     @else
-        <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
         <div class="overflow-x-auto">
-            <table class="min-w-full border border-slate-200 text-sm">
-                <thead class="bg-slate-50">
+            <table class="min-w-full border border-stone-200 text-sm">
+                <thead class="bg-stone-50">
                     <tr>
-                        <th class="border border-slate-200 px-3 py-2 text-left">Customer</th>
-                        <th class="border border-slate-200 px-3 py-2 text-left">Email</th>
-                        <th class="border border-slate-200 px-3 py-2 text-left">Variant</th>
-                        <th class="border border-slate-200 px-3 py-2 text-left">Subscribed</th>
-                        <th class="border border-slate-200 px-3 py-2 text-left">Status</th>
+                        <th class="border border-stone-200 px-3 py-2 text-left">Customer</th>
+                        <th class="border border-stone-200 px-3 py-2 text-left">Email</th>
+                        <th class="border border-stone-200 px-3 py-2 text-left">Variant</th>
+                        <th class="border border-stone-200 px-3 py-2 text-left">Subscribed</th>
+                        <th class="border border-stone-200 px-3 py-2 text-left">Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($subscriptions as $subscription)
                         <tr>
-                            <td class="border border-slate-200 px-3 py-2">{{ $subscription->user->name }}</td>
-                            <td class="border border-slate-200 px-3 py-2">
-                                <a href="mailto:{{ $subscription->user->email }}" class="text-blue-700 hover:underline">
+                            <td class="border border-stone-200 px-3 py-2">{{ $subscription->user->name }}</td>
+                            <td class="border border-stone-200 px-3 py-2">
+                                <a href="mailto:{{ $subscription->user->email }}" class="text-[#36a2eb] hover:underline">
                                     {{ $subscription->user->email }}
                                 </a>
                             </td>
-                            <td class="border border-slate-200 px-3 py-2">
-                                <span class="text-slate-700">{{ $subscription->variant->name }}</span>
-                                <span class="block text-xs text-slate-500">{{ $subscription->variant->sku }}</span>
+                            <td class="border border-stone-200 px-3 py-2">
+                                <span class="text-stone-700">{{ $subscription->variant->name }}</span>
+                                <span class="block text-xs text-stone-500">{{ $subscription->variant->sku }}</span>
                             </td>
-                            <td class="border border-slate-200 px-3 py-2">{{ $subscription->created_at->format('M d, Y') }}</td>
-                            <td class="border border-slate-200 px-3 py-2">
+                            <td class="border border-stone-200 px-3 py-2">{{ $subscription->created_at->format('M d, Y') }}</td>
+                            <td class="border border-stone-200 px-3 py-2">
                                 @if ($subscription->notified_at)
                                     <span class="inline-block rounded bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">
                                         Notified {{ $subscription->notified_at->format('M d') }}

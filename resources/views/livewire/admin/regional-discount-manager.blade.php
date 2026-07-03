@@ -187,73 +187,73 @@ new class extends Component
                 wire:model.live.debounce.300ms="search"
                 type="text"
                 placeholder="Search country or reason…"
-                class="w-full rounded border border-slate-300 px-3 py-2 text-sm sm:w-64"
+                class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm sm:w-64"
             >
-            <button wire:click="openCreate" class="shrink-0 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700">
+            <button wire:click="openCreate" class="shrink-0 rounded bg-[#36a2eb] px-3 py-2 text-sm text-white hover:bg-[#2b8ac9]">
                 New Rule
             </button>
         </div>
     </div>
 
-    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div wire:loading.delay class="mb-2 text-xs text-slate-500">Loading…</div>
+    <div class="admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+        <div wire:loading.delay class="mb-2 text-xs text-stone-500">Loading…</div>
 
     {{-- Table --}}
     <div class="-mx-5 overflow-x-auto px-5">
-        <table class="admin-mobile-table min-w-full border border-slate-200 text-sm">
-            <thead class="bg-slate-50">
+        <table class="admin-mobile-table min-w-full border border-stone-200 text-sm">
+            <thead class="bg-stone-50">
                 <tr>
                     @foreach (['country_code' => 'Country', 'discount_type' => 'Type', 'discount_value' => 'Value'] as $field => $label)
-                        <th wire:click="sortBy('{{ $field }}')" class="cursor-pointer border border-slate-200 px-3 py-2 text-left select-none hover:bg-slate-100">
+                        <th wire:click="sortBy('{{ $field }}')" class="cursor-pointer border border-stone-200 px-3 py-2 text-left select-none hover:bg-stone-100">
                             {{ $label }}
                             @if ($sortField === $field)
                                 <span class="ml-1">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
                             @endif
                         </th>
                     @endforeach
-                    <th class="border border-slate-200 px-3 py-2 text-left">Reason</th>
-                    <th wire:click="sortBy('is_active')" class="cursor-pointer border border-slate-200 px-3 py-2 text-left select-none hover:bg-slate-100">
+                    <th class="border border-stone-200 px-3 py-2 text-left">Reason</th>
+                    <th wire:click="sortBy('is_active')" class="cursor-pointer border border-stone-200 px-3 py-2 text-left select-none hover:bg-stone-100">
                         Status
                         @if ($sortField === 'is_active')
                             <span class="ml-1">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
                         @endif
                     </th>
-                    <th class="border border-slate-200 px-3 py-2 text-right">Actions</th>
+                    <th class="border border-stone-200 px-3 py-2 text-right">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse ($this->discounts as $discount)
-                    <tr wire:key="discount-{{ $discount->id }}" class="hover:bg-slate-50">
-                        <td class="border border-slate-200 px-3 py-2">
-                            <p class="font-medium text-slate-900">{{ $this->countries[$discount->country_code] ?? $discount->country_code }}</p>
-                            <p class="text-xs text-slate-500">{{ $discount->country_code }}</p>
+                    <tr wire:key="discount-{{ $discount->id }}" class="hover:bg-stone-50">
+                        <td class="border border-stone-200 px-3 py-2">
+                            <p class="font-medium text-stone-900">{{ $this->countries[$discount->country_code] ?? $discount->country_code }}</p>
+                            <p class="text-xs text-stone-500">{{ $discount->country_code }}</p>
                         </td>
-                        <td class="border border-slate-200 px-3 py-2">{{ ucfirst($discount->discount_type) }}</td>
-                        <td class="border border-slate-200 px-3 py-2">
+                        <td class="border border-stone-200 px-3 py-2">{{ ucfirst($discount->discount_type) }}</td>
+                        <td class="border border-stone-200 px-3 py-2">
                             @if ($discount->discount_type === 'percent')
                                 {{ rtrim(rtrim(number_format((float) $discount->discount_value, 2), '0'), '.') }}%
                             @else
                                 ${{ number_format((float) $discount->discount_value, 2) }}
                             @endif
                         </td>
-                        <td class="border border-slate-200 px-3 py-2 max-w-xs truncate">{{ $discount->reason }}</td>
-                        <td class="border border-slate-200 px-3 py-2">
+                        <td class="border border-stone-200 px-3 py-2 max-w-xs truncate">{{ $discount->reason }}</td>
+                        <td class="border border-stone-200 px-3 py-2">
                             <button wire:click="toggleActive({{ $discount->id }})" class="text-xs font-medium">
                                 @if ($discount->is_active)
                                     <span class="rounded bg-emerald-100 px-2 py-0.5 text-emerald-800">Active</span>
                                 @else
-                                    <span class="rounded bg-slate-100 px-2 py-0.5 text-slate-500">Inactive</span>
+                                    <span class="rounded bg-stone-100 px-2 py-0.5 text-stone-500">Inactive</span>
                                 @endif
                             </button>
                         </td>
-                        <td class="border border-slate-200 px-3 py-2 text-right">
-                            <button wire:click="openEdit({{ $discount->id }})" class="text-blue-700 hover:underline">Edit</button>
+                        <td class="border border-stone-200 px-3 py-2 text-right">
+                            <button wire:click="openEdit({{ $discount->id }})" class="text-[#36a2eb] hover:underline">Edit</button>
                             <button wire:click="delete({{ $discount->id }})" wire:confirm="Delete this rule?" class="ml-2 text-red-700 hover:underline">Delete</button>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="border border-slate-200 px-3 py-6 text-center text-slate-500">
+                        <td colspan="6" class="border border-stone-200 px-3 py-6 text-center text-stone-500">
                             {{ $search ? 'No discounts match your search.' : 'No regional discount rules yet.' }}
                         </td>
                     </tr>
@@ -276,7 +276,7 @@ new class extends Component
                 <form wire:submit="save" class="space-y-4">
                     <div>
                         <label class="mb-1 block text-sm font-medium">Country</label>
-                        <select wire:model="country_code" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                        <select wire:model="country_code" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
                             <option value="">— Select country —</option>
                             @foreach ($this->countries as $code => $name)
                                 <option value="{{ $code }}">{{ $name }} ({{ $code }})</option>
@@ -288,7 +288,7 @@ new class extends Component
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div>
                             <label class="mb-1 block text-sm font-medium">Discount type</label>
-                            <select wire:model="discount_type" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                            <select wire:model="discount_type" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
                                 <option value="fixed">Fixed</option>
                                 <option value="percent">Percent</option>
                             </select>
@@ -296,25 +296,25 @@ new class extends Component
                         </div>
                         <div>
                             <label class="mb-1 block text-sm font-medium">Value</label>
-                            <input type="number" wire:model="discount_value" step="0.01" min="0.01" class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
+                            <input type="number" wire:model="discount_value" step="0.01" min="0.01" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm">
                             @error('discount_value') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                         </div>
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-sm font-medium">Reason <span class="text-xs text-slate-400">(shown to customer at checkout)</span></label>
-                        <input type="text" wire:model="reason" class="w-full rounded border border-slate-300 px-3 py-2 text-sm" maxlength="500">
+                        <label class="mb-1 block text-sm font-medium">Reason <span class="text-xs text-stone-400">(shown to customer at checkout)</span></label>
+                        <input type="text" wire:model="reason" class="w-full rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-3 py-2 text-sm" maxlength="500">
                         @error('reason') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <input type="checkbox" wire:model="is_active" id="modal-rd-active" class="h-4 w-4 rounded border-slate-300">
+                        <input type="checkbox" wire:model="is_active" id="modal-rd-active" class="h-4 w-4 rounded border-stone-300">
                         <label for="modal-rd-active" class="text-sm font-medium">Active</label>
                     </div>
 
                     <div class="flex items-center justify-end gap-3 pt-2">
-                        <button type="button" wire:click="closeModal" class="rounded border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Cancel</button>
-                        <button type="submit" class="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">
+                        <button type="button" wire:click="closeModal" class="rounded-lg border border-stone-200 focus:border-[#36a2eb] focus:outline-none px-4 py-2 text-sm text-stone-700 hover:bg-stone-50">Cancel</button>
+                        <button type="submit" class="rounded bg-stone-800 px-4 py-2 text-sm font-medium text-white hover:bg-stone-900">
                             <span wire:loading.remove wire:target="save">{{ $editingId ? 'Save Changes' : 'Create Rule' }}</span>
                             <span wire:loading wire:target="save">Saving…</span>
                         </button>

@@ -2,7 +2,7 @@
     'context',
     'label',
     'anchorOptions' => [],
-    'cardClass' => 'rounded-lg border border-slate-200 bg-white p-5 shadow-sm',
+    'cardClass' => 'admin-card rounded-xl border border-stone-200 bg-white p-5 shadow-sm',
 ])
 
 <div class="{{ $cardClass }}">
