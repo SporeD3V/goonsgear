@@ -7,6 +7,7 @@ use App\Models\Tag;
 use App\Models\TagFollow;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\View\View;
 
 class AccountController extends Controller
@@ -70,6 +71,30 @@ class AccountController extends Controller
             'availableCoupons' => $availableCoupons,
             'sizeProfiles' => $sizeProfiles,
         ]);
+    }
+
+    public function updateProfile(Request $request): RedirectResponse
+    {
+        $payload = $request->validateWithBag('updateProfile', [
+            'name' => ['required', 'string', 'max:255'],
+        ]);
+
+        $request->user()->update($payload);
+
+        return redirect()->route('account.index')->with('status', 'Profile updated.');
+    }
+
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $payload = $request->validateWithBag('updatePassword', [
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', 'confirmed', PasswordRule::defaults()],
+        ]);
+
+        // The 'hashed' cast on User takes care of hashing.
+        $request->user()->update(['password' => $payload['password']]);
+
+        return redirect()->route('account.index')->with('status', 'Password updated.');
     }
 
     public function updateEmailPreferences(Request $request): RedirectResponse

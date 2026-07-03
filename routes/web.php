@@ -76,6 +76,14 @@ Route::get('/account', [AccountController::class, 'index'])
     ->middleware('auth')
     ->name('account.index');
 
+Route::patch('/account/profile', [AccountController::class, 'updateProfile'])
+    ->middleware('auth')
+    ->name('account.profile.update');
+
+Route::put('/account/password', [AccountController::class, 'updatePassword'])
+    ->middleware(['auth', 'throttle:5,1'])
+    ->name('account.password.update');
+
 Route::patch('/account/email-preferences', [AccountController::class, 'updateEmailPreferences'])
     ->middleware('auth')
     ->name('account.email-preferences.update');

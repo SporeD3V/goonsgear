@@ -33,6 +33,7 @@
                 'sizes' => 'Size Profiles',
                 'address' => 'Delivery Address',
                 'notifications' => 'Notifications',
+                'profile' => 'Profile & Security',
             ];
 
             $hasApartmentDetails = collect(['delivery_apartment_block', 'delivery_entrance', 'delivery_floor', 'delivery_apartment_number'])
@@ -87,6 +88,9 @@
                                             @break
                                         @case('address')
                                             <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
+                                            @break
+                                        @case('profile')
+                                            <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
                                             @break
                                         @default
                                             <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"/></svg>
@@ -593,6 +597,71 @@
                                 <button type="submit" class="rounded-lg bg-black px-5 py-2 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-black/80">
                                     Save preferences
                                 </button>
+                            </div>
+                        </form>
+                    </section>
+
+                    {{-- Profile & Security --}}
+                    <section id="profile" class="scroll-mt-28 rounded-xl border border-black/10 bg-white p-6 shadow-sm">
+                        <div class="mb-4">
+                            <h2 class="text-lg font-bold tracking-tight">Profile &amp; Security</h2>
+                            <p class="mt-0.5 text-sm text-black/50">Update your name or change your password.</p>
+                        </div>
+
+                        <form method="POST" action="{{ route('account.profile.update') }}">
+                            @csrf
+                            @method('PATCH')
+
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label for="profile_name" class="mb-1 block text-sm font-medium text-black/70">Name</label>
+                                    <input id="profile_name" type="text" name="name" value="{{ old('name', $user?->name) }}" required autocomplete="name" class="w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:border-black focus:outline-none">
+                                    @error('name', 'updateProfile')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-sm font-medium text-black/70">Email</label>
+                                    <p class="w-full rounded-lg border border-black/10 bg-black/[0.03] px-3 py-2 text-sm text-black/60">{{ $user?->email }}</p>
+                                    <p class="mt-1 text-xs text-black/40">Your email is linked to your order history — contact us if you need to change it.</p>
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <button type="submit" class="rounded-lg bg-black px-5 py-2 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-black/80">Save profile</button>
+                            </div>
+                        </form>
+
+                        <div class="my-6 border-t border-black/5"></div>
+
+                        <h3 class="text-sm font-bold">Change password</h3>
+                        @if ($errors->updatePassword->isNotEmpty())
+                            <div class="mt-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                {{ $errors->updatePassword->first() }}
+                            </div>
+                        @endif
+
+                        <form method="POST" action="{{ route('account.password.update') }}" class="mt-3">
+                            @csrf
+                            @method('PUT')
+
+                            <div class="grid gap-4 sm:max-w-sm">
+                                <div>
+                                    <label for="current_password" class="mb-1 block text-sm font-medium text-black/70">Current password</label>
+                                    <input id="current_password" type="password" name="current_password" required autocomplete="current-password" class="w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:border-black focus:outline-none">
+                                    @error('current_password', 'updatePassword')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                                </div>
+                                <div>
+                                    <label for="new_password" class="mb-1 block text-sm font-medium text-black/70">New password</label>
+                                    <input id="new_password" type="password" name="password" required autocomplete="new-password" class="w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:border-black focus:outline-none">
+                                    @error('password', 'updatePassword')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                                </div>
+                                <div>
+                                    <label for="new_password_confirmation" class="mb-1 block text-sm font-medium text-black/70">Confirm new password</label>
+                                    <input id="new_password_confirmation" type="password" name="password_confirmation" required autocomplete="new-password" class="w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:border-black focus:outline-none">
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <button type="submit" class="rounded-lg bg-black px-5 py-2 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-black/80">Update password</button>
                             </div>
                         </form>
                     </section>
