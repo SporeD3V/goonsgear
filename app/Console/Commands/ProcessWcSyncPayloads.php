@@ -1341,7 +1341,9 @@ class ProcessWcSyncPayloads extends Command
         return match ($wcStatus) {
             'publish' => 'active',
             'draft' => 'draft',
-            'private' => 'draft',
+            // Hidden-but-existing in WC — GG serves these a "no longer
+            // available" page (same mapping as the pull-based sync).
+            'private' => 'delisted',
             'trash' => 'archived',
             default => 'draft',
         };

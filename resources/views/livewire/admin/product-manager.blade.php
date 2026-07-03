@@ -415,7 +415,10 @@ new class extends Component
                     @endif
                 </div>
                 <div class="mt-1 text-2xl font-bold {{ $tile['isOn'] ? 'text-[#36a2eb]' : 'text-stone-800' }}">{{ number_format($tile['count']) }}</div>
-                <div class="mt-0.5 text-[11px] {{ $tile['tone'] }}">{{ $tile['isOn'] ? 'Tap to clear filter' : 'Tap to filter' }}</div>
+                <div class="mt-0.5 text-[11px] {{ $tile['tone'] }}">
+                    <span class="pointer-coarse:hidden">{{ $tile['isOn'] ? 'Click to clear filter' : 'Click to filter' }}</span>
+                    <span class="hidden pointer-coarse:inline">{{ $tile['isOn'] ? 'Tap to clear filter' : 'Tap to filter' }}</span>
+                </div>
             </button>
         @endforeach
     </div>

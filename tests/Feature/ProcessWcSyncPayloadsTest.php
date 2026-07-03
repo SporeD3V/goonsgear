@@ -645,6 +645,31 @@ class ProcessWcSyncPayloadsTest extends TestCase
         $this->assertSame(5, $variant->stock_quantity);
     }
 
+    public function test_private_wc_product_maps_to_delisted(): void
+    {
+        $product = Product::factory()->create(['status' => 'active']);
+
+        DB::table('import_legacy_products')->insert([
+            'legacy_wp_post_id' => 2070,
+            'product_id' => $product->id,
+            'synced_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->createPayload('product.updated', [
+            'wc_product_id' => 2070,
+            'name' => $product->name,
+            'slug' => $product->slug,
+            'status' => 'private',
+        ], 2070);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        // Same mapping as the pull-based sync: hidden in WC = delisted page in GG.
+        $this->assertSame('delisted', $product->fresh()->status);
+    }
+
     public function test_variant_sync_ignores_stale_preorder_flags(): void
     {
         $this->createPayload('product.created', [
