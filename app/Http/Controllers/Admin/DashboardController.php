@@ -38,7 +38,7 @@ class DashboardController extends Controller
             $tab = 'overview';
         }
 
-        $period = $request->query('period', '30d');
+        $period = $request->query('period', '1d');
         $compare = $request->boolean('compare', false);
         $compareMode = $request->query('compare_mode', 'previous_period');
         $compareIntervalUnit = $request->query('compare_interval_unit', 'week');
@@ -83,7 +83,7 @@ class DashboardController extends Controller
 
         if ($period !== 'custom') {
             if (! array_key_exists($period, self::PERIOD_PRESETS)) {
-                $period = '30d';
+                $period = '1d';
             }
 
             $days = self::PERIOD_PRESETS[$period];
