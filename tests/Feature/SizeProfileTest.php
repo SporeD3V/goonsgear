@@ -188,7 +188,8 @@ class SizeProfileTest extends TestCase
         $response->assertRedirect(route('account.index'));
     }
 
-
+    public function test_account_page_shows_size_profiles_section(): void
+    {
         $user = User::factory()->create();
 
         SizeProfile::factory()->self()->create([
