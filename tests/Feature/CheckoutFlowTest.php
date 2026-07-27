@@ -292,6 +292,44 @@ class CheckoutFlowTest extends TestCase
         $response->assertSessionMissing('cart.coupon_code');
     }
 
+    public function test_checkout_rejects_coupon_that_has_reached_its_usage_limit(): void
+    {
+        $fixture = $this->createCheckoutFixture();
+        $variant = $fixture['variant'];
+
+        Coupon::factory()->create([
+            'code' => 'MAXED',
+            'type' => Coupon::TYPE_PERCENT,
+            'value' => 10,
+            'minimum_subtotal' => 0,
+            'usage_limit' => 5,
+            'used_count' => 5,
+        ]);
+
+        $response = $this->withSession([
+            'cart.items' => [
+                $variant->id => [
+                    'variant_id' => $variant->id,
+                    'product_id' => $variant->product_id,
+                    'product_name' => 'Checkout Hoodie',
+                    'product_slug' => 'checkout-hoodie',
+                    'variant_name' => 'Large',
+                    'sku' => 'CO-HOODIE-L',
+                    'price' => 120.00,
+                    'quantity' => 1,
+                    'max_quantity' => 5,
+                    'image' => null,
+                    'url' => route('shop.show', $fixture['product']),
+                ],
+            ],
+            'cart.coupon_code' => 'MAXED',
+        ])->post(route('checkout.store'), $this->validCheckoutPayload());
+
+        $response->assertSessionHasErrors('coupon_code');
+        $this->assertDatabaseMissing('orders', ['email' => 'customer@example.com']);
+        $this->assertSame(5, Coupon::query()->where('code', 'MAXED')->value('used_count'));
+    }
+
     public function test_checkout_requires_valid_input(): void
     {
         $fixture = $this->createCheckoutFixture();

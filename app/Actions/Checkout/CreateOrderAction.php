@@ -132,25 +132,24 @@ class CreateOrderAction
             }
 
             if ($couponCodes !== []) {
-                $incrementedCount = Coupon::query()
+                $coupons = Coupon::query()
                     ->whereIn('code', $couponCodes)
-                    ->where(function ($query): void {
-                        $query->whereNull('usage_limit')
-                            ->orWhereColumn('used_count', '<', 'usage_limit');
-                    })
-                    ->increment('used_count');
+                    ->lockForUpdate()
+                    ->get(['code', 'usage_limit', 'used_count']);
 
-                if ($incrementedCount < count($couponCodes)) {
-                    $overLimitCode = Coupon::query()
-                        ->whereIn('code', $couponCodes)
-                        ->whereNotNull('usage_limit')
-                        ->whereColumn('used_count', '>=', 'usage_limit')
-                        ->value('code') ?? $couponCodes[0];
+                $overLimit = $coupons->first(
+                    fn (Coupon $c): bool => $c->usage_limit !== null && $c->used_count >= $c->usage_limit
+                );
 
+                if ($overLimit !== null) {
                     throw ValidationException::withMessages([
-                        'coupon_code' => "Coupon {$overLimitCode} has reached its usage limit. Please review your cart and retry.",
+                        'coupon_code' => "Coupon {$overLimit->code} has reached its usage limit. Please review your cart and retry.",
                     ]);
                 }
+
+                Coupon::query()
+                    ->whereIn('code', $couponCodes)
+                    ->increment('used_count');
 
                 $couponLookup = Coupon::query()
                     ->whereIn('code', $couponCodes)
