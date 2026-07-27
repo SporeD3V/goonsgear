@@ -137,13 +137,13 @@ class CreateOrderAction
                     ->lockForUpdate()
                     ->get(['code', 'usage_limit', 'used_count']);
 
-                $overLimit = $coupons->first(
+                $exhaustedCoupon = $coupons->first(
                     fn (Coupon $c): bool => $c->usage_limit !== null && $c->used_count >= $c->usage_limit
                 );
 
-                if ($overLimit !== null) {
+                if ($exhaustedCoupon !== null) {
                     throw ValidationException::withMessages([
-                        'coupon_code' => "Coupon {$overLimit->code} has reached its usage limit. Please review your cart and retry.",
+                        'coupon_code' => "Coupon {$exhaustedCoupon->code} has reached its usage limit. Please review your cart and retry.",
                     ]);
                 }
 
