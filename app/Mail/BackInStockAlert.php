@@ -16,7 +16,7 @@ class BackInStockAlert extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public function __construct(
-        public readonly User $user,
+        public readonly ?User $user,
         public readonly ProductVariant $variant,
     ) {
         $this->afterCommit();

@@ -369,9 +369,78 @@ class CheckoutFlowTest extends TestCase
 
         Storage::disk('public')->put($media->getThumbnailPath(), 'checkout-thumb-bytes');
 
-        $response = $this->get(route('checkout.success', $order));
+        $response = $this->withSession(['checkout.last_order_id' => $order->id])
+            ->get(route('checkout.success', $order));
 
         $response->assertOk();
         $response->assertSee(route('media.show', ['path' => $media->getThumbnailPath()]));
+    }
+
+    public function test_guest_cannot_view_success_page_without_session_token(): void
+    {
+        $order = Order::factory()->create(['email' => 'someone@example.com']);
+
+        $response = $this->get(route('checkout.success', $order));
+
+        $response->assertForbidden();
+    }
+
+    public function test_guest_cannot_view_another_orders_success_page_with_wrong_token(): void
+    {
+        $order = Order::factory()->create(['email' => 'someone@example.com']);
+        $otherOrder = Order::factory()->create(['email' => 'other@example.com']);
+
+        $response = $this->withSession(['checkout.last_order_id' => $otherOrder->id])
+            ->get(route('checkout.success', $order));
+
+        $response->assertForbidden();
+    }
+
+    public function test_authenticated_user_can_view_their_own_order_success_page(): void
+    {
+        $user = User::factory()->create(['email' => 'buyer@example.com']);
+        $order = Order::factory()->create(['email' => 'buyer@example.com']);
+
+        $response = $this->actingAs($user)->get(route('checkout.success', $order));
+
+        $response->assertOk();
+    }
+
+    public function test_authenticated_user_cannot_view_another_users_order_success_page(): void
+    {
+        $user = User::factory()->create(['email' => 'attacker@example.com']);
+        $order = Order::factory()->create(['email' => 'victim@example.com']);
+
+        $response = $this->actingAs($user)->get(route('checkout.success', $order));
+
+        $response->assertForbidden();
+    }
+
+    public function test_checkout_redirects_to_success_with_session_token(): void
+    {
+        $fixture = $this->createCheckoutFixture();
+        $variant = $fixture['variant'];
+
+        $response = $this->withSession([
+            'cart.items' => [
+                $variant->id => [
+                    'variant_id' => $variant->id,
+                    'product_id' => $variant->product_id,
+                    'product_name' => 'Checkout Hoodie',
+                    'product_slug' => 'checkout-hoodie',
+                    'variant_name' => 'Large',
+                    'sku' => 'CO-HOODIE-L',
+                    'price' => 120.00,
+                    'quantity' => 1,
+                    'max_quantity' => 5,
+                    'image' => null,
+                    'url' => route('shop.show', $fixture['product']),
+                ],
+            ],
+        ])->post(route('checkout.store'), $this->validCheckoutPayload());
+
+        $order = Order::query()->latest('id')->first();
+
+        $response->assertSessionHas('checkout.last_order_id', $order?->id);
     }
 }

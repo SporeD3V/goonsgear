@@ -47,7 +47,7 @@ class CreateOrderAction
     ): Order {
         $order = DB::transaction(function () use ($payload, $normalizedItems, $subtotal, $discountTotal, $total, $couponCodes, $couponBreakdown, $paymentMethod, $paymentStatus, $paypalOrderId, $paypalCaptureId, $markAsPaid, $regionalDiscountTotal, $bundleDiscountTotal, $bundleSku, $customer): Order {
             $variantIds = collect($normalizedItems)->pluck('product_variant_id')->map(fn ($id): int => (int) $id)->values();
-            $variants = ProductVariant::query()->whereIn('id', $variantIds)->get()->keyBy('id');
+            $variants = ProductVariant::query()->whereIn('id', $variantIds)->lockForUpdate()->get()->keyBy('id');
 
             foreach ($normalizedItems as $item) {
                 $variant = $variants->get((int) $item['product_variant_id']);
@@ -132,7 +132,25 @@ class CreateOrderAction
             }
 
             if ($couponCodes !== []) {
-                Coupon::query()->whereIn('code', $couponCodes)->increment('used_count');
+                $incrementedCount = Coupon::query()
+                    ->whereIn('code', $couponCodes)
+                    ->where(function ($query): void {
+                        $query->whereNull('usage_limit')
+                            ->orWhereColumn('used_count', '<', 'usage_limit');
+                    })
+                    ->increment('used_count');
+
+                if ($incrementedCount < count($couponCodes)) {
+                    $overLimitCode = Coupon::query()
+                        ->whereIn('code', $couponCodes)
+                        ->whereNotNull('usage_limit')
+                        ->whereColumn('used_count', '>=', 'usage_limit')
+                        ->value('code') ?? $couponCodes[0];
+
+                    throw ValidationException::withMessages([
+                        'coupon_code' => "Coupon {$overLimitCode} has reached its usage limit. Please review your cart and retry.",
+                    ]);
+                }
 
                 $couponLookup = Coupon::query()
                     ->whereIn('code', $couponCodes)

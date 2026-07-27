@@ -160,8 +160,35 @@ class SizeProfileTest extends TestCase
         $response->assertRedirect('/checkout/success/1');
     }
 
-    public function test_account_page_shows_size_profiles_section(): void
+    public function test_store_ignores_protocol_relative_redirect_to_prevent_open_redirect(): void
     {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post(route('account.size-profiles.store'), [
+            'name' => $user->name,
+            'is_self' => '1',
+            'top_size' => 'M',
+            '_redirect' => '//evil.com/phishing',
+        ]);
+
+        $response->assertRedirect(route('account.index'));
+    }
+
+    public function test_update_ignores_protocol_relative_redirect_to_prevent_open_redirect(): void
+    {
+        $user = User::factory()->create();
+        $profile = SizeProfile::factory()->self()->create(['user_id' => $user->id]);
+
+        $response = $this->actingAs($user)->patch(route('account.size-profiles.update', $profile), [
+            'name' => $user->name,
+            'top_size' => 'L',
+            '_redirect' => '//evil.com/phishing',
+        ]);
+
+        $response->assertRedirect(route('account.index'));
+    }
+
+
         $user = User::factory()->create();
 
         SizeProfile::factory()->self()->create([
@@ -343,7 +370,8 @@ class SizeProfileTest extends TestCase
             'variant_name' => 'M',
         ]);
 
-        $response = $this->get(route('checkout.success', $order));
+        $response = $this->withSession(['checkout.last_order_id' => $order->id])
+            ->get(route('checkout.success', $order));
 
         $response->assertOk();
         $response->assertDontSee('You ordered sizes:');

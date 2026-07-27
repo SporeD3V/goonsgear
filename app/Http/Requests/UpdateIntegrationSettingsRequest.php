@@ -22,7 +22,7 @@ class UpdateIntegrationSettingsRequest extends FormRequest
             'paypal_client_id' => ['nullable', 'string', 'max:500'],
             'paypal_client_secret' => ['nullable', 'string', 'max:4096'],
             'paypal_base_url' => ['nullable', 'url:http,https', 'max:500'],
-            'dhl_tracking_url' => ['nullable', 'string', 'max:500'],
+            'dhl_tracking_url' => ['nullable', 'url:http,https', 'max:500'],
             'recaptcha_enabled' => ['sometimes', 'boolean'],
             'recaptcha_site_key' => ['nullable', 'string', 'max:1000'],
             'recaptcha_secret_key' => ['nullable', 'string', 'max:4096'],

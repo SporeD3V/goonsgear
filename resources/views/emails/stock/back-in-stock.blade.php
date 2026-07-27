@@ -1,5 +1,5 @@
 <x-mail::message>
-# Good news, {{ $user->name }}!
+# Good news{{ $user !== null ? ', '.$user->name : '' }}!
 
 **{{ $variant->product?->name }} ({{ $variant->name }})** is back in stock.
 

@@ -44,6 +44,8 @@ class CheckoutController extends Controller
 
     private const PAYPAL_PENDING_ORDER_SESSION_KEY = 'checkout.paypal.pending_orders';
 
+    private const LAST_ORDER_SESSION_KEY = 'checkout.last_order_id';
+
     public function index(Request $request, PayPalClient $paypalClient, CartPricing $cartPricing, RecaptchaVerifier $recaptchaVerifier): View|RedirectResponse
     {
         $items = $this->getCartItems($request);
@@ -154,6 +156,7 @@ class CheckoutController extends Controller
         $request->session()->forget(self::CART_SESSION_KEY);
         $this->forgetCouponSession($request);
         $recaptchaVerifier->clearSignals('checkout', $request, $email);
+        $request->session()->put(self::LAST_ORDER_SESSION_KEY, $order->id);
 
         Mail::to($order->email)->send(new OrderConfirmation($order->load('items')));
 
@@ -295,6 +298,7 @@ class CheckoutController extends Controller
         $request->session()->forget(self::PAYPAL_PENDING_ORDER_SESSION_KEY.'.'.$paypalOrderId);
         $request->session()->forget(self::CART_SESSION_KEY);
         $this->forgetCouponSession($request);
+        $request->session()->put(self::LAST_ORDER_SESSION_KEY, $order->id);
 
         $email = strtolower((string) data_get($pendingOrder, 'payload.email', ''));
         $recaptchaVerifier->clearSignals('checkout', $request, $email);
@@ -318,8 +322,16 @@ class CheckoutController extends Controller
         ]);
     }
 
-    public function success(Order $order): View
+    public function success(Request $request, Order $order): View
     {
+        $user = $request->user();
+
+        if ($user !== null) {
+            abort_unless(strcasecmp($user->email, $order->email) === 0, 403);
+        } else {
+            abort_unless($request->session()->get(self::LAST_ORDER_SESSION_KEY) === $order->id, 403);
+        }
+
         $order->load([
             'items' => fn ($query) => $query->orderBy('id'),
             'items.product.media' => fn ($query) => $query
