@@ -16,7 +16,7 @@
                 <h1 class="mt-3 text-xl font-semibold">Access denied</h1>
                 <p class="mt-2 text-sm text-black/60">You don't have permission to view this page.</p>
                 <a href="{{ url('/') }}" class="mt-6 inline-block rounded bg-black px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-80">
-                    Back to shop
+                    Return to homepage
                 </a>
             </div>
         </div>

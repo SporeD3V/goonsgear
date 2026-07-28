@@ -16,7 +16,7 @@
                 <h1 class="mt-3 text-xl font-semibold">Something went wrong</h1>
                 <p class="mt-2 text-sm text-black/60">We're experiencing a temporary issue. Please try again in a moment.</p>
                 <a href="{{ url('/') }}" class="mt-6 inline-block rounded bg-black px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-80">
-                    Back to shop
+                    Return to homepage
                 </a>
             </div>
         </div>

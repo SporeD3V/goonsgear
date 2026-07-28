@@ -327,7 +327,7 @@ class CheckoutController extends Controller
         $user = $request->user();
 
         if ($user !== null) {
-            abort_unless(strcasecmp($user->email, $order->email) === 0, 403);
+            abort_unless(strtolower($user->email) === strtolower($order->email), 403);
         } else {
             abort_unless($request->session()->get(self::LAST_ORDER_SESSION_KEY) === $order->id, 403);
         }
