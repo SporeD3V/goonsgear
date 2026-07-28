@@ -55,4 +55,23 @@ class IntegrationSettingsTest extends TestCase
         $this->assertNotSame('paypal-client-secret', $rawSecret);
         $this->assertNotSame('', $rawSecret);
     }
+
+    public function test_dhl_tracking_url_must_be_a_valid_http_url(): void
+    {
+        $response = $this->post(route('admin.maintenance.integrations.update'), [
+            'dhl_tracking_url' => 'javascript:alert(1)',
+        ]);
+
+        $response->assertSessionHasErrors('dhl_tracking_url');
+    }
+
+    public function test_dhl_tracking_url_accepts_valid_https_url(): void
+    {
+        $response = $this->post(route('admin.maintenance.integrations.update'), [
+            'dhl_tracking_url' => 'https://www.dhl.com/track?id=%s',
+        ]);
+
+        $response->assertRedirect(route('admin.maintenance.integrations.edit'));
+        $response->assertSessionMissing('errors');
+    }
 }

@@ -236,4 +236,25 @@ class CartNotificationTest extends TestCase
 
         Mail::assertNotQueued(BackInStockAlert::class);
     }
+
+    public function test_back_in_stock_email_sent_to_guest_subscriber(): void
+    {
+        Mail::fake();
+
+        $variant = $this->variantWithStock(0);
+
+        StockAlertSubscription::factory()->create([
+            'user_id' => null,
+            'email' => 'guest@example.com',
+            'product_variant_id' => $variant->id,
+            'is_active' => true,
+            'notified_at' => null,
+        ]);
+
+        $variant->update(['stock_quantity' => 5]);
+
+        Mail::assertQueued(BackInStockAlert::class, function (BackInStockAlert $mail) use ($variant) {
+            return $mail->user === null && $mail->variant->id === $variant->id;
+        });
+    }
 }

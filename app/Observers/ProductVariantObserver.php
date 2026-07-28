@@ -156,6 +156,8 @@ class ProductVariantObserver
         $subscriptions->each(function (StockAlertSubscription $subscription) use ($variant): void {
             if ($subscription->user !== null) {
                 Mail::to($subscription->user)->queue(new BackInStockAlert($subscription->user, $variant));
+            } else {
+                Mail::to($subscription->email)->queue(new BackInStockAlert(null, $variant));
             }
         });
 

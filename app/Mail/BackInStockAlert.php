@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Queue\SerializesModels;
 
 class BackInStockAlert extends Mailable implements ShouldQueue
@@ -16,7 +17,7 @@ class BackInStockAlert extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public function __construct(
-        public readonly User $user,
+        public readonly ?User $user,
         public readonly ProductVariant $variant,
     ) {
         $this->afterCommit();
@@ -42,5 +43,12 @@ class BackInStockAlert extends Mailable implements ShouldQueue
     public function attachments(): array
     {
         return [];
+    }
+
+    public function headers(): Headers
+    {
+        return new Headers(
+            text: ['List-Unsubscribe' => '<'.route('account.index').'#notifications>'],
+        );
     }
 }

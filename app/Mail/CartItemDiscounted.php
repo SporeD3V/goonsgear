@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Mail\Mailables\Headers;
 use Illuminate\Queue\SerializesModels;
 
 class CartItemDiscounted extends Mailable implements ShouldQueue
@@ -43,5 +44,12 @@ class CartItemDiscounted extends Mailable implements ShouldQueue
     public function attachments(): array
     {
         return [];
+    }
+
+    public function headers(): Headers
+    {
+        return new Headers(
+            text: ['List-Unsubscribe' => '<'.route('account.index').'#notifications>'],
+        );
     }
 }

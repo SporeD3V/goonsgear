@@ -40,7 +40,7 @@ class SizeProfileController extends Controller
 
         $redirect = $request->string('_redirect')->trim()->toString();
 
-        if ($redirect !== '' && str_starts_with($redirect, '/')) {
+        if ($redirect !== '' && str_starts_with($redirect, '/') && ! str_starts_with($redirect, '//')) {
             return redirect($redirect)->with('status', 'Size profile saved.');
         }
 
@@ -64,7 +64,7 @@ class SizeProfileController extends Controller
 
         $redirect = $request->string('_redirect')->trim()->toString();
 
-        if ($redirect !== '' && str_starts_with($redirect, '/')) {
+        if ($redirect !== '' && str_starts_with($redirect, '/') && ! str_starts_with($redirect, '//')) {
             return redirect($redirect)->with('status', 'Size profile updated.');
         }
 

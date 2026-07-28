@@ -47,7 +47,7 @@ class CreateOrderAction
     ): Order {
         $order = DB::transaction(function () use ($payload, $normalizedItems, $subtotal, $discountTotal, $total, $couponCodes, $couponBreakdown, $paymentMethod, $paymentStatus, $paypalOrderId, $paypalCaptureId, $markAsPaid, $regionalDiscountTotal, $bundleDiscountTotal, $bundleSku, $customer): Order {
             $variantIds = collect($normalizedItems)->pluck('product_variant_id')->map(fn ($id): int => (int) $id)->values();
-            $variants = ProductVariant::query()->whereIn('id', $variantIds)->get()->keyBy('id');
+            $variants = ProductVariant::query()->whereIn('id', $variantIds)->lockForUpdate()->get()->keyBy('id');
 
             foreach ($normalizedItems as $item) {
                 $variant = $variants->get((int) $item['product_variant_id']);
@@ -132,7 +132,24 @@ class CreateOrderAction
             }
 
             if ($couponCodes !== []) {
-                Coupon::query()->whereIn('code', $couponCodes)->increment('used_count');
+                $coupons = Coupon::query()
+                    ->whereIn('code', $couponCodes)
+                    ->lockForUpdate()
+                    ->get(['code', 'usage_limit', 'used_count']);
+
+                $exhaustedCoupon = $coupons->first(
+                    fn (Coupon $c): bool => $c->usage_limit !== null && $c->used_count >= $c->usage_limit
+                );
+
+                if ($exhaustedCoupon !== null) {
+                    throw ValidationException::withMessages([
+                        'coupon_code' => "Coupon {$exhaustedCoupon->code} has reached its usage limit. Please review your cart and retry.",
+                    ]);
+                }
+
+                Coupon::query()
+                    ->whereIn('code', $couponCodes)
+                    ->increment('used_count');
 
                 $couponLookup = Coupon::query()
                     ->whereIn('code', $couponCodes)
