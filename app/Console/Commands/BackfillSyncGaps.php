@@ -814,8 +814,8 @@ class BackfillSyncGaps extends Command
      */
     private function parseWcTrackingData(string $serialized): ?array
     {
-        // Try PHP unserialize first
-        $data = @unserialize($serialized);
+        // Try PHP unserialize first (with allowed_classes: false to prevent object injection)
+        $data = @unserialize($serialized, ['allowed_classes' => false]);
 
         if (is_array($data) && count($data) > 0) {
             // Use the first tracking entry (keys may not start at 0)
