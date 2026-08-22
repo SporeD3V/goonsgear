@@ -399,7 +399,7 @@ parameters:
 			path: app/Observers/ProductVariantObserver.php
 
 		-
-			message: '#^Parameter \#1 \$user of class App\\Mail\\BackInStockAlert constructor expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			message: '#^Parameter \#1 \$user of class App\\Mail\\BackInStockAlert constructor expects App\\Models\\User\|null, Illuminate\\Database\\Eloquent\\Model given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Observers/ProductVariantObserver.php
