@@ -39,6 +39,14 @@ _ide_helper_models.php
 /*.py
 /*.sql
 
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Deploy connection details (host/port/user/path) — never tracked;
+# copy scripts/deploy.local.example.json and fill it in.
+/scripts/deploy.local.json
+
 # Temporary investigation scripts — may contain credentials
 .tmp_*.py
 /_*.py

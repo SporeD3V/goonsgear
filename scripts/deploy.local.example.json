@@ -1,0 +1,7 @@
+{
+  "host": "your.staging.host",
+  "port": "22",
+  "user": "deploy-user",
+  "remote_path": "/absolute/path/to/app/on/server",
+  "staging_url": "https://staging.example.com"
+}
