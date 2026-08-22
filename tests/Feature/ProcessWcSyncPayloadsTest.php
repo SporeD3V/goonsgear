@@ -525,6 +525,46 @@ class ProcessWcSyncPayloadsTest extends TestCase
         $this->assertSame('Updated Name', $product->name);
     }
 
+    public function test_simple_product_sync_releases_sku_held_by_another_variant(): void
+    {
+        $product = Product::factory()->create(['name' => 'Simple Tee', 'slug' => 'simple-tee']);
+        $default = ProductVariant::factory()->create([
+            'product_id' => $product->id,
+            'name' => 'Default',
+            'sku' => 'SIMPLE-TEE-OLD',
+        ]);
+
+        DB::table('import_legacy_products')->insert([
+            'legacy_wp_post_id' => 2100,
+            'product_id' => $product->id,
+            'synced_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Another product already holds the SKU WooCommerce now reports, which
+        // previously made the update collide with the unique index on sku.
+        $otherProduct = Product::factory()->create(['slug' => 'other-product']);
+        $conflicting = ProductVariant::factory()->create([
+            'product_id' => $otherProduct->id,
+            'sku' => '86123',
+        ]);
+
+        $this->createPayload('product.updated', [
+            'wc_product_id' => 2100,
+            'name' => 'Simple Tee',
+            'slug' => 'simple-tee',
+            'status' => 'publish',
+            'sku' => '86123',
+            'price' => 19.99,
+        ], 2100);
+
+        $this->artisan('sync:process')->assertSuccessful();
+
+        $this->assertSame('86123', $default->refresh()->sku);
+        $this->assertSame("86123-moved-{$conflicting->id}", $conflicting->refresh()->sku);
+    }
+
     public function test_product_trashed_archives_product(): void
     {
         $product = Product::factory()->create(['status' => 'active']);

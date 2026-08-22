@@ -42,7 +42,9 @@ class ProcessWcSyncPayloads extends Command
             ->limit((int) $this->option('limit'));
 
         if (! $this->option('replay')) {
-            $query->whereNull('processed_at');
+            // Skip payloads that have exhausted their retries; they need a
+            // deliberate retry from the sync monitor to run again.
+            $query->retryable();
         }
 
         if ($eventFilter = $this->option('event')) {
@@ -554,6 +556,7 @@ class ProcessWcSyncPayloads extends Command
             ->first();
 
         if ($existingVariant) {
+            $this->releaseSkuConflicts($attrs['sku'], (int) $existingVariant->id);
             $existingVariant->update($attrs);
 
             return;
@@ -565,6 +568,7 @@ class ProcessWcSyncPayloads extends Command
             ->value('product_variant_id');
 
         if ($existingVariantId) {
+            $this->releaseSkuConflicts($attrs['sku'], (int) $existingVariantId);
             ProductVariant::where('id', $existingVariantId)->update($attrs);
 
             return;
